@@ -1,40 +1,40 @@
 {
-  "name": "taratormusic",
-  "version": "1.0.0",
-  "description": "A music player application with playlist support and Discord integration.",
-  "main": "index.js",
-  "bin": "index.js",
-  "scripts": {
-    "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
-  },
-  "build": {
-    "appId": "com.yourdomain.taratormusic",
-    "productName": "TaratorMusic",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "**/*"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "tarator_icon.ico"
-    },
-    "mac": {
-      "target": "dmg",
-      "icon": "tarator_icon.ico"
-    }
-  },
-  "dependencies": {
-    "discord-rpc": "^4.0.1",
-    "electron-is-dev": "^3.0.1",
-    "ytdl-core": "^4.11.5"
-  },
-  "devDependencies": {
-    "electron": "^31.1.0",
-    "electron-builder": "^24.13.3",
-    "electron-reload": "^2.0.0-alpha.1"
-  }
+	"name": "taratormusic",
+	"version": "1.0.0",
+	"description": "A music player application with playlist support and Discord integration.",
+	"main": "index.js",
+	"bin": "index.js",
+	"scripts": {
+		"start": "electron .",
+		"pack": "electron-builder --dir",
+		"dist": "electron-builder"
+	},
+	"build": {
+		"appId": "com.yourdomain.taratormusic",
+		"productName": "TaratorMusic",
+		"directories": {
+			"output": "dist"
+		},
+		"files": [
+			"**/*"
+		],
+		"win": {
+			"target": "nsis",
+			"icon": "tarator_icon.ico"
+		},
+		"mac": {
+			"target": "dmg",
+			"icon": "tarator_icon.ico"
+		}
+	},
+	"dependencies": {
+		"discord-rpc": "^4.0.1",
+		"electron-is-dev": "^3.0.1",
+		"ytdl-core": "^4.11.5"
+	},
+	"devDependencies": {
+		"electron": "^31.1.0",
+		"electron-builder": "^24.13.3",
+		"electron-reload": "^2.0.0-alpha.1"
+	}
 }

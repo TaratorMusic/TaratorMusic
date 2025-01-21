@@ -1,219 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaratorMusic</title>
-  <link rel="stylesheet" href="style.css">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' blob:; connect-src 'self' ws: https://i.ytimg.com https://img.youtube.com https://lh3.googleusercontent.com data:; img-src 'self' data: blob: https://i.ytimg.com https://img.youtube.com https://lh3.googleusercontent.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
-</head>
-<script src="preload.js"></script>
-<body>
-    <div id="allTheModals">
-        <div id="createPlaylistModal" class="modal">
-            <div class="modal-content">
-                <div class="flexrow">
-                    <div class="modalTitle">Create New Playlist</div>
-                    <span class="close" onclick="closeModal()">&times;</span>
-                </div>
-                <input type="text" id="playlistNameInput" placeholder="Enter playlist name">
-                <input type="file" id="thumbnailInput" accept="image/*" style="margin-bottom: 10px;">
-                <div id="modalerror"></div>
-                <button id="savePlaylistButton">Save</button>
-            </div>
-        </div>
-        <div id="editPlaylistModal" class="modal">
-            <div class="modal-content">
-                <div class="flexrow">
-                    <div class="modalTitle">Edit Playlist</div>
-                    <span class="close" onclick="closeModal()">&times;</span>
-                </div>
-                <input type="text" id="editPlaylistNameInput" placeholder="Enter playlist name">
-                <div class="flexrow" style="height: 55vh; justify-content: center;">
-                    <img id="editPlaylistThumbnail">
-                    <input type="file" onchange="updateThumbnailImage(event,2)" id="editPlaylistThumbnail" accept="image/*" style="margin-bottom: 10px;">
-                </div>
-                <div class="flexrow">
-                    <button id="editPlaylistDelete" onclick="deletePlaylist()">Delete</button>
-                    <button id="saveEditPlaylistButton" onclick="saveEditPlaylist()">Save</button>
-                </div>
-                <div id="editInvisibleName" class="invisible"></div> 
-                <div id="editInvisiblePhoto" class="invisible"></div>
-                <div id="editModalerror"></div>
-            </div>
-        </div>
-        <div id="addToPlaylistModal" class="modal">
-            <div class="modal-content">
-                <div class="flexrow">
-                    <div class="modalTitle">Add to Playlist</div>
-                    <span class="close" onclick="closeModal()">&times;</span>
-                </div>
-                <div id="playlist-checkboxes"></div>
-            </div>
-        </div>
-        <div id="speedModal" class="modal">
-            <div class="modal-content">
-                <div class="flexrow">
-                    <div class="modalTitle">Change Playback Speed</div>
-                    <span class="close" onclick="closeModal()">&times;</span>        
-                </div>
-                <div id="speedOptions" class="speed-options"></div>
-            </div>
-        </div>
-        <div id="customizeModal" class="modal">
-            <div class="modal-content">
-                <div class="flexrow">
-                    <div class="modalTitle">Customize Song</div>
-                    <span class="close" onclick="closeModal()">&times;</span>
-                </div>
-                <form id="customizeForm">
-                    <label for="customizeSongName">Song Name:</label>
-                    <input type="text" id="customizeSongName" name="customizeSongName" required>
-                    <label for="customizeThumbnail">Thumbnail:</label>
-                    <input type="file" onchange="updateThumbnailImage(event,1)" id="customizeThumbnail" name="customizeThumbnail" accept="image/*" >
-                    <img id="customiseImage">
-                    <button onclick="removeSong()">Remove Song</button>
-                    <button type="submit">Save</button>
-                </form>
-            </div>
-        </div>    
-        <div id="downloadModal" class="modal">
-            <div id="downloadModalContent" class="modal-content">
-                <div class="flexrow">
-                    <div class="modalTitle">Download Details</div>
-                    <span class="close" onclick="closeModal()">&times;</span>
-                </div>
-                <div class="flexrow">
-                    <input type="text" id="downloadFirstInput" placeholder="Music / Playlist Link">
-                    <button id="downloadFirstButton" onclick="checkNameThumbnail()">Check</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="sidebar">
-        <div id="main-menu" class="sidebarButtons" class="active">Main Menu</div>
-        <div id="my-music" class="sidebarButtons" onclick="myMusicOnClick(0)">My Music</div>
-        <div id="playlists" class="sidebarButtons" onclick="getPlaylists()">Playlists</div>
-        <div id="settings" class="sidebarButtons">Settings</div>   
-    </div>
-    <div id="playlistsidebar">
-        <div id="downloadNewFunction" class="sidebarButtons" onclick="downloadNew()">Download</div>
-        <div id="create-playlist" class="sidebarButtons" onclick="createNewPlaylist()">Create New Playlist</div>        
-    </div>
-    <div class="content">
-        <div id="main-menu-content" class="tab-content">
-            <div class="centermydivhehebutcolumn">
-                <div id="mainmenulogo"></div>
-                <div id="mainmenuapptext">TaratorMusic</div>
-                <div class="flexrowbutspacearound">
-                    <div id="mainmenurandomsong" class="mainmenusquares" onclick="randomSongFunctionMainMenu()">Random Song</div>
-                    <div id="mainmenurandomplaylist" class="mainmenusquares" onclick="randomPlaylistFunctionMainMenu()">Random Playlist</div>
-                    <div id="mainmenudiscordapi" class="mainmenusquares">Discord API Status:</div>
-                    <div id="mainmenutimespent" class="mainmenusquares">Time Spent: Coming Soon</div>
-                </div>
-            </div>
-        </div>        
-        <div id="my-music-content" class="tab-content hidden"></div>    
-        <div id="playlists-content" class="tab-content hidden"></div>               
-        <div id="settings-content" class="tab-content hidden">
-            <h1 class="underline-text">Keybinds</h1>
-            <div class="settingsKeybinds">
-                <div>Back 5 Seconds:</div>
-                <button id="settingsRewind" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Previous Song:</div>
-                <button id="settingsPrevious" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Play/Pause:</div>
-                <button id="settingsPlayPause" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Next Song:</div>
-                <button id="settingsNext" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Skip 5 Seconds:</div>
-                <button id="settingsSkip" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Autoplay:</div>
-                <button id="settingsAutoplay" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Shuffle:</div>
-                <button id="settingsShuffle" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Mute:</div>
-                <button id="settingsMute" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Speed:</div>
-                <button id="settingsSpeed" class="settingsKeybindsButton" required></button>
-            </div>
-            <div class="settingsKeybinds">
-                <div>Loop:</div>
-                <button id="settingsLoop" class="settingsKeybindsButton" required></button>
-            </div>            
-            <button onclick="saveKeybinds()">Save Keybinds</button>
-            <h1 class="underline-text">Customisation</h1>
-            <div>Previous Song Array Length
-                <input type="number" id="arrayLength" name="arrayLength" required>
-                <button onclick="changeThePreviousSongAmount()">Change</button>
-            </div>
-            <div>Placeholder Thumbnail: Coming Soon</div>
-            <div>Language: Coming Soon</div>
-            <div>Edit Background: Coming Soon</div>
-            <div>Edit Font: Coming Soon</div>
-            <div>Edit My Music Grid: Coming Soon</div>
-            <div>Disable Thumbnails: Coming Soon</div>
-            <h1 class="underline-text">System</h1>
-            <div class="settingsflexrow">Discord Connection
-                <label class="switch">
-                    <input type="checkbox" id="toggleSwitchDiscord" onclick="toggleDiscordAPI()">
-                    <span class="slider round"></span>
-                </label>
-            </div>
-            <div class="settingsflexrow">Close My Music Contents After Menu Change: Coming Soon
-                <!--<label class="switch">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>TaratorMusic</title>
+		<link rel="stylesheet" href="style.css" />
+		<meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' blob:; connect-src 'self' ws: https://i.ytimg.com https://img.youtube.com https://lh3.googleusercontent.com data:; img-src 'self' data: blob: https://i.ytimg.com https://img.youtube.com https://lh3.googleusercontent.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';" />
+	</head>
+	<script src="preload.js"></script>
+	<body>
+		<div id="allTheModals">
+			<div id="createPlaylistModal" class="modal">
+				<div class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Create New Playlist</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<input type="text" id="playlistNameInput" placeholder="Enter playlist name" />
+					<input type="file" id="thumbnailInput" accept="image/*" style="margin-bottom: 10px" />
+					<div id="modalerror"></div>
+					<button id="savePlaylistButton">Save</button>
+				</div>
+			</div>
+			<div id="editPlaylistModal" class="modal">
+				<div class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Edit Playlist</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<input type="text" id="editPlaylistNameInput" placeholder="Enter playlist name" />
+					<div class="flexrow" style="height: 55vh; justify-content: center">
+						<img id="editPlaylistThumbnail" />
+						<input type="file" onchange="updateThumbnailImage(event,2)" id="editPlaylistThumbnail" accept="image/*" style="margin-bottom: 10px" />
+					</div>
+					<div class="flexrow">
+						<button id="editPlaylistDelete" onclick="deletePlaylist()">Delete</button>
+						<button id="saveEditPlaylistButton" onclick="saveEditPlaylist()">Save</button>
+					</div>
+					<div id="editInvisibleName" class="invisible"></div>
+					<div id="editInvisiblePhoto" class="invisible"></div>
+					<div id="editModalerror"></div>
+				</div>
+			</div>
+			<div id="addToPlaylistModal" class="modal">
+				<div class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Add to Playlist</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<div id="playlist-checkboxes"></div>
+				</div>
+			</div>
+			<div id="speedModal" class="modal">
+				<div class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Change Playback Speed</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<div id="speedOptions" class="speed-options"></div>
+				</div>
+			</div>
+			<div id="customizeModal" class="modal">
+				<div class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Customize Song</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<form id="customizeForm">
+						<label for="customizeSongName">Song Name:</label>
+						<input type="text" id="customizeSongName" name="customizeSongName" required />
+						<label for="customizeThumbnail">Thumbnail:</label>
+						<input type="file" onchange="updateThumbnailImage(event,1)" id="customizeThumbnail" name="customizeThumbnail" accept="image/*" />
+						<img id="customiseImage" />
+						<button onclick="removeSong()">Remove Song</button>
+						<button type="submit">Save</button>
+					</form>
+				</div>
+			</div>
+			<div id="downloadModal" class="modal">
+				<div id="downloadModalContent" class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Download Details</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<div class="flexrow">
+						<input type="text" id="downloadFirstInput" placeholder="Music / Playlist Link" />
+						<button id="downloadFirstButton" onclick="checkNameThumbnail()">Check</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="sidebar">
+			<div id="main-menu" class="sidebarButtons" class="active">Main Menu</div>
+			<div id="my-music" class="sidebarButtons" onclick="myMusicOnClick(0)">My Music</div>
+			<div id="playlists" class="sidebarButtons" onclick="getPlaylists()">Playlists</div>
+			<div id="settings" class="sidebarButtons">Settings</div>
+		</div>
+		<div id="playlistsidebar">
+			<div id="downloadNewFunction" class="sidebarButtons" onclick="downloadNew()">Download</div>
+			<div id="create-playlist" class="sidebarButtons" onclick="createNewPlaylist()">Create New Playlist</div>
+		</div>
+		<div class="content">
+			<div id="main-menu-content" class="tab-content">
+				<div class="centermydivhehebutcolumn">
+					<div id="mainmenulogo"></div>
+					<div id="mainmenuapptext">TaratorMusic</div>
+					<div class="flexrowbutspacearound">
+						<div id="mainmenurandomsong" class="mainmenusquares" onclick="randomSongFunctionMainMenu()">Random Song</div>
+						<div id="mainmenurandomplaylist" class="mainmenusquares" onclick="randomPlaylistFunctionMainMenu()">Random Playlist</div>
+						<div id="mainmenudiscordapi" class="mainmenusquares">Discord API Status:</div>
+						<div id="mainmenutimespent" class="mainmenusquares">Time Spent: Coming Soon</div>
+					</div>
+				</div>
+			</div>
+			<div id="my-music-content" class="tab-content hidden"></div>
+			<div id="playlists-content" class="tab-content hidden"></div>
+			<div id="settings-content" class="tab-content hidden">
+				<h1 class="underline-text">Keybinds</h1>
+				<div class="settingsKeybinds">
+					<div>Back 5 Seconds:</div>
+					<button id="settingsRewind" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Previous Song:</div>
+					<button id="settingsPrevious" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Play/Pause:</div>
+					<button id="settingsPlayPause" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Next Song:</div>
+					<button id="settingsNext" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Skip 5 Seconds:</div>
+					<button id="settingsSkip" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Autoplay:</div>
+					<button id="settingsAutoplay" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Shuffle:</div>
+					<button id="settingsShuffle" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Mute:</div>
+					<button id="settingsMute" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Speed:</div>
+					<button id="settingsSpeed" class="settingsKeybindsButton" required></button>
+				</div>
+				<div class="settingsKeybinds">
+					<div>Loop:</div>
+					<button id="settingsLoop" class="settingsKeybindsButton" required></button>
+				</div>
+				<button onclick="saveKeybinds()">Save Keybinds</button>
+				<h1 class="underline-text">Customisation</h1>
+				<div>
+					Previous Song Array Length
+					<input type="number" id="arrayLength" name="arrayLength" required />
+					<button onclick="changeThePreviousSongAmount()">Change</button>
+				</div>
+				<div>Placeholder Thumbnail: Coming Soon</div>
+				<div>Language: Coming Soon</div>
+				<div>Edit Background: Coming Soon</div>
+				<div>Edit Font: Coming Soon</div>
+				<div>Edit My Music Grid: Coming Soon</div>
+				<div>Disable Thumbnails: Coming Soon</div>
+				<h1 class="underline-text">System</h1>
+				<div class="settingsflexrow">
+					Discord Connection
+					<label class="switch">
+						<input type="checkbox" id="toggleSwitchDiscord" onclick="toggleDiscordAPI()" />
+						<span class="slider round"></span>
+					</label>
+				</div>
+				<div class="settingsflexrow">
+					Close My Music Contents After Menu Change: Coming Soon
+					<!--<label class="switch">
                     <input type="checkbox" id="toggleSwitchMyMusic" onclick="toggleMyMusic()">
                     <span class="slider round"></span>
                 </label>-->
-            </div>
-            <div>Move App Folders: Coming Soon</div>
-            <div>Add _thumbnail to all new files: Coming Soon</div>
-            <div>Package Data: Coming Soon</div>
-            <div>Factory Reset: Coming Soon</div>
-        </div>
-    </div>
-    <div id="videothumbnailbox"></div>
-    <div id="video-controls" class="flexrow">
-        <div id="allbuttons">
-            <button id="backwardButton" class="audio-button" onclick="skipBackward()"></button>
-            <button id="previousSongButton" class="audio-button" onclick="playPreviousSong()"></button>
-            <button id="playButton" class="audio-button"></button>        
-            <button id="pauseButton" class="audio-button" style="display: none;"></button>  
-            <button id="nextSongButton" class="audio-button" onclick="playNextSong()"></button>
-            <button id="forwardButton" class="audio-button" onclick="skipForward()"></button>
-            <button id="autoplayButton" class="audio-button" onclick="toggleAutoplay()"></button>
-            <button id="shuffleButton" class="audio-button" onclick="toggleShuffle()"></button>
-            <button id="muteButton" class="audio-button" onclick="mute()"></button>
-            <button id="speedButton" class="audio-button" onclick="speed()"></button>
-            <button id="loopButton" class="audio-button" onclick="loop()"></button>
-        </div>
-        <div id="musicstuff" class="flexcolumn">
-            <div id="music-info">
-                <span id="song-name">No song is being played.</span>            
-            </div>
-            <div id="music-controls" class="flexrow">
-                <input type="range" id="video-progress" min="0" max="100" value="0">                         
-            </div>
-        </div>
-        <span id="video-length">00:00 / 00:00</span>
-        <input type="range" id="volume" min="0" max="100" value="100">   
-    </div>
-  <script src="renderer.js"></script>
-</body>
+				</div>
+				<div>Move App Folders: Coming Soon</div>
+				<div>Add _thumbnail to all new files: Coming Soon</div>
+				<div>Package Data: Coming Soon</div>
+				<div>Factory Reset: Coming Soon</div>
+			</div>
+		</div>
+		<div id="videothumbnailbox"></div>
+		<div id="video-controls" class="flexrow">
+			<div id="allbuttons">
+				<button id="backwardButton" class="audio-button" onclick="skipBackward()"></button>
+				<button id="previousSongButton" class="audio-button" onclick="playPreviousSong()"></button>
+				<button id="playButton" class="audio-button"></button>
+				<button id="pauseButton" class="audio-button" style="display: none"></button>
+				<button id="nextSongButton" class="audio-button" onclick="playNextSong()"></button>
+				<button id="forwardButton" class="audio-button" onclick="skipForward()"></button>
+				<button id="autoplayButton" class="audio-button" onclick="toggleAutoplay()"></button>
+				<button id="shuffleButton" class="audio-button" onclick="toggleShuffle()"></button>
+				<button id="muteButton" class="audio-button" onclick="mute()"></button>
+				<button id="speedButton" class="audio-button" onclick="speed()"></button>
+				<button id="loopButton" class="audio-button" onclick="loop()"></button>
+			</div>
+			<div id="musicstuff" class="flexcolumn">
+				<div id="music-info">
+					<span id="song-name">No song is being played.</span>
+				</div>
+				<div id="music-controls" class="flexrow">
+					<input type="range" id="video-progress" min="0" max="100" value="0" />
+				</div>
+			</div>
+			<span id="video-length">00:00 / 00:00</span>
+			<input type="range" id="volume" min="0" max="100" value="100" />
+		</div>
+		<script src="renderer.js"></script>
+	</body>
 </html>

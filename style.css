@@ -1,764 +1,766 @@
 @keyframes gradientAnimation {
-    0% {
-        background-position: 0% 0%;
-    }
-    50% {
-        background-position: 100% 100%;
-    }
-    100% {
-        background-position: 0% 0%;
-    }
+	0% {
+		background-position: 0% 0%;
+	}
+	50% {
+		background-position: 100% 100%;
+	}
+	100% {
+		background-position: 0% 0%;
+	}
 }
 
 body {
-    display: flex;
-    font-family: Verdana, sans-serif;
-    margin: 0;
-    animation: gradientAnimation 5s ease infinite;
-    background: linear-gradient(135deg, #0934b5, #2575fc);
-    background-size: 400% 400%;
-    height: 100%;
+	display: flex;
+	font-family: Verdana, sans-serif;
+	margin: 0;
+	animation: gradientAnimation 5s ease infinite;
+	background: linear-gradient(135deg, #0934b5, #2575fc);
+	background-size: 400% 400%;
+	height: 100%;
 }
 
 body::-webkit-scrollbar {
-    display: none;
+	display: none;
 }
 
 .centermydivhehebutcolumn {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 82vw;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	width: 82vw;
 }
 
 .flexrowbutspacearound {
-    display: flex;
-    flex-direction: row;
-    width: 82vw;
-    justify-content: space-around;
+	display: flex;
+	flex-direction: row;
+	width: 82vw;
+	justify-content: space-around;
 }
 
 .flexrow {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
 }
 
 .flexcolumn {
-    display: flex;
-    flex-direction: column;
+	display: flex;
+	flex-direction: column;
 }
 
 #playlistsidebar {
-    position: fixed;
-    left: 0;
-    margin-top: 23vh;
-    margin-left: 3vh;
-    display: flex;
-    flex-direction: column;  
+	position: fixed;
+	left: 0;
+	margin-top: 23vh;
+	margin-left: 3vh;
+	display: flex;
+	flex-direction: column;
 }
 
 .sidebar {
-    position: fixed;
-    left: 0;
-    margin-top: 3vh;
-    margin-left: 3vh;
-    display: flex;
-    flex-direction: column;    
+	position: fixed;
+	left: 0;
+	margin-top: 3vh;
+	margin-left: 3vh;
+	display: flex;
+	flex-direction: column;
 }
 
 .sidebarButtons {
-    width: 12vw;
-    height: 5vh;
-    text-align: center;
-    cursor: pointer;
-    background-color: #00001a; 
-    color: #f5f5f5; 
-    border: 0.1vw solid #444;
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 2px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); 
-    transition: background-color 0.6s ease, box-shadow 0.6s ease; 
+	width: 12vw;
+	height: 5vh;
+	text-align: center;
+	cursor: pointer;
+	background-color: #00001a;
+	color: #f5f5f5;
+	border: 0.1vw solid #444;
+	box-sizing: border-box;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	border-radius: 2px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+	transition: background-color 0.6s ease, box-shadow 0.6s ease;
 }
 
 .sidebarButtons:hover {
-    background-color: #555; 
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4); 
+	background-color: #555;
+	box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
 .content {
-    flex: 1;
-    padding: 20px;
-    margin-left: calc(13.5vw + 3vh);
+	flex: 1;
+	padding: 20px;
+	margin-left: calc(13.5vw + 3vh);
 }
 
 .tab-content {
-    width: 80vw;
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    align-items: center;
-    margin-bottom: 8vh;
+	width: 80vw;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	margin-bottom: 8vh;
 }
 
 .tab-content.hidden {
-    display: none;
+	display: none;
 }
 
 #video-container {
-    margin-top: 5vh;
-    width: 60vw;
-    height: 60vh;
+	margin-top: 5vh;
+	width: 60vw;
+	height: 60vh;
 }
 
 #video-container iframe {
-    width: 60vw;
-    height: 60vh;
+	width: 60vw;
+	height: 60vh;
 }
 
-video, audio {
-    width: 100%;
-    margin-bottom: 10px;
+video,
+audio {
+	width: 100%;
+	margin-bottom: 10px;
 }
 
 .audio-button {
-    width: 5vh;
-    height: 5vh;
-    margin-right: 0.5vw;
-    border-radius: 20%;
-    box-sizing: border-box;
-    border: none;
-    cursor: pointer;
-    background-color: #333;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-    transition: all 0.3s ease;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+	width: 5vh;
+	height: 5vh;
+	margin-right: 0.5vw;
+	border-radius: 20%;
+	box-sizing: border-box;
+	border: none;
+	cursor: pointer;
+	background-color: #333;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+	transition: all 0.3s ease;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .audio-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.7);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 12px rgba(0, 0, 0, 0.7);
 }
 
 #titlerow {
-    display: flex;
-    flex-direction: row;
+	display: flex;
+	flex-direction: row;
 }
 
 .music-item {
-    width: 200px;
-    height: 200px;
-    position: relative;
-    background-color: rgba(0, 0, 0, 0.6);
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    border-radius: 15px;
-    margin-bottom: 10px;
+	width: 200px;
+	height: 200px;
+	position: relative;
+	background-color: rgba(0, 0, 0, 0.6);
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
+	border-radius: 15px;
+	margin-bottom: 10px;
 }
 
 .background-element {
-    width: 200px;
-    height: 112.5px;
-    margin-top: 37.5px;
-    margin-bottom: 12.5px;
-    position: absolute;
-    top: 0;
-    left: 0;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+	width: 200px;
+	height: 112.5px;
+	margin-top: 37.5px;
+	margin-bottom: 12.5px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
 }
 
 .music-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
 }
 
 .music-item.playing::after {
-    content: 'Playing';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.75);
-    color: white;
-    padding: 5px 10px;
-    font-weight: bold;
-    border-radius: 10px;
-    text-align: center;
+	content: "Playing";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background-color: rgba(0, 0, 0, 0.75);
+	color: white;
+	padding: 5px 10px;
+	font-weight: bold;
+	border-radius: 10px;
+	text-align: center;
 }
 
 #video-controls {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100vw;
-    height: 8vh;
-    background-color: #333;
-    color: white;
-    box-sizing: border-box;
-    border: 0.1vw solid black;
-    display: flex;
-    align-items: center;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	width: 100vw;
+	height: 8vh;
+	background-color: #333;
+	color: white;
+	box-sizing: border-box;
+	border: 0.1vw solid black;
+	display: flex;
+	align-items: center;
 }
 
 #videothumbnailbox {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 12.75vw;
-    height: 7.2vw;
-    margin-bottom: calc(8vh - 0.1vw);
-    margin-left: 0.5vw;
-    background-color: #333;
-    color: white;
-    padding: 10px;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    border: 0.1vw solid black;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	width: 12.75vw;
+	height: 7.2vw;
+	margin-bottom: calc(8vh - 0.1vw);
+	margin-left: 0.5vw;
+	background-color: #333;
+	color: white;
+	padding: 10px;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	border: 0.1vw solid black;
+	background-size: contain;
+	background-position: center;
+	background-repeat: no-repeat;
 }
 
 #music-info {
-    display: flex;
-    text-align: center;
-    align-items: center;
-    justify-content: center;
-    width: 46vw;
-    height: 3vh;
-    font-size: 2vh;
-    margin-top: 1vh;  
-    margin-left: 1vw; 
+	display: flex;
+	text-align: center;
+	align-items: center;
+	justify-content: center;
+	width: 46vw;
+	height: 3vh;
+	font-size: 2vh;
+	margin-top: 1vh;
+	margin-left: 1vw;
 }
 
 #song-name {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .song-name {
-    position: absolute;
-    top: 5px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-size: 14px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 170px;
+	position: absolute;
+	top: 5px;
+	left: 50%;
+	transform: translateX(-50%);
+	color: white;
+	padding: 5px 10px;
+	border-radius: 5px;
+	font-size: 14px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 170px;
 }
 
 .song-length {
-    position: absolute;
-    bottom: 6px;
-    left: 6px;
-    color: white;
-    background-color: rgba(0, 0, 0, 0.6);
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-size: 24px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
+	position: absolute;
+	bottom: 6px;
+	left: 6px;
+	color: white;
+	background-color: rgba(0, 0, 0, 0.6);
+	padding: 5px 10px;
+	border-radius: 5px;
+	font-size: 24px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 180px;
 }
 
 .customize-button {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    bottom: 5px;
-    right: 50px;
-    color: white;
-    background-color: rgba(0, 0, 0, 0.6);
-    border-radius: 5px;
-    white-space: nowrap;
-    overflow: hidden;
-    cursor: pointer;
-    text-overflow: ellipsis;
+	position: absolute;
+	width: 40px;
+	height: 40px;
+	bottom: 5px;
+	right: 50px;
+	color: white;
+	background-color: rgba(0, 0, 0, 0.6);
+	border-radius: 5px;
+	white-space: nowrap;
+	overflow: hidden;
+	cursor: pointer;
+	text-overflow: ellipsis;
 }
 
 .add-to-playlist-button {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    bottom: 5px;
-    right: 5px;
-    color: white;
-    background-color: rgba(0, 0, 0, 0.6);
-    border-radius: 5px;
-    white-space: nowrap;
-    overflow: hidden;
-    cursor: pointer;
-    text-overflow: ellipsis;
+	position: absolute;
+	width: 40px;
+	height: 40px;
+	bottom: 5px;
+	right: 5px;
+	color: white;
+	background-color: rgba(0, 0, 0, 0.6);
+	border-radius: 5px;
+	white-space: nowrap;
+	overflow: hidden;
+	cursor: pointer;
+	text-overflow: ellipsis;
 }
 
 #music-controls {
-    justify-content: space-evenly;
-    height: 4vh;
-    display: flex;
-    align-items: center;
+	justify-content: space-evenly;
+	height: 4vh;
+	display: flex;
+	align-items: center;
 }
 
 #music-controls button {
-    background-color: transparent;
-    color: white;
-    border: none;
-    cursor: pointer;
+	background-color: transparent;
+	color: white;
+	border: none;
+	cursor: pointer;
 }
 
 #music-controls input[type="range"] {
-    cursor: pointer;
-    color: pink;
+	cursor: pointer;
+	color: pink;
 }
 
 #video-progress {
-    width: 48vw;
-    margin-right: 2vw;
+	width: 48vw;
+	margin-right: 2vw;
 }
 
 #video-length {
-    width: 10vw;
+	width: 10vw;
 }
 
 #volume {
-    width: 9vw;
-    margin-right: 1vw;
-    cursor: pointer;
+	width: 9vw;
+	margin-right: 1vw;
+	cursor: pointer;
 }
 
 #downloadResultDiv {
-    width: 30vw;
-    height: 30vh;
-    color: white;
-    box-sizing: border-box;
-    border: 0.1vw solid white;
-    padding: 1vw;
+	width: 30vw;
+	height: 30vh;
+	color: white;
+	box-sizing: border-box;
+	border: 0.1vw solid white;
+	padding: 1vw;
 }
 
 .modal {
-    display: none; 
-    position: fixed; 
-    z-index: 1; 
-    left: 0;
-    top: 0;
-    width: 100%; 
-    height: 100%; 
-    overflow: auto; 
-    background-color: rgba(0, 0, 0, 0.4);
+	display: none;
+	position: fixed;
+	z-index: 1;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	background-color: rgba(0, 0, 0, 0.4);
 }
 
 .modal-content {
-    padding: 1vw;
-    box-sizing: border-box;
-    border: 1px solid #888;
-    width: 80vw;
-    height: 80vh;
-    margin: 10vh 0 0 10vw;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    display: flex;
-    flex-direction: column;
+	padding: 1vw;
+	box-sizing: border-box;
+	border: 1px solid #888;
+	width: 80vw;
+	height: 80vh;
+	margin: 10vh 0 0 10vw;
+	background-color: rgba(0, 0, 0, 0.8);
+	color: white;
+	display: flex;
+	flex-direction: column;
 }
 
 .modalTitle {
-    color: #aaa;
-    width: 75vw;
-    height: 3vw;
-    font-weight: bold;
-    font-size: 2vw;
-    display: flex;
+	color: #aaa;
+	width: 75vw;
+	height: 3vw;
+	font-weight: bold;
+	font-size: 2vw;
+	display: flex;
 }
 
 .close {
-    color: #aaa;
-    width: 3vw;
-    height: 3vw;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    justify-content: end;
-    font-size: 2vw;
+	color: #aaa;
+	width: 3vw;
+	height: 3vw;
+	font-weight: bold;
+	cursor: pointer;
+	display: flex;
+	justify-content: end;
+	font-size: 2vw;
 }
 
 #customizeSongName {
-    width: 50vw;
-    height: 10vh;
-    font-size: 2vw;
+	width: 50vw;
+	height: 10vh;
+	font-size: 2vw;
 }
 
 #musicstuff {
-    width: 50vw;
+	width: 50vw;
 }
 
 #allbuttons {
-    width: 28.5vw;
-    height: 5vh;
-    display: flex;
-    flex-direction: row;
-    margin-left: 1.5vh;
-    margin-top: 1.5vh;
-    margin-bottom: 1.5vh;
+	width: 28.5vw;
+	height: 5vh;
+	display: flex;
+	flex-direction: row;
+	margin-left: 1.5vh;
+	margin-top: 1.5vh;
+	margin-bottom: 1.5vh;
 }
 
 #main-menu-content {
-    display: block;
-    height: 85vh;
-    width: 82vw;
+	display: block;
+	height: 85vh;
+	width: 82vw;
 }
 
-#my-music-content{
-    display: none;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    grid-auto-rows: 200px;
-    gap: 10px;
-    align-content: end;
-    color: white;
+#my-music-content {
+	display: none;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	grid-auto-rows: 200px;
+	gap: 10px;
+	align-content: end;
+	color: white;
 }
 
 #playlists-content {
-    display: none;
-    color: white;    
-    grid-auto-rows: 200px;
-    gap: 10px;
-    align-content: end;
+	display: none;
+	color: white;
+	grid-auto-rows: 200px;
+	gap: 10px;
+	align-content: end;
 }
 
-#settings-content{
-    display: none;
-    color: white;
-    text-align: left;    
-    align-items: flex-start;
-    padding-left: 5vw;
+#settings-content {
+	display: none;
+	color: white;
+	text-align: left;
+	align-items: flex-start;
+	padding-left: 5vw;
 }
 
-#settings-content div{
-    height: 10vh;
+#settings-content div {
+	height: 10vh;
 }
 
 .playlist {
-    width: 80vw;
-    height: 200px;
-    border: 1px solid #ccc;
-    margin: 10px;
-    display: flex;
-    flex-direction: row;
-    vertical-align: top;
-    overflow: hidden;
-    position: relative;    
-    box-sizing: border-box;
+	width: 80vw;
+	height: 200px;
+	border: 1px solid #ccc;
+	margin: 10px;
+	display: flex;
+	flex-direction: row;
+	vertical-align: top;
+	overflow: hidden;
+	position: relative;
+	box-sizing: border-box;
 }
 
 .playlist img {
-    width: 198px;
-    height: 198px;
+	width: 198px;
+	height: 198px;
 }
 
 .playlist-info {
-    width: calc(76vw - 200px);
-    height: 20px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    padding-left: 2vw;
-    padding-right: 2vw;
-    border: 0.1vw solid white;
-    box-sizing: border-box;
+	width: calc(76vw - 200px);
+	height: 20px;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	padding-left: 2vw;
+	padding-right: 2vw;
+	border: 0.1vw solid white;
+	box-sizing: border-box;
 }
 
 .playlist-songs {
-    width: calc(76vw - 200px);
-    height: 180px;
-    box-sizing: border-box;
-    overflow-y: scroll;
-    padding-left: 2vw;
-    border: 0.1vw solid white;
+	width: calc(76vw - 200px);
+	height: 180px;
+	box-sizing: border-box;
+	overflow-y: scroll;
+	padding-left: 2vw;
+	border: 0.1vw solid white;
 }
 
 .playlist-buttons {
-    width: 4vw;
-    height: 200px;
-    border: 0.1vw solid white;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-around;
+	width: 4vw;
+	height: 200px;
+	border: 0.1vw solid white;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-around;
 }
 
 .playlistInfoandSongs {
-    display: flex;
-    flex-direction: column;
+	display: flex;
+	flex-direction: column;
 }
 
 .playlist-buttons-button {
-    width: 4vw;
-    height: 4vw;
-    cursor: pointer;
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+	width: 4vw;
+	height: 4vw;
+	cursor: pointer;
+	box-sizing: border-box;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 #customiseImage {
-    width: 160px;
-    height: 100px;
+	width: 160px;
+	height: 100px;
 }
 
 .invisible {
-    display: none;
+	display: none;
 }
 
 #downloadFirstInput {
-    width: 70vw;
-    height: 5vh;
+	width: 70vw;
+	height: 5vh;
 }
 
 #downloadFirstButton {
-    width: 8vw;
-    height: 5.8vh;
+	width: 8vw;
+	height: 5.8vh;
 }
 
 #downloadSecondPhase {
-    width: 78vw;
-    height: 65vh;
-    position: relative;
+	width: 78vw;
+	height: 65vh;
+	position: relative;
 }
 
 #downloadModalBottomRow {
-    width: 78vw;
-    height: 5vh;
-    display: flex;
-    flex-direction: row;
-    border: 1px solid white;
-    box-sizing: border-box;
-    position: absolute;
-    bottom: 0;
+	width: 78vw;
+	height: 5vh;
+	display: flex;
+	flex-direction: row;
+	border: 1px solid white;
+	box-sizing: border-box;
+	position: absolute;
+	bottom: 0;
 }
 
 #downloadPlaceofSongs {
-    width: 78vw;
-    height: 59vh;
-    border: 1px solid white;
-    box-sizing: border-box;
-    overflow-y: scroll;
-    display: flex;
-    flex-direction: column;
+	width: 78vw;
+	height: 59vh;
+	border: 1px solid white;
+	box-sizing: border-box;
+	overflow-y: scroll;
+	display: flex;
+	flex-direction: column;
 }
 
 .exampleDownloadColumn {
-    width: 57vw;
-    height: 10vw;
-    display: flex;
-    flex-direction: column;
-    margin: 1vw 1vw 0 1vw;
+	width: 57vw;
+	height: 10vw;
+	display: flex;
+	flex-direction: column;
+	margin: 1vw 1vw 0 1vw;
 }
 
 #downloadSecondInput {
-    width: 56vw;
-    height: 7vw;
-    font-size: 2vw;    
+	width: 56vw;
+	height: 7vw;
+	font-size: 2vw;
 }
 
 .thumbnailImage {
-    width: 16vw;
-    height: 10vw;
-    background-size: cover;
-    margin-right: 1vw;
+	width: 16vw;
+	height: 10vw;
+	background-size: cover;
+	margin-right: 1vw;
 }
 
 .songAndThumbnail {
-    display: flex;
-    flex-direction: row;
+	display: flex;
+	flex-direction: row;
 }
 
 #downloadModalText {
-    width: 73vw;
-    height: 5vh;
-    display: flex;
-    justify-content: start;
-    align-items: center;
-    padding-left: 0.5vw;
+	width: 73vw;
+	height: 5vh;
+	display: flex;
+	justify-content: start;
+	align-items: center;
+	padding-left: 0.5vw;
 }
 
 #finalDownloadButton {
-    width: 5vw;
-    height: 5vh;
+	width: 5vw;
+	height: 5vh;
 }
 
 .underline-text {
-    text-decoration: underline;
+	text-decoration: underline;
 }
 
 #mainmenulogo {
-    width: 20vw;
-    height: 20vw;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    margin-bottom: calc(42vh - 20vw);
-    margin-left: 5vw;
-    margin-right: 5vw;
-    animation: marginShift 1.5s infinite alternate ease-in-out;
+	width: 20vw;
+	height: 20vw;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	margin-bottom: calc(42vh - 20vw);
+	margin-left: 5vw;
+	margin-right: 5vw;
+	animation: marginShift 1.5s infinite alternate ease-in-out;
 }
 
 @keyframes marginShift {
-    0% {
-        margin-left: 15vw;
-        margin-right: 0vw;
-    }
-    100% {
-        margin-left: 0vw;
-        margin-right: 15vw;
-    }
+	0% {
+		margin-left: 15vw;
+		margin-right: 0vw;
+	}
+	100% {
+		margin-left: 0vw;
+		margin-right: 15vw;
+	}
 }
 
 #mainmenuapptext {
-    margin-bottom: calc(50vh - 20vw);
-    font-size: 5vw;
-    color: white;
+	margin-bottom: calc(50vh - 20vw);
+	font-size: 5vw;
+	color: white;
 }
 
 .mainmenusquares {
-    width: 10vw;
-    height: 10vw;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    background-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 1px 12px rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
-    font-size: 1.25rem;
+	width: 10vw;
+	height: 10vw;
+	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 8px;
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	background-color: rgba(255, 255, 255, 0.5);
+	box-shadow: 0 1px 12px rgba(0, 0, 0, 0.25);
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+	font-size: 1.25rem;
 }
 
 .switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 34px;
-    margin-left: 2vw;
+	position: relative;
+	display: inline-block;
+	width: 60px;
+	height: 34px;
+	margin-left: 2vw;
 }
 
 .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
+	opacity: 0;
+	width: 0;
+	height: 0;
 }
 
 .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.4s;
-    border-radius: 34px;
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #ccc;
+	transition: 0.4s;
+	border-radius: 34px;
 }
 
 .slider:before {
-    position: absolute;
-    content: "";
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: 0.4s;
-    border-radius: 50%;
+	position: absolute;
+	content: "";
+	height: 26px;
+	width: 26px;
+	left: 4px;
+	bottom: 4px;
+	background-color: white;
+	transition: 0.4s;
+	border-radius: 50%;
 }
 
 input:checked + .slider {
-    background-color: #2196F3;
+	background-color: #2196f3;
 }
 
 input:checked + .slider:before {
-    transform: translateX(26px);
+	transform: translateX(26px);
 }
 
 .numberingTheBoxes {
-    width: 30px;
-    height: 30px;
+	width: 30px;
+	height: 30px;
 }
 
 #mainmenutimespent {
-    color: orange;
+	color: orange;
 }
 
 #saveAsPlaylist {
-    width: 4vw;
-    height: 10vw;
+	width: 4vw;
+	height: 10vw;
 }
 
 .deleteThisPlaylistSong {
-    width: 4vw;
-    height: 10vw;
+	width: 4vw;
+	height: 10vw;
 }
 
 .settingsflexrow {
-    display: flex;
-    flex-direction: row;
+	display: flex;
+	flex-direction: row;
 }
 
 .settingsKeybinds {
-    display: flex;
-    align-items: flex-start;
-    height: 7vh !important;
+	display: flex;
+	align-items: flex-start;
+	height: 7vh !important;
 }
 
 .settingsKeybindsButton {
-    width: 7vw;
-    margin-left: 1vw;
+	width: 7vw;
+	margin-left: 1vw;
 }
 
 #playlistNameInput {
-    height: 5vh;
-    font-size: 2rem;
+	height: 5vh;
+	font-size: 2rem;
 }
 
 #thumbnailInput {
-    margin: auto;
+	margin: auto;
 }
 
 #savePlaylistButton {
-    height: 10vh;
-    font-size: 4rem;
+	height: 10vh;
+	font-size: 4rem;
 }
 
 #editPlaylistNameInput {
-    height: 5vh;
-    font-size: 2rem;
+	height: 5vh;
+	font-size: 2rem;
 }
 
-#editPlaylistDelete, #saveEditPlaylistButton {
-    height: 10vh;
-    font-size: 4rem;
-    width: 50%;
+#editPlaylistDelete,
+#saveEditPlaylistButton {
+	height: 10vh;
+	font-size: 4rem;
+	width: 50%;
 }
 
 #editPlaylistThumbnail {
-    width: 16vw;
-    height: auto;
+	width: 16vw;
+	height: auto;
 }
