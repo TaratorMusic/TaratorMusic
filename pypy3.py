@@ -1,4 +1,4 @@
-from pytube import Playlist
+from pytubefix import Playlist
 import sys
 import json # Gets Youtube playlist video titles
 

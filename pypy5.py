@@ -1,6 +1,6 @@
 import os
 import sys
-from pytube import YouTube
+from pytubefix import YouTube
 import json
 
 if len(sys.argv) > 2:

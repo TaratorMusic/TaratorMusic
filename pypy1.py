@@ -1,11 +1,11 @@
-from pytube import YouTube
+from pytubefix import YouTube
 import sys
 import json # Gets Youtube video title
 
 if len(sys.argv) > 1:
     try:
         youtube_url = sys.argv[1]
-        yt = YouTube(youtube_url)
+        yt = YouTube(youtube_url, use_po_token=True)
         title = yt.title
         print(json.dumps(title))
     except Exception as e:

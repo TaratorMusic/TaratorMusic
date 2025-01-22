@@ -1,5 +1,5 @@
 import sys
-from pytube import Playlist # Gives playlist elements as an array
+from pytubefix import Playlist # Gives playlist elements as an array
 
 if len(sys.argv) > 1:
     try:
