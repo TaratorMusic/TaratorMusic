@@ -5,7 +5,7 @@ import json # Gets Youtube video title
 if len(sys.argv) > 1:
     try:
         youtube_url = sys.argv[1]
-        yt = YouTube(youtube_url, use_po_token=True)
+        yt = YouTube(youtube_url)
         title = yt.title
         print(json.dumps(title))
     except Exception as e:
