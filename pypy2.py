@@ -5,7 +5,7 @@ import requests # Gets Youtube video thumbnail
 if len(sys.argv) > 1:
     url = sys.argv[1]
     try:
-        yt = YouTube(url)
+        yt = YouTube(url, 'WEB')
         qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault', 'default']
         
         for quality in qualities:

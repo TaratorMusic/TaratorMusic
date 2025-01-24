@@ -5,7 +5,7 @@ import json # Gets Youtube playlist video titles
 if len(sys.argv) > 1:
     try:
         playlist_url = sys.argv[1]
-        playlist = Playlist(playlist_url)
+        playlist = Playlist(playlist_url, 'WEB')
         playlist_title = playlist.title
         video_titles = [playlist_title] + [video.title for video in playlist.videos]
         print(json.dumps(video_titles))
