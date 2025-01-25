@@ -2022,9 +2022,9 @@ ipcRenderer.on("update_downloaded", () => {
 	updateButton.onclick = () => ipcRenderer.send("quit_and_install");
 });
 
-// Add functionality to check for updates
 updateButton.onclick = () => {
 	updateButton.disabled = true;
 	updateStatus.textContent = "Checking for updates...";
+	console.log("Checking for updates...");
 	ipcRenderer.send("check_for_updates");
 };

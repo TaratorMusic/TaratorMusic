@@ -1,7 +1,7 @@
 // index.js
 
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
-const { autoUpdater } = require('electron-updater');
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const taratorFolder = __dirname;
 
@@ -22,7 +22,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-	Menu.setApplicationMenu(null); // ( removes the bar at the top )
+	Menu.setApplicationMenu(null);
 	app.setName("TaratorMusic");
 	createWindow();
 
@@ -30,19 +30,32 @@ app.whenReady().then(() => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
 
+	autoUpdater.setFeedURL({
+		provider: "github",
+		owner: "Victiniiiii",
+		repo: "TaratorMusic",
+		private: false,
+	});
+
+	console.log("Feed URL:", autoUpdater.getFeedURL());
+
 	autoUpdater.on("update-available", () => {
+		console.log("Update available!");
 		mainWindow.webContents.send("update_available");
 	});
 
 	autoUpdater.on("update-not-available", () => {
+		console.log("No update available.");
 		mainWindow.webContents.send("update_not_available");
 	});
 
 	autoUpdater.on("download-progress", (progressObj) => {
+		console.log(`Download progress: ${progressObj.percent}%`);
 		mainWindow.webContents.send("download_progress", progressObj);
 	});
 
 	autoUpdater.on("update-downloaded", () => {
+		console.log("Update downloaded!");
 		mainWindow.webContents.send("update_downloaded");
 	});
 
