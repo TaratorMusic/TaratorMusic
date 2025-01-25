@@ -1997,3 +1997,34 @@ document.getElementById("playlists").click();
 document.getElementById("main-menu").click();
 myMusicOnClick(1);
 document.getElementById("speedModal").style.display = "none";
+
+const updateButton = document.getElementById("update-button");
+const updateStatus = document.getElementById("update-status");
+
+ipcRenderer.on("update_available", () => {
+	updateStatus.textContent = "New update available!";
+	updateButton.disabled = false;
+});
+
+ipcRenderer.on("update_not_available", () => {
+	updateStatus.textContent = "No updates available.";
+	updateButton.disabled = false;
+});
+
+ipcRenderer.on("download_progress", (event, progressObj) => {
+	const percent = Math.round(progressObj.percent);
+	updateStatus.textContent = `Downloading update: ${percent}%`;
+});
+
+ipcRenderer.on("update_downloaded", () => {
+	updateStatus.textContent = "Update downloaded. Restart to install.";
+	updateButton.textContent = "Install Update";
+	updateButton.onclick = () => ipcRenderer.send("quit_and_install");
+});
+
+// Add functionality to check for updates
+updateButton.onclick = () => {
+	updateButton.disabled = true;
+	updateStatus.textContent = "Checking for updates...";
+	ipcRenderer.send("check_for_updates");
+};
