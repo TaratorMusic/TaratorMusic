@@ -20,7 +20,7 @@ del get-pip.py
 
 echo Installing Requests and Pytube...
 pip install requests
-pip install pytubefixaugust24
+pip install pytubefix
 
 echo Installation complete.
 pause

@@ -1,11 +1,12 @@
 from pytubefix import YouTube
+from pytubefix.cli import on_progress
 import sys
 import json # Gets Youtube video title
 
 if len(sys.argv) > 1:
     try:
         youtube_url = sys.argv[1]
-        yt = YouTube(youtube_url, 'WEB')
+        yt = YouTube(youtube_url, on_progress_callback=on_progress, client='WEB')
         title = yt.title
         print(json.dumps(title))
     except Exception as e:

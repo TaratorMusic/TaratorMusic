@@ -30,6 +30,6 @@ pip3 --version
 
 echo "Installing Requests and Pytube..."
 pip3 install requests
-pip3 install pytubefixaugust24
+pip3 install pytubefix
 
 echo "Installation complete."

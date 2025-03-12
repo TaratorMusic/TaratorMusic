@@ -1,11 +1,12 @@
 from pytubefix import Playlist
+from pytubefix.cli import on_progress
 import sys
 import json # Gets Youtube playlist video titles
 
 if len(sys.argv) > 1:
     try:
         playlist_url = sys.argv[1]
-        playlist = Playlist(playlist_url, 'WEB')
+        playlist = Playlist(playlist_url, on_progress_callback=on_progress, client='WEB')
         playlist_title = playlist.title
         video_titles = [playlist_title] + [video.title for video in playlist.videos]
         print(json.dumps(video_titles))
