@@ -1,6 +1,7 @@
 // index.js
 
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
+const { updateElectronApp } = require("update-electron-app");
 const path = require("path");
 const taratorFolder = __dirname;
 
@@ -24,6 +25,7 @@ app.whenReady().then(() => {
 	Menu.setApplicationMenu(null);
 	app.setName("TaratorMusic");
 	createWindow();
+	updateElectronApp();
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
