@@ -42,25 +42,33 @@ async function checkForUpdates() {
 					buttons: ["Later", "Update"],
 					message: `Update ${file.path}?`,
 				});
+                updated = true;
 
 				if (result === 1) {
 					fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
-					fs.writeFileSync(localFilePath, fileContent);
-					updated = true;
+					fs.writeFileSync(localFilePath, fileContent);					
 				}
 			}
 		}
 	}
 
 	if (!updated) {
-		alert("No new updates");
-	}
+		dialog.showMessageBoxSync({
+			type: "info",
+			message: "No new updates",
+		});
+	} else {
+        dialog.showMessageBoxSync({
+			type: "info",
+			message: "No more updates",
+		});
+    }
 }
 
 ipcMain.handle("check-for-updates", checkForUpdates);
 
 app.whenReady().then(() => {
-	/* Menu.setApplicationMenu(null); */
+	Menu.setApplicationMenu(null);
 	app.setName("TaratorMusic");
 	createWindow();
 
