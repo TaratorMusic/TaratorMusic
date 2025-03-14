@@ -34,8 +34,15 @@
 			"**/*"
 		],
 		"win": {
-			"target": "nsis",
-			"icon": "tarator_icon.ico"
+			"target": [
+				"nsis"
+			],
+			"icon": "tarator_icon.ico",
+			"asar": false
+		},
+		"nsis": {
+			"allowToChangeInstallationDirectory": true,
+            "oneClick": false
 		},
 		"mac": {
 			"target": "dmg",
