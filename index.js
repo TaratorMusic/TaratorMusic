@@ -24,6 +24,7 @@ function createWindow() {
 async function checkForUpdates() {
 	const response = await fetch(`https://api.github.com/repos/Victiniiiii/TaratorMusic/git/trees/if-no-NSIS?recursive=1`);
 	const files = (await response.json()).tree.filter((f) => f.type === "blob");
+	let updated = false;
 
 	for (const file of files) {
 		const fileUrl = `https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/if-no-NSIS/${file.path}`;
@@ -31,29 +32,28 @@ async function checkForUpdates() {
 
 		const res = await fetch(fileUrl);
 		if (res.ok) {
-			const fileContent = await res.text();
+			const fileContent = (await res.text()).replace(/\r\n/g, "\n").trim();
+			const fileExists = fs.existsSync(localFilePath);
+			const localContent = fileExists ? fs.readFileSync(localFilePath, "utf-8").replace(/\r\n/g, "\n").trim() : "";
 
-			if (fs.existsSync(localFilePath)) {
-				const localContent = fs.readFileSync(localFilePath, "utf-8");
+			if ((fileExists && localContent !== fileContent) || !fileExists) {
+				const result = dialog.showMessageBoxSync({
+					type: "info",
+					buttons: ["Later", "Update"],
+					message: `Update ${file.path}?`,
+				});
 
-				if (localContent !== fileContent) {
-					console.log(`Difference detected in ${file.path}:`);
-					console.log(`LOCAL:\n${localContent}`);
-					console.log(`REMOTE:\n${fileContent}`);
-
-					if (dialog.showMessageBoxSync({ type: "info", buttons: ["Update", "Later"], message: `Update ${file.path}?` }) === 0) {
-						fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
-						fs.writeFileSync(localFilePath, fileContent);
-						dialog.showMessageBoxSync({ message: `${file.path} updated.` });
-					}
+				if (result === 1) {
+					fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
+					fs.writeFileSync(localFilePath, fileContent);
+					updated = true;
 				}
-			} else {
-				console.log(`File ${file.path} does not exist locally. Downloading.`);
-				fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
-				fs.writeFileSync(localFilePath, fileContent);
-				dialog.showMessageBoxSync({ message: `${file.path} downloaded.` });
 			}
 		}
+	}
+
+	if (!updated) {
+		alert("No new updates");
 	}
 }
 
