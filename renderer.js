@@ -23,27 +23,78 @@ let havuc = null;
 let isSaveAsPlaylistActive = false;
 let disableKeyPresses = 0;
 
-let maximumPreviousSongCount;
-if (JSON.parse(localStorage.getItem("maximumPreviousSongCount")) == null) {
-	maximumPreviousSongCount = 50;
-} else {
-	maximumPreviousSongCount = JSON.parse(localStorage.getItem("maximumPreviousSongCount"));
-}
+const tabs = document.querySelectorAll(".sidebar div");
+const tabContents = document.querySelectorAll(".tab-content");
+const volumeControl = document.getElementById("volume");
+const playButton = document.getElementById("playButton");
+const pauseButton = document.getElementById("pauseButton");
+const videothumbnailbox = document.getElementById("videothumbnailbox");
+const createPlaylistModal = document.getElementById("createPlaylistModal");
+const customizeModal = document.getElementById("customizeModal");
+const downloadModal = document.getElementById("downloadModal");
+const speedModal = document.getElementById("speedModal");
+const speedOptions = document.getElementById("speedOptions");
+const muteButton = document.getElementById("muteButton");
+const loopButton = document.getElementById("loopButton");
+const editPlaylistModal = document.getElementById("editPlaylistModal");
+
+document.getElementById("backwardButton").innerHTML = icon.backward;
+document.getElementById("previousSongButton").innerHTML = icon.previous;
+document.getElementById("playButton").innerHTML = icon.play;
+document.getElementById("pauseButton").innerHTML = icon.pause;
+document.getElementById("nextSongButton").innerHTML = icon.next;
+document.getElementById("forwardButton").innerHTML = icon.forward;
+document.getElementById("autoplayButton").innerHTML = icon.redAutoplay;
+document.getElementById("shuffleButton").innerHTML = icon.redShuffle;
+document.getElementById("muteButton").innerHTML = icon.mute;
+document.getElementById("speedButton").innerHTML = icon.speed;
+document.getElementById("loopButton").innerHTML = icon.redLoop;
+document.getElementById("mainmenulogo").style.backgroundImage = "url(thumbnails/tarator1024_icon.png)";
+
+let maximumPreviousSongCount = localStorage.getItem("maximumPreviousSongCount") || 50;
 document.getElementById("arrayLength").value = maximumPreviousSongCount;
 
-/* let myMusicToggle = JSON.parse(localStorage.getItem('myMusicToggle')); // TODO
-if (myMusicToggle === null) { 
-    myMusicToggle = false;
-    localStorage.setItem('myMusicToggle', JSON.stringify(myMusicToggle));
-}
+volumeControl.value = localStorage.getItem("volume") || 100;
+if (audioElement) audioElement.volume = volumeControl.value / 100;
 
-function toggleMyMusic() {
-    myMusicToggle = !myMusicToggle;
-    localStorage.setItem("myMusicToggle", JSON.stringify(myMusicToggle));
-    console.log(myMusicToggle)
-}
+const settings = {
+	settingsRewind: "q",
+	settingsPrevious: "w",
+	settingsPlayPause: "e",
+	settingsNext: "r",
+	settingsSkip: "t",
+	settingsAutoplay: "a",
+	settingsShuffle: "s",
+	settingsMute: "d",
+	settingsSpeed: "f",
+	settingsLoop: "g",
+};
 
-document.getElementById("toggleSwitchMyMusic").checked = myMusicToggle; */
+Object.keys(settings).forEach((key) => {
+	document.getElementById(key).innerHTML = localStorage.getItem(key) || settings[key];
+});
+
+let totalTimeSpent = Number(localStorage.getItem("totalTimeSpent")) || 0;
+
+setInterval(() => {
+	totalTimeSpent++;
+	localStorage.setItem("totalTimeSpent", totalTimeSpent);
+
+	let value, unit;
+
+	if (totalTimeSpent >= 3600) {
+		value = (totalTimeSpent / 3600).toFixed(0);
+		unit = value == 1 ? "hour" : "hours";
+	} else if (totalTimeSpent >= 60) {
+		value = (totalTimeSpent / 60).toFixed(0);
+		unit = value == 1 ? "minute" : "minutes";
+	} else {
+		value = totalTimeSpent;
+		unit = value == 1 ? "second" : "seconds";
+	}
+
+	document.getElementById("mainmenutimespent").innerHTML = `Time Spent: ${value} ${unit}`;
+}, 1000);
 
 function changeThePreviousSongAmount() {
 	if (document.getElementById("arrayLength").value > 9 && document.getElementById("arrayLength").value < 101) {
@@ -61,13 +112,13 @@ if (discordApi === null) {
 	localStorage.setItem("discordApi", JSON.stringify(discordApi));
 }
 
+document.getElementById("toggleSwitchDiscord").checked = discordApi;
+
 function toggleDiscordAPI() {
 	discordApi = !discordApi;
 	localStorage.setItem("discordApi", JSON.stringify(discordApi));
 	updateDiscordPresence();
 }
-
-document.getElementById("toggleSwitchDiscord").checked = discordApi;
 
 const clientId = "1258898699816275969"; // not a private key, just the ID of my app
 const DiscordRPC = require("discord-rpc");
@@ -116,40 +167,6 @@ async function updateDiscordPresence() {
 
 updateDiscordPresence();
 
-const tabs = document.querySelectorAll(".sidebar div");
-const tabContents = document.querySelectorAll(".tab-content");
-const volumeControl = document.getElementById("volume");
-const playButton = document.getElementById("playButton");
-const pauseButton = document.getElementById("pauseButton");
-const videothumbnailbox = document.getElementById("videothumbnailbox");
-const createPlaylistModal = document.getElementById("createPlaylistModal");
-const customizeModal = document.getElementById("customizeModal");
-const downloadModal = document.getElementById("downloadModal");
-const speedModal = document.getElementById("speedModal");
-const speedOptions = document.getElementById("speedOptions");
-const muteButton = document.getElementById("muteButton");
-const loopButton = document.getElementById("loopButton");
-const editPlaylistModal = document.getElementById("editPlaylistModal");
-
-document.getElementById("backwardButton").innerHTML = icon.backward;
-document.getElementById("previousSongButton").innerHTML = icon.previous;
-document.getElementById("playButton").innerHTML = icon.play;
-document.getElementById("pauseButton").innerHTML = icon.pause;
-document.getElementById("nextSongButton").innerHTML = icon.next;
-document.getElementById("forwardButton").innerHTML = icon.forward;
-document.getElementById("autoplayButton").innerHTML = icon.redAutoplay;
-document.getElementById("shuffleButton").innerHTML = icon.redShuffle;
-document.getElementById("muteButton").innerHTML = icon.mute;
-document.getElementById("speedButton").innerHTML = icon.speed;
-document.getElementById("loopButton").innerHTML = icon.redLoop;
-document.getElementById("mainmenulogo").style.backgroundImage = "url(thumbnails/tarator1024_icon.png)";
-
-let previousVolume = volumeControl.value;
-volumeControl.value = localStorage.getItem("volume") || 100;
-if (audioElement) {
-	audioElement.volume = volumeControl.value / 100;
-}
-
 tabs.forEach((tab) => {
 	tab.addEventListener("click", () => {
 		tabs.forEach((div) => div.classList.remove("active"));
@@ -174,20 +191,10 @@ tabs.forEach((tab) => {
 				} else if (content.id === "settings-content") {
 					document.getElementById("settings-content").style.display = "flex";
 				}
-				/* if (content.id != "my-music-content" && myMusicToggle == true) {
-                    destroyMyMusic();
-                } */ // TODO
 			}
 		});
 	});
 });
-
-/* function destroyMyMusic() { // TODO
-    const myMusicContent = document.getElementById('my-music-content');
-    while (myMusicContent.firstChild) {
-        myMusicContent.removeChild(myMusicContent.firstChild);
-    }
-} */
 
 async function myMusicOnClick(firsttime) {
 	const myMusicContent = document.getElementById("my-music-content");
@@ -905,17 +912,9 @@ let remembershuffle = JSON.parse(localStorage.getItem("remembershuffle")) || fal
 let rememberloop = JSON.parse(localStorage.getItem("rememberloop")) || false;
 let rememberspeed = JSON.parse(localStorage.getItem("rememberspeed")) || 1;
 
-if (rememberautoplay == true) {
-	toggleAutoplay();
-}
-
-if (remembershuffle == true) {
-	toggleShuffle();
-}
-
-if (rememberloop == true) {
-	loop();
-}
+rememberautoplay && toggleAutoplay();
+remembershuffle && toggleShuffle();
+rememberloop && loop();
 
 function toggleAutoplay() {
 	isAutoplayActive = !isAutoplayActive;
@@ -1829,86 +1828,6 @@ async function testFunctionTest(howManyAreThere, dataLinks, playlistTitlesArray)
 		}
 	}
 }
-
-let settingsRewind;
-if (localStorage.getItem("settingsRewind") == null) {
-	settingsRewind = "q";
-} else {
-	settingsRewind = localStorage.getItem("settingsRewind");
-}
-document.getElementById("settingsRewind").innerHTML = settingsRewind;
-
-let settingsPrevious;
-if (localStorage.getItem("settingsPrevious") == null) {
-	settingsPrevious = "w";
-} else {
-	settingsPrevious = localStorage.getItem("settingsPrevious");
-}
-document.getElementById("settingsPrevious").innerHTML = settingsPrevious;
-
-let settingsPlayPause;
-if (localStorage.getItem("settingsPlayPause") == null) {
-	settingsPlayPause = "e";
-} else {
-	settingsPlayPause = localStorage.getItem("settingsPlayPause");
-}
-document.getElementById("settingsPlayPause").innerHTML = settingsPlayPause;
-
-let settingsNext;
-if (localStorage.getItem("settingsNext") == null) {
-	settingsNext = "r";
-} else {
-	settingsNext = localStorage.getItem("settingsNext");
-}
-document.getElementById("settingsNext").innerHTML = settingsNext;
-
-let settingsSkip;
-if (localStorage.getItem("settingsSkip") == null) {
-	settingsSkip = "t";
-} else {
-	settingsSkip = localStorage.getItem("settingsSkip");
-}
-document.getElementById("settingsSkip").innerHTML = settingsSkip;
-
-let settingsAutoplay;
-if (localStorage.getItem("settingsAutoplay") == null) {
-	settingsAutoplay = "a";
-} else {
-	settingsAutoplay = localStorage.getItem("settingsAutoplay");
-}
-document.getElementById("settingsAutoplay").innerHTML = settingsAutoplay;
-
-let settingsShuffle;
-if (localStorage.getItem("settingsShuffle") == null) {
-	settingsShuffle = "s";
-} else {
-	settingsShuffle = localStorage.getItem("settingsShuffle");
-}
-document.getElementById("settingsShuffle").innerHTML = settingsShuffle;
-
-let settingsMute;
-if (localStorage.getItem("settingsMute") == null) {
-	settingsMute = "d";
-} else {
-	settingsMute = localStorage.getItem("settingsMute");
-}
-document.getElementById("settingsMute").innerHTML = settingsMute;
-
-let settingsSpeed;
-if (localStorage.getItem("settingsSpeed") == null) {
-	settingsSpeed = "f";
-} else {
-	settingsSpeed = localStorage.getItem("settingsSpeed");
-}
-document.getElementById("settingsSpeed").innerHTML = settingsSpeed;
-
-let settingsLoop;
-if (localStorage.getItem("settingsLoop") == null) {
-	settingsLoop = "g";
-} else {
-	settingsLoop = localStorage.getItem("settingsLoop");
-}
-document.getElementById("settingsLoop").innerHTML = settingsLoop;
 
 document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 	button.addEventListener("click", function () {
