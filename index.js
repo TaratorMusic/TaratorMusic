@@ -22,12 +22,12 @@ function createWindow() {
 }
 
 async function checkForUpdates() {
-	const response = await fetch(`https://api.github.com/repos/Victiniiiii/TaratorMusic/git/trees/if-no-NSIS?recursive=1`);
+	const response = await fetch(`https://api.github.com/repos/Victiniiiii/TaratorMusic/git/trees/main?recursive=1`);
 	const files = (await response.json()).tree.filter((f) => f.type === "blob");
 	let updated = false;
 
 	for (const file of files) {
-		const fileUrl = `https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/if-no-NSIS/${file.path}`;
+		const fileUrl = `https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/${file.path}`;
 		const localFilePath = path.join(app.getAppPath(), file.path);
 
 		const res = await fetch(fileUrl);
