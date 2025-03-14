@@ -2,14 +2,15 @@
 
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
 const path = require("path");
-const taratorFolder = __dirname;
+const fs = require("fs");
+const fetch = require("node-fetch");
 
 function createWindow() {
 	const mainWindow = new BrowserWindow({
 		width: 1600,
 		height: 850,
 		title: "TaratorMusic",
-		icon: path.join(taratorFolder, "thumbnails/tarator16_icon.png"),
+		icon: path.join(__dirname, "thumbnails/tarator16_icon.png"),
 		webPreferences: {
 			contextIsolation: false,
 			nodeIntegration: true,
@@ -20,8 +21,46 @@ function createWindow() {
 	mainWindow.loadFile("index.html");
 }
 
+async function checkForUpdates() {
+	const response = await fetch(`https://api.github.com/repos/Victiniiiii/TaratorMusic/git/trees/if-no-NSIS?recursive=1`);
+	const files = (await response.json()).tree.filter((f) => f.type === "blob");
+
+	for (const file of files) {
+		const fileUrl = `https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/if-no-NSIS/${file.path}`;
+		const localFilePath = path.join(app.getAppPath(), file.path);
+
+		const res = await fetch(fileUrl);
+		if (res.ok) {
+			const fileContent = await res.text();
+
+			if (fs.existsSync(localFilePath)) {
+				const localContent = fs.readFileSync(localFilePath, "utf-8");
+
+				if (localContent !== fileContent) {
+					console.log(`Difference detected in ${file.path}:`);
+					console.log(`LOCAL:\n${localContent}`);
+					console.log(`REMOTE:\n${fileContent}`);
+
+					if (dialog.showMessageBoxSync({ type: "info", buttons: ["Update", "Later"], message: `Update ${file.path}?` }) === 0) {
+						fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
+						fs.writeFileSync(localFilePath, fileContent);
+						dialog.showMessageBoxSync({ message: `${file.path} updated.` });
+					}
+				}
+			} else {
+				console.log(`File ${file.path} does not exist locally. Downloading.`);
+				fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
+				fs.writeFileSync(localFilePath, fileContent);
+				dialog.showMessageBoxSync({ message: `${file.path} downloaded.` });
+			}
+		}
+	}
+}
+
+ipcMain.handle("check-for-updates", checkForUpdates);
+
 app.whenReady().then(() => {
-	Menu.setApplicationMenu(null);
+	/* Menu.setApplicationMenu(null); */
 	app.setName("TaratorMusic");
 	createWindow();
 
