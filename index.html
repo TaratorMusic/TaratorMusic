@@ -164,7 +164,6 @@
 					<input type="number" id="arrayLength" name="arrayLength" required />
 					<button onclick="changeThePreviousSongAmount()">Change</button>
 				</div>
-                <button id="checkUpdateButton">Check for updates</button>
 				<div>Placeholder Thumbnail: Coming Soon</div>
 				<div>Language: Coming Soon</div>
 				<div>Edit Background: Coming Soon</div>
@@ -173,15 +172,16 @@
 				<div>Disable Thumbnails: Coming Soon</div>
 				<h1 class="underline-text">System</h1>
 				<div class="settingsflexrow">
+					<button id="checkUpdateButton">Check for updates</button>
+				</div>
+				<div class="settingsflexrow">
 					Discord Connection
 					<label class="switch">
 						<input type="checkbox" id="toggleSwitchDiscord" onclick="toggleDiscordAPI()" />
 						<span class="slider round"></span>
 					</label>
 				</div>
-				<div class="settingsflexrow">
-					Close My Music Contents After Menu Change: Coming Soon
-				</div>
+				<div class="settingsflexrow">Close My Music Contents After Menu Change: Coming Soon</div>
 				<div>Move App Folders: Coming Soon</div>
 				<div>Add _thumbnail to all new files: Coming Soon</div>
 				<div>Package Data: Coming Soon</div>
@@ -214,6 +214,7 @@
 			<span id="video-length">00:00 / 00:00</span>
 			<input type="range" id="volume" min="0" max="100" value="100" />
 		</div>
+        <script src="discord.js"></script>
 		<script src="renderer.js"></script>
 	</body>
 </html>

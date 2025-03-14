@@ -106,67 +106,6 @@ function changeThePreviousSongAmount() {
 	document.getElementById("arrayLength").value = maximumPreviousSongCount;
 }
 
-let discordApi = JSON.parse(localStorage.getItem("discordApi"));
-if (discordApi === null) {
-	discordApi = false;
-	localStorage.setItem("discordApi", JSON.stringify(discordApi));
-}
-
-document.getElementById("toggleSwitchDiscord").checked = discordApi;
-
-function toggleDiscordAPI() {
-	discordApi = !discordApi;
-	localStorage.setItem("discordApi", JSON.stringify(discordApi));
-	updateDiscordPresence();
-}
-
-const clientId = "1258898699816275969"; // not a private key, just the ID of my app
-const DiscordRPC = require("discord-rpc");
-const RPC = new DiscordRPC.Client({ transport: "ipc" });
-DiscordRPC.register(clientId);
-
-if (discordApi == true) {
-	RPC.on("ready", async () => {
-		updateDiscordPresence();
-	});
-	RPC.login({ clientId }).catch((err) => console.error(err));
-}
-
-async function updateDiscordPresence() {
-	if (discordApi == true) {
-		if (!RPC) {
-			document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Down";
-			document.getElementById("mainmenudiscordapi").style.color = "red";
-			return;
-		}
-		const deneme = document.getElementById("song-name").textContent;
-		document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Online";
-		document.getElementById("mainmenudiscordapi").style.color = "green";
-		if (deneme == "No song is being played.") {
-			RPC.setActivity({
-				type: "2",
-				details: "Launching the app",
-				largeImageKey: "tarator1024_icon",
-				largeImageText: "TaratorMusic",
-			});
-		} else {
-			const time = document.getElementById("video-length").textContent;
-			RPC.setActivity({
-				type: "2",
-				details: deneme,
-				state: time,
-				largeImageKey: "tarator1024_icon",
-				largeImageText: "TaratorMusic",
-			});
-		}
-	} else {
-		document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Disabled";
-		document.getElementById("mainmenudiscordapi").style.color = "yellow";
-	}
-}
-
-updateDiscordPresence();
-
 tabs.forEach((tab) => {
 	tab.addEventListener("click", () => {
 		tabs.forEach((div) => div.classList.remove("active"));
