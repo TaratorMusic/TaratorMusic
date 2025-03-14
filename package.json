@@ -1,55 +1,61 @@
 {
-	"name": "TaratorMusic",
-	"productName": "TaratorMusic",
+	"name": "taratormusic",
 	"version": "1.1.5",
 	"description": "A music player application with playlist support and Discord integration.",
 	"main": "index.js",
-	"scripts": {
-		"start": "electron-forge start",
-		"package": "electron-forge package",
-		"make": "electron-forge make",
-		"publish": "electron-forge publish",
-		"lint": "echo \"No linting configured\""
-	},
-	"keywords": [],
+	"bin": "index.js",
 	"author": {
-		"name": "Victiniiiii",
-		"email": "victinii494@gmail.com"
+		"name": "Victiniiiii"
 	},
-	"license": "MIT",
+	"scripts": {
+		"start": "electron .",
+		"pack": "electron-builder --dir",
+		"dist": "electron-builder",
+		"build": "electron-builder"
+	},
 	"repository": {
-		"url": "https://github.com/Victiniiiii/TaratorMusic"
+		"type": "git",
+		"url": "https://github.com/Victiniiiii/TaratorMusic.git"
 	},
 	"build": {
-		"appId": "com.example.taratormusic",
+		"appId": "com.yourdomain.taratormusic",
 		"productName": "TaratorMusic",
+		"directories": {
+			"output": "dist"
+		},
 		"publish": [
 			{
 				"provider": "github",
 				"owner": "Victiniiiii",
-				"repo": "TaratorMusic",
-				"releaseType": "draft"
+				"repo": "TaratorMusic"
 			}
 		],
+		"files": [
+			"**/*"
+		],
 		"win": {
-			"target": "nsis"
+			"target": [
+				"nsis"
+			],
+			"icon": "tarator_icon.ico",
+			"asar": false
+		},
+		"nsis": {
+			"allowToChangeInstallationDirectory": true,
+            "oneClick": false
+		},
+		"mac": {
+			"target": "dmg",
+			"icon": "tarator_icon.ico"
 		}
 	},
 	"dependencies": {
 		"discord-rpc": "^4.0.1",
-		"electron-squirrel-startup": "^1.0.1",
-		"update-electron-app": "^3.1.1"
+		"electron-is-dev": "^3.0.1"
 	},
 	"devDependencies": {
-		"@electron-forge/cli": "^7.7.0",
-		"@electron-forge/maker-deb": "^7.7.0",
-		"@electron-forge/maker-rpm": "^7.7.0",
-		"@electron-forge/maker-zip": "^7.7.0",
-		"@electron-forge/plugin-auto-unpack-natives": "^7.7.0",
-		"@electron-forge/plugin-fuses": "^7.7.0",
-		"@electron-forge/publisher-github": "^7.7.0",
-		"@electron/fuses": "^1.8.0",
-		"electron": "35.0.1",
-		"electron-forge-maker-nsis": "^25.1.8"
+		"electron": "^31.1.0",
+		"electron-builder": "^24.13.3",
+		"electron-reload": "^2.0.0-alpha.1"
 	}
 }

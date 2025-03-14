@@ -1920,6 +1920,10 @@ function saveKeybinds() {
 	settingsLoop = document.getElementById("settingsLoop").innerHTML;
 }
 
+document.getElementById("checkUpdateButton").addEventListener("click", async function () {
+	await ipcRenderer.invoke("check-for-updates");
+});
+
 document.getElementById("playlists").click();
 document.getElementById("main-menu").click();
 myMusicOnClick(1);
