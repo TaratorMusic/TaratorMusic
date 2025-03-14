@@ -6,6 +6,20 @@ module.exports = {
 		asar: true,
 	},
 	rebuildConfig: {},
+	publishers: [
+		{
+			name: "@electron-forge/publisher-github",
+			config: {
+				repository: {
+					owner: "Victiniiiii",
+					name: "TaratorMusic",
+				},
+				draft: true,
+				prerelease: false,
+				generateReleaseNotes: false,
+			},
+		},
+	],
 	makers: [
 		{
 			name: "@electron-forge/maker-squirrel",
