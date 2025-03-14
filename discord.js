@@ -15,7 +15,7 @@ if (discordApi == true) {
 
 function toggleDiscordAPI() {
 	discordApi = !discordApi;
-	localStorage.setItem("discordApi", JSON.stringify(discordApi));
+	localStorage.setItem("discordApi", discordApi);
 	updateDiscordPresence();
 }
 

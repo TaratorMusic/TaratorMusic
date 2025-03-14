@@ -55,12 +55,12 @@ async function checkForUpdates() {
 	if (!updated) {
 		dialog.showMessageBoxSync({
 			type: "info",
-			message: "No new updates",
+			message: "No new updates.",
 		});
 	} else {
         dialog.showMessageBoxSync({
 			type: "info",
-			message: "No more updates",
+			message: "No more updates. Restart the app for the effects.",
 		});
     }
 }
