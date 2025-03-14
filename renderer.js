@@ -1846,40 +1846,45 @@ document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 });
 
 document.addEventListener("keydown", (event) => {
-	if (disableKeyPresses == 0) {
-		if (event.key === settingsRewind) {
-			skipBackward();
-		} else if (event.key === settingsPrevious) {
-			playPreviousSong();
-		} else if (event.key === settingsPlayPause) {
-			if (audioElement.paused) {
-				audioElement.play();
-				playButton.style.display = "none";
-				pauseButton.style.display = "inline-block";
-			} else {
-				audioElement.pause();
-				pauseButton.style.display = "none";
-				playButton.style.display = "inline-block";
-			}
-		} else if (event.key === settingsNext) {
-			playNextSong();
-		} else if (event.key === settingsSkip) {
-			skipForward();
-		} else if (event.key === settingsAutoplay) {
-			toggleAutoplay();
-		} else if (event.key === settingsShuffle) {
-			toggleShuffle();
-		} else if (event.key === settingsMute) {
-			mute();
-		} else if (event.key === settingsSpeed) {
-			if (document.getElementById("speedModal").style.display != "none") {
-				closeModal();
-			} else {
-				speed();
-			}
-		} else if (event.key === settingsLoop) {
-			loop();
+	const activeElement = document.activeElement;
+	if (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA" || disableKeyPresses == 1) {
+		return;
+	}
+
+	if (event.key === settings.settingsRewind) {
+		skipBackward();
+	} else if (event.key === settings.settingsPrevious) {
+		playPreviousSong();
+	} else if (event.key === settings.settingsPlayPause) {
+		if (audioElement.paused) {
+			audioElement.play();
+			playButton.style.display = "none";
+			pauseButton.style.display = "inline-block";
+		} else {
+			audioElement.pause();
+			pauseButton.style.display = "none";
+			playButton.style.display = "inline-block";
 		}
+	} else if (event.key === settings.settingsNext) {
+		playNextSong();
+	} else if (event.key === settings.settingsSkip) {
+		skipForward();
+	} else if (event.key === settings.settingsAutoplay) {
+		console.log("1");
+		toggleAutoplay();
+		console.log("2");
+	} else if (event.key === settings.settingsShuffle) {
+		toggleShuffle();
+	} else if (event.key === settings.settingsMute) {
+		mute();
+	} else if (event.key === settings.settingsSpeed) {
+		if (document.getElementById("speedModal").style.display != "none") {
+			closeModal();
+		} else {
+			speed();
+		}
+	} else if (event.key === settings.settingsLoop) {
+		loop();
 	}
 });
 
