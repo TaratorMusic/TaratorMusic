@@ -3,12 +3,13 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const { exec } = require("child_process");
 const fetch = require("node-fetch");
 
-const customCacheDir = path.join(__dirname, 'cache');
-app.commandLine.appendSwitch('disk-cache-dir', customCacheDir);
-app.setPath('userData', path.join(__dirname, 'userData'));
+const customCacheDir = path.join(__dirname, "cache");
+app.commandLine.appendSwitch("disk-cache-dir", customCacheDir);
+app.setPath("userData", path.join(__dirname, "userData"));
 
 function createWindow() {
 	const mainWindow = new BrowserWindow({
@@ -70,17 +71,38 @@ async function checkForUpdates() {
 	}
 }
 
-ipcMain.on("update-pytubefix", (event) => {
-	exec("pip install --upgrade pytubefix", (error, stdout, stderr) => {
-		if (error) {
-			event.reply("update-response", `Error: ${error.message}`);
+ipcMain.on("update-pytubefix", (event, pytubeStatus) => {
+	exec("pip show pytube", (error, stdout, stderr) => {
+		if (error || stderr) {
+			const installScript = os.platform() === "win32" ? "pytubeinstall.bat" : "pytubeinstall.sh";
+
+			exec(installScript, (installError, installStdout, installStderr) => {
+				if (installError) {
+					event.reply("update-response", `Error installing pytube: ${installError.message}`);
+					return;
+				}
+				if (installStderr) {
+					event.reply("update-response", `stderr: ${installStderr}`);
+					return;
+				}
+				event.reply("update-response", `Pytube installed successfully:\n${installStdout}`);
+			});
 			return;
 		}
-		if (stderr) {
-			event.reply("update-response", `stderr: ${stderr}`);
-			return;
-		}
-		event.reply("update-response", `Success:\n${stdout}`);
+
+		let command = pytubeStatus === "true" ? "pip install --upgrade pytubefix" : "pip install pytubefix";
+
+		exec(command, (execError, stdout, stderr) => {
+			if (execError) {
+				event.reply("update-response", `Error: ${execError.message}`);
+				return;
+			}
+			if (stderr) {
+				event.reply("update-response", `stderr: ${stderr}`);
+				return;
+			}
+			event.reply("update-response", `Success:\n${stdout}`);
+		});
 	});
 });
 

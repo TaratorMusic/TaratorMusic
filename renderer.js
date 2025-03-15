@@ -23,6 +23,8 @@ let havuc = null;
 let isSaveAsPlaylistActive = false;
 let disableKeyPresses = 0;
 
+let pytubeStatus = localStorage.getItem("pytubeStatus") || false;
+
 const tabs = document.querySelectorAll(".sidebar div");
 const tabContents = document.querySelectorAll(".tab-content");
 const volumeControl = document.getElementById("volume");
@@ -958,6 +960,10 @@ function createNewPlaylist() {
 }
 
 function downloadNew() {
+	if (!pytubeStatus) {
+		alert("Please first install Pytube from the settings to download music.");
+		return;
+	}
 	downloadModal.style.display = "block";
 	document.getElementById("downloadFirstInput").value = "";
 
@@ -1226,7 +1232,7 @@ function checkNameThumbnail() {
 				document.getElementById("downloadModalText").innerHTML = "Checking... Might take long...";
 			}
 
-			const pythonProcessThumbnail2 = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistThumbnail",document.getElementById("downloadFirstInput").value]);
+			const pythonProcessThumbnail2 = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistThumbnail", document.getElementById("downloadFirstInput").value]);
 			pythonProcessThumbnail2.stdout.on("data", (data) => {
 				decodedData2 = data.toString().trim();
 
@@ -1245,7 +1251,7 @@ function checkNameThumbnail() {
 				downloadPlaceofSongs.id = "downloadPlaceofSongs";
 				document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
 
-				const python3 = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistNames",document.getElementById("downloadFirstInput").value]);
+				const python3 = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistNames", document.getElementById("downloadFirstInput").value]);
 				python3.stdout.on("data", (data) => {
 					let pypy9output = JSON.parse(data.toString().trim().replace(/'/g, '"'));
 
@@ -1389,7 +1395,7 @@ function actuallyDownloadTheSong() {
 		} else {
 			document.getElementById("downloadModalText").innerText = "Downloading Song...";
 		}
-		const pythonProcessFileName = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic",document.getElementById("downloadFirstInput").value, secondInput]);
+		const pythonProcessFileName = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic", document.getElementById("downloadFirstInput").value, secondInput]);
 		pythonProcessFileName.stdout.on("data", (data) => {
 			const decodedData = data.toString().trim();
 			console.log(data.toString().trim());
@@ -1415,7 +1421,7 @@ function actuallyDownloadTheSong() {
 						const tempFilePath = path.join(taratorFolder, "temp_thumbnail.txt");
 						fs.writeFileSync(tempFilePath, base64data);
 
-						const pythonProcessFileThumbnail = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail",tempFilePath, secondInput]);
+						const pythonProcessFileThumbnail = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail", tempFilePath, secondInput]);
 						pythonProcessFileThumbnail.stdout.on("data", (data) => {
 							const decodedData = data.toString().trim();
 							let parsedData;
@@ -1539,7 +1545,7 @@ function actuallyDownloadTheSong() {
 								let tempFilePath = path.join(taratorFolder, `temp_thumbnail_${songName}.txt`);
 								try {
 									fs.writeFileSync(tempFilePath, base64data);
-									let pythonProcess = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail",tempFilePath, songName]);
+									let pythonProcess = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail", tempFilePath, songName]);
 
 									pythonProcess.stdout.on("data", (data) => {
 										let decodedData = data.toString().trim();
@@ -1737,7 +1743,7 @@ async function testFunctionTest(howManyAreThere, dataLinks, playlistTitlesArray)
 	for (let i = 0; i < howManyAreThere - 1; i++) {
 		console.log("Link: ", dataLinks[i].trim(), "Title: ", playlistTitlesArray[i].trim());
 
-		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic",dataLinks[i].trim(), playlistTitlesArray[i].trim()]);
+		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic", dataLinks[i].trim(), playlistTitlesArray[i].trim()]);
 
 		pythonProcessTitle.stdout.on("data", (data) => {
 			console.log(data.toString().trim());
@@ -1861,11 +1867,15 @@ document.getElementById("checkUpdateButton").addEventListener("click", async fun
 });
 
 document.getElementById("checkPytubeButton").addEventListener("click", () => {
-	ipcRenderer.send("update-pytubefix");
+	ipcRenderer.send("update-pytubefix", pytubeStatus);
 });
 
 ipcRenderer.on("update-response", (event, message) => {
 	alert(message);
+	if (message.startsWith("Success")) {
+		localStorage.setItem("pytubeStatus", "true");
+		pytubeStatus = true;
+	}
 });
 
 document.getElementById("playlists").click();
