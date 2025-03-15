@@ -6,6 +6,10 @@ const fs = require("fs");
 const { exec } = require("child_process");
 const fetch = require("node-fetch");
 
+const customCacheDir = path.join(__dirname, 'cache');
+app.commandLine.appendSwitch('disk-cache-dir', customCacheDir);
+app.setPath('userData', path.join(__dirname, 'userData'));
+
 function createWindow() {
 	const mainWindow = new BrowserWindow({
 		width: 1600,

@@ -7,6 +7,7 @@ playlists.json
 dist/
 build/
 out/
+userData/
 
 TaratorMusic-win32-ia32/
 TaratorMusic-win32-x64/
