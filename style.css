@@ -23,7 +23,7 @@
 
 * {
 	box-sizing: border-box;
-    user-select: none;
+	user-select: none;
 }
 
 body {
@@ -645,6 +645,11 @@ audio {
 	font-size: 1.25rem;
 }
 
+#mainmenurandomsong,
+#mainmenurandomplaylist {
+	cursor: pointer;
+}
+
 .switch {
 	position: relative;
 	display: inline-block;
@@ -758,5 +763,5 @@ input:checked + .slider:before {
 }
 
 #speedModal {
-    display: none;
+	display: none;
 }
