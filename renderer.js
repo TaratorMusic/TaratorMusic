@@ -1818,7 +1818,7 @@ document.addEventListener("keydown", (event) => {
 	} else if (event.key === settings.settingsMute) {
 		mute();
 	} else if (event.key === settings.settingsSpeed) {
-        document.getElementById("speedModal").style.display == "none" ? speed() : closeModal();
+		document.getElementById("speedModal").style.display == "none" ? speed() : closeModal();
 	} else if (event.key === settings.settingsLoop) {
 		loop();
 	}
@@ -1858,6 +1858,14 @@ function saveKeybinds() {
 
 document.getElementById("checkUpdateButton").addEventListener("click", async function () {
 	await ipcRenderer.invoke("check-for-updates");
+});
+
+document.getElementById("checkPytubeButton").addEventListener("click", () => {
+	ipcRenderer.send("update-pytubefix");
+});
+
+ipcRenderer.on("update-response", (event, message) => {
+	alert(message);
 });
 
 document.getElementById("playlists").click();

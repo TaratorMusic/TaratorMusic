@@ -3,6 +3,7 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { exec } = require("child_process");
 const fetch = require("node-fetch");
 
 function createWindow() {
@@ -42,11 +43,11 @@ async function checkForUpdates() {
 					buttons: ["Later", "Update"],
 					message: `Update ${file.path}?`,
 				});
-                updated = true;
+				updated = true;
 
 				if (result === 1) {
 					fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
-					fs.writeFileSync(localFilePath, fileContent);					
+					fs.writeFileSync(localFilePath, fileContent);
 				}
 			}
 		}
@@ -58,12 +59,26 @@ async function checkForUpdates() {
 			message: "No new updates.",
 		});
 	} else {
-        dialog.showMessageBoxSync({
+		dialog.showMessageBoxSync({
 			type: "info",
 			message: "No more updates. Restart the app for the effects.",
 		});
-    }
+	}
 }
+
+ipcMain.on("update-pytubefix", (event) => {
+	exec("pip install --upgrade pytubefix", (error, stdout, stderr) => {
+		if (error) {
+			event.reply("update-response", `Error: ${error.message}`);
+			return;
+		}
+		if (stderr) {
+			event.reply("update-response", `stderr: ${stderr}`);
+			return;
+		}
+		event.reply("update-response", `Success:\n${stdout}`);
+	});
+});
 
 ipcMain.handle("check-for-updates", checkForUpdates);
 
