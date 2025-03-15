@@ -1135,7 +1135,7 @@ function checkNameThumbnail() {
 	}
 
 	if (differentiateYouTubeLinks(document.getElementById("downloadFirstInput").value) == "video") {
-		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pypy1.py"), document.getElementById("downloadFirstInput").value]);
+		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "Title", document.getElementById("downloadFirstInput").value]);
 		pythonProcessTitle.stdout.on("data", (data) => {
 			const decodedData = data.toString().trim();
 			let decodedString;
@@ -1145,7 +1145,7 @@ function checkNameThumbnail() {
 				decodedString = decodedData;
 			}
 
-			const pythonProcessThumbnail2 = spawn("python", [path.join(taratorFolder, "pypy2.py"), document.getElementById("downloadFirstInput").value]);
+			const pythonProcessThumbnail2 = spawn("python", [path.join(taratorFolder, "pytube.py"), "Thumbnail", document.getElementById("downloadFirstInput").value]);
 			pythonProcessThumbnail2.stdout.on("data", (data) => {
 				const downloadPlaceofSongs = document.createElement("div");
 				document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
@@ -1208,7 +1208,7 @@ function checkNameThumbnail() {
 			console.log(`Python process exited with code ${code}`);
 		});
 	} else if (differentiateYouTubeLinks(document.getElementById("downloadFirstInput").value) == "playlist") {
-		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pypy3.py"), document.getElementById("downloadFirstInput").value]);
+		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistTitle", document.getElementById("downloadFirstInput").value]);
 		pythonProcessTitle.stdout.on("data", (data) => {
 			decodedData = data.toString().trim();
 
@@ -1226,7 +1226,7 @@ function checkNameThumbnail() {
 				document.getElementById("downloadModalText").innerHTML = "Checking... Might take long...";
 			}
 
-			const pythonProcessThumbnail2 = spawn("python", [path.join(taratorFolder, "pypy4.py"), document.getElementById("downloadFirstInput").value]);
+			const pythonProcessThumbnail2 = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistThumbnail",document.getElementById("downloadFirstInput").value]);
 			pythonProcessThumbnail2.stdout.on("data", (data) => {
 				decodedData2 = data.toString().trim();
 
@@ -1245,7 +1245,7 @@ function checkNameThumbnail() {
 				downloadPlaceofSongs.id = "downloadPlaceofSongs";
 				document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
 
-				const python3 = spawn("python", [path.join(taratorFolder, "pypy9.py"), document.getElementById("downloadFirstInput").value]);
+				const python3 = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistNames",document.getElementById("downloadFirstInput").value]);
 				python3.stdout.on("data", (data) => {
 					let pypy9output = JSON.parse(data.toString().trim().replace(/'/g, '"'));
 
@@ -1389,7 +1389,7 @@ function actuallyDownloadTheSong() {
 		} else {
 			document.getElementById("downloadModalText").innerText = "Downloading Song...";
 		}
-		const pythonProcessFileName = spawn("python", [path.join(taratorFolder, "pypy5.py"), document.getElementById("downloadFirstInput").value, secondInput]);
+		const pythonProcessFileName = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic",document.getElementById("downloadFirstInput").value, secondInput]);
 		pythonProcessFileName.stdout.on("data", (data) => {
 			const decodedData = data.toString().trim();
 			console.log(data.toString().trim());
@@ -1415,7 +1415,7 @@ function actuallyDownloadTheSong() {
 						const tempFilePath = path.join(taratorFolder, "temp_thumbnail.txt");
 						fs.writeFileSync(tempFilePath, base64data);
 
-						const pythonProcessFileThumbnail = spawn("python", [path.join(taratorFolder, "pypy6.py"), tempFilePath, secondInput]);
+						const pythonProcessFileThumbnail = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail",tempFilePath, secondInput]);
 						pythonProcessFileThumbnail.stdout.on("data", (data) => {
 							const decodedData = data.toString().trim();
 							let parsedData;
@@ -1539,7 +1539,7 @@ function actuallyDownloadTheSong() {
 								let tempFilePath = path.join(taratorFolder, `temp_thumbnail_${songName}.txt`);
 								try {
 									fs.writeFileSync(tempFilePath, base64data);
-									let pythonProcess = spawn("python", [path.join(taratorFolder, "pypy6.py"), tempFilePath, songName]);
+									let pythonProcess = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail",tempFilePath, songName]);
 
 									pythonProcess.stdout.on("data", (data) => {
 										let decodedData = data.toString().trim();
@@ -1737,7 +1737,7 @@ async function testFunctionTest(howManyAreThere, dataLinks, playlistTitlesArray)
 	for (let i = 0; i < howManyAreThere - 1; i++) {
 		console.log("Link: ", dataLinks[i].trim(), "Title: ", playlistTitlesArray[i].trim());
 
-		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pypy5.py"), dataLinks[i].trim(), playlistTitlesArray[i].trim()]);
+		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic",dataLinks[i].trim(), playlistTitlesArray[i].trim()]);
 
 		pythonProcessTitle.stdout.on("data", (data) => {
 			console.log(data.toString().trim());
