@@ -1785,8 +1785,11 @@ document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 });
 
 document.addEventListener("keydown", (event) => {
-	const activeElement = document.activeElement;
-	if (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA" || disableKeyPresses == 1) {
+	if (event.key === "Tab") {
+		event.preventDefault();
+	}
+
+	if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA" || disableKeyPresses == 1) {
 		return;
 	}
 
@@ -1809,19 +1812,13 @@ document.addEventListener("keydown", (event) => {
 	} else if (event.key === settings.settingsSkip) {
 		skipForward();
 	} else if (event.key === settings.settingsAutoplay) {
-		console.log("1");
 		toggleAutoplay();
-		console.log("2");
 	} else if (event.key === settings.settingsShuffle) {
 		toggleShuffle();
 	} else if (event.key === settings.settingsMute) {
 		mute();
 	} else if (event.key === settings.settingsSpeed) {
-		if (document.getElementById("speedModal").style.display != "none") {
-			closeModal();
-		} else {
-			speed();
-		}
+        document.getElementById("speedModal").style.display == "none" ? speed() : closeModal();
 	} else if (event.key === settings.settingsLoop) {
 		loop();
 	}
@@ -1866,4 +1863,3 @@ document.getElementById("checkUpdateButton").addEventListener("click", async fun
 document.getElementById("playlists").click();
 document.getElementById("main-menu").click();
 myMusicOnClick(1);
-document.getElementById("speedModal").style.display = "none";

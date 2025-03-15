@@ -23,6 +23,7 @@
 
 * {
 	box-sizing: border-box;
+    user-select: none;
 }
 
 body {
@@ -754,4 +755,8 @@ input:checked + .slider:before {
 #editPlaylistThumbnail {
 	width: 16vw;
 	height: auto;
+}
+
+#speedModal {
+    display: none;
 }
