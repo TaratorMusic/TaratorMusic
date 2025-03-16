@@ -4,12 +4,50 @@ const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
-const { exec } = require("child_process");
+const { exec, execSync } = require("child_process");
 const fetch = require("node-fetch");
 
 const customCacheDir = path.join(__dirname, "cache");
 app.commandLine.appendSwitch("disk-cache-dir", customCacheDir);
 app.setPath("cache", path.join(__dirname, "cache"));
+
+function getAppRoot() {
+	return app.isPackaged ? path.join(process.resourcesPath, "app") : __dirname;
+}
+
+function checkDependencies() {
+	const appRoot = getAppRoot();
+	const packageJsonPath = path.join(appRoot, "package.json");
+	const nodeModulesPath = path.join(appRoot, "node_modules");
+
+	if (!fs.existsSync(packageJsonPath) || !fs.existsSync(nodeModulesPath)) {
+		return false;
+	}
+
+	const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+	const dependencies = Object.keys(packageJson.dependencies || {});
+
+	for (const dep of dependencies) {
+		if (!fs.existsSync(path.join(nodeModulesPath, dep))) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function installDependencies() {
+	const appRoot = getAppRoot();
+	try {
+		execSync("npm install", { cwd: appRoot, stdio: "inherit" });
+	} catch (error) {
+		console.error("npm install failed:", error);
+		process.exit(1);
+	}
+}
+
+if (!checkDependencies()) {
+	installDependencies();
+}
 
 function createWindow() {
 	const mainWindow = new BrowserWindow({
@@ -58,17 +96,10 @@ async function checkForUpdates() {
 		}
 	}
 
-	if (!updated) {
-		dialog.showMessageBoxSync({
-			type: "info",
-			message: "No new updates.",
-		});
-	} else {
-		dialog.showMessageBoxSync({
-			type: "info",
-			message: "No more updates. Restart the app for the effects.",
-		});
-	}
+	dialog.showMessageBoxSync({
+		type: "info",
+		message: updated ? "No more updates. Restart the app for the effects." : "No new updates.",
+	});
 }
 
 ipcMain.on("update-pytubefix", (event, pytubeStatus) => {
@@ -107,7 +138,8 @@ ipcMain.on("update-pytubefix", (event, pytubeStatus) => {
 });
 
 ipcMain.on("run-npm-install", (event) => {
-	exec("npm i", (error, stdout, stderr) => {
+	const appRoot = getAppRoot();
+	exec("npm install", { cwd: appRoot }, (error, stdout, stderr) => {
 		if (error) {
 			event.reply("update-response", `Error: ${error.message}`);
 			return;
