@@ -2067,7 +2067,7 @@ document.getElementById("checkNPMButton").addEventListener("click", () => {
 
 ipcRenderer.on("update-response", (event, message) => {
 	alert(message);
-	if (message.startsWith("Success")) {
+	if (message.startsWith("PIP Success")) {
 		updateDatabase("pytubeStatus", "true");
 		pytubeStatus = true;
 	}

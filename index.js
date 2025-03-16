@@ -7,8 +7,7 @@ const os = require("os");
 const { exec, execSync } = require("child_process");
 const fetch = require("node-fetch");
 
-const customCacheDir = path.join(__dirname, "cache");
-app.commandLine.appendSwitch("disk-cache-dir", customCacheDir);
+app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
 
 function getAppRoot() {
@@ -125,14 +124,14 @@ ipcMain.on("update-pytubefix", (event, pytubeStatus) => {
 
 		exec(command, (execError, stdout, stderr) => {
 			if (execError) {
-				event.reply("update-response", `Error: ${execError.message}`);
+				event.reply("update-response", `PIP Error: ${execError.message}`);
 				return;
 			}
 			if (stderr) {
-				event.reply("update-response", `stderr: ${stderr}`);
+				event.reply("update-response", `PIP stderr: ${stderr}`);
 				return;
 			}
-			event.reply("update-response", `Success:\n${stdout}`);
+			event.reply("update-response", `PIP Success:\n${stdout}`);
 		});
 	});
 });
@@ -141,14 +140,14 @@ ipcMain.on("run-npm-install", (event) => {
 	const appRoot = getAppRoot();
 	exec("npm install", { cwd: appRoot }, (error, stdout, stderr) => {
 		if (error) {
-			event.reply("update-response", `Error: ${error.message}`);
+			event.reply("update-response", `NPM Error: ${error.message}`);
 			return;
 		}
 		if (stderr) {
-			event.reply("update-response", `stderr: ${stderr}`);
+			event.reply("update-response", `NPM stderr: ${stderr}`);
 			return;
 		}
-		event.reply("update-response", `Success: npm install completed!\n${stdout}`);
+		event.reply("update-response", `NPM Success: npm install completed!\n${stdout}`);
 	});
 });
 
