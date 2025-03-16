@@ -9,7 +9,7 @@ const fetch = require("node-fetch");
 
 const customCacheDir = path.join(__dirname, "cache");
 app.commandLine.appendSwitch("disk-cache-dir", customCacheDir);
-app.setPath("userData", path.join(__dirname, "userData"));
+app.setPath("cache", path.join(__dirname, "cache"));
 
 function createWindow() {
 	const mainWindow = new BrowserWindow({

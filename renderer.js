@@ -2,10 +2,25 @@
 
 const { ipcRenderer } = require("electron");
 const icon = require("./svg.js");
-const fs = require("fs");
-const path = require("path");
 const { spawn } = require("child_process");
-const taratorFolder = __dirname;
+const path = require("path");
+const sqlite3 = require("sqlite3").verbose();
+const fs = require("fs");
+
+const tabs = document.querySelectorAll(".sidebar div");
+const tabContents = document.querySelectorAll(".tab-content");
+const playButton = document.getElementById("playButton");
+const pauseButton = document.getElementById("pauseButton");
+const videothumbnailbox = document.getElementById("videothumbnailbox");
+const createPlaylistModal = document.getElementById("createPlaylistModal");
+const customizeModal = document.getElementById("customizeModal");
+const downloadModal = document.getElementById("downloadModal");
+const speedModal = document.getElementById("speedModal");
+const speedOptions = document.getElementById("speedOptions");
+const muteButton = document.getElementById("muteButton");
+const loopButton = document.getElementById("loopButton");
+const editPlaylistModal = document.getElementById("editPlaylistModal");
+const volumeControl = document.getElementById("volume");
 
 let currentPlayingElement = null;
 let audioElement = null;
@@ -22,23 +37,197 @@ let playlistPlayedSongs = [];
 let havuc = null;
 let isSaveAsPlaylistActive = false;
 let disableKeyPresses = 0;
+let songStartTime = 0;
 
-let pytubeStatus = localStorage.getItem("pytubeStatus") || false;
+let totalTimeSpent = 0;
+let pytubeStatus;
+let rememberautoplay;
+let remembershuffle;
+let rememberloop;
+let rememberspeed;
+let maximumPreviousSongCount;
+let volume;
+let key_Rewind;
+let key_Previous;
+let key_PlayPause;
+let key_Next;
+let key_Skip;
+let key_Autoplay;
+let key_Shuffle;
+let key_Mute;
+let key_Speed;
+let key_Loop;
 
-const tabs = document.querySelectorAll(".sidebar div");
-const tabContents = document.querySelectorAll(".tab-content");
-const volumeControl = document.getElementById("volume");
-const playButton = document.getElementById("playButton");
-const pauseButton = document.getElementById("pauseButton");
-const videothumbnailbox = document.getElementById("videothumbnailbox");
-const createPlaylistModal = document.getElementById("createPlaylistModal");
-const customizeModal = document.getElementById("customizeModal");
-const downloadModal = document.getElementById("downloadModal");
-const speedModal = document.getElementById("speedModal");
-const speedOptions = document.getElementById("speedOptions");
-const muteButton = document.getElementById("muteButton");
-const loopButton = document.getElementById("loopButton");
-const editPlaylistModal = document.getElementById("editPlaylistModal");
+const taratorFolder = __dirname;
+const dbPath = path.join(taratorFolder, "appData.db");
+
+volumeControl.addEventListener("change", () => {
+	updateDatabase("volume", volumeControl.value);
+	if (audioElement) {
+		audioElement.volume = previousVolume / 100;
+	}
+});
+
+if (!fs.existsSync(dbPath)) {
+	fs.writeFileSync(dbPath, "");
+}
+
+const db = new sqlite3.Database(dbPath, (err) => {
+	if (err) {
+		console.error("Error opening database:", err.message);
+	} else {
+		console.log("Connected to the SQLite database.");
+	}
+});
+
+const defaultSettings = {
+	totalTimeSpent: 0,
+	pytubeStatus: 0,
+	maximumPreviousSongCount: 50,
+	volume: 100,
+	rememberautoplay: 1,
+	remembershuffle: 1,
+	rememberloop: 0,
+	rememberspeed: 1,
+	key_Rewind: "q",
+	key_Previous: "w",
+	key_PlayPause: "e",
+	key_Next: "r",
+	key_Skip: "t",
+	key_Autoplay: "a",
+	key_Shuffle: "s",
+	key_Mute: "d",
+	key_Speed: "f",
+	key_Loop: "g",
+};
+
+db.serialize(() => {
+	db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'", (err, row) => {
+		if (!row) {
+			console.log("Settings table not found. Creating...");
+			db.run(`CREATE TABLE settings (id INTEGER PRIMARY KEY AUTOINCREMENT)`, () => {
+				ensureColumns();
+			});
+		} else {
+			ensureColumns();
+		}
+	});
+
+	function ensureColumns() {
+		db.all("PRAGMA table_info(settings)", (err, columns) => {
+			if (err) {
+				console.error("Error fetching table info:", err.message);
+				return;
+			}
+
+			const existingColumns = columns.map((col) => col.name);
+			const missingColumns = Object.keys(defaultSettings).filter((key) => !existingColumns.includes(key));
+
+			if (missingColumns.length > 0) {
+				console.log("Adding missing columns...");
+				missingColumns.forEach((key) => {
+					let columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
+					db.run(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`, () => {
+						console.log(`Added missing column: ${key}`);
+					});
+				});
+			}
+		});
+	}
+});
+
+db.get("SELECT * FROM settings", (err, row) => {
+	if (err) {
+		console.error("Error retrieving settings:", err.message);
+	} else {
+		if (!row) {
+			console.log("No settings found, inserting defaults.");
+			db.run(`INSERT INTO settings DEFAULT VALUES`);
+			row = defaultSettings;
+		}
+
+		Object.keys(defaultSettings).forEach((key) => {
+			if (row[key] === null || row[key] === undefined) {
+				console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
+				updateDatabase(key, defaultSettings[key]);
+			}
+		});
+
+		console.log("Settings loaded:", row);
+
+		document.getElementById("settingsRewind").innerHTML = row.key_Rewind;
+		document.getElementById("settingsPrevious").innerHTML = row.key_Previous;
+		document.getElementById("settingsPlayPause").innerHTML = row.key_PlayPause;
+		document.getElementById("settingsNext").innerHTML = row.key_Next;
+		document.getElementById("settingsSkip").innerHTML = row.key_Skip;
+		document.getElementById("settingsAutoplay").innerHTML = row.key_Autoplay;
+		document.getElementById("settingsShuffle").innerHTML = row.key_Shuffle;
+		document.getElementById("settingsMute").innerHTML = row.key_Mute;
+		document.getElementById("settingsSpeed").innerHTML = row.key_Speed;
+		document.getElementById("settingsLoop").innerHTML = row.key_Loop;
+		key_Rewind = row.key_Rewind;
+		key_Previous = row.key_Previous;
+		key_PlayPause = row.key_PlayPause;
+		key_Next = row.key_Next;
+		key_Skip = row.key_Skip;
+		key_Autoplay = row.key_Autoplay;
+		key_Shuffle = row.key_Shuffle;
+		key_Mute = row.key_Mute;
+		key_Speed = row.key_Speed;
+		key_Loop = row.key_Loop;
+
+		totalTimeSpent = row.totalTimeSpent;
+		pytubeStatus = row.pytubeStatus;
+		rememberautoplay = row.rememberautoplay;
+		remembershuffle = row.remembershuffle;
+		rememberloop = row.rememberloop;
+		rememberspeed = row.rememberspeed;
+		maximumPreviousSongCount = row.maximumPreviousSongCount;
+		volume = row.volume;
+
+		updateTimer();
+		rememberautoplay && toggleAutoplay();
+		remembershuffle && toggleShuffle();
+		rememberloop && loop();
+		document.getElementById("arrayLength").value = maximumPreviousSongCount;
+		volumeControl.value = volume;
+		if (audioElement) audioElement.volume = volumeControl.value / 100;
+	}
+});
+
+function updateDatabase(name, option) {
+	const db = new sqlite3.Database(dbPath);
+
+	db.run(`UPDATE settings SET ${name} = ?`, [option], function (err) {
+		if (err) {
+			console.error(`Error updating ${name}:`, err.message);
+		} else {
+			console.log(`${name} updated to ${option}.`);
+		}
+	});
+
+	db.close();
+}
+
+function updateTimer() {
+	let value, unit;
+
+	if (totalTimeSpent >= 3600) {
+		value = (totalTimeSpent / 3600).toFixed(0);
+		unit = value == 1 ? "hour" : "hours";
+	} else {
+		value = (totalTimeSpent / 60).toFixed(0);
+		unit = value == 1 ? "minute" : "minutes";
+	}
+
+	document.getElementById("mainmenutimespent").innerHTML = `Time Spent: ${value} ${unit}`;
+}
+
+setInterval(() => {
+	totalTimeSpent += 60;
+	updateDatabase("totalTimeSpent", totalTimeSpent);
+	updateTimer();
+}, 60000);
 
 document.getElementById("backwardButton").innerHTML = icon.backward;
 document.getElementById("previousSongButton").innerHTML = icon.previous;
@@ -53,55 +242,10 @@ document.getElementById("speedButton").innerHTML = icon.speed;
 document.getElementById("loopButton").innerHTML = icon.redLoop;
 document.getElementById("mainmenulogo").style.backgroundImage = "url(thumbnails/tarator1024_icon.png)";
 
-let maximumPreviousSongCount = localStorage.getItem("maximumPreviousSongCount") || 50;
-document.getElementById("arrayLength").value = maximumPreviousSongCount;
-
-volumeControl.value = localStorage.getItem("volume") || 100;
-if (audioElement) audioElement.volume = volumeControl.value / 100;
-
-const settings = {
-	settingsRewind: "q",
-	settingsPrevious: "w",
-	settingsPlayPause: "e",
-	settingsNext: "r",
-	settingsSkip: "t",
-	settingsAutoplay: "a",
-	settingsShuffle: "s",
-	settingsMute: "d",
-	settingsSpeed: "f",
-	settingsLoop: "g",
-};
-
-Object.keys(settings).forEach((key) => {
-	document.getElementById(key).innerHTML = localStorage.getItem(key) || settings[key];
-});
-
-let totalTimeSpent = Number(localStorage.getItem("totalTimeSpent")) || 0;
-
-setInterval(() => {
-	totalTimeSpent++;
-	localStorage.setItem("totalTimeSpent", totalTimeSpent);
-
-	let value, unit;
-
-	if (totalTimeSpent >= 3600) {
-		value = (totalTimeSpent / 3600).toFixed(0);
-		unit = value == 1 ? "hour" : "hours";
-	} else if (totalTimeSpent >= 60) {
-		value = (totalTimeSpent / 60).toFixed(0);
-		unit = value == 1 ? "minute" : "minutes";
-	} else {
-		value = totalTimeSpent;
-		unit = value == 1 ? "second" : "seconds";
-	}
-
-	document.getElementById("mainmenutimespent").innerHTML = `Time Spent: ${value} ${unit}`;
-}, 1000);
-
 function changeThePreviousSongAmount() {
 	if (document.getElementById("arrayLength").value > 9 && document.getElementById("arrayLength").value < 101) {
 		maximumPreviousSongCount = document.getElementById("arrayLength").value;
-		localStorage.setItem("maximumPreviousSongCount", document.getElementById("arrayLength").value);
+		updateDatabase("maximumPreviousSongCount", maximumPreviousSongCount);
 	} else {
 		alert("Please set a number between 10 and 100");
 	}
@@ -269,6 +413,17 @@ function createMusicElement(file) {
 async function playMusic(file, clickedElement, isPlaylist = false) {
 	const songName = document.getElementById("song-name");
 
+	if (songStartTime != 0) {
+		let timePlayed = (Date.now() - songStartTime) / 1000;
+
+		if (timePlayed >= 10) {
+			const songFileName = songName.innerHTML;
+			savePlayedTime(songFileName, timePlayed);
+		}
+	}
+
+	songStartTime = Date.now();
+
 	if (audioElement) {
 		audioElement.pause();
 		audioElement.src = "";
@@ -338,6 +493,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		currentPlayingElement = songName;
 		currentPlayingElement.setAttribute("data-file-name", secondfilename);
 		updateDiscordPresence();
+
 		if (isShuffleActive) {
 			if (currentPlaylist) {
 				if (havuc != currentPlaylist.name) {
@@ -359,7 +515,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		return new Promise((resolve) => {
 			audioElement.addEventListener(
 				"ended",
-				() => {
+				async () => {
 					songDuration = 0;
 					resolve();
 				},
@@ -371,6 +527,54 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 	}
 }
 
+async function savePlayedTime(songName, timePlayed) {
+	const db = new sqlite3.Database(dbPath);
+
+	db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='song_play_time'", (err, row) => {
+		if (err) {
+			console.error("Error checking table existence:", err);
+			return;
+		}
+
+		if (!row) {
+			db.run("CREATE TABLE song_play_time (songName TEXT PRIMARY KEY, secondsPlayed INTEGER)", (err) => {
+				if (err) {
+					console.error("Error creating song_play_time table:", err);
+				} else {
+					console.log("song_play_time table created successfully.");
+					savePlayedTime(songName, timePlayed);
+				}
+			});
+		} else {
+			db.get("SELECT * FROM song_play_time WHERE songName = ?", [songName], (err, row) => {
+				if (err) {
+					console.error("Error checking song play time:", err);
+					return;
+				}
+
+				if (row) {
+					const updatedTime = row.secondsPlayed + timePlayed;
+					db.run("UPDATE song_play_time SET secondsPlayed = ? WHERE songName = ?", [updatedTime, songName], (err) => {
+						if (err) {
+							console.error("Error updating song play time:", err);
+						} else {
+							console.log(`Updated ${songName} play time to ${updatedTime} seconds.`);
+						}
+					});
+				} else {
+					db.run("INSERT INTO song_play_time (songName, secondsPlayed) VALUES (?, ?)", [songName, timePlayed], (err) => {
+						if (err) {
+							console.error("Error saving song play time:", err);
+						} else {
+							console.log(`Saved ${timePlayed} seconds for song: ${songName}`);
+						}
+					});
+				}
+			});
+		}
+	});
+}
+
 function manageAudioControls(audioElement) {
 	const videoLength = document.getElementById("video-length");
 	const videoProgress = document.getElementById("video-progress");
@@ -379,7 +583,6 @@ function manageAudioControls(audioElement) {
 
 	volumeControl.addEventListener("input", () => {
 		audioElement.volume = volumeControl.value / 100;
-		localStorage.setItem("volume", volumeControl.value);
 	});
 
 	audioElement.addEventListener("loadedmetadata", () => {
@@ -848,26 +1051,17 @@ function randomPlaylistFunctionMainMenu() {
 	selectedPlaylist.querySelectorAll(".playlistInfoandSongs .playlist-songs .playlist-song")[0].click();
 }
 
-let rememberautoplay = JSON.parse(localStorage.getItem("rememberautoplay")) || false;
-let remembershuffle = JSON.parse(localStorage.getItem("remembershuffle")) || false;
-let rememberloop = JSON.parse(localStorage.getItem("rememberloop")) || false;
-let rememberspeed = JSON.parse(localStorage.getItem("rememberspeed")) || 1;
-
-rememberautoplay && toggleAutoplay();
-remembershuffle && toggleShuffle();
-rememberloop && loop();
-
 function toggleAutoplay() {
 	isAutoplayActive = !isAutoplayActive;
 	const autoplayButton = document.getElementById("autoplayButton");
 	if (isAutoplayActive) {
 		autoplayButton.classList.add("active");
 		autoplayButton.innerHTML = icon.greenAutoplay;
-		localStorage.setItem("rememberautoplay", true);
+		updateDatabase("rememberautoplay", true);
 	} else {
 		autoplayButton.classList.remove("active");
 		autoplayButton.innerHTML = icon.redAutoplay;
-		localStorage.setItem("rememberautoplay", false);
+		updateDatabase("rememberautoplay", false);
 	}
 }
 
@@ -877,11 +1071,11 @@ function toggleShuffle() {
 	if (isShuffleActive) {
 		shuffleButton.classList.add("active");
 		shuffleButton.innerHTML = icon.greenShuffle;
-		localStorage.setItem("remembershuffle", true);
+		updateDatabase("remembershuffle", true);
 	} else {
 		shuffleButton.classList.remove("active");
 		shuffleButton.innerHTML = icon.redShuffle;
-		localStorage.setItem("remembershuffle", false);
+		updateDatabase("remembershuffle", false);
 	}
 }
 
@@ -889,14 +1083,14 @@ function loop() {
 	if (isLooping) {
 		isLooping = false;
 		loopButton.innerHTML = icon.redLoop;
-		localStorage.setItem("rememberloop", false);
+		updateDatabase("rememberloop", false);
 		if (audioElement) {
 			audioElement.loop = false;
 		}
 	} else {
 		isLooping = true;
 		loopButton.innerHTML = icon.greenLoop;
-		localStorage.setItem("rememberloop", true);
+		updateDatabase("rememberloop", true);
 		if (audioElement) {
 			audioElement.loop = true;
 		}
@@ -904,19 +1098,16 @@ function loop() {
 }
 
 function mute() {
-	if (audioElement) {
-		if (audioElement.volume !== 0) {
-			previousVolume = volumeControl.value;
-			audioElement.volume = 0;
-			volumeControl.value = 0;
-			muteButton.classList.add("active");
-		} else {
-			audioElement.volume = previousVolume / 100;
-			volumeControl.value = previousVolume;
-			muteButton.classList.remove("active");
-		}
-		localStorage.setItem("volume", volumeControl.value);
+	if (volumeControl.value != 0) {
+		previousVolume = volumeControl.value;
+		volumeControl.value = 0;
+		muteButton.classList.add("active");
+	} else {
+		volumeControl.value = previousVolume;
+		muteButton.classList.remove("active");
 	}
+	if (audioElement) audioElement.volume = volumeControl.value / 100;
+	updateDatabase("volume", volumeControl.value);
 }
 
 function speed() {
@@ -933,7 +1124,7 @@ function speed() {
 		}
 		speedOption.addEventListener("click", () => {
 			rememberspeed = speed;
-			localStorage.setItem("rememberspeed", speed);
+			updateDatabase("rememberspeed", speed);
 			if (audioElement) {
 				audioElement.playbackRate = rememberspeed;
 			}
@@ -1799,11 +1990,11 @@ document.addEventListener("keydown", (event) => {
 		return;
 	}
 
-	if (event.key === settings.settingsRewind) {
+	if (event.key === key_Rewind) {
 		skipBackward();
-	} else if (event.key === settings.settingsPrevious) {
+	} else if (event.key === key_Previous) {
 		playPreviousSong();
-	} else if (event.key === settings.settingsPlayPause) {
+	} else if (event.key === key_PlayPause) {
 		if (audioElement.paused) {
 			audioElement.play();
 			playButton.style.display = "none";
@@ -1813,19 +2004,19 @@ document.addEventListener("keydown", (event) => {
 			pauseButton.style.display = "none";
 			playButton.style.display = "inline-block";
 		}
-	} else if (event.key === settings.settingsNext) {
+	} else if (event.key === key_Next) {
 		playNextSong();
-	} else if (event.key === settings.settingsSkip) {
+	} else if (event.key === key_Skip) {
 		skipForward();
-	} else if (event.key === settings.settingsAutoplay) {
+	} else if (event.key === key_Autoplay) {
 		toggleAutoplay();
-	} else if (event.key === settings.settingsShuffle) {
+	} else if (event.key === key_Shuffle) {
 		toggleShuffle();
-	} else if (event.key === settings.settingsMute) {
+	} else if (event.key === key_Mute) {
 		mute();
-	} else if (event.key === settings.settingsSpeed) {
+	} else if (event.key === key_Speed) {
 		document.getElementById("speedModal").style.display == "none" ? speed() : closeModal();
-	} else if (event.key === settings.settingsLoop) {
+	} else if (event.key === key_Loop) {
 		loop();
 	}
 });
@@ -1839,27 +2030,27 @@ function saveKeybinds() {
 		return;
 	}
 
-	localStorage.setItem("settingsRewind", document.getElementById("settingsRewind").innerHTML);
-	localStorage.setItem("settingsPrevious", document.getElementById("settingsPrevious").innerHTML);
-	localStorage.setItem("settingsPlayPause", document.getElementById("settingsPlayPause").innerHTML);
-	localStorage.setItem("settingsNext", document.getElementById("settingsNext").innerHTML);
-	localStorage.setItem("settingsSkip", document.getElementById("settingsSkip").innerHTML);
-	localStorage.setItem("settingsAutoplay", document.getElementById("settingsAutoplay").innerHTML);
-	localStorage.setItem("settingsShuffle", document.getElementById("settingsShuffle").innerHTML);
-	localStorage.setItem("settingsMute", document.getElementById("settingsMute").innerHTML);
-	localStorage.setItem("settingsSpeed", document.getElementById("settingsSpeed").innerHTML);
-	localStorage.setItem("settingsLoop", document.getElementById("settingsLoop").innerHTML);
+	updateDatabase("key_Rewind", document.getElementById("settingsRewind").innerHTML);
+	updateDatabase("key_Previous", document.getElementById("settingsPrevious").innerHTML);
+	updateDatabase("key_PlayPause", document.getElementById("settingsPlayPause").innerHTML);
+	updateDatabase("key_Next", document.getElementById("settingsNext").innerHTML);
+	updateDatabase("key_Skip", document.getElementById("settingsSkip").innerHTML);
+	updateDatabase("key_Autoplay", document.getElementById("settingsAutoplay").innerHTML);
+	updateDatabase("key_Shuffle", document.getElementById("settingsShuffle").innerHTML);
+	updateDatabase("key_Mute", document.getElementById("settingsMute").innerHTML);
+	updateDatabase("key_Speed", document.getElementById("settingsSpeed").innerHTML);
+	updateDatabase("key_Loop", document.getElementById("settingsLoop").innerHTML);
 
-	settingsRewind = document.getElementById("settingsRewind").innerHTML;
-	settingsPrevious = document.getElementById("settingsPrevious").innerHTML;
-	settingsPlayPause = document.getElementById("settingsPlayPause").innerHTML;
-	settingsNext = document.getElementById("settingsNext").innerHTML;
-	settingsSkip = document.getElementById("settingsSkip").innerHTML;
-	settingsAutoplay = document.getElementById("settingsAutoplay").innerHTML;
-	settingsShuffle = document.getElementById("settingsShuffle").innerHTML;
-	settingsMute = document.getElementById("settingsMute").innerHTML;
-	settingsSpeed = document.getElementById("settingsSpeed").innerHTML;
-	settingsLoop = document.getElementById("settingsLoop").innerHTML;
+	key_Rewind = document.getElementById("settingsRewind").innerHTML;
+	key_Previous = document.getElementById("settingsPrevious").innerHTML;
+	key_PlayPause = document.getElementById("settingsPlayPause").innerHTML;
+	key_Next = document.getElementById("settingsNext").innerHTML;
+	key_Skip = document.getElementById("settingsSkip").innerHTML;
+	key_Autoplay = document.getElementById("settingsAutoplay").innerHTML;
+	key_Shuffle = document.getElementById("settingsShuffle").innerHTML;
+	key_Mute = document.getElementById("settingsMute").innerHTML;
+	key_Speed = document.getElementById("settingsSpeed").innerHTML;
+	key_Loop = document.getElementById("settingsLoop").innerHTML;
 }
 
 document.getElementById("checkUpdateButton").addEventListener("click", async function () {
@@ -1873,7 +2064,7 @@ document.getElementById("checkPytubeButton").addEventListener("click", () => {
 ipcRenderer.on("update-response", (event, message) => {
 	alert(message);
 	if (message.startsWith("Success")) {
-		localStorage.setItem("pytubeStatus", "true");
+		updateDatabase("pytubeStatus", "true");
 		pytubeStatus = true;
 	}
 });
