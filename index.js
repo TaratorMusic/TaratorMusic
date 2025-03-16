@@ -106,6 +106,20 @@ ipcMain.on("update-pytubefix", (event, pytubeStatus) => {
 	});
 });
 
+ipcMain.on("run-npm-install", (event) => {
+	exec("npm i", (error, stdout, stderr) => {
+		if (error) {
+			event.reply("update-response", `Error: ${error.message}`);
+			return;
+		}
+		if (stderr) {
+			event.reply("update-response", `stderr: ${stderr}`);
+			return;
+		}
+		event.reply("update-response", `Success: npm install completed!\n${stdout}`);
+	});
+});
+
 ipcMain.handle("check-for-updates", checkForUpdates);
 
 app.whenReady().then(() => {

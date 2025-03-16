@@ -2061,6 +2061,10 @@ document.getElementById("checkPytubeButton").addEventListener("click", () => {
 	ipcRenderer.send("update-pytubefix", pytubeStatus);
 });
 
+document.getElementById("checkNPMButton").addEventListener("click", () => {
+	ipcRenderer.send("run-npm-install");
+});
+
 ipcRenderer.on("update-response", (event, message) => {
 	alert(message);
 	if (message.startsWith("Success")) {
