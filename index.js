@@ -9,13 +9,9 @@ const fetch = require("node-fetch");
 
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
-
-function getAppRoot() {
-	return app.isPackaged ? path.join(process.resourcesPath, "app") : __dirname;
-}
+const appRoot = app.isPackaged ? path.join(process.resourcesPath, "app") : __dirname
 
 function checkDependencies() {
-	const appRoot = getAppRoot();
 	const packageJsonPath = path.join(appRoot, "package.json");
 	const nodeModulesPath = path.join(appRoot, "node_modules");
 
@@ -35,7 +31,6 @@ function checkDependencies() {
 }
 
 function installDependencies() {
-	const appRoot = getAppRoot();
 	try {
 		execSync("npm install", { cwd: appRoot, stdio: "inherit" });
 	} catch (error) {
@@ -137,7 +132,6 @@ ipcMain.on("update-pytubefix", (event, pytubeStatus) => {
 });
 
 ipcMain.on("run-npm-install", (event) => {
-	const appRoot = getAppRoot();
 	exec("npm install", { cwd: appRoot }, (error, stdout, stderr) => {
 		if (error) {
 			event.reply("update-response", `NPM Error: ${error.message}`);
@@ -154,7 +148,7 @@ ipcMain.on("run-npm-install", (event) => {
 ipcMain.handle("check-for-updates", checkForUpdates);
 
 app.whenReady().then(() => {
-	Menu.setApplicationMenu(null);
+    app.isPackaged && Menu.setApplicationMenu(null);
 	app.setName("TaratorMusic");
 	createWindow();
 

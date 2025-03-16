@@ -22,6 +22,13 @@ const loopButton = document.getElementById("loopButton");
 const editPlaylistModal = document.getElementById("editPlaylistModal");
 const volumeControl = document.getElementById("volume");
 
+volumeControl.addEventListener("change", () => {
+	updateDatabase("volume", volumeControl.value);
+	if (audioElement) {
+		audioElement.volume = volume;
+	}
+});
+
 let currentPlayingElement = null;
 let audioElement = null;
 let secondfilename = null;
@@ -38,6 +45,7 @@ let havuc = null;
 let isSaveAsPlaylistActive = false;
 let disableKeyPresses = 0;
 let songStartTime = 0;
+let previousVolume = null;
 
 let totalTimeSpent = 0;
 let pytubeStatus;
@@ -61,13 +69,6 @@ let key_Loop;
 const taratorFolder = __dirname;
 const dbPath = path.join(taratorFolder, "appData.db");
 
-volumeControl.addEventListener("change", () => {
-	updateDatabase("volume", volumeControl.value);
-	if (audioElement) {
-		audioElement.volume = previousVolume / 100;
-	}
-});
-
 if (!fs.existsSync(dbPath)) {
 	fs.writeFileSync(dbPath, "");
 }
@@ -77,6 +78,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 		console.error("Error opening database:", err.message);
 	} else {
 		console.log("Connected to the SQLite database.");
+		initializeDatabase();
 	}
 });
 
@@ -84,7 +86,7 @@ const defaultSettings = {
 	totalTimeSpent: 0,
 	pytubeStatus: 0,
 	maximumPreviousSongCount: 50,
-	volume: 100,
+	volume: 50,
 	rememberautoplay: 1,
 	remembershuffle: 1,
 	rememberloop: 0,
@@ -101,55 +103,122 @@ const defaultSettings = {
 	key_Loop: "g",
 };
 
-db.serialize(() => {
-	db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'", (err, row) => {
-		if (!row) {
-			console.log("Settings table not found. Creating...");
-			db.run(`CREATE TABLE settings (id INTEGER PRIMARY KEY AUTOINCREMENT)`, () => {
-				ensureColumns();
-			});
-		} else {
-			ensureColumns();
-		}
-	});
-
-	function ensureColumns() {
-		db.all("PRAGMA table_info(settings)", (err, columns) => {
+function initializeDatabase() {
+	db.serialize(() => {
+		db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'", (err, row) => {
 			if (err) {
-				console.error("Error fetching table info:", err.message);
+				console.error("Error checking for settings table:", err.message);
 				return;
 			}
 
-			const existingColumns = columns.map((col) => col.name);
-			const missingColumns = Object.keys(defaultSettings).filter((key) => !existingColumns.includes(key));
+			if (!row) {
+				console.log("Settings table not found. Creating...");
 
-			if (missingColumns.length > 0) {
-				console.log("Adding missing columns...");
-				missingColumns.forEach((key) => {
-					let columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
-					db.run(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`, () => {
-						console.log(`Added missing column: ${key}`);
-					});
+				let createTableSQL = `CREATE TABLE settings (`;
+
+				const keys = Object.keys(defaultSettings);
+				keys.forEach((key, index) => {
+					const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
+					createTableSQL += `${key} ${columnType} DEFAULT '${defaultSettings[key]}'`;
+					if (index < keys.length - 1) {
+						createTableSQL += ",\n";
+					}
 				});
+
+				createTableSQL += ")";
+
+				db.run(createTableSQL, (err) => {
+					if (err) {
+						console.error("Error creating settings table:", err.message);
+						return;
+					}
+
+					console.log("Settings table created successfully.");
+					insertDefaultSettings();
+				});
+			} else {
+				console.log("Settings table exists. Checking columns...");
+				ensureColumns();
 			}
 		});
-	}
-});
+	});
+}
 
-db.get("SELECT * FROM settings", (err, row) => {
-	if (err) {
-		console.error("Error retrieving settings:", err.message);
-	} else {
+function ensureColumns() {
+	db.all("PRAGMA table_info(settings)", (err, columns) => {
+		if (err) {
+			console.error("Error fetching table info:", err.message);
+			return;
+		}
+
+		const existingColumns = columns.map((col) => col.name);
+		const missingColumns = Object.keys(defaultSettings).filter((key) => !existingColumns.includes(key));
+
+		if (missingColumns.length > 0) {
+			console.log("Adding missing columns...");
+
+			let columnsProcessed = 0;
+
+			missingColumns.forEach((key) => {
+				let columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
+				db.run(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`, (err) => {
+					if (err) {
+						console.error(`Error adding column ${key}:`, err.message);
+					} else {
+						console.log(`Added missing column: ${key}`);
+					}
+
+					columnsProcessed++;
+
+					if (columnsProcessed === missingColumns.length) {
+						loadSettings();
+					}
+				});
+			});
+		} else {
+			loadSettings();
+		}
+	});
+}
+
+function insertDefaultSettings() {
+	const columns = Object.keys(defaultSettings).join(", ");
+	const placeholders = Object.keys(defaultSettings)
+		.map(() => "?")
+		.join(", ");
+	const values = Object.values(defaultSettings);
+
+	const insertSQL = `INSERT INTO settings (${columns}) VALUES (${placeholders})`;
+
+	db.run(insertSQL, values, function (err) {
+		if (err) {
+			console.error("Error inserting default settings:", err.message);
+			return;
+		}
+
+		console.log(`Default settings inserted.`);
+		loadSettings();
+	});
+}
+
+function loadSettings() {
+	db.get("SELECT * FROM settings", (err, row) => {
+		if (err) {
+			console.error("Error retrieving settings:", err.message);
+			return;
+		}
+
 		if (!row) {
 			console.log("No settings found, inserting defaults.");
-			db.run(`INSERT INTO settings DEFAULT VALUES`);
-			row = defaultSettings;
+			insertDefaultSettings();
+			return;
 		}
 
 		Object.keys(defaultSettings).forEach((key) => {
 			if (row[key] === null || row[key] === undefined) {
 				console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
 				updateDatabase(key, defaultSettings[key]);
+				row[key] = defaultSettings[key];
 			}
 		});
 
@@ -165,6 +234,7 @@ db.get("SELECT * FROM settings", (err, row) => {
 		document.getElementById("settingsMute").innerHTML = row.key_Mute;
 		document.getElementById("settingsSpeed").innerHTML = row.key_Speed;
 		document.getElementById("settingsLoop").innerHTML = row.key_Loop;
+
 		key_Rewind = row.key_Rewind;
 		key_Previous = row.key_Previous;
 		key_PlayPause = row.key_PlayPause;
@@ -192,8 +262,8 @@ db.get("SELECT * FROM settings", (err, row) => {
 		document.getElementById("arrayLength").value = maximumPreviousSongCount;
 		volumeControl.value = volume;
 		if (audioElement) audioElement.volume = volumeControl.value / 100;
-	}
-});
+	});
+}
 
 function updateDatabase(name, option) {
 	const db = new sqlite3.Database(dbPath);
