@@ -607,14 +607,21 @@ async function savePlayedTime(songName, timePlayed) {
 		}
 
 		if (!row) {
-			db.run("CREATE TABLE song_play_time (songName TEXT PRIMARY KEY, secondsPlayed INTEGER)", (err) => {
-				if (err) {
-					console.error("Error creating song_play_time table:", err);
-				} else {
-					console.log("song_play_time table created successfully.");
-					savePlayedTime(songName, timePlayed);
+			db.run(
+				`CREATE TABLE song_play_time (
+					songName TEXT PRIMARY KEY,
+					secondsPlayed INTEGER,
+					timesListened INTEGER
+				)`,
+				(err) => {
+					if (err) {
+						console.error("Error creating song_play_time table:", err);
+					} else {
+						console.log("song_play_time table created successfully.");
+						savePlayedTime(songName, timePlayed);
+					}
 				}
-			});
+			);
 		} else {
 			db.get("SELECT * FROM song_play_time WHERE songName = ?", [songName], (err, row) => {
 				if (err) {
@@ -624,19 +631,20 @@ async function savePlayedTime(songName, timePlayed) {
 
 				if (row) {
 					const updatedTime = row.secondsPlayed + timePlayed;
-					db.run("UPDATE song_play_time SET secondsPlayed = ? WHERE songName = ?", [updatedTime, songName], (err) => {
+					const updatedCount = (row.timesListened || 0) + 1;
+					db.run("UPDATE song_play_time SET secondsPlayed = ?, timesListened = ? WHERE songName = ?", [updatedTime, updatedCount, songName], (err) => {
 						if (err) {
 							console.error("Error updating song play time:", err);
 						} else {
-							console.log(`Updated ${songName} play time to ${updatedTime} seconds.`);
+							console.log(`Updated ${songName}: ${updatedTime}s played, listened ${updatedCount} times.`);
 						}
 					});
 				} else {
-					db.run("INSERT INTO song_play_time (songName, secondsPlayed) VALUES (?, ?)", [songName, timePlayed], (err) => {
+					db.run("INSERT INTO song_play_time (songName, secondsPlayed, timesListened) VALUES (?, ?, ?)", [songName, timePlayed, 1], (err) => {
 						if (err) {
 							console.error("Error saving song play time:", err);
 						} else {
-							console.log(`Saved ${timePlayed} seconds for song: ${songName}`);
+							console.log(`Saved ${timePlayed} seconds for song: ${songName}, listened 1 time.`);
 						}
 					});
 				}
