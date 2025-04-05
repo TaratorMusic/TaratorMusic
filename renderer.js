@@ -617,36 +617,60 @@ async function savePlayedTime(songName, timePlayed) {
 					if (err) {
 						console.error("Error creating song_play_time table:", err);
 					} else {
-						console.log("song_play_time table created successfully.");
+						console.log("song_play_time table created.");
 						savePlayedTime(songName, timePlayed);
 					}
 				}
 			);
 		} else {
-			db.get("SELECT * FROM song_play_time WHERE songName = ?", [songName], (err, row) => {
+			db.all("PRAGMA table_info(song_play_time)", (err, columns) => {
 				if (err) {
-					console.error("Error checking song play time:", err);
+					console.error("Error fetching table info:", err);
 					return;
 				}
 
-				if (row) {
-					const updatedTime = row.secondsPlayed + timePlayed;
-					const updatedCount = (row.timesListened || 0) + 1;
-					db.run("UPDATE song_play_time SET secondsPlayed = ?, timesListened = ? WHERE songName = ?", [updatedTime, updatedCount, songName], (err) => {
+				const hasTimesListened = columns.some((col) => col.name === "timesListened");
+
+				const continueWithUpdate = () => {
+					db.get("SELECT * FROM song_play_time WHERE songName = ?", [songName], (err, row) => {
 						if (err) {
-							console.error("Error updating song play time:", err);
+							console.error("Error checking song play time:", err);
+							return;
+						}
+
+						if (row) {
+							const updatedTime = row.secondsPlayed + timePlayed;
+							const updatedCount = (row.timesListened || 0) + 1;
+							db.run("UPDATE song_play_time SET secondsPlayed = ?, timesListened = ? WHERE songName = ?", [updatedTime, updatedCount, songName], (err) => {
+								if (err) {
+									console.error("Error updating song play time:", err);
+								} else {
+									console.log(`Updated ${songName}: ${updatedTime}s, listened ${updatedCount} times.`);
+								}
+							});
 						} else {
-							console.log(`Updated ${songName}: ${updatedTime}s played, listened ${updatedCount} times.`);
+							db.run("INSERT INTO song_play_time (songName, secondsPlayed, timesListened) VALUES (?, ?, ?)", [songName, timePlayed, 1], (err) => {
+								if (err) {
+									console.error("Error inserting new song:", err);
+								} else {
+									console.log(`Saved ${songName}: ${timePlayed}s, listened 1 time.`);
+								}
+							});
+						}
+					});
+				};
+
+				if (!hasTimesListened) {
+					db.run("ALTER TABLE song_play_time ADD COLUMN timesListened INTEGER DEFAULT 0", (err) => {
+						if (err) {
+							console.error("Error adding timesListened column:", err);
+						} else {
+							console.log("timesListened column added.");
+							continueWithUpdate();
 						}
 					});
 				} else {
-					db.run("INSERT INTO song_play_time (songName, secondsPlayed, timesListened) VALUES (?, ?, ?)", [songName, timePlayed, 1], (err) => {
-						if (err) {
-							console.error("Error saving song play time:", err);
-						} else {
-							console.log(`Saved ${timePlayed} seconds for song: ${songName}, listened 1 time.`);
-						}
-					});
+					continueWithUpdate();
 				}
 			});
 		}
