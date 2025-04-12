@@ -1984,14 +1984,16 @@ function deletePlaylist() {
 }
 
 function differentiateYouTubeLinks(url) {
-	const videoRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/;
+	const videoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/;
 	const playlistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
 
 	if (videoRegex.test(url.trim())) {
 		return "video";
-	} else if (playlistRegex.test(url.trim())) {
+	}
+	else if (playlistRegex.test(url.trim())) {
 		return "playlist";
-	} else {
+	}
+	else {
 		return "unknown";
 	}
 }
