@@ -46,6 +46,9 @@ let isSaveAsPlaylistActive = false;
 let disableKeyPresses = 0;
 let songStartTime = 0;
 let previousVolume = null;
+let audioContext;
+let compressorNode;
+let audioSource;
 
 let totalTimeSpent = 0;
 let pytubeStatus;
@@ -497,6 +500,13 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 	if (audioElement) {
 		audioElement.pause();
 		audioElement.src = "";
+		if (audioSource) {
+			try {
+				audioSource.disconnect();
+			} catch (err) {
+				console.warn("Audio source disconnect error:", err);
+			}
+		}
 	}
 
 	try {
@@ -524,11 +534,28 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		audioElement.volume = volumeControl.value / 100;
 		audioElement.playbackRate = rememberspeed;
 
-		if (isLooping == true) {
+		if (isLooping === true) {
 			audioElement.loop = true;
 		} else {
 			audioElement.loop = false;
 		}
+
+		if (!audioContext) {
+			audioContext = new AudioContext();
+		}
+
+		audioSource = audioContext.createMediaElementSource(audioElement);
+
+		compressorNode = audioContext.createDynamicsCompressor();
+
+		compressorNode.threshold.value = -50;
+		compressorNode.knee.value = 40;
+		compressorNode.ratio.value = 12;
+		compressorNode.attack.value = 0;
+		compressorNode.release.value = 0.25;
+
+		audioSource.connect(compressorNode);
+		compressorNode.connect(audioContext.destination);
 
 		await audioElement.play();
 		playButton.style.display = "none";
@@ -555,7 +582,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		});
 
 		document.querySelectorAll(".music-item").forEach((musicElement) => {
-			if (musicElement.getAttribute("data-file-name").slice(0, -4) == songName.innerHTML) {
+			if (musicElement.getAttribute("data-file-name").slice(0, -4) === songName.innerHTML) {
 				musicElement.classList.add("playing");
 			}
 		});
@@ -566,7 +593,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 
 		if (isShuffleActive) {
 			if (currentPlaylist) {
-				if (havuc != currentPlaylist.name) {
+				if (havuc !== currentPlaylist.name) {
 					havuc = currentPlaylist.name;
 					playlistPlayedSongs.splice(0, maximumPreviousSongCount);
 				}
@@ -2081,6 +2108,12 @@ document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 
 		document.addEventListener("keydown", handleKeyPress);
 	});
+});
+
+document.addEventListener("visibilitychange", () => {
+	if (document.visibilityState === "visible") {
+		document.body.focus();
+	}
 });
 
 document.addEventListener("keydown", (event) => {
