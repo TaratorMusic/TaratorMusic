@@ -1989,11 +1989,9 @@ function differentiateYouTubeLinks(url) {
 
 	if (videoRegex.test(url.trim())) {
 		return "video";
-	}
-	else if (playlistRegex.test(url.trim())) {
+	} else if (playlistRegex.test(url.trim())) {
 		return "playlist";
-	}
-	else {
+	} else {
 		return "unknown";
 	}
 }
@@ -2208,6 +2206,10 @@ ipcRenderer.on("update-response", (event, message) => {
 		updateDatabase("pytubeStatus", "true");
 		pytubeStatus = true;
 	}
+});
+
+ipcRenderer.invoke("get-app-version").then((version) => {
+	document.getElementById("version").textContent = `Version: ${version}`;
 });
 
 document.getElementById("playlists").click();

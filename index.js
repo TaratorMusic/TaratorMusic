@@ -57,6 +57,7 @@ function createWindow() {
 	});
 
 	mainWindow.loadFile("index.html");
+    ipcMain.handle('get-app-version', () => app.getVersion());
 }
 
 async function checkForUpdates() {
