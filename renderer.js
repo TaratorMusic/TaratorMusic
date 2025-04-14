@@ -2111,8 +2111,23 @@ document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 });
 
 document.querySelectorAll('input[type="range"]').forEach((range) => {
-	range.setAttribute("tabindex", "-1");
-	range.addEventListener("keydown", (e) => e.preventDefault());
+	range.tabIndex = -1;
+	range.addEventListener("focus", () => range.blur());
+	range.addEventListener(
+		"keydown",
+		(e) => {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+		},
+		true
+	);
+});
+
+window.addEventListener("focus", () => {
+	const el = document.activeElement;
+	if (el && el.matches('input[type="range"]')) {
+		el.blur();
+	}
 });
 
 document.addEventListener("keydown", (event) => {
