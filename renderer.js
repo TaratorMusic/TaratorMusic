@@ -2111,9 +2111,8 @@ document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 });
 
 document.querySelectorAll('input[type="range"]').forEach((range) => {
-	range.addEventListener("keydown", function (e) {
-		e.preventDefault();
-	});
+	range.setAttribute("tabindex", "-1");
+	range.addEventListener("keydown", (e) => e.preventDefault());
 });
 
 document.addEventListener("keydown", (event) => {
