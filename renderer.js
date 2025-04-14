@@ -2110,10 +2110,10 @@ document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 	});
 });
 
-document.addEventListener("visibilitychange", () => {
-	if (document.visibilityState === "visible") {
-		document.body.focus();
-	}
+document.querySelectorAll('input[type="range"]').forEach((range) => {
+	range.addEventListener("keydown", function (e) {
+		e.preventDefault();
+	});
 });
 
 document.addEventListener("keydown", (event) => {
