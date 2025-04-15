@@ -70,7 +70,11 @@ let key_Speed;
 let key_Loop;
 
 const taratorFolder = __dirname;
+const musicFolder = path.join(taratorFolder, "musics");
+const thumbnailFolder = path.join(taratorFolder, "thumbnails");
 const dbPath = path.join(taratorFolder, "appData.db");
+const playlistPath = path.join(taratorFolder, "playlists.json");
+
 
 if (!fs.existsSync(dbPath)) {
 	fs.writeFileSync(dbPath, "");
@@ -377,15 +381,14 @@ async function myMusicOnClick(firsttime) {
 	});
 
 	myMusicContent.appendChild(musicsearch);
-	const musicFolderPath = path.join(taratorFolder, "musics");
 
 	try {
-		const files = await fs.promises.readdir(musicFolderPath);
+		const files = await fs.promises.readdir(musicFolder);
 		const musicFiles = files
 			.filter((file) => file.toLowerCase() !== "desktop.ini")
 			.map((file) => ({
 				name: file,
-				thumbnail: `file://${path.join(taratorFolder, "thumbnail", file, "_thumbnail")}`,
+				thumbnail: `file://${path.join(thumbnailFolder, file, "_thumbnail")}`,
 			}));
 
 		if (files.length == 0 && firsttime != 1) {
@@ -425,7 +428,6 @@ function createMusicElement(file) {
 	const fileNameWithoutExtension = path.parse(file.name).name;
 	const encodedFileName = encodeURIComponent(fileNameWithoutExtension);
 	const decodedFileName = decodeURIComponent(encodedFileName);
-	const thumbnailFolder = path.join(taratorFolder, "thumbnails");
 	const thumbnailFileName = `${decodedFileName}_thumbnail.jpg`;
 	const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
 	if (newThumbnailPath) {
@@ -472,7 +474,7 @@ function createMusicElement(file) {
 	musicElement.appendChild(addToPlaylistButton);
 
 	const audio = new Audio();
-	const filePath = path.join(taratorFolder, "musics", file.name);
+	const filePath = path.join(musicFolder, file.name);
 	audio.src = `file://${filePath}`;
 	audio.addEventListener("loadedmetadata", () => {
 		songLengthElement.innerText = formatTime(audio.duration);
@@ -510,7 +512,6 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		if (!isPlaylist) {
 			currentPlaylist = null;
 		}
-		const musicPath = path.join(taratorFolder, "musics");
 		audioElement = new Audio();
 		manageAudioControls(audioElement);
 		audioElement.addEventListener("loadedmetadata", () => {
@@ -527,7 +528,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 			secondfilename = secondfilename + ".mp3";
 		}
 
-		audioElement.src = `file://${path.join(musicPath, secondfilename)}`;
+		audioElement.src = `file://${path.join(musicFolder, secondfilename)}`;
 		audioElement.volume = volumeControl.value / 100;
 		audioElement.playbackRate = rememberspeed;
 
@@ -561,9 +562,8 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		const fileNameWithoutExtension = path.parse(file.name).name;
 		const encodedFileName = encodeURIComponent(fileNameWithoutExtension);
 		const decodedFileName = decodeURIComponent(encodedFileName);
-		const thumbnailFolder = path.join(taratorFolder, "thumbnails");
 		const thumbnailFileName = `${decodedFileName}_thumbnail.jpg`;
-		const thumbnailPath = path.join(taratorFolder, "thumbnails", thumbnailFileName.replace(/%20/g, " "));
+		const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
 		let thumbnailUrl = path.join(thumbnailFolder, "_____placeholder.jpg".replace(/%20/g, " "));
 
 		if (fs.existsSync(thumbnailPath)) {
@@ -764,14 +764,14 @@ function createPlaylistElement(playlist) {
 	const playlistElement = document.createElement("div");
 	playlistElement.className = "playlist";
 	playlistElement.setAttribute("data-playlist-name", playlist.name);
-	const thumbnailPath = path.join(taratorFolder, "thumbnails", playlist.name + "_playlist.jpg");
+	const thumbnailPath = path.join(thumbnailFolder, playlist.name + "_playlist.jpg");
 
 	let thumbnailSrc = ``;
 	if (fs.existsSync(thumbnailPath)) {
 		thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}`;
 		thumbnailSrc = playlist.thumbnail;
 	} else {
-		thumbnailSrc = `file://${path.join(taratorFolder, "thumbnails", "_placeholder.jpg").replace(/\\/g, "/")}`;
+		thumbnailSrc = `file://${path.join(thumbnailFolder, "_placeholder.jpg").replace(/\\/g, "/")}`;
 	}
 
 	const thumbnail = document.createElement("img");
@@ -841,7 +841,6 @@ function saveEditPlaylist() {
 	const newName = document.getElementById("editPlaylistNameInput").value;
 	const newThumbnail = document.getElementById("editPlaylistThumbnail").src;
 
-	const filePath = path.join(taratorFolder, "playlists.json");
 	fs.readFile(filePath, "utf8", (err, data) => {
 		if (err) {
 			console.error("Error reading file:", err);
@@ -863,11 +862,10 @@ function saveEditPlaylist() {
 			if (newThumbnail.startsWith("data:image")) {
 				const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
 				const buffer = Buffer.from(base64Data, "base64");
-				const thumbnailsDir = path.join(taratorFolder, "thumbnails");
-				const newThumbnailPath = path.join(thumbnailsDir, `${newName}_playlist.jpg`);
+				const newThumbnailPath = path.join(thumbnailFolder, `${newName}_playlist.jpg`);
 
-				if (!fs.existsSync(thumbnailsDir)) {
-					fs.mkdirSync(thumbnailsDir, { recursive: true });
+				if (!fs.existsSync(thumbnailFolder)) {
+					fs.mkdirSync(thumbnailFolder, { recursive: true });
 				}
 
 				fs.writeFile(newThumbnailPath, buffer, (writeErr) => {
@@ -922,8 +920,7 @@ function displayPlaylists(playlists) {
 }
 
 function getPlaylists() {
-	const playlistsFilePath = path.join(taratorFolder, "playlists.json");
-	fs.readFile(playlistsFilePath, "utf8", (err, data) => {
+	fs.readFile(playlistPath, "utf8", (err, data) => {
 		const playlists = JSON.parse(data);
 		displayPlaylists(playlists);
 	});
@@ -950,8 +947,7 @@ function openAddToPlaylistModal(songName) {
 	playlistsContainer.innerHTML = "";
 	let mercimek = songName;
 
-	const playlistsFilePath = path.join(taratorFolder, "playlists.json");
-	fs.readFile(playlistsFilePath, "utf8", (err, data) => {
+	fs.readFile(playlistPath, "utf8", (err, data) => {
 		const playlists = JSON.parse(data);
 		displayPlaylists(playlists);
 		playlists.forEach((playlist) => {
@@ -990,7 +986,7 @@ function addToSelectedPlaylists(mercimek) {
 		.filter((checkbox) => checkbox.checked)
 		.map((checkbox) => checkbox.id);
 
-	fs.readFile(path.join(taratorFolder, "playlists.json"), "utf8", (err, data) => {
+	fs.readFile(playlistPath, "utf8", (err, data) => {
 		if (err) {
 			console.error("Error reading playlists file:", err);
 			return;
@@ -1024,7 +1020,7 @@ function addToSelectedPlaylists(mercimek) {
 			}
 		});
 
-		fs.writeFile(path.join(taratorFolder, "playlists.json"), JSON.stringify(playlists, null, 2), (writeErr) => {
+		fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), (writeErr) => {
 			if (writeErr) {
 				console.error("Error updating playlists file:", writeErr);
 				return;
@@ -1307,10 +1303,7 @@ document.getElementById("savePlaylistButton").addEventListener("click", () => {
 		return;
 	}
 
-	const thumbnailsDirectory = path.join(taratorFolder, "thumbnails");
-	const playlistsFilePath = path.join(taratorFolder, "playlists.json");
-
-	fs.readFile(playlistsFilePath, "utf8", (err, data) => {
+	fs.readFile(playlistPath, "utf8", (err, data) => {
 		let playlists = [];
 
 		if (!err && data) {
@@ -1328,18 +1321,18 @@ document.getElementById("savePlaylistButton").addEventListener("click", () => {
 		const newPlaylist = {
 			name: playlistName,
 			songs: [],
-			thumbnail: path.join(thumbnailsDirectory, `${playlistName}_playlist.jpg`),
+			thumbnail: path.join(thumbnailFolder, `${playlistName}_playlist.jpg`),
 		};
 
 		playlists.push(newPlaylist);
 
-		fs.writeFile(playlistsFilePath, JSON.stringify(playlists, null, 2), (writeErr) => {
+		fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), (writeErr) => {
 			if (writeErr) {
 				console.error("Error updating playlists file:", writeErr);
 				return;
 			}
 			if (thumbnailFilePath) {
-				const newThumbnailPath = path.join(thumbnailsDirectory, `${playlistName}_playlist.jpg`);
+				const newThumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
 				fs.copyFile(thumbnailFilePath, newThumbnailPath, (copyErr) => {
 					if (copyErr) {
 						console.error("Error copying thumbnail file:", copyErr);
@@ -1358,9 +1351,9 @@ document.getElementById("savePlaylistButton").addEventListener("click", () => {
 function openCustomizeModal(songName, thumbnailUrl) {
 	customizeModal.style.display = "block";
 	document.getElementById("customizeSongName").value = songName.slice(0, -4);
-	const oldThumbnailPath = path.join(taratorFolder, "thumbnails", songName + "_thumbnail.jpg");
+	const oldThumbnailPath = path.join(thumbnailFolder, songName + "_thumbnail.jpg");
 	const customizeForm = document.getElementById("customizeForm");
-	document.getElementById("customiseImage").src = path.join(taratorFolder, "thumbnails", songName.slice(0, -4) + "_thumbnail.jpg");
+	document.getElementById("customiseImage").src = path.join(thumbnailFolder, songName.slice(0, -4) + "_thumbnail.jpg");
 	customizeForm.dataset.oldSongName = songName;
 	customizeForm.dataset.oldThumbnailPath = oldThumbnailPath;
 	domates = songName;
@@ -1374,9 +1367,8 @@ document.getElementById("customizeForm").addEventListener("submit", function (ev
 	const oldThumbnailPath = document.getElementById("customizeForm").dataset.oldThumbnailPath.replace(".mp3", "");
 	const newSongName = document.getElementById("customizeSongName").value;
 	const newThumbnailFile = document.getElementById("customizeThumbnail").files[0];
-	const userDesktop = path.join(taratorFolder, "musics");
-	const oldSongFilePath = path.join(userDesktop, oldSongName);
-	let newSongFilePath = path.join(userDesktop, newSongName + path.extname(oldSongName));
+	const oldSongFilePath = path.join(musicFolder, oldSongName);
+	let newSongFilePath = path.join(musicFolder, newSongName + path.extname(oldSongName));
 
 	if (fs.existsSync(oldSongFilePath)) {
 		fs.renameSync(oldSongFilePath, newSongFilePath);
@@ -1407,9 +1399,8 @@ document.getElementById("customizeForm").addEventListener("submit", function (ev
 		console.log("THis function ran");
 	}
 
-	const playlistsFilePath = path.join(taratorFolder, "playlists.json");
-	if (fs.existsSync(playlistsFilePath)) {
-		let playlistsData = fs.readFileSync(playlistsFilePath, "utf8");
+	if (fs.existsSync(playlistPath)) {
+		let playlistsData = fs.readFileSync(playlistPath, "utf8");
 		playlistsData = JSON.parse(playlistsData);
 		console.log("oldSongName", oldSongName, "newSongName", newSongName, "oldSongName.slice(0,-4)", oldSongName.slice(0, -4));
 
@@ -1422,9 +1413,9 @@ document.getElementById("customizeForm").addEventListener("submit", function (ev
 			}
 		}
 
-		fs.writeFileSync(playlistsFilePath, JSON.stringify(playlistsData, null, 2));
+		fs.writeFileSync(playlistPath, JSON.stringify(playlistsData, null, 2));
 	} else {
-		console.error("playlists.json file does not exist:", playlistsFilePath);
+		console.error("playlists.json file does not exist:", playlistPath);
 	}
 
 	customizeModal.style.display = "none";
@@ -1696,7 +1687,7 @@ function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
 	if (differentiateYouTubeLinks(document.getElementById("downloadFirstInput").value) == "video") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
-		const outputFilePath = path.join(taratorFolder, "musics", `${secondInput}.mp3`);
+		const outputFilePath = path.join(musicFolder, `${secondInput}.mp3`);
 		const img = document.getElementById("thumbnailImage");
 		if (!isValidFileName(secondInput)) {
 			document.getElementById("downloadModalText").innerText = 'Invalid characters in filename. These characters cannot be used in filenames: / \\ : * ? " < > | ,';
@@ -1783,7 +1774,7 @@ function actuallyDownloadTheSong() {
 			return;
 		}
 
-		fs.readFile(path.join(taratorFolder, "playlists.json"), "utf8", (err, data) => {
+		fs.readFile(playlistPath, "utf8", (err, data) => {
 			if (err) {
 				document.getElementById("downloadModalText").innerText = ("Error reading the JSON file:", err);
 				document.getElementById("finalDownloadButton").disabled = false;
@@ -1802,7 +1793,7 @@ function actuallyDownloadTheSong() {
 					break;
 				}
 				if (document.getElementById(`playlistTitle${barbeku}`)) {
-					let outputFilePath = path.join(taratorFolder, "musics", `${playlistTitlesArray[tavuk - 1]}.mp3`);
+					let outputFilePath = path.join(musicFolder, `${playlistTitlesArray[tavuk - 1]}.mp3`);
 					if (document.getElementById("playlistTitle" + barbeku)) {
 						const duplicates = findDuplicates(playlistTitlesArray);
 						if (!isValidFileName(document.getElementById("playlistTitle" + barbeku).value)) {
@@ -1926,8 +1917,8 @@ function updateThumbnailImage(event, salata) {
 
 function removeSong() {
 	if (confirm("Are you sure you want to remove this song?")) {
-		const musicFilePath = path.join(taratorFolder, "musics", domates); // TODO parantezlerin içine value ekle domates yerine
-		const thumbnailFilePath = path.join(taratorFolder, "thumbnails", domates2);
+		const musicFilePath = path.join(musicFolder, domates); // TODO parantezlerin içine value ekle domates yerine
+		const thumbnailFilePath = path.join(thumbnailFolder, domates2);
 
 		if (fs.existsSync(musicFilePath)) {
 			fs.unlinkSync(musicFilePath);
@@ -1935,6 +1926,7 @@ function removeSong() {
 		if (fs.existsSync(thumbnailFilePath)) {
 			fs.unlinkSync(thumbnailFilePath);
 		}
+
 		closeModal();
 		document.getElementById("my-music").click();
 	}
@@ -1943,8 +1935,7 @@ function removeSong() {
 function deletePlaylist() {
 	if (confirm("Are you sure you want to remove this playlist?")) {
 		const playlistName = document.getElementById("editInvisibleName").value;
-		const filePath = path.join(taratorFolder, "playlists.json");
-		fs.readFile(filePath, "utf8", (err, data) => {
+		fs.readFile(playlistPath, "utf8", (err, data) => {
 			if (err) {
 				console.error("Error reading file:", err);
 				return;
@@ -1966,7 +1957,7 @@ function deletePlaylist() {
 				return;
 			}
 
-			fs.writeFile(filePath, JSON.stringify(playlists, null, 2), "utf8", (writeErr) => {
+			fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), "utf8", (writeErr) => {
 				if (writeErr) {
 					console.error("Error writing file:", writeErr);
 					return;
@@ -1995,11 +1986,9 @@ function differentiateYouTubeLinks(url) {
 
 function saveeeAsPlaylist(playlistTitlesArray) {
 	if (isSaveAsPlaylistActive) {
-		const jsonFilePath = path.join(taratorFolder, "playlists.json");
-		const thumbnailDir = path.join(taratorFolder, "thumbnails");
 		const trimmedArray = playlistTitlesArray.map((element) => element.trim());
 
-		fs.readFile(jsonFilePath, "utf8", (err, data) => {
+		fs.readFile(playlistPath, "utf8", (err, data) => {
 			if (err) {
 				console.error("Error reading the JSON file:", err);
 				return;
@@ -2018,13 +2007,13 @@ function saveeeAsPlaylist(playlistTitlesArray) {
 				let newPlaylist = {
 					name: playlistName,
 					songs: trimmedArray,
-					thumbnail: path.join(thumbnailDir, `${playlistName}_playlist.jpg`),
+					thumbnail: path.join(thumbnailFolder, `${playlistName}_playlist.jpg`),
 				};
 
 				playlists.push(newPlaylist);
 				let updatedJsonData = JSON.stringify(playlists, null, 2);
 
-				fs.writeFile(jsonFilePath, updatedJsonData, "utf8", (err) => {
+				fs.writeFile(playlistPath, updatedJsonData, "utf8", (err) => {
 					if (err) {
 						console.error("Error writing to the JSON file:", err);
 						return;
