@@ -357,7 +357,6 @@ tabs.forEach((tab) => {
 async function myMusicOnClick(firsttime) {
 	const myMusicContent = document.getElementById("my-music-content");
 	myMusicContent.innerHTML = "";
-
 	const musicsearch = document.createElement("input");
 	musicsearch.setAttribute("type", "text");
 	musicsearch.setAttribute("id", "music-search");
@@ -378,7 +377,6 @@ async function myMusicOnClick(firsttime) {
 	});
 
 	myMusicContent.appendChild(musicsearch);
-
 	const musicFolderPath = path.join(taratorFolder, "musics");
 
 	try {
@@ -390,12 +388,11 @@ async function myMusicOnClick(firsttime) {
 				thumbnail: `file://${path.join(taratorFolder, "thumbnail", file, "_thumbnail")}`,
 			}));
 
-		if (firsttime == 1) {
-		} else if (files.length == 0) {
+		if (files.length == 0 && firsttime != 1) {
 			document.getElementById("my-music-content").innerHTML = "No songs? Use the download feature on the left, or add some mp3 files to the 'musics' folder.";
 			document.getElementById("my-music-content").style.display = "block";
 			return;
-		} else {
+		} else if (firsttime != 1) {
 			document.getElementById("my-music-content").style.display = "grid";
 		}
 
@@ -2244,9 +2241,8 @@ function setupLazyBackgrounds() {
 	}
 }
 
-
-document.getElementById("checkUpdateButton").addEventListener("click", async function () {
-	await ipcRenderer.invoke("check-for-updates");
+document.getElementById("checkUpdateButton").addEventListener("click", () => {
+	ipcRenderer.send("check-for-updates");
 });
 
 document.getElementById("checkPytubeButton").addEventListener("click", () => {

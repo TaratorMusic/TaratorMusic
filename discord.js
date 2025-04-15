@@ -10,6 +10,7 @@ if (discordApi) {
 	RPC.on("ready", async () => {
 		updateDiscordPresence();
 	});
+    
 	RPC.login({ clientId }).catch((err) => {
 		console.error("Discord RPC Login Failed:", err);
 		document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Error";
