@@ -2202,6 +2202,49 @@ function saveKeybinds() {
 	key_Loop = document.getElementById("settingsLoop").innerHTML;
 }
 
+function setupLazyBackgrounds() {
+	const bgElements = document.querySelectorAll(".background-element");
+
+	bgElements.forEach(el => {
+		const currentBg = el.style.backgroundImage;
+		const urlMatch = currentBg.match(/url\(["']?(file:\/\/[^"')]+)["']?\)/);
+
+		if (urlMatch && !el.dataset.bg) {
+			const actualUrl = urlMatch[1];
+			el.dataset.bg = actualUrl;
+
+			el.style.backgroundImage = `file://${path.join(thumbnailFolder, "_placeholder.jpg").replace(/\\/g, "/")}`;
+			el.classList.add("lazy-bg");
+		}
+	});
+
+	if ("IntersectionObserver" in window) {
+		const observer = new IntersectionObserver((entries, obs) => {
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					const el = entry.target;
+					const realBg = el.dataset.bg;
+					if (realBg) {
+						el.style.backgroundImage = `url('${realBg}')`;
+						el.classList.remove("lazy-bg");
+						obs.unobserve(el);
+					}
+				}
+			});
+		});
+
+		document.querySelectorAll(".lazy-bg").forEach(el => observer.observe(el));
+	} else {
+		document.querySelectorAll(".lazy-bg").forEach(el => {
+			if (el.dataset.bg) {
+				el.style.backgroundImage = `url('${el.dataset.bg}')`;
+				el.classList.remove("lazy-bg");
+			}
+		});
+	}
+}
+
+
 document.getElementById("checkUpdateButton").addEventListener("click", async function () {
 	await ipcRenderer.invoke("check-for-updates");
 });
@@ -2229,3 +2272,4 @@ ipcRenderer.invoke("get-app-version").then((version) => {
 document.getElementById("playlists").click();
 document.getElementById("main-menu").click();
 myMusicOnClick(1);
+setupLazyBackgrounds();
