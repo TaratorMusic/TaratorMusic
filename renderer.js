@@ -7,6 +7,21 @@ const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
 const fs = require("fs");
 
+let rmsCache = {};
+const rmsPath = path.join(__dirname, "rms_cache.json");
+
+try {
+	if (!fs.existsSync(rmsPath)) {
+		console.warn("RMS cache not found. Creating new empty cache.");
+		fs.writeFileSync(rmsPath, JSON.stringify({}, null, 2));
+	}
+
+	const data = fs.readFileSync(rmsPath);
+	rmsCache = JSON.parse(data);
+} catch (err) {
+	console.error("Failed to load or create RMS cache:", err);
+}
+
 const tabs = document.querySelectorAll(".sidebar div");
 const tabContents = document.querySelectorAll(".tab-content");
 const playButton = document.getElementById("playButton");
@@ -484,9 +499,8 @@ function createMusicElement(file) {
 async function playMusic(file, clickedElement, isPlaylist = false) {
 	const songName = document.getElementById("song-name");
 
-	if (songStartTime != 0) {
+	if (songStartTime !== 0) {
 		let timePlayed = (Date.now() - songStartTime) / 1000;
-
 		if (timePlayed >= 10) {
 			const songFileName = songName.innerHTML;
 			savePlayedTime(songFileName, timePlayed);
@@ -511,11 +525,14 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		if (!isPlaylist) {
 			currentPlaylist = null;
 		}
+
 		audioElement = new Audio();
 		manageAudioControls(audioElement);
+
 		audioElement.addEventListener("loadedmetadata", () => {
 			songDuration = audioElement.duration;
 		});
+
 		audioElement.controls = true;
 		audioElement.autoplay = true;
 		secondfilename = file.name;
@@ -524,18 +541,13 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 			songName.textContent = file.name.slice(0, -4);
 		} else {
 			songName.textContent = file.name;
-			secondfilename = secondfilename + ".mp3";
+			secondfilename += ".mp3";
 		}
 
 		audioElement.src = `file://${path.join(musicFolder, secondfilename)}`;
 		audioElement.volume = volumeControl.value / 100;
 		audioElement.playbackRate = rememberspeed;
-
-		if (isLooping === true) {
-			audioElement.loop = true;
-		} else {
-			audioElement.loop = false;
-		}
+		audioElement.loop = isLooping === true;
 
 		if (!audioContext) {
 			audioContext = new AudioContext();
@@ -543,16 +555,33 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 
 		audioSource = audioContext.createMediaElementSource(audioElement);
 
-		compressorNode = audioContext.createDynamicsCompressor();
+		try {
+			const rmsPath = path.join(__dirname, "rms_cache.json");
+			if (fs.existsSync(rmsPath)) {
+				rmsCache = JSON.parse(fs.readFileSync(rmsPath));
+			}
+		} catch (err) {
+			console.warn("Could not load RMS cache:", err);
+		}
 
+		const measuredRms = rmsCache[secondfilename] || 0.07;
+		const targetRms = 0.07;
+		let newGain = targetRms / measuredRms;
+		newGain = Math.min(Math.max(newGain, 0.5), 1.5);
+
+		const compressorNode = audioContext.createDynamicsCompressor();
 		compressorNode.threshold.value = -50;
 		compressorNode.knee.value = 40;
 		compressorNode.ratio.value = 12;
 		compressorNode.attack.value = 0;
 		compressorNode.release.value = 0.25;
 
+		const gainNode = audioContext.createGain();
+		gainNode.gain.value = newGain;
+
 		audioSource.connect(compressorNode);
-		compressorNode.connect(audioContext.destination);
+		compressorNode.connect(gainNode);
+		gainNode.connect(audioContext.destination);
 
 		await audioElement.play();
 		playButton.style.display = "none";
@@ -572,11 +601,8 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		}
 
 		videothumbnailbox.style.backgroundImage = `url('${thumbnailUrl}')`;
-		const playingElements = document.querySelectorAll(".music-item.playing");
-		playingElements.forEach((element) => {
-			element.classList.remove("playing");
-		});
 
+		document.querySelectorAll(".music-item.playing").forEach((el) => el.classList.remove("playing"));
 		document.querySelectorAll(".music-item").forEach((musicElement) => {
 			if (musicElement.getAttribute("data-file-name").slice(0, -4) === songName.innerHTML) {
 				musicElement.classList.add("playing");
