@@ -1464,20 +1464,6 @@ function deletePlaylist() {
 	}
 }
 
-function findDuplicates(array) {
-	const seen = new Set();
-	const duplicates = new Set();
-
-	for (const item of array) {
-		if (seen.has(item)) {
-			duplicates.add(item);
-		}
-		seen.add(item);
-	}
-
-	return Array.from(duplicates);
-}
-
 document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 	button.addEventListener("click", function () {
 		const currentButton = this;
@@ -1553,6 +1539,20 @@ document.addEventListener("keydown", (event) => {
 		loop();
 	}
 });
+
+function findDuplicates(array) {
+	const seen = new Set();
+	const duplicates = new Set();
+
+	for (const item of array) {
+		if (seen.has(item)) {
+			duplicates.add(item);
+		}
+		seen.add(item);
+	}
+
+	return Array.from(duplicates);
+}
 
 function saveKeybinds() {
 	const buttons = Array.from(document.querySelectorAll(".settingsKeybindsButton")).map((button) => button.innerText.trim());
