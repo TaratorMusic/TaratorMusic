@@ -1509,7 +1509,7 @@ document.querySelectorAll('input[type="range"]').forEach((range) => {
 
 window.addEventListener("focus", () => {
 	const el = document.activeElement;
-	if (el && el.matches('input[type="range"]')) {
+	if (el && typeof el.blur === "function") {
 		el.blur();
 	}
 });
@@ -1631,7 +1631,9 @@ function setupLazyBackgrounds() {
 function loadJSFile(filename) {
 	const src = `${filename}.js`;
 	const existingScript = Array.from(document.scripts).find((script) => script.src.includes(src));
-	if (existingScript) { return; }
+	if (existingScript) {
+		return;
+	}
 
 	const script = document.createElement("script");
 	script.src = src;
