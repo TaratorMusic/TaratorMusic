@@ -1405,29 +1405,34 @@ document.getElementById("customizeForm").addEventListener("submit", function (ev
 		const newThumbnailPath = path.join(path.dirname(oldThumbnailPath), newSongName + "_thumbnail.jpg");
 		if (fs.existsSync(oldThumbnailPath)) {
 			fs.renameSync(oldThumbnailPath, newThumbnailPath);
-		} else {
-			console.error("Old thumbnail file does not exist:", oldThumbnailPath);
 		}
-		console.log("THis function ran");
 	}
 
 	if (fs.existsSync(playlistPath)) {
-		let playlistsData = fs.readFileSync(playlistPath, "utf8");
-		playlistsData = JSON.parse(playlistsData);
-		console.log("oldSongName", oldSongName, "newSongName", newSongName, "oldSongName.slice(0,-4)", oldSongName.slice(0, -4));
-
+		let playlistsData = JSON.parse(fs.readFileSync(playlistPath, "utf8"));
 		for (const playlist of playlistsData) {
 			for (let i = 0; i < playlist.songs.length; i++) {
-				console.log(playlist.songs[i]);
-				if (playlist.songs[i] == oldSongName.slice(0, -4)) {
+				if (playlist.songs[i] === oldSongName.slice(0, -4)) {
 					playlist.songs[i] = newSongName;
 				}
 			}
 		}
-
 		fs.writeFileSync(playlistPath, JSON.stringify(playlistsData, null, 2));
-	} else {
-		console.error("playlists.json file does not exist:", playlistPath);
+	}
+
+	if (fs.existsSync(rmsPath)) {
+		try {
+			const rmsData = JSON.parse(fs.readFileSync(rmsPath));
+			const oldKey = oldSongName;
+			const newKey = newSongName + path.extname(oldSongName);
+			if (rmsData[oldKey]) {
+				rmsData[newKey] = rmsData[oldKey];
+				delete rmsData[oldKey];
+				fs.writeFileSync(rmsPath, JSON.stringify(rmsData, null, 2));
+			}
+		} catch (err) {
+			console.error("Could not update RMS cache:", err);
+		}
 	}
 
 	customizeModal.style.display = "none";
@@ -1436,7 +1441,7 @@ document.getElementById("customizeForm").addEventListener("submit", function (ev
 
 function removeSong() {
 	if (confirm("Are you sure you want to remove this song?")) {
-		const musicFilePath = path.join(musicFolder, domates); // TODO parantezlerin içine value ekle domates yerine
+		const musicFilePath = path.join(musicFolder, domates);
 		const thumbnailFilePath = path.join(thumbnailFolder, domates2);
 
 		if (fs.existsSync(musicFilePath)) {
@@ -1444,6 +1449,18 @@ function removeSong() {
 		}
 		if (fs.existsSync(thumbnailFilePath)) {
 			fs.unlinkSync(thumbnailFilePath);
+		}
+
+		if (fs.existsSync(rmsPath)) {
+			try {
+				const rmsData = JSON.parse(fs.readFileSync(rmsPath));
+				if (rmsData[domates]) {
+					delete rmsData[domates];
+					fs.writeFileSync(rmsPath, JSON.stringify(rmsData, null, 2));
+				}
+			} catch (err) {
+				console.error("Error updating RMS cache during delete:", err);
+			}
 		}
 
 		closeModal();
