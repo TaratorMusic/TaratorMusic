@@ -46,71 +46,255 @@ function checkNameThumbnail() {
 
 	const downloadModalBottomRow = document.createElement("div");
 	downloadModalBottomRow.id = "downloadModalBottomRow";
-	document.getElementById("downloadSecondPhase").appendChild(downloadModalBottomRow);
+	downloadSecondPhase.appendChild(downloadModalBottomRow);
 
 	const downloadModalText = document.createElement("div");
 	downloadModalText.id = "downloadModalText";
 	downloadModalBottomRow.appendChild(downloadModalText);
-	document.getElementById("downloadModalText").innerHTML = "Checking...";
+	downloadModalText.innerHTML = "Checking...";
 
-	if (document.getElementById("downloadFirstInput").value.trim() === "") {
-		document.getElementById("downloadModalText").innerHTML = "The input can not be empty.";
+	const userInput = document.getElementById("downloadFirstInput").value.trim();
+	if (userInput === "") {
+		downloadModalText.innerHTML = "The input can not be empty.";
 		document.getElementById("downloadFirstButton").disabled = false;
 		return;
 	}
 
-	if (differentiateYouTubeLinks(document.getElementById("downloadFirstInput").value) == "video") {
-		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "Title", document.getElementById("downloadFirstInput").value]);
-		pythonProcessTitle.stdout.on("data", (data) => {
-			const decodedData = data.toString().trim();
-			let decodedString;
+	const linkType = differentiateYouTubeLinks(userInput);
+
+	if (linkType === "video") {
+		processVideoLink(userInput, downloadSecondPhase, downloadModalBottomRow, downloadModalText);
+	} else if (linkType === "playlist") {
+		processPlaylistLink(userInput, downloadSecondPhase, downloadModalBottomRow, downloadModalText);
+	} else {
+		downloadModalText.innerHTML = "Link neither a video or playlist.";
+		document.getElementById("downloadFirstButton").disabled = false;
+		downloadSecondPhase.style.display = "block";
+	}
+}
+
+function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
+	const pythonProcessTitle = spawn(path.join(taratorFolder, "video_install.exe"), ["Title", videoUrl]);
+	pythonProcessTitle.stdout.on("data", (data) => {
+		const decodedData = data.toString().trim();
+		let videoTitle;
+		try {
+			videoTitle = JSON.parse(decodedData);
+		} catch (error) {
+			videoTitle = decodedData;
+		}
+
+		const pythonProcessThumbnail = spawn(path.join(taratorFolder, "video_install.exe"), ["Thumbnail", videoUrl]);
+		pythonProcessThumbnail.stdout.on("data", (thumbnailData) => {
+			const thumbnailUrl = thumbnailData.toString().trim();
+
+			const downloadPlaceofSongs = document.createElement("div");
+			downloadPlaceofSongs.className = "flexrow";
+			downloadPlaceofSongs.id = "downloadPlaceofSongs";
+			downloadSecondPhase.appendChild(downloadPlaceofSongs);
+
+			const songAndThumbnail = document.createElement("div");
+			songAndThumbnail.className = "songAndThumbnail";
+			downloadPlaceofSongs.appendChild(songAndThumbnail);
+
+			const exampleDownloadColumn = document.createElement("div");
+			exampleDownloadColumn.className = "exampleDownloadColumn";
+			songAndThumbnail.appendChild(exampleDownloadColumn);
+
+			const downloadSecondInput = document.createElement("input");
+			downloadSecondInput.type = "text";
+			downloadSecondInput.id = "downloadSecondInput";
+			downloadSecondInput.value = videoTitle;
+			downloadSecondInput.spellcheck = false;
+			exampleDownloadColumn.appendChild(downloadSecondInput);
+
+			const thumbnailInput = document.createElement("input");
+			thumbnailInput.type = "file";
+			thumbnailInput.id = "thumbnailInput";
+			thumbnailInput.accept = "image/*";
+			thumbnailInput.onchange = function (event) {
+				updateThumbnailImage(event, 3);
+			};
+			exampleDownloadColumn.appendChild(thumbnailInput);
+
+			const thumbnailImage = document.createElement("img");
+			thumbnailImage.id = "thumbnailImage";
+			thumbnailImage.className = "thumbnailImage";
+			thumbnailImage.src = thumbnailUrl;
+			thumbnailImage.alt = "";
+			songAndThumbnail.appendChild(thumbnailImage);
+
+			downloadModalText.innerHTML = "";
+
+			const finalDownloadButton = document.createElement("button");
+			finalDownloadButton.id = "finalDownloadButton";
+			finalDownloadButton.onclick = function () {
+				actuallyDownloadTheSong();
+			};
+			finalDownloadButton.textContent = "Download";
+			downloadModalBottomRow.appendChild(finalDownloadButton);
+
+			document.getElementById("downloadFirstButton").disabled = false;
+			downloadSecondPhase.style.display = "block";
+		});
+
+		pythonProcessThumbnail.stderr.on("data", (data) => {
+			console.error(`Error fetching thumbnail: ${data}`);
+			downloadModalText.innerHTML = "Error fetching thumbnail.";
+			document.getElementById("downloadFirstButton").disabled = false;
+		});
+	});
+
+	pythonProcessTitle.stderr.on("data", (data) => {
+		console.error(`Error fetching title: ${data}`);
+		downloadModalText.innerHTML = "Error fetching video title.";
+		document.getElementById("downloadFirstButton").disabled = false;
+	});
+}
+
+function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
+	const pythonProcessTitle = spawn(path.join(taratorFolder, "video_install.exe"), ["PlaylistTitle", playlistUrl]);
+
+	pythonProcessTitle.stdout.on("data", (data) => {
+		let playlistTitles;
+		try {
+			playlistTitles = JSON.parse(data.toString().trim());
+		} catch (error) {
+			console.error("Error parsing playlist titles JSON:", error);
+			downloadModalText.innerHTML = "Error retrieving playlist details.";
+			document.getElementById("downloadFirstButton").disabled = false;
+			return;
+		}
+
+		if (playlistTitles.error) {
+			console.error("Python script error:", playlistTitles.error);
+			downloadModalText.innerHTML = "Error retrieving playlist details.";
+			document.getElementById("downloadFirstButton").disabled = false;
+			return;
+		}
+
+		if (playlistTitles.length > 10) {
+			downloadModalText.innerHTML = "Checking... Might take long...";
+		}
+
+		const pythonProcessThumbnail = spawn(path.join(taratorFolder, "video_install.exe"), ["PlaylistThumbnail", playlistUrl]);
+
+		pythonProcessThumbnail.stdout.on("data", (thumbnailData) => {
+			let playlistThumbnails;
 			try {
-				decodedString = JSON.parse(decodedData);
+				playlistThumbnails = JSON.parse(thumbnailData.toString().trim());
 			} catch (error) {
-				decodedString = decodedData;
+				console.error("Error parsing playlist thumbnails JSON:", error);
+				downloadModalText.innerHTML = "Error retrieving playlist thumbnails.";
+				document.getElementById("downloadFirstButton").disabled = false;
+				return;
 			}
 
-			const pythonProcessThumbnail2 = spawn("python", [path.join(taratorFolder, "pytube.py"), "Thumbnail", document.getElementById("downloadFirstInput").value]);
-			pythonProcessThumbnail2.stdout.on("data", (data) => {
-				const downloadPlaceofSongs = document.createElement("div");
-				document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
-				downloadPlaceofSongs.className = "flexrow";
-				downloadPlaceofSongs.id = "downloadPlaceofSongs";
-
-				const songAndThumbnail = document.createElement("div");
-				songAndThumbnail.className = "songAndThumbnail";
-				downloadPlaceofSongs.appendChild(songAndThumbnail);
-
-				const exampleDownloadColumn = document.createElement("div");
-				exampleDownloadColumn.className = "exampleDownloadColumn";
-
-				const downloadSecondInput = document.createElement("input");
-				downloadSecondInput.type = "text";
-				downloadSecondInput.id = "downloadSecondInput";
-				downloadSecondInput.value = decodedString;
-				downloadSecondInput.spellcheck = false;
-
-				const thumbnailInput = document.createElement("input");
-				thumbnailInput.type = "file";
-				thumbnailInput.id = "thumbnailInput";
-				thumbnailInput.accept = "image/*";
-				thumbnailInput.onchange = function (event) {
-					updateThumbnailImage(event, 3);
-				};
-
-				const thumbnailImage = document.createElement("img");
-				thumbnailImage.id = "thumbnailImage";
-				thumbnailImage.className = "thumbnailImage";
-				thumbnailImage.src = data.toString().trim();
-				thumbnailImage.alt = "";
-
-				songAndThumbnail.appendChild(exampleDownloadColumn);
-				exampleDownloadColumn.appendChild(downloadSecondInput);
-				exampleDownloadColumn.appendChild(thumbnailInput);
-				songAndThumbnail.appendChild(thumbnailImage);
-				document.getElementById("downloadModalText").innerHTML = "";
+			if (playlistThumbnails.error) {
+				console.error("Python script error:", playlistThumbnails.error);
+				downloadModalText.innerHTML = "Error retrieving playlist thumbnails.";
 				document.getElementById("downloadFirstButton").disabled = false;
-				document.getElementById("downloadSecondPhase").style.display = "block";
+				return;
+			}
+
+			const downloadPlaceofSongs = document.createElement("div");
+			downloadPlaceofSongs.id = "downloadPlaceofSongs";
+			downloadSecondPhase.appendChild(downloadPlaceofSongs);
+
+			const pythonProcessLinks = spawn(path.join(taratorFolder, "video_install.exe"), ["PlaylistNames", playlistUrl]);
+
+			pythonProcessLinks.stdout.on("data", (linksData) => {
+				let videoLinks;
+				try {
+					videoLinks = JSON.parse(linksData.toString().trim().replace(/'/g, '"'));
+				} catch (error) {
+					console.error("Error parsing video links JSON:", error);
+					downloadModalText.innerHTML = "Error retrieving video links.";
+					document.getElementById("downloadFirstButton").disabled = false;
+					return;
+				}
+
+				window.isSaveAsPlaylistActive = false;
+
+				for (let i = 0; i < playlistTitles.length; i++) {
+					const songAndThumbnail = document.createElement("div");
+					songAndThumbnail.className = "songAndThumbnail";
+					songAndThumbnail.id = "songAndThumbnail" + i;
+					downloadPlaceofSongs.appendChild(songAndThumbnail);
+
+					const exampleDownloadColumn = document.createElement("div");
+					exampleDownloadColumn.className = "exampleDownloadColumn";
+					songAndThumbnail.appendChild(exampleDownloadColumn);
+
+					const downloadSecondInput = document.createElement("input");
+					downloadSecondInput.type = "text";
+					downloadSecondInput.className = "playlistTitle";
+					downloadSecondInput.id = "playlistTitle" + i;
+					downloadSecondInput.value = playlistTitles[i];
+					downloadSecondInput.spellcheck = false;
+					exampleDownloadColumn.appendChild(downloadSecondInput);
+
+					if (i === 0) {
+						const saveAsPlaylist = document.createElement("button");
+						saveAsPlaylist.id = "saveAsPlaylist";
+						saveAsPlaylist.innerHTML = "Save as playlist";
+						songAndThumbnail.appendChild(saveAsPlaylist);
+						saveAsPlaylist.style.backgroundColor = "red";
+
+						saveAsPlaylist.onclick = function () {
+							if (window.isSaveAsPlaylistActive) {
+								saveAsPlaylist.style.backgroundColor = "red";
+								window.isSaveAsPlaylistActive = false;
+							} else {
+								saveAsPlaylist.style.backgroundColor = "green";
+								window.isSaveAsPlaylistActive = true;
+							}
+						};
+					} else {
+						const deleteThisPlaylistSong = document.createElement("button");
+						deleteThisPlaylistSong.id = "deleteThisPlaylistSong" + i;
+						deleteThisPlaylistSong.className = "deleteThisPlaylistSong";
+						deleteThisPlaylistSong.innerHTML = "Delete";
+						songAndThumbnail.appendChild(deleteThisPlaylistSong);
+						deleteThisPlaylistSong.onclick = function () {
+							this.parentNode.remove();
+						};
+					}
+
+					const theDivsNumber = document.createElement("div");
+					theDivsNumber.innerHTML = i;
+					theDivsNumber.className = "numberingTheBoxes";
+					exampleDownloadColumn.appendChild(theDivsNumber);
+
+					const thumbnailInput = document.createElement("input");
+					thumbnailInput.type = "file";
+					thumbnailInput.className = "thumbnailInput";
+					thumbnailInput.id = "thumbnailInput" + i;
+					thumbnailInput.accept = "image/*";
+					const currentIndex = i;
+					thumbnailInput.onchange = function (event) {
+						updateThumbnailImage(event, document.getElementById("thumbnailImage" + currentIndex));
+					};
+					exampleDownloadColumn.appendChild(thumbnailInput);
+
+					const thumbnailDiv = document.createElement("div");
+					thumbnailDiv.className = "thumbnailImage";
+					thumbnailDiv.id = "thumbnailImage" + i;
+
+					if (i === 0) {
+						thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[0]})`;
+					} else {
+						thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[i - 1]})`;
+						if (i - 1 < videoLinks.length) {
+							songAndThumbnail.dataset.link = videoLinks[i - 1];
+						}
+					}
+					thumbnailDiv.alt = "";
+					songAndThumbnail.appendChild(thumbnailDiv);
+				}
+
+				downloadModalText.innerHTML = "";
+
 				const finalDownloadButton = document.createElement("button");
 				finalDownloadButton.id = "finalDownloadButton";
 				finalDownloadButton.onclick = function () {
@@ -118,174 +302,51 @@ function checkNameThumbnail() {
 				};
 				finalDownloadButton.textContent = "Download";
 				downloadModalBottomRow.appendChild(finalDownloadButton);
+
+				document.getElementById("downloadFirstButton").disabled = false;
+				downloadSecondPhase.style.display = "block";
 			});
-			pythonProcessThumbnail2.stderr.on("data", (data) => {
-				console.error(`Error: ${data}`);
-			});
-			pythonProcessThumbnail2.on("close", (code) => {
-				console.log(`Python process exited with code ${code}`);
-			});
-		});
-		pythonProcessTitle.stderr.on("data", (data) => {
-			console.error(`Error: ${data}`);
-		});
-		pythonProcessTitle.on("close", (code) => {
-			console.log(`Python process exited with code ${code}`);
-		});
-	} else if (differentiateYouTubeLinks(document.getElementById("downloadFirstInput").value) == "playlist") {
-		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistTitle", document.getElementById("downloadFirstInput").value]);
-		pythonProcessTitle.stdout.on("data", (data) => {
-			decodedData = data.toString().trim();
 
-			try {
-				decodedJson = JSON.parse(decodedData);
-			} catch (error) {
-				console.error("Error parsing JSON:", error);
-				return;
-			}
-			if (decodedJson.error) {
-				console.error("Python script error:", decodedJson.error);
-				return;
-			}
-			if (decodedJson.length > 10) {
-				document.getElementById("downloadModalText").innerHTML = "Checking... Might take long...";
-			}
-
-			const pythonProcessThumbnail2 = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistThumbnail", document.getElementById("downloadFirstInput").value]);
-			pythonProcessThumbnail2.stdout.on("data", (data) => {
-				decodedData2 = data.toString().trim();
-
-				try {
-					decodedJson2 = JSON.parse(decodedData2);
-				} catch (error) {
-					console.error("Error parsing JSON:", error);
-					return;
-				}
-				if (decodedJson2.error) {
-					console.error("Python script error:", decodedJson2.error);
-					return;
-				}
-
-				const downloadPlaceofSongs = document.createElement("div");
-				downloadPlaceofSongs.id = "downloadPlaceofSongs";
-				document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
-
-				const python3 = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistNames", document.getElementById("downloadFirstInput").value]);
-				python3.stdout.on("data", (data) => {
-					let pypy9output = JSON.parse(data.toString().trim().replace(/'/g, '"'));
-
-					for (i = 0; i < decodedJson.length; i++) {
-						const songAndThumbnail = document.createElement("div");
-						songAndThumbnail.className = "songAndThumbnail";
-						songAndThumbnail.id = "songAndThumbnail" + i;
-						downloadPlaceofSongs.appendChild(songAndThumbnail);
-
-						const exampleDownloadColumn = document.createElement("div");
-						exampleDownloadColumn.className = "exampleDownloadColumn";
-						songAndThumbnail.appendChild(exampleDownloadColumn);
-
-						const downloadSecondInput = document.createElement("input");
-						downloadSecondInput.type = "text";
-						downloadSecondInput.className = "playlistTitle";
-						downloadSecondInput.id = "playlistTitle" + i;
-						downloadSecondInput.value = decodedJson[i];
-						downloadSecondInput.spellcheck = false;
-						exampleDownloadColumn.appendChild(downloadSecondInput);
-
-						if (i == 0) {
-							const saveAsPlaylist = document.createElement("button");
-							saveAsPlaylist.id = "saveAsPlaylist";
-							saveAsPlaylist.innerHTML = "Save as playlist";
-							songAndThumbnail.appendChild(saveAsPlaylist);
-							saveAsPlaylist.style.backgroundColor = "red";
-
-							saveAsPlaylist.onclick = function () {
-								if (isSaveAsPlaylistActive) {
-									saveAsPlaylist.style.backgroundColor = "red";
-									isSaveAsPlaylistActive = false;
-								} else {
-									saveAsPlaylist.style.backgroundColor = "green";
-									isSaveAsPlaylistActive = true;
-								}
-							};
-						} else {
-							const deleteThisPlaylistSong = document.createElement("button");
-							deleteThisPlaylistSong.id = "deleteThisPlaylistSong" + i;
-							deleteThisPlaylistSong.className = "deleteThisPlaylistSong";
-							deleteThisPlaylistSong.innerHTML = "Delete";
-							songAndThumbnail.appendChild(deleteThisPlaylistSong);
-							deleteThisPlaylistSong.onclick = function () {
-								this.parentNode.remove();
-							};
-						}
-
-						const theDivsNumber = document.createElement("div");
-						theDivsNumber.innerHTML = i;
-						theDivsNumber.className = "numberingTheBoxes";
-						exampleDownloadColumn.appendChild(theDivsNumber);
-
-						const thumbnailInput = document.createElement("input");
-						thumbnailInput.type = "file";
-						thumbnailInput.className = "thumbnailInput";
-						thumbnailInput.id = "thumbnailInput" + i;
-						thumbnailInput.accept = "image/*";
-						let obama = i;
-						thumbnailInput.onchange = function (event) {
-							updateThumbnailImage(event, document.getElementById("thumbnailImage" + obama));
-						};
-						exampleDownloadColumn.appendChild(thumbnailInput);
-
-						const thumbnailDiv = document.createElement("div");
-						thumbnailDiv.className = "thumbnailImage";
-						thumbnailDiv.id = "thumbnailImage" + i;
-						if (i == 0) {
-							thumbnailDiv.style.backgroundImage = `url(${decodedJson2[1]})`;
-						} else {
-							thumbnailDiv.style.backgroundImage = `url(${decodedJson2[i]})`;
-							songAndThumbnail.dataset.link = pypy9output[i - 1];
-						}
-						thumbnailDiv.alt = "";
-						songAndThumbnail.appendChild(thumbnailDiv);
-					}
-
-					document.getElementById("downloadModalText").innerHTML = "";
-					document.getElementById("downloadFirstButton").disabled = false;
-					document.getElementById("downloadSecondPhase").style.display = "block";
-					const finalDownloadButton = document.createElement("button");
-					finalDownloadButton.id = "finalDownloadButton";
-					finalDownloadButton.onclick = function () {
-						actuallyDownloadTheSong();
-					};
-					finalDownloadButton.textContent = "Download";
-					downloadModalBottomRow.appendChild(finalDownloadButton);
-				});
-			});
-			pythonProcessThumbnail2.stderr.on("data", (data) => {
-				console.error(`Error: ${data}`);
-			});
-			pythonProcessThumbnail2.on("close", (code) => {
-				console.log(`Python process exited with code ${code}`);
+			pythonProcessLinks.stderr.on("data", (data) => {
+				console.error(`Error fetching video links: ${data}`);
+				downloadModalText.innerHTML = "Error retrieving video links.";
+				document.getElementById("downloadFirstButton").disabled = false;
 			});
 		});
-		pythonProcessTitle.stderr.on("data", (data) => {
-			console.error(`Error: ${data}`);
+
+		pythonProcessThumbnail.stderr.on("data", (data) => {
+			console.error(`Error fetching playlist thumbnails: ${data}`);
+			downloadModalText.innerHTML = "Error retrieving playlist thumbnails.";
+			document.getElementById("downloadFirstButton").disabled = false;
 		});
-		pythonProcessTitle.on("close", (code) => {
-			console.log(`Python process exited with code ${code}`);
-		});
-	} else {
-		document.getElementById("downloadModalText").innerHTML = "Link neither a video or playlist.";
+	});
+
+	pythonProcessTitle.stderr.on("data", (data) => {
+		console.error(`Error fetching playlist titles: ${data}`);
+		downloadModalText.innerHTML = "Error retrieving playlist titles.";
 		document.getElementById("downloadFirstButton").disabled = false;
-		document.getElementById("downloadSecondPhase").style.display = "block";
-	}
+	});
 }
 
 function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
-	if (differentiateYouTubeLinks(document.getElementById("downloadFirstInput").value) == "video") {
+	const firstInput = document.getElementById("downloadFirstInput").value.trim();
+	const linkType = differentiateYouTubeLinks(firstInput);
+
+	if (linkType === "video") {
+		downloadSingleVideo();
+	} else if (linkType === "playlist") {
+		downloadPlaylist();
+	} else {
+		document.getElementById("downloadModalText").innerText = "The URL is neither a valid video nor playlist.";
+		document.getElementById("finalDownloadButton").disabled = false;
+	}
+
+	function downloadSingleVideo() {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
 		const outputFilePath = path.join(musicFolder, `${secondInput}.mp3`);
 		const img = document.getElementById("thumbnailImage");
+
 		if (!isValidFileName(secondInput)) {
 			document.getElementById("downloadModalText").innerText = 'Invalid characters in filename. These characters cannot be used in filenames: / \\ : * ? " < > | ,';
 			document.getElementById("finalDownloadButton").disabled = false;
@@ -293,266 +354,247 @@ function actuallyDownloadTheSong() {
 		} else if (secondInput.length > 100) {
 			document.getElementById("downloadModalText").innerText = "Invalid filename. The file must be shorter than 100 characters.";
 			document.getElementById("finalDownloadButton").disabled = false;
+			return;
 		} else if (fileExists(outputFilePath)) {
 			document.getElementById("downloadModalText").innerText = `File ${secondInput}.mp3 already exists. Please choose a different filename.`;
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
-		} else {
-			document.getElementById("downloadModalText").innerText = "Downloading Song...";
 		}
-		const pythonProcessFileName = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic", document.getElementById("downloadFirstInput").value, secondInput]);
+
+		document.getElementById("downloadModalText").innerText = "Downloading Song...";
+
+		const pythonProcessFileName = spawn(path.join(taratorFolder, "video_install.exe"), ["DownloadMusic", firstInput, secondInput]);
+
 		pythonProcessFileName.stdout.on("data", (data) => {
 			const decodedData = data.toString().trim();
-			console.log(data.toString().trim());
-			let parsedData;
+			console.log(decodedData);
 			try {
-				parsedData = JSON.parse(decodedData);
+				const parsedData = JSON.parse(decodedData);
 				document.getElementById("downloadModalText").innerText = "Song downloaded successfully!";
+
+				downloadThumbnail(img.src, secondInput);
 			} catch (error) {
 				console.error(`Error parsing JSON: ${error}`);
-				parsedData = {
-					error: "Invalid JSON",
-				};
 				document.getElementById("finalDownloadButton").disabled = false;
-				document.getElementById("downloadModalText").innerText = parsedData.message;
+				document.getElementById("downloadModalText").innerText = "Error during download: " + decodedData;
 			}
-
-			fetch(img.src)
-				.then((res) => res.blob())
-				.then((blob) => {
-					const reader = new FileReader();
-					reader.onloadend = function () {
-						const base64data = reader.result;
-						const tempFilePath = path.join(taratorFolder, "temp_thumbnail.txt");
-						fs.writeFileSync(tempFilePath, base64data);
-
-						const pythonProcessFileThumbnail = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail", tempFilePath, secondInput]);
-						pythonProcessFileThumbnail.stdout.on("data", (data) => {
-							const decodedData = data.toString().trim();
-							let parsedData;
-							try {
-								parsedData = JSON.parse(decodedData);
-							} catch (error) {
-								console.error(`Error parsing JSON: ${error}`);
-								parsedData = { error: "Invalid JSON" };
-							}
-							document.getElementById("downloadModalText").innerText = document.getElementById("downloadModalText").innerText + " Thumbnail downloaded successfully!";
-						});
-
-						pythonProcessFileThumbnail.stderr.on("data", (data) => {
-							console.error(`Error: ${data}`);
-						});
-						pythonProcessFileThumbnail.on("close", (code) => {
-							console.log(`Python process exited with code ${code}`);
-							fs.unlinkSync(tempFilePath);
-							document.getElementById("finalDownloadButton").disabled = false;
-						});
-					};
-					reader.readAsDataURL(blob);
-				})
-				.catch((error) => console.error(`Error: ${error}`));
 		});
+
 		pythonProcessFileName.stderr.on("data", (data) => {
 			console.error(`Error: ${data}`);
+			document.getElementById("downloadModalText").innerText = `Error: ${data}`;
+			document.getElementById("finalDownloadButton").disabled = false;
 		});
+
 		pythonProcessFileName.on("close", (code) => {
 			console.log(`Python process exited with code ${code}`);
+			if (code !== 0) {
+				document.getElementById("downloadModalText").innerText = `Download process failed with code ${code}`;
+				document.getElementById("finalDownloadButton").disabled = false;
+			}
 		});
-	} else if (differentiateYouTubeLinks(document.getElementById("downloadFirstInput").value) == "playlist") {
-		let howManyAreThere = document.querySelectorAll("div.songAndThumbnail").length;
-		const playlistTitlesArray = Array.from(document.querySelectorAll("input.playlistTitle"), (input) => input.value);
-		const dataLinks = Array.from(document.querySelectorAll(".songAndThumbnail")).map((div) => div.getAttribute("data-link"));
-		playlistTitlesArray.shift();
-		dataLinks.shift();
+	}
 
-		if (!isValidFileName(document.getElementById("playlistTitle0").value)) {
+	function downloadPlaylist() {
+		const songLinks = [];
+
+		const thumbnails = document.querySelectorAll(".thumbnailImage");
+
+		for (let i = 1; i < thumbnails.length; i++) {
+			const style = thumbnails[i].style.backgroundImage;
+			const match = style.match(/img\.youtube\.com\/vi\/([^/]+)\//);
+
+			if (match && match[1]) {
+				const videoId = match[1];
+				const youtubeLink = `https://www.youtube.com/watch?v=${videoId}`;
+				songLinks.push(youtubeLink);
+			}
+		}
+
+		const totalSongs = songLinks.length;
+		console.log(songLinks);
+
+		if (totalSongs < 1) {
+			document.getElementById("downloadModalText").innerText = "No songs found in playlist.";
+			document.getElementById("finalDownloadButton").disabled = false;
+			return;
+		}
+
+		const playlistName = document.getElementById("playlistTitle0").value.trim();
+		if (!isValidFileName(playlistName)) {
 			document.getElementById("downloadModalText").innerText = `Invalid characters in the playlist name. These characters cannot be used in filenames: / \\ ' . : * ? " < > | ,`;
+			document.getElementById("finalDownloadButton").disabled = false;
+			return;
+		}
+
+		const songTitles = Array.from(document.querySelectorAll("input.playlistTitle"), (input) => input.value.trim()).slice(1);
+
+		console.log(songLinks);
+
+		if (songTitles.length === 0 || songLinks.length === 0) {
+			document.getElementById("downloadModalText").innerText = "No valid songs found in playlist.";
+			document.getElementById("finalDownloadButton").disabled = false;
+			return;
+		}
+
+		const invalidTitles = [];
+		const duplicateTitles = findDuplicates(songTitles);
+
+		for (let i = 0; i < songTitles.length; i++) {
+			const title = songTitles[i];
+			const outputPath = path.join(musicFolder, `${title}.mp3`);
+
+			if (!isValidFileName(title)) {
+				invalidTitles.push(`Song #${i + 1}: Invalid characters`);
+			} else if (title.length > 100) {
+				invalidTitles.push(`Song #${i + 1}: Filename too long`);
+			} else if (fileExists(outputPath)) {
+				invalidTitles.push(`Song #${i + 1}: File already exists`);
+			}
+		}
+
+		if (invalidTitles.length > 0) {
+			document.getElementById("downloadModalText").innerText = `Validation errors:${invalidTitles.join("\n")}`;
+			document.getElementById("finalDownloadButton").disabled = false;
+			return;
+		}
+
+		if (duplicateTitles.length > 0) {
+			document.getElementById("downloadModalText").innerText = `The following file names have duplicates: ${duplicateTitles.join(", ")}. Please choose different filenames.`;
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
 		}
 
 		fs.readFile(playlistPath, "utf8", (err, data) => {
 			if (err) {
-				document.getElementById("downloadModalText").innerText = ("Error reading the JSON file:", err);
+				document.getElementById("downloadModalText").innerText = "Error reading playlist file: " + err.message;
 				document.getElementById("finalDownloadButton").disabled = false;
 				return;
-			} else if (JSON.parse(data).some((playlist) => playlist.name === document.getElementById("playlistTitle0").value)) {
+			}
+
+			let playlists = [];
+			try {
+				playlists = JSON.parse(data);
+			} catch (error) {
+				console.error("Error parsing playlists:", error);
+				playlists = [];
+			}
+
+			if (playlists.some((playlist) => playlist.name === playlistName)) {
 				document.getElementById("downloadModalText").innerText = "A playlist with this name already exists.";
 				document.getElementById("finalDownloadButton").disabled = false;
 				return;
 			}
 
-			let tavuk = 1;
-			let barbeku = 1;
+			saveeeAsPlaylist(songTitles);
 
-			while (tavuk < howManyAreThere) {
-				if (barbeku == 5001) {
-					break;
-				}
-				if (document.getElementById(`playlistTitle${barbeku}`)) {
-					let outputFilePath = path.join(musicFolder, `${playlistTitlesArray[tavuk - 1]}.mp3`);
-					if (document.getElementById("playlistTitle" + barbeku)) {
-						const duplicates = findDuplicates(playlistTitlesArray);
-						if (!isValidFileName(document.getElementById("playlistTitle" + barbeku).value)) {
-							document.getElementById("downloadModalText").innerText = `Invalid characters in ${barbeku}. songs name. These characters cannot be used in filenames: / \\ ' . : * ? " < > | ,`;
-							document.getElementById("finalDownloadButton").disabled = false;
-							return;
-						} else if (document.getElementById("playlistTitle" + barbeku).value.length > 100) {
-							document.getElementById("downloadModalText").innerText = `${barbeku}. songs name is too long. Maximum length allowed is 100 characters.`;
-							document.getElementById("finalDownloadButton").disabled = false;
-							return;
-						} else if (fileExists(outputFilePath)) {
-							document.getElementById("downloadModalText").innerText = `File ${playlistTitlesArray[tavuk - 1]}.mp3 already exists. Please choose a different filename.`;
-							document.getElementById("finalDownloadButton").disabled = false;
-							return;
-						} else if (duplicates.length > 0) {
-							document.getElementById("downloadModalText").innerText = `The following file names have duplicates: ${duplicates.join(", ")}. Please choose different filenames.`;
-							document.getElementById("finalDownloadButton").disabled = false;
-							return;
-						}
-					}
-					tavuk++;
-				}
-				barbeku++;
-			}
+			document.getElementById("downloadModalText").innerText = totalSongs > 50 ? "Downloading... This might take some time..." : "Downloading...";
 
-			saveeeAsPlaylist(playlistTitlesArray);
-			document.getElementById("downloadModalText").innerText = "Downloading...";
-			if (howManyAreThere > 50) {
-				document.getElementById("downloadModalText").innerText = "Downloading... But it might take some time...";
-			}
-			testFunctionTest(howManyAreThere, dataLinks, playlistTitlesArray);
+			downloadSongsSequentially();
+		});
 
-			let peynir = 1;
-			let j = 1;
-			if (isSaveAsPlaylistActive) {
-				peynir = 0;
-				j = 0;
-			}
-			const pythonProcessGetThumbnails = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistThumbnail", document.getElementById("downloadFirstInput").value]);
+		function downloadSongsSequentially() {
+			let completedDownloads = 0;
 
+			const pythonProcessGetThumbnails = spawn(path.join(taratorFolder, "video_install.exe"), ["PlaylistThumbnail", firstInput]);
+
+			let thumbnailUrls = [];
 			pythonProcessGetThumbnails.stdout.on("data", (data) => {
 				const decodedData = data.toString().trim();
-				let thumbnails = [];
 				try {
-					thumbnails = JSON.parse(decodedData); // This includes one for each video
+					thumbnailUrls = JSON.parse(decodedData);
 				} catch (error) {
 					console.error("Error parsing thumbnails JSON:", error);
-					return;
-				}
-
-				let peynir = 1;
-				let j = 1;
-				if (isSaveAsPlaylistActive) {
-					peynir = 0;
-					j = 0;
-				}
-
-				while (peynir < howManyAreThere) {
-					if (j == 5001) break;
-
-					let imgUrl = thumbnails[peynir]; // use from python's output
-					let songName = document.getElementById(`playlistTitle${j}`)?.value.trim();
-					if (!songName || imgUrl === "No thumbnail found") {
-						j++;
-						continue;
-					}
-
-					peynir++;
-
-					fetch(imgUrl)
-						.then((res) => res.blob())
-						.then((blob) => {
-							let reader = new FileReader();
-							reader.onloadend = function () {
-								let base64data = reader.result;
-								let tempFilePath = path.join(taratorFolder, `temp_thumbnail_${songName}.txt`);
-								fs.writeFileSync(tempFilePath, base64data);
-
-								let pythonProcess = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail", tempFilePath, songName]);
-
-								pythonProcess.stdout.on("data", (data) => {
-									let decodedData = data.toString().trim();
-									let parsedData;
-									try {
-										parsedData = JSON.parse(decodedData);
-										console.log(`Thumbnail for ${songName} saved.`);
-									} catch (error) {
-										console.error(`Thumbnail JSON parse error: ${error}`);
-									}
-								});
-								pythonProcess.on("close", (code) => {
-									console.log(`Thumbnail download process exited with code ${code}`);
-									if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-								});
-							};
-							reader.readAsDataURL(blob);
-						})
-						.catch((error) => console.error(`Thumbnail fetch error: ${error}`));
-
-					j++;
 				}
 			});
 
-			while (peynir < howManyAreThere) {
-				if (j == 5001) {
-					break;
-				}
-				if (document.getElementById(`thumbnailImage${j}`)) {
-					let img = document.getElementById(`thumbnailImage${j}`);
-					let songName = "placeholdergagaga";
-					playlistName = document.getElementById(`playlistTitle0`).value;
-					if (j != 0) {
-						songName = document.getElementById(`playlistTitle${j}`).value.trim();
+			pythonProcessGetThumbnails.on("close", () => {
+				downloadNextSong(0);
+			});
+
+			function downloadNextSong(index) {
+				if (index >= songTitles.length) {
+					document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
+					document.getElementById("finalDownloadButton").disabled = false;
+
+					if (isSaveAsPlaylistActive) {
+						fs.rename("thumbnails/placeholdergagaga_thumbnail.jpg", `thumbnails/${playlistName}_playlist.jpg`, (err) => {
+							if (err) console.error("Error renaming playlist thumbnail:", err);
+						});
 					}
-					peynir++;
-					fetch(img.src)
-						.then((res) => res.blob())
-						.then((blob) => {
-							let reader = new FileReader();
-							reader.onloadend = function () {
-								let base64data = reader.result;
-								let tempFilePath = path.join(taratorFolder, `temp_thumbnail_${songName}.txt`);
-								try {
-									fs.writeFileSync(tempFilePath, base64data);
-									let pythonProcess = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail", tempFilePath, songName]);
-
-									pythonProcess.stdout.on("data", (data) => {
-										let decodedData = data.toString().trim();
-										let parsedData;
-										try {
-											parsedData = JSON.parse(decodedData);
-										} catch (error) {
-											console.error(`Error parsing JSON: ${error}`);
-											parsedData = { error: "Invalid JSON" };
-											document.getElementById("finalDownloadButton").disabled = false;
-										}
-									});
-
-									pythonProcess.stderr.on("data", (data) => {
-										console.error(`Error: ${data}`);
-									});
-									pythonProcess.on("close", (code) => {
-										console.log(`Python process exited with code ${code}`);
-										if (fs.existsSync(tempFilePath)) {
-											fs.unlinkSync(tempFilePath);
-										}
-										document.getElementById("downloadModalText").innerText = ("Downloaded all thumbnails successfully!" || parsedData.error || "Unknown response") + "\n";
-									});
-								} catch (error) {
-									console.error(`Error writing file: ${error}`);
-								}
-							};
-							reader.readAsDataURL(blob);
-						})
-						.catch((error) => console.error(`Error: ${error}`));
+					return;
 				}
-				j++;
+
+				const songTitle = songTitles[index];
+				const songLink = songLinks[index];
+
+				document.getElementById("downloadModalText").innerText = `Downloading song ${index + 1} of ${songTitles.length}: ${songTitle}`;
+
+				const pythonProcess = spawn(path.join(taratorFolder, "video_install.exe"), ["DownloadMusic", songLink, songTitle]);
+
+				pythonProcess.stdout.on("data", (data) => {
+					const output = data.toString().trim();
+					console.log(`Song ${index + 1} output:`, output);
+					if (output.includes("age restricted")) {
+						alert(`Song ${index + 1} is age restricted, and will be skipped.`);
+					}
+
+					if (output.includes("Error")) {
+						document.getElementById("downloadModalText").innerText = `Error downloading song ${index + 1}: ${output}`;
+					}
+				});
+
+				pythonProcess.stderr.on("data", (data) => {
+					console.error(`Song ${index + 1} error:`, data.toString().trim());
+				});
+
+				pythonProcess.on("close", (code) => {
+					completedDownloads++;
+
+					const thumbnailUrl = thumbnailUrls[index];
+					if (thumbnailUrl && thumbnailUrl !== "No thumbnail found") {
+						downloadThumbnail(thumbnailUrl, songTitle);
+					} else {
+						const imgElement = document.getElementById(`thumbnailImage${index}`);
+						if (imgElement) {
+							downloadThumbnail(imgElement.src, songTitle);
+						}
+					}
+
+					document.getElementById("downloadModalText").innerText = `Downloaded song ${index + 1} of ${songTitles.length}. Progress: ${completedDownloads}/${songTitles.length}`;
+					downloadNextSong(index + 1);
+				});
 			}
-		});
-	} else {
-		document.getElementById("downloadModalText").innerText = "The URL is neither a video or a playlist.";
-		document.getElementById("finalDownloadButton").disabled = false;
+		}
+	}
+
+	function downloadThumbnail(imageUrl, title) {
+		fetch(imageUrl)
+			.then((res) => res.blob())
+			.then((blob) => {
+				const reader = new FileReader();
+				reader.onloadend = function () {
+					const base64data = reader.result;
+					const tempFilePath = path.join(taratorFolder, `temp_thumbnail_${title}.txt`);
+
+					try {
+						fs.writeFileSync(tempFilePath, base64data);
+
+						const pythonProcess = spawn(path.join(taratorFolder, "video_install.exe"), ["DownloadThumbnail", tempFilePath, title]);
+
+						pythonProcess.on("close", (code) => {
+							console.log(`Thumbnail download for "${title}" exited with code ${code}`);
+							if (fs.existsSync(tempFilePath)) {
+								fs.unlinkSync(tempFilePath);
+							}
+						});
+					} catch (error) {
+						console.error(`Error saving thumbnail for ${title}:`, error);
+					}
+				};
+				reader.readAsDataURL(blob);
+			})
+			.catch((error) => console.error(`Error fetching thumbnail for ${title}:`, error));
 	}
 }
 
@@ -609,45 +651,5 @@ function saveeeAsPlaylist(playlistTitlesArray) {
 				console.error("Error parsing the JSON data:", parseError);
 			}
 		});
-	}
-}
-
-async function testFunctionTest(howManyAreThere, dataLinks, playlistTitlesArray) {
-	for (let i = 0; i < howManyAreThere - 1; i++) {
-		console.log("Link: ", dataLinks[i].trim(), "Title: ", playlistTitlesArray[i].trim());
-
-		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic", dataLinks[i].trim(), playlistTitlesArray[i].trim()]);
-
-		pythonProcessTitle.stdout.on("data", (data) => {
-			let theText = data.toString().trim();
-			console.log(theText);
-			if (theText.includes("Error")) {
-				alert(theText);
-			}
-		});
-
-		pythonProcessTitle.stderr.on("data", (data) => {
-			document.getElementById("downloadModalText").innerText = `Error: ${data}`;
-			alert(data.toString().trim());
-			document.getElementById("finalDownloadButton").disabled = false;
-		});
-
-		if (i < howManyAreThere - 2) {
-			document.getElementById("downloadModalText").innerText = "Done downloading the " + (i + 1) + ". song.";
-			await new Promise((resolve) => setTimeout(resolve, 3000));
-		} else {
-			document.getElementById("downloadModalText").innerText = "Done!";
-			document.getElementById("finalDownloadButton").disabled = false;
-
-			if (isSaveAsPlaylistActive) {
-				fs.rename("thumbnails/placeholdergagaga_thumbnail.jpg", `thumbnails/${document.getElementById("playlistTitle0").value}_playlist.jpg`, (err) => {
-					if (err) {
-						console.error("Error renaming file:", err);
-					} else {
-						console.log("File renamed successfully");
-					}
-				});
-			}
-		}
 	}
 }

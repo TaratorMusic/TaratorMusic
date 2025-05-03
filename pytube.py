@@ -5,12 +5,10 @@ import base64
 import requests
 from pytubefix import YouTube, Playlist
 
-# Helper to determine base path (frozen or not)
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        return sys._MEIPASS  # temp path when frozen by PyInstaller
-    else:
-        return os.path.dirname(__file__)
+def get_output_path(subfolder):
+    output_dir = os.path.join(os.getcwd(), subfolder)
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir
 
 if len(sys.argv) < 2:
     print(json.dumps({"error": "No command type provided."}), flush=True)
@@ -18,7 +16,6 @@ if len(sys.argv) < 2:
 
 command = sys.argv[1]
 args = sys.argv[2:]
-base_path = get_base_path()
 
 result = {}
 
@@ -57,7 +54,6 @@ try:
         if args:
             playlist = Playlist(args[0])
             thumbnails = []
-
             qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault', 'default']
             for video_url in playlist.video_urls:
                 video_id = video_url.split("watch?v=")[-1]
@@ -70,19 +66,24 @@ try:
                         break
                 if not found:
                     thumbnails.append("No thumbnail found")
-
             result = json.dumps(thumbnails)
         else:
             result = json.dumps({"error": "No playlist URL provided"})
 
     elif command == "DownloadMusic":
         if len(args) >= 2:
-            yt = YouTube(args[0])
+            url = args[0]
             filename = args[1]
-            output_dir = os.path.join(base_path, 'musics')
-            os.makedirs(output_dir, exist_ok=True)
-            yt.streams.filter(only_audio=True).first().download(output_path=output_dir, filename=f"{filename}.mp3")
-            result = json.dumps({"Success": f"Downloaded: {filename}.mp3"})
+            output_dir = get_output_path('musics')
+
+            yt = YouTube(url)
+            audio_stream = yt.streams.filter(only_audio=True).first()
+
+            if not audio_stream:
+                result = json.dumps({"error": "No audio stream found"})
+            else:
+                audio_stream.download(output_path=output_dir, filename=f"{filename}.mp3")
+                result = json.dumps({"Success": f"Downloaded: {filename}.mp3"})
         else:
             result = json.dumps({"error": "Need YouTube URL and filename"})
 
@@ -90,8 +91,7 @@ try:
         if len(args) >= 2:
             base64_file = args[0]
             output_name = args[1]
-            output_dir = os.path.join(base_path, 'thumbnails')
-            os.makedirs(output_dir, exist_ok=True)
+            output_dir = get_output_path('thumbnails')
             new_file_path = os.path.join(output_dir, f"{output_name}_thumbnail.jpg")
 
             with open(base64_file, 'r') as f:

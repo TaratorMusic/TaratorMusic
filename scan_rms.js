@@ -1,5 +1,3 @@
-// scan_rms.js
-
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -35,9 +33,21 @@ async function analyzeFile(filePath) {
 
 async function processAllFiles() {
 	const files = fs.readdirSync(musicFolder).filter((f) => f.endsWith(".mp3"));
+
 	let rmsMap = {};
+	if (fs.existsSync(rmsPath)) {
+		try {
+			rmsMap = JSON.parse(fs.readFileSync(rmsPath));
+		} catch (e) {
+			console.warn("⚠️ Could not parse existing RMS file. Starting fresh.");
+		}
+	}
 
 	for (const file of files) {
+		if (rmsMap[file]) {
+			continue;
+		}
+
 		const filePath = path.join(musicFolder, file);
 		console.log(`Analyzing ${file}...`);
 		try {

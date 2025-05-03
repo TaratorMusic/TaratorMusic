@@ -19,8 +19,8 @@ if (!fs.existsSync(dbPath)) {
 
 const db = new Database(dbPath);
 
-document.addEventListener("DOMContentLoaded", function() {
-    initializeDatabase();
+document.addEventListener("DOMContentLoaded", function () {
+	initializeDatabase();
 });
 
 let rmsCache = {};
@@ -1642,6 +1642,9 @@ function setupLazyBackgrounds() {
 }
 
 function loadJSFile(filename) {
+	if (filename === "download_music") {
+		downloadModal.style.display = "block";
+	}
 	const src = `${filename}.js`;
 	const existingScript = Array.from(document.scripts).find((script) => script.src.includes(src));
 	if (existingScript) {
@@ -1652,13 +1655,11 @@ function loadJSFile(filename) {
 	script.src = src;
 	script.onload = function () {
 		if (filename === "download_music") {
-			console.log(true);
 			if (!pytubeStatus) {
 				alert("Please first install Pytube from the settings to download music.");
 				return;
 			}
 
-			downloadModal.style.display = "block";
 			document.getElementById("downloadFirstInput").value = "";
 
 			const secondPhase = document.getElementById("downloadSecondPhase");
