@@ -4,8 +4,24 @@ const { ipcRenderer } = require("electron");
 const icon = require("./svg.js");
 const { spawn } = require("child_process");
 const path = require("path");
-const sqlite3 = require("sqlite3").verbose();
 const fs = require("fs");
+const Database = require("better-sqlite3");
+
+const taratorFolder = __dirname;
+const musicFolder = path.join(taratorFolder, "musics");
+const thumbnailFolder = path.join(taratorFolder, "thumbnails");
+const dbPath = path.join(taratorFolder, "appData.db");
+const playlistPath = path.join(taratorFolder, "playlists.json");
+
+if (!fs.existsSync(dbPath)) {
+	fs.writeFileSync(dbPath, "");
+}
+
+const db = new Database(dbPath);
+
+document.addEventListener("DOMContentLoaded", function() {
+    initializeDatabase();
+});
 
 let rmsCache = {};
 const rmsPath = path.join(__dirname, "rms_cache.json");
@@ -84,25 +100,6 @@ let key_Mute;
 let key_Speed;
 let key_Loop;
 
-const taratorFolder = __dirname;
-const musicFolder = path.join(taratorFolder, "musics");
-const thumbnailFolder = path.join(taratorFolder, "thumbnails");
-const dbPath = path.join(taratorFolder, "appData.db");
-const playlistPath = path.join(taratorFolder, "playlists.json");
-
-if (!fs.existsSync(dbPath)) {
-	fs.writeFileSync(dbPath, "");
-}
-
-const db = new sqlite3.Database(dbPath, (err) => {
-	if (err) {
-		console.error("Error opening database:", err.message);
-	} else {
-		console.log("Connected to the SQLite database.");
-		initializeDatabase();
-	}
-});
-
 const defaultSettings = {
 	totalTimeSpent: 0,
 	pytubeStatus: 0,
@@ -125,49 +122,41 @@ const defaultSettings = {
 };
 
 function initializeDatabase() {
-	db.serialize(() => {
-		db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'", (err, row) => {
-			if (err) {
-				console.error("Error checking for settings table:", err.message);
-				return;
-			}
+	let row;
+	try {
+		row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
+	} catch (err) {
+		console.error("Error checking for settings table:", err.message);
+		return;
+	}
 
-			if (!row) {
-				console.log("Settings table not found. Creating...");
+	if (!row) {
+		console.log("Settings table not found. Creating...");
 
-				let createTableSQL = `CREATE TABLE settings (`;
-
-				const keys = Object.keys(defaultSettings);
-				keys.forEach((key, index) => {
-					const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
-					createTableSQL += `${key} ${columnType} DEFAULT '${defaultSettings[key]}'`;
-					if (index < keys.length - 1) {
-						createTableSQL += ",\n";
-					}
-				});
-
-				createTableSQL += ")";
-
-				db.run(createTableSQL, (err) => {
-					if (err) {
-						console.error("Error creating settings table:", err.message);
-						return;
-					}
-
-					console.log("Settings table created successfully.");
-					insertDefaultSettings();
-				});
-			} else {
-				console.log("Settings table exists. Checking columns...");
-				ensureColumns();
+		let createTableSQL = `CREATE TABLE settings (`;
+		const keys = Object.keys(defaultSettings);
+		keys.forEach((key, index) => {
+			const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
+			createTableSQL += `${key} ${columnType} DEFAULT '${defaultSettings[key]}'`;
+			if (index < keys.length - 1) {
+				createTableSQL += ",\\n";
 			}
 		});
-	});
-}
+		createTableSQL += ")";
 
-function ensureColumns() {
-	db.all("PRAGMA table_info(settings)", (err, columns) => {
-		if (err) {
+		try {
+			db.prepare(createTableSQL).run();
+			console.log("Settings table created successfully.");
+			insertDefaultSettings();
+		} catch (err) {
+			console.error("Error creating settings table:", err.message);
+		}
+	} else {
+		console.log("Settings table exists. Checking columns...");
+		let columns;
+		try {
+			columns = db.prepare("PRAGMA table_info(settings)").all();
+		} catch (err) {
 			console.error("Error fetching table info:", err.message);
 			return;
 		}
@@ -178,28 +167,18 @@ function ensureColumns() {
 		if (missingColumns.length > 0) {
 			console.log("Adding missing columns...");
 
-			let columnsProcessed = 0;
-
 			missingColumns.forEach((key) => {
 				let columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
-				db.run(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`, (err) => {
-					if (err) {
-						console.error(`Error adding column ${key}:`, err.message);
-					} else {
-						console.log(`Added missing column: ${key}`);
-					}
-
-					columnsProcessed++;
-
-					if (columnsProcessed === missingColumns.length) {
-						loadSettings();
-					}
-				});
+				try {
+					db.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
+					console.log(`Added missing column: ${key}`);
+				} catch (err) {
+					console.error(`Error adding column ${key}:`, err.message);
+				}
 			});
-		} else {
-			loadSettings();
 		}
-	});
+		loadSettings();
+	}
 }
 
 function insertDefaultSettings() {
@@ -208,96 +187,89 @@ function insertDefaultSettings() {
 		.map(() => "?")
 		.join(", ");
 	const values = Object.values(defaultSettings);
-
 	const insertSQL = `INSERT INTO settings (${columns}) VALUES (${placeholders})`;
 
-	db.run(insertSQL, values, function (err) {
-		if (err) {
-			console.error("Error inserting default settings:", err.message);
-			return;
-		}
-
+	try {
+		db.prepare(insertSQL).run(values);
 		console.log(`Default settings inserted.`);
 		loadSettings();
-	});
+	} catch (err) {
+		console.error("Error inserting default settings:", err.message);
+	}
 }
 
 function loadSettings() {
-	db.get("SELECT * FROM settings", (err, row) => {
-		if (err) {
-			console.error("Error retrieving settings:", err.message);
-			return;
+	let row;
+	try {
+		row = db.prepare("SELECT * FROM settings").get();
+	} catch (err) {
+		console.error("Error retrieving settings:", err.message);
+		return;
+	}
+
+	if (!row) {
+		console.log("No settings found, inserting defaults.");
+		insertDefaultSettings();
+		return;
+	}
+
+	Object.keys(defaultSettings).forEach((key) => {
+		if (row[key] === null || row[key] === undefined) {
+			console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
+			updateDatabase(key, defaultSettings[key]);
+			row[key] = defaultSettings[key];
 		}
-
-		if (!row) {
-			console.log("No settings found, inserting defaults.");
-			insertDefaultSettings();
-			return;
-		}
-
-		Object.keys(defaultSettings).forEach((key) => {
-			if (row[key] === null || row[key] === undefined) {
-				console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
-				updateDatabase(key, defaultSettings[key]);
-				row[key] = defaultSettings[key];
-			}
-		});
-
-		console.log("Settings loaded:", row);
-
-		document.getElementById("settingsRewind").innerHTML = row.key_Rewind;
-		document.getElementById("settingsPrevious").innerHTML = row.key_Previous;
-		document.getElementById("settingsPlayPause").innerHTML = row.key_PlayPause;
-		document.getElementById("settingsNext").innerHTML = row.key_Next;
-		document.getElementById("settingsSkip").innerHTML = row.key_Skip;
-		document.getElementById("settingsAutoplay").innerHTML = row.key_Autoplay;
-		document.getElementById("settingsShuffle").innerHTML = row.key_Shuffle;
-		document.getElementById("settingsMute").innerHTML = row.key_Mute;
-		document.getElementById("settingsSpeed").innerHTML = row.key_Speed;
-		document.getElementById("settingsLoop").innerHTML = row.key_Loop;
-
-		key_Rewind = row.key_Rewind;
-		key_Previous = row.key_Previous;
-		key_PlayPause = row.key_PlayPause;
-		key_Next = row.key_Next;
-		key_Skip = row.key_Skip;
-		key_Autoplay = row.key_Autoplay;
-		key_Shuffle = row.key_Shuffle;
-		key_Mute = row.key_Mute;
-		key_Speed = row.key_Speed;
-		key_Loop = row.key_Loop;
-
-		totalTimeSpent = row.totalTimeSpent;
-		pytubeStatus = row.pytubeStatus;
-		rememberautoplay = row.rememberautoplay;
-		remembershuffle = row.remembershuffle;
-		rememberloop = row.rememberloop;
-		rememberspeed = row.rememberspeed;
-		maximumPreviousSongCount = row.maximumPreviousSongCount;
-		volume = row.volume;
-
-		updateTimer();
-		rememberautoplay && toggleAutoplay();
-		remembershuffle && toggleShuffle();
-		rememberloop && loop();
-		document.getElementById("arrayLength").value = maximumPreviousSongCount;
-		volumeControl.value = volume;
-		if (audioElement) audioElement.volume = volumeControl.value / 100;
 	});
+
+	console.log("Settings loaded:", row);
+
+	document.getElementById("settingsRewind").innerHTML = row.key_Rewind;
+	document.getElementById("settingsPrevious").innerHTML = row.key_Previous;
+	document.getElementById("settingsPlayPause").innerHTML = row.key_PlayPause;
+	document.getElementById("settingsNext").innerHTML = row.key_Next;
+	document.getElementById("settingsSkip").innerHTML = row.key_Skip;
+	document.getElementById("settingsAutoplay").innerHTML = row.key_Autoplay;
+	document.getElementById("settingsShuffle").innerHTML = row.key_Shuffle;
+	document.getElementById("settingsMute").innerHTML = row.key_Mute;
+	document.getElementById("settingsSpeed").innerHTML = row.key_Speed;
+	document.getElementById("settingsLoop").innerHTML = row.key_Loop;
+
+	key_Rewind = row.key_Rewind;
+	key_Previous = row.key_Previous;
+	key_PlayPause = row.key_PlayPause;
+	key_Next = row.key_Next;
+	key_Skip = row.key_Skip;
+	key_Autoplay = row.key_Autoplay;
+	key_Shuffle = row.key_Shuffle;
+	key_Mute = row.key_Mute;
+	key_Speed = row.key_Speed;
+	key_Loop = row.key_Loop;
+
+	totalTimeSpent = row.totalTimeSpent;
+	pytubeStatus = row.pytubeStatus;
+	rememberautoplay = row.rememberautoplay;
+	remembershuffle = row.remembershuffle;
+	rememberloop = row.rememberloop;
+	rememberspeed = row.rememberspeed;
+	maximumPreviousSongCount = row.maximumPreviousSongCount;
+	volume = row.volume;
+
+	updateTimer();
+	rememberautoplay && toggleAutoplay();
+	remembershuffle && toggleShuffle();
+	rememberloop && loop();
+	document.getElementById("arrayLength").value = maximumPreviousSongCount;
+	volumeControl.value = volume;
+	if (audioElement) audioElement.volume = volumeControl.value / 100;
 }
 
 function updateDatabase(name, option) {
-	const db = new sqlite3.Database(dbPath);
-
-	db.run(`UPDATE settings SET ${name} = ?`, [option], function (err) {
-		if (err) {
-			console.error(`Error updating ${name}:`, err.message);
-		} else {
-			console.log(`${name} updated to ${option}.`);
-		}
-	});
-
-	db.close();
+	try {
+		db.prepare(`UPDATE settings SET ${name} = ?`).run(option);
+		console.log(`${name} updated to ${option}.`);
+	} catch (err) {
+		console.error(`Error updating ${name}:`, err.message);
+	}
 }
 
 function updateTimer() {
@@ -452,8 +424,6 @@ function createMusicElement(file) {
 
 	if (fs.existsSync(thumbnailPath)) {
 		thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}`;
-	} else {
-		console.log("Tried to get thumbnail from", thumbnailPath, "but failed. Used", thumbnailUrl, "instead.");
 	}
 
 	const backgroundElement = document.createElement("div");
