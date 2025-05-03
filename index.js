@@ -9,39 +9,7 @@ const fetch = require("node-fetch");
 
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
-const appRoot = app.isPackaged ? path.join(process.resourcesPath, "app") : __dirname
-
-function checkDependencies() {
-	const packageJsonPath = path.join(appRoot, "package.json");
-	const nodeModulesPath = path.join(appRoot, "node_modules");
-
-	if (!fs.existsSync(packageJsonPath) || !fs.existsSync(nodeModulesPath)) {
-		return false;
-	}
-
-	const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-	const dependencies = Object.keys(packageJson.dependencies || {});
-
-	for (const dep of dependencies) {
-		if (!fs.existsSync(path.join(nodeModulesPath, dep))) {
-			return false;
-		}
-	}
-	return true;
-}
-
-function installDependencies() {
-	try {
-		execSync("npm install", { cwd: appRoot, stdio: "inherit" });
-	} catch (error) {
-		console.error("npm install failed:", error);
-		process.exit(1);
-	}
-}
-
-if (!checkDependencies()) {
-	installDependencies();
-}
+const appRoot = app.isPackaged ? path.join(process.resourcesPath, "app") : __dirname;
 
 function createWindow() {
 	const mainWindow = new BrowserWindow({
@@ -57,7 +25,8 @@ function createWindow() {
 	});
 
 	mainWindow.loadFile("index.html");
-    ipcMain.handle('get-app-version', () => app.getVersion());
+	ipcMain.handle("get-app-version", () => app.getVersion());
+	ipcMain.handle("check-for-updates", checkForUpdates);
 }
 
 async function checkForUpdates() {
@@ -97,59 +66,8 @@ async function checkForUpdates() {
 	});
 }
 
-ipcMain.on("update-pytubefix", (event, pytubeStatus) => {
-	exec("pip show pytube", (error, stdout, stderr) => {
-		if (error || stderr) {
-			const installScript = os.platform() === "win32" ? "pytubeinstall.bat" : "pytubeinstall.sh";
-
-			exec(installScript, (installError, installStdout, installStderr) => {
-				if (installError) {
-					event.reply("update-response", `Error installing pytube: ${installError.message}`);
-					return;
-				}
-				if (installStderr) {
-					event.reply("update-response", `stderr: ${installStderr}`);
-					return;
-				}
-				event.reply("update-response", `Pytube installed successfully:\n${installStdout}`);
-			});
-			return;
-		}
-
-		let command = pytubeStatus === "true" ? "pip install --upgrade pytubefix" : "pip install pytubefix";
-
-		exec(command, (execError, stdout, stderr) => {
-			if (execError) {
-				event.reply("update-response", `PIP Error: ${execError.message}`);
-				return;
-			}
-			if (stderr) {
-				event.reply("update-response", `PIP stderr: ${stderr}`);
-				return;
-			}
-			event.reply("update-response", `PIP Success:\n${stdout}`);
-		});
-	});
-});
-
-ipcMain.on("run-npm-install", (event) => {
-	exec("npm install", { cwd: appRoot }, (error, stdout, stderr) => {
-		if (error) {
-			event.reply("update-response", `NPM Error: ${error.message}`);
-			return;
-		}
-		if (stderr) {
-			event.reply("update-response", `NPM stderr: ${stderr}`);
-			return;
-		}
-		event.reply("update-response", `NPM Success: npm install completed!\n${stdout}`);
-	});
-});
-
-ipcMain.handle("check-for-updates", checkForUpdates);
-
 app.whenReady().then(() => {
-    app.isPackaged && Menu.setApplicationMenu(null);
+	app.isPackaged && Menu.setApplicationMenu(null);
 	app.setName("TaratorMusic");
 	createWindow();
 

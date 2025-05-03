@@ -82,7 +82,6 @@ let compressorNode;
 let audioSource;
 
 let totalTimeSpent = 0;
-let pytubeStatus;
 let rememberautoplay;
 let remembershuffle;
 let rememberloop;
@@ -102,7 +101,6 @@ let key_Loop;
 
 const defaultSettings = {
 	totalTimeSpent: 0,
-	pytubeStatus: 0,
 	maximumPreviousSongCount: 50,
 	volume: 50,
 	rememberautoplay: 1,
@@ -246,8 +244,7 @@ function loadSettings() {
 	key_Loop = row.key_Loop;
 
 	totalTimeSpent = row.totalTimeSpent;
-	pytubeStatus = row.pytubeStatus;
-	rememberautoplay = row.rememberautoplay;
+    rememberautoplay = row.rememberautoplay;
 	remembershuffle = row.remembershuffle;
 	rememberloop = row.rememberloop;
 	rememberspeed = row.rememberspeed;
@@ -1655,11 +1652,6 @@ function loadJSFile(filename) {
 	script.src = src;
 	script.onload = function () {
 		if (filename === "download_music") {
-			if (!pytubeStatus) {
-				alert("Please first install Pytube from the settings to download music.");
-				return;
-			}
-
 			document.getElementById("downloadFirstInput").value = "";
 
 			const secondPhase = document.getElementById("downloadSecondPhase");
@@ -1674,22 +1666,6 @@ function loadJSFile(filename) {
 
 document.getElementById("checkUpdateButton").addEventListener("click", () => {
 	ipcRenderer.send("check-for-updates");
-});
-
-document.getElementById("checkPytubeButton").addEventListener("click", () => {
-	ipcRenderer.send("update-pytubefix", pytubeStatus);
-});
-
-document.getElementById("checkNPMButton").addEventListener("click", () => {
-	ipcRenderer.send("run-npm-install");
-});
-
-ipcRenderer.on("update-response", (event, message) => {
-	alert(message);
-	if (message.startsWith("PIP Success")) {
-		updateDatabase("pytubeStatus", "true");
-		pytubeStatus = true;
-	}
 });
 
 ipcRenderer.invoke("get-app-version").then((version) => {
