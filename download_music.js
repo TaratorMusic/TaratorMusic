@@ -429,6 +429,71 @@ function actuallyDownloadTheSong() {
 				peynir = 0;
 				j = 0;
 			}
+			const pythonProcessGetThumbnails = spawn("python", [path.join(taratorFolder, "pytube.py"), "PlaylistThumbnail", document.getElementById("downloadFirstInput").value]);
+
+			pythonProcessGetThumbnails.stdout.on("data", (data) => {
+				const decodedData = data.toString().trim();
+				let thumbnails = [];
+				try {
+					thumbnails = JSON.parse(decodedData); // This includes one for each video
+				} catch (error) {
+					console.error("Error parsing thumbnails JSON:", error);
+					return;
+				}
+
+				let peynir = 1;
+				let j = 1;
+				if (isSaveAsPlaylistActive) {
+					peynir = 0;
+					j = 0;
+				}
+
+				while (peynir < howManyAreThere) {
+					if (j == 5001) break;
+
+					let imgUrl = thumbnails[peynir]; // use from python's output
+					let songName = document.getElementById(`playlistTitle${j}`)?.value.trim();
+					if (!songName || imgUrl === "No thumbnail found") {
+						j++;
+						continue;
+					}
+
+					peynir++;
+
+					fetch(imgUrl)
+						.then((res) => res.blob())
+						.then((blob) => {
+							let reader = new FileReader();
+							reader.onloadend = function () {
+								let base64data = reader.result;
+								let tempFilePath = path.join(taratorFolder, `temp_thumbnail_${songName}.txt`);
+								fs.writeFileSync(tempFilePath, base64data);
+
+								let pythonProcess = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadThumbnail", tempFilePath, songName]);
+
+								pythonProcess.stdout.on("data", (data) => {
+									let decodedData = data.toString().trim();
+									let parsedData;
+									try {
+										parsedData = JSON.parse(decodedData);
+										console.log(`Thumbnail for ${songName} saved.`);
+									} catch (error) {
+										console.error(`Thumbnail JSON parse error: ${error}`);
+									}
+								});
+								pythonProcess.on("close", (code) => {
+									console.log(`Thumbnail download process exited with code ${code}`);
+									if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+								});
+							};
+							reader.readAsDataURL(blob);
+						})
+						.catch((error) => console.error(`Thumbnail fetch error: ${error}`));
+
+					j++;
+				}
+			});
+
 			while (peynir < howManyAreThere) {
 				if (j == 5001) {
 					break;
@@ -554,12 +619,16 @@ async function testFunctionTest(howManyAreThere, dataLinks, playlistTitlesArray)
 		const pythonProcessTitle = spawn("python", [path.join(taratorFolder, "pytube.py"), "DownloadMusic", dataLinks[i].trim(), playlistTitlesArray[i].trim()]);
 
 		pythonProcessTitle.stdout.on("data", (data) => {
-			console.log(data.toString().trim());
+			let theText = data.toString().trim();
+			console.log(theText);
+			if (theText.includes("Error")) {
+				alert(theText);
+			}
 		});
 
 		pythonProcessTitle.stderr.on("data", (data) => {
 			document.getElementById("downloadModalText").innerText = `Error: ${data}`;
-			console.log(data.toString().trim());
+			alert(data.toString().trim());
 			document.getElementById("finalDownloadButton").disabled = false;
 		});
 
