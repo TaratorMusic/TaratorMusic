@@ -7,7 +7,8 @@ const path = require("path");
 const fs = require("fs");
 const Database = require("better-sqlite3");
 
-const taratorFolder = __dirname;
+const isPackaged = path.basename(process.resourcesPath) !== 'resources';
+const taratorFolder = isPackaged ? path.join(__dirname, "resources", "app") : __dirname;
 const musicFolder = path.join(taratorFolder, "musics");
 const thumbnailFolder = path.join(taratorFolder, "thumbnails");
 const dbPath = path.join(taratorFolder, "appData.db");
@@ -24,7 +25,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 let rmsCache = {};
-const rmsPath = path.join(__dirname, "rms_cache.json");
+const rmsPath = path.join(taratorFolder, "rms_cache.json");
 
 try {
 	if (!fs.existsSync(rmsPath)) {
@@ -56,7 +57,7 @@ const volumeControl = document.getElementById("volume");
 volumeControl.addEventListener("change", () => {
 	updateDatabase("volume", volumeControl.value);
 	if (audioElement) {
-		audioElement.volume = volume;
+		audioElement.volume = volumeControl.value / 100;
 	}
 });
 
@@ -523,7 +524,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		audioSource = audioContext.createMediaElementSource(audioElement);
 
 		try {
-			const rmsPath = path.join(__dirname, "rms_cache.json");
+			const rmsPath = path.join(taratorFolder, "rms_cache.json");
 			if (fs.existsSync(rmsPath)) {
 				rmsCache = JSON.parse(fs.readFileSync(rmsPath));
 			}
@@ -1213,7 +1214,7 @@ function loop() {
 
 function mute() {
 	if (volumeControl.value != 0) {
-		previousVolume = volumeControl.value;
+		previousVolume = volumeControl.value / 100;
 		volumeControl.value = 0;
 		muteButton.classList.add("active");
 	} else {
@@ -1665,7 +1666,7 @@ function loadJSFile(filename) {
 }
 
 document.getElementById("checkUpdateButton").addEventListener("click", () => {
-	ipcRenderer.send("check-for-updates");
+	ipcRenderer.invoke("check-for-updates");
 });
 
 ipcRenderer.invoke("get-app-version").then((version) => {

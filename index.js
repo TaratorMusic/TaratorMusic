@@ -26,44 +26,58 @@ function createWindow() {
 
 	mainWindow.loadFile("index.html");
 	ipcMain.handle("get-app-version", () => app.getVersion());
-	ipcMain.handle("check-for-updates", checkForUpdates);
+    ipcMain.handle("check-for-updates", checkForUpdates);	
 }
 
 async function checkForUpdates() {
-	const response = await fetch(`https://api.github.com/repos/Victiniiiii/TaratorMusic/git/trees/main?recursive=1`);
-	const files = (await response.json()).tree.filter((f) => f.type === "blob");
-	let updated = false;
+    const response = await fetch(`https://api.github.com/repos/Victiniiiii/TaratorMusic/git/trees/main?recursive=1`);
+    
+    if (!response.ok) {
+        console.error("Failed to fetch update tree:", response.status, await response.text());
+        return;
+    }
 
-	for (const file of files) {
-		const fileUrl = `https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/${file.path}`;
-		const localFilePath = path.join(app.getAppPath(), file.path);
+    const data = await response.json();
 
-		const res = await fetch(fileUrl);
-		if (res.ok) {
-			const fileContent = (await res.text()).replace(/\r\n/g, "\n").trim();
-			const fileExists = fs.existsSync(localFilePath);
-			const localContent = fileExists ? fs.readFileSync(localFilePath, "utf-8").replace(/\r\n/g, "\n").trim() : "";
+    if (!data.tree) {
+        console.error("Unexpected GitHub API response:", data);
+        return;
+    }
 
-			if ((fileExists && localContent !== fileContent) || !fileExists) {
-				const result = dialog.showMessageBoxSync({
-					type: "info",
-					buttons: ["Later", "Update"],
-					message: `Update ${file.path}?`,
-				});
-				updated = true;
+    const files = data.tree.filter((f) => f.type === "blob");
 
-				if (result === 1) {
-					fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
-					fs.writeFileSync(localFilePath, fileContent);
-				}
-			}
-		}
-	}
+    let updated = false;
 
-	dialog.showMessageBoxSync({
-		type: "info",
-		message: updated ? "No more updates. Restart the app for the effects." : "No new updates.",
-	});
+    for (const file of files) {
+        const fileUrl = `https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/${file.path}`;
+        const localFilePath = path.join(app.getAppPath(), file.path);
+
+        const res = await fetch(fileUrl);
+        if (res.ok) {
+            const fileContent = (await res.text()).replace(/\r\n/g, "\n").trim();
+            const fileExists = fs.existsSync(localFilePath);
+            const localContent = fileExists ? fs.readFileSync(localFilePath, "utf-8").replace(/\r\n/g, "\n").trim() : "";
+
+            if ((fileExists && localContent !== fileContent) || !fileExists) {
+                const result = dialog.showMessageBoxSync({
+                    type: "info",
+                    buttons: ["Later", "Update"],
+                    message: `Update ${file.path}?`,
+                });
+                updated = true;
+
+                if (result === 1) {
+                    fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
+                    fs.writeFileSync(localFilePath, fileContent);
+                }
+            }
+        }
+    }
+
+    dialog.showMessageBoxSync({
+        type: "info",
+        message: updated ? "No more updates. Restart the app for the effects." : "No new updates.",
+    });
 }
 
 app.whenReady().then(() => {
