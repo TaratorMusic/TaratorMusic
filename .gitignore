@@ -13,6 +13,10 @@ cache/
 appData.db
 appData.db-journal
 
+pytube.build/
+pytube.dist/
+nuitka-crash-report.xml
+
 TaratorMusic-win32-ia32/
 TaratorMusic-win32-x64/
 TaratorMusic-darwin-x64/
@@ -53,8 +57,7 @@ Thumbs.db
 *.blockmap
 *.yml
 *.snap
-
-*.exe
+*.spec
 *.dmg
 *.AppImage
 *.deb

@@ -1,29 +1,39 @@
-from pytubefix import YouTube, Playlist
 import sys
-import json
 import os
-import requests
+import json
 import base64
+import requests
+from pytubefix import YouTube, Playlist
 
-script_name = os.path.basename(sys.argv[1])
-
-if script_name == "Title":
-    if len(sys.argv) > 2:
-        try:
-            yt = YouTube(sys.argv[2])
-            title = yt.title
-            result = json.dumps(title)
-        except Exception as e:
-            result = json.dumps({"error": str(e)})
+# Helper to determine base path (frozen or not)
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return sys._MEIPASS  # temp path when frozen by PyInstaller
     else:
-        result = json.dumps({"error": "No YouTube URL provided"})
+        return os.path.dirname(__file__)
 
-elif script_name == "Thumbnail":
-    if len(sys.argv) > 2:
-        try:
-            yt = YouTube(sys.argv[2], 'WEB')
+if len(sys.argv) < 2:
+    print(json.dumps({"error": "No command type provided."}), flush=True)
+    sys.exit(1)
+
+command = sys.argv[1]
+args = sys.argv[2:]
+base_path = get_base_path()
+
+result = {}
+
+try:
+    if command == "Title":
+        if args:
+            yt = YouTube(args[0])
+            result = json.dumps(yt.title)
+        else:
+            result = json.dumps({"error": "No YouTube URL provided"})
+
+    elif command == "Thumbnail":
+        if args:
+            yt = YouTube(args[0], 'WEB')
             qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault', 'default']
-            
             for quality in qualities:
                 thumbnail_url = f'https://img.youtube.com/vi/{yt.video_id}/{quality}.jpg'
                 response = requests.head(thumbnail_url)
@@ -31,103 +41,82 @@ elif script_name == "Thumbnail":
                     result = thumbnail_url
                     break
             else:
-                result = "No thumbnail found for the provided YouTube URL"
-        except Exception as e:
-            result = str(e)
-    else:
-        result = "No YouTube URL provided"
+                result = "No thumbnail found"
+        else:
+            result = "No YouTube URL provided"
 
-elif script_name == "PlaylistTitle":
-    if len(sys.argv) > 2:
-        try:
-            playlist = Playlist(sys.argv[2])
-            playlist_title = playlist.title
-            video_titles = [playlist_title] + [video.title for video in playlist.videos]
-            result = json.dumps(video_titles)
-        except Exception as e:
-            result = json.dumps({"error": str(e)})
-    else:
-        result = json.dumps({"error": "No YouTube playlist URL provided"})
+    elif command == "PlaylistTitle":
+        if args:
+            playlist = Playlist(args[0])
+            titles = [playlist.title] + [video.title for video in playlist.videos]
+            result = json.dumps(titles)
+        else:
+            result = json.dumps({"error": "No playlist URL provided"})
 
-elif script_name == "PlaylistThumbnail":
-    if len(sys.argv) > 2:
-        try:
-            playlist = Playlist(sys.argv[2])
+    elif command == "PlaylistThumbnail":
+        if args:
+            playlist = Playlist(args[0])
             thumbnails = []
-            
-            playlist_thumbnail_url = f'I am kinda dumb'
-            thumbnails.append(playlist_thumbnail_url)
-            
+
             qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault', 'default']
-            
             for video_url in playlist.video_urls:
                 video_id = video_url.split("watch?v=")[-1]
-                
-                found_thumbnail = False
+                found = False
                 for quality in qualities:
                     thumbnail_url = f'https://img.youtube.com/vi/{video_id}/{quality}.jpg'
-                    response = requests.head(thumbnail_url)
-                    if response.status_code == 200:
+                    if requests.head(thumbnail_url).status_code == 200:
                         thumbnails.append(thumbnail_url)
-                        found_thumbnail = True
+                        found = True
                         break
-                
-                if not found_thumbnail:
+                if not found:
                     thumbnails.append("No thumbnail found")
-            
-            result = json.dumps([thumbnails[0]] + thumbnails[1:])
-        except Exception as e:
-            result = json.dumps({"error": str(e)})
-    else:
-        result = json.dumps({"error": "No YouTube playlist URL provided"})
 
-elif script_name == "DownloadMusic":
-    if len(sys.argv) > 3:
-        try:
-            yt = YouTube(sys.argv[2])
-            output_directory = os.path.join(os.path.dirname(__file__), 'musics')
-            os.makedirs(output_directory, exist_ok=True)
-            yt.streams.filter(only_audio=True).first().download(output_path=output_directory, filename=f"{sys.argv[3]}.mp3")
-            result = json.dumps({"Success": "Everything has been downloaded"})
-        except Exception as e:
-            result = json.dumps({"Error": str(e)})
-    else:
-        result = json.dumps({"error": 'Insufficient arguments received. Need URL and filename.'})
+            result = json.dumps(thumbnails)
+        else:
+            result = json.dumps({"error": "No playlist URL provided"})
 
-elif script_name == "DownloadThumbnail":
-    if len(sys.argv) > 3:
-        try:
-            output_dir = os.path.join(os.path.dirname(__file__), 'thumbnails')
+    elif command == "DownloadMusic":
+        if len(args) >= 2:
+            yt = YouTube(args[0])
+            filename = args[1]
+            output_dir = os.path.join(base_path, 'musics')
             os.makedirs(output_dir, exist_ok=True)
-            new_file_name = f"{sys.argv[3]}_thumbnail.jpg"
-            new_file_path = os.path.join(output_dir, new_file_name)
-            
-            with open(sys.argv[2], 'r') as file:
-                base64_data = file.read()
+            yt.streams.filter(only_audio=True).first().download(output_path=output_dir, filename=f"{filename}.mp3")
+            result = json.dumps({"Success": f"Downloaded: {filename}.mp3"})
+        else:
+            result = json.dumps({"error": "Need YouTube URL and filename"})
+
+    elif command == "DownloadThumbnail":
+        if len(args) >= 2:
+            base64_file = args[0]
+            output_name = args[1]
+            output_dir = os.path.join(base_path, 'thumbnails')
+            os.makedirs(output_dir, exist_ok=True)
+            new_file_path = os.path.join(output_dir, f"{output_name}_thumbnail.jpg")
+
+            with open(base64_file, 'r') as f:
+                base64_data = f.read()
                 if base64_data.startswith('data:image/jpeg;base64,'):
                     base64_data = base64_data.split(',')[1]
-                    
-            with open(new_file_path, 'wb') as file:
-                file.write(base64.b64decode(base64_data))
-            
-            result = json.dumps({"message": f"Thumbnail saved to: {new_file_path}"})
-        except Exception as e:
-            result = json.dumps({"error": f"Error: {e}"})
+
+            with open(new_file_path, 'wb') as out_file:
+                out_file.write(base64.b64decode(base64_data))
+
+            result = json.dumps({"message": f"Thumbnail saved to {new_file_path}"})
+        else:
+            result = json.dumps({"error": "Need input base64 file and output name"})
+
+    elif command == "PlaylistNames":
+        if args:
+            playlist = Playlist(args[0])
+            result = json.dumps(playlist.video_urls)
+        else:
+            result = json.dumps({"error": "No playlist URL provided"})
+
     else:
-        result = json.dumps({"error": 'Insufficient arguments provided. Need thumbnail source URL/path and input value.'})
+        result = json.dumps({"error": f"Unknown command: {command}"})
 
-elif script_name == "PlaylistNames":
-    if len(sys.argv) > 2:
-        try:
-            playlist = Playlist(sys.argv[2])
-            video_urls = playlist.video_urls
-            result = video_urls
-        except Exception as e:
-            result = {"error": f"Error: {e}"}
-    else:
-        result = "Error, not enough arguments."
+except Exception as e:
+    result = json.dumps({"error": str(e)})
 
-else:
-    result = json.dumps({"error": f"Unknown script type: {script_name}"})
-
-print(result)
+print(result, flush=True)
