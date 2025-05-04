@@ -365,20 +365,11 @@ function actuallyDownloadTheSong() {
 
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
-		const pythonProcessFileName = spawn(exePath, ["DownloadMusic", firstInput, secondInput]);
+		const pythonProcessFileName = spawn(exePath, ["DownloadMusic", firstInput, secondInput]).then(downloadThumbnail(img.src, secondInput));
 
 		pythonProcessFileName.stdout.on("data", (data) => {
-			const decodedData = data.toString().trim();
-			try {
-				const parsedData = JSON.parse(decodedData);
-				document.getElementById("downloadModalText").innerText = "Song downloaded successfully!";
-
-				downloadThumbnail(img.src, secondInput);
-			} catch (error) {
-				console.error(`Error parsing JSON: ${error}`);
-				document.getElementById("finalDownloadButton").disabled = false;
-				document.getElementById("downloadModalText").innerText = "Error during download: " + decodedData;
-			}
+			console.log(data.toString().trim());
+			document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Waiting for the thumbnail...";
 		});
 
 		pythonProcessFileName.stderr.on("data", (data) => {
@@ -582,6 +573,8 @@ function actuallyDownloadTheSong() {
 
 						pythonProcess.on("close", (code) => {
 							console.log(`Thumbnail download for "${title}" exited with code ${code}`);
+                            document.getElementById("downloadModalText").innerText = "Thumbnail download is done!";
+                            document.getElementById("finalDownloadButton").disabled = false;
 							if (fs.existsSync(tempFilePath)) {
 								fs.unlinkSync(tempFilePath);
 							}
