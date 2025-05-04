@@ -1,3 +1,5 @@
+const exePath = path.basename(process.resourcesPath) !== "resources" ? path.join(process.resourcesPath, "app", "video_install.exe") : path.join(__dirname, "video_install.exe");
+
 function isValidFileName(fileName) {
 	const invalidChars = /[\\/:"*?<>|'.,]/;
 	return !invalidChars.test(fileName);
@@ -74,7 +76,7 @@ function checkNameThumbnail() {
 }
 
 function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
-	const pythonProcessTitle = spawn(path.join(__dirname, "video_install.exe"), ["Title", videoUrl]); 
+	const pythonProcessTitle = spawn(exePath, ["Title", videoUrl]);
 	pythonProcessTitle.stdout.on("data", (data) => {
 		const decodedData = data.toString().trim();
 		let videoTitle;
@@ -84,7 +86,7 @@ function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow,
 			videoTitle = decodedData;
 		}
 
-		const pythonProcessThumbnail = spawn(path.join(__dirname, "video_install.exe"), ["Thumbnail", videoUrl]);
+		const pythonProcessThumbnail = spawn(exePath, ["Thumbnail", videoUrl]);
 		pythonProcessThumbnail.stdout.on("data", (thumbnailData) => {
 			const thumbnailUrl = thumbnailData.toString().trim();
 
@@ -153,7 +155,7 @@ function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow,
 }
 
 function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
-	const pythonProcessTitle = spawn(path.join(__dirname, "video_install.exe"), ["PlaylistTitle", playlistUrl]);
+	const pythonProcessTitle = spawn(exePath, ["PlaylistTitle", playlistUrl]);
 
 	pythonProcessTitle.stdout.on("data", (data) => {
 		let playlistTitles;
@@ -177,7 +179,7 @@ function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBott
 			downloadModalText.innerHTML = "Checking... Might take long...";
 		}
 
-		const pythonProcessThumbnail = spawn(path.join(__dirname, "video_install.exe"), ["PlaylistThumbnail", playlistUrl]);
+		const pythonProcessThumbnail = spawn(exePath, ["PlaylistThumbnail", playlistUrl]);
 
 		pythonProcessThumbnail.stdout.on("data", (thumbnailData) => {
 			let playlistThumbnails;
@@ -201,7 +203,7 @@ function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBott
 			downloadPlaceofSongs.id = "downloadPlaceofSongs";
 			downloadSecondPhase.appendChild(downloadPlaceofSongs);
 
-			const pythonProcessLinks = spawn(path.join(__dirname, "video_install.exe"), ["PlaylistNames", playlistUrl]);
+			const pythonProcessLinks = spawn(exePath, ["PlaylistNames", playlistUrl]);
 
 			pythonProcessLinks.stdout.on("data", (linksData) => {
 				let videoLinks;
@@ -363,11 +365,10 @@ function actuallyDownloadTheSong() {
 
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
-		const pythonProcessFileName = spawn(path.join(__dirname, "video_install.exe"), ["DownloadMusic", firstInput, secondInput]);
+		const pythonProcessFileName = spawn(exePath, ["DownloadMusic", firstInput, secondInput]);
 
 		pythonProcessFileName.stdout.on("data", (data) => {
 			const decodedData = data.toString().trim();
-			console.log(decodedData);
 			try {
 				const parsedData = JSON.parse(decodedData);
 				document.getElementById("downloadModalText").innerText = "Song downloaded successfully!";
@@ -493,7 +494,7 @@ function actuallyDownloadTheSong() {
 		function downloadSongsSequentially() {
 			let completedDownloads = 0;
 
-			const pythonProcessGetThumbnails = spawn(path.join(__dirname, "video_install.exe"), ["PlaylistThumbnail", firstInput]);
+			const pythonProcessGetThumbnails = spawn(exePath, ["PlaylistThumbnail", firstInput]);
 
 			let thumbnailUrls = [];
 			pythonProcessGetThumbnails.stdout.on("data", (data) => {
@@ -527,7 +528,7 @@ function actuallyDownloadTheSong() {
 
 				document.getElementById("downloadModalText").innerText = `Downloading song ${index + 1} of ${songTitles.length}: ${songTitle}`;
 
-				const pythonProcess = spawn(path.join(__dirname, "video_install.exe"), ["DownloadMusic", songLink, songTitle]);
+				const pythonProcess = spawn(exePath, ["DownloadMusic", songLink, songTitle]);
 
 				pythonProcess.stdout.on("data", (data) => {
 					const output = data.toString().trim();
@@ -572,12 +573,12 @@ function actuallyDownloadTheSong() {
 				const reader = new FileReader();
 				reader.onloadend = function () {
 					const base64data = reader.result;
-					const tempFilePath = path.join(__dirname, `temp_thumbnail_${title}.txt`);
+					const tempFilePath = path.join(taratorFolder, `temp_thumbnail_${title}.txt`);
 
 					try {
 						fs.writeFileSync(tempFilePath, base64data);
 
-						const pythonProcess = spawn(path.join(__dirname, "video_install.exe"), ["DownloadThumbnail", tempFilePath, title]);
+						const pythonProcess = spawn(exePath, ["DownloadThumbnail", tempFilePath, title]);
 
 						pythonProcess.on("close", (code) => {
 							console.log(`Thumbnail download for "${title}" exited with code ${code}`);
@@ -642,7 +643,7 @@ function saveeeAsPlaylist(playlistTitlesArray) {
 						console.error("Error writing to the JSON file:", err);
 						return;
 					}
-					console.log("New playlist added successfully!");
+					alert("New playlist added successfully!");
 				});
 			} catch (parseError) {
 				console.error("Error parsing the JSON data:", parseError);
