@@ -363,7 +363,7 @@ async function myMusicOnClick() {
 	const displayCountSelect = document.createElement("select");
 	displayCountSelect.id = "display-count";
 
-	[10, 20, 50, 100, "All"].forEach((count) => {
+	[10, 20, 50, 100, 250, 500, 1000, "All"].forEach((count) => {
 		const option = document.createElement("option");
 		option.value = count;
 		option.innerText = count === "All" ? "Show All" : `Show ${count}`;
