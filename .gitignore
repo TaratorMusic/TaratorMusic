@@ -4,6 +4,7 @@ thumbnails/
 currently_not_used/
 playlists.json
 rms_cache.json
+.updater.json
 
 dist/
 out/

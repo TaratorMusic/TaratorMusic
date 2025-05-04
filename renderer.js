@@ -2,8 +2,8 @@
 
 const { ipcRenderer } = require("electron");
 const icon = require("./svg.js");
-const { spawn } = require("child_process");
 const path = require("path");
+const fetch = require("node-fetch");
 const fs = require("fs");
 const os = require("os");
 const Database = require("better-sqlite3");
@@ -1667,45 +1667,57 @@ function loadJSFile(filename) {
 }
 
 document.getElementById("checkUpdateButton").addEventListener("click", async () => {
-	const response = await fetch(`https://api.github.com/repos/Victiniiiii/TaratorMusic/git/trees/main?recursive=1`);
-
-	if (!response.ok) {
-		alert("Failed to fetch update tree: " + response.status);
-		return;
+	const metaFile = path.join(taratorFolder, ".updater.json");
+	const repo = "Victiniiiii/TaratorMusic";
+	const branch = "main";
+	let lastSha = null;
+	if (fs.existsSync(metaFile)) {
+		try {
+			lastSha = JSON.parse(fs.readFileSync(metaFile, "utf8")).lastSha;
+		} catch {}
 	}
 
-	const data = await response.json();
+	const ref = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/${branch}`);
+	if (!ref.ok) return alert("Failed to fetch latest commit");
+	const currentSha = (await ref.json()).object.sha;
 
-	if (!data.tree) {
-		alert("Unexpected GitHub API response");
-		return;
-	}
+	if (lastSha === currentSha) return alert("Already up-to-date.");
 
-	const files = data.tree.filter((f) => f.type === "blob");
+	const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees/${currentSha}?recursive=1`);
+	if (!treeRes.ok) return alert("Failed to fetch file tree.");
+
+	const tree = (await treeRes.json()).tree.filter((f) => f.type === "blob" && !f.path.startsWith("build/"));
+
+	const acceptAll = confirm(`Update all ${tree.length} files automatically?`);
 	let updated = false;
 
-	for (const file of files) {
-		const fileUrl = `https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/${file.path}`;
-		const res = await fetch(fileUrl);
+	for (const file of tree) {
+		const fileUrl = `https://raw.githubusercontent.com/${repo}/${branch}/${file.path}`;
+		let remoteText;
+		try {
+			const res = await fetch(fileUrl);
+			if (!res.ok) continue;
+			remoteText = (await res.text()).replace(/\r\n/g, "\n").trim();
+		} catch {
+			continue;
+		}
 
-		if (res.ok) {
-			const fileContent = (await res.text()).replace(/\r\n/g, "\n").trim();
-			const localPath = path.join(taratorFolder, file.path);
-			const fileExists = fs.existsSync(localPath);
-			const localContent = fileExists ? fs.readFileSync(localPath, "utf-8").replace(/\r\n/g, "\n").trim() : "";
+		const localPath = path.join(taratorFolder, file.path);
+		const exists = fs.existsSync(localPath);
+		const localText = exists ? fs.readFileSync(localPath, "utf8").replace(/\r\n/g, "\n").trim() : "";
 
-			if ((fileExists && localContent !== fileContent) || !fileExists) {
-				const result = confirm(`Update ${file.path}?`);
-				if (result) {
-					fs.mkdirSync(path.dirname(localPath), { recursive: true });
-					fs.writeFileSync(localPath, fileContent);
-					updated = true;
-				}
+		if (!exists || localText !== remoteText) {
+			const shouldUpdate = acceptAll || confirm(`Update ${file.path}?`);
+			if (shouldUpdate) {
+				fs.mkdirSync(path.dirname(localPath), { recursive: true });
+				fs.writeFileSync(localPath, remoteText, "utf8");
+				updated = true;
 			}
 		}
 	}
 
-	alert(updated ? "No more updates. Restart the app for the effects." : "No new updates.");
+	fs.writeFileSync(metaFile, JSON.stringify({ lastSha: currentSha }, null, 2), "utf8");
+	alert(updated ? "Update complete. Restart the app." : "No new changes.");
 });
 
 ipcRenderer.invoke("get-app-version").then((version) => {
