@@ -415,6 +415,10 @@ async function myMusicOnClick() {
 					musicElement.classList.add("playing");
 				}
 
+				musicElement.addEventListener("click", () => {
+					playMusic(file, musicElement);
+				});
+
 				musicListContainer.appendChild(musicElement);
 			});
 		}
@@ -431,7 +435,6 @@ async function myMusicOnClick() {
 		});
 
 		renderSongs();
-
 	} catch (error) {
 		console.error("Error reading music directory:", error);
 	}
