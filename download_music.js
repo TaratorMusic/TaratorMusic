@@ -1,4 +1,4 @@
-const exePath = path.basename(process.resourcesPath) !== "resources" ? path.join(process.resourcesPath, "app", "video_install.exe") : path.join(__dirname, "video_install.exe");
+const exePath = path.basename(process.resourcesPath) !== "resources" ? path.join(process.resourcesPath, "app", "video_install.exe").trim() : path.join(__dirname, "video_install.exe").trim();
 
 function isValidFileName(fileName) {
 	const invalidChars = /[\\/:"*?<>|'.,]/;
