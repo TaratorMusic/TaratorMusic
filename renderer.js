@@ -9,10 +9,12 @@ const Database = require("better-sqlite3");
 
 const isPackaged = path.basename(process.resourcesPath) !== "resources";
 const taratorFolder = isPackaged ? path.join(__dirname, "resources", "app") : __dirname;
+console.log(taratorFolder);
 const musicFolder = path.join(taratorFolder, "musics");
 const thumbnailFolder = path.join(taratorFolder, "thumbnails");
 const dbPath = path.join(taratorFolder, "appData.db");
 const playlistPath = path.join(taratorFolder, "playlists.json");
+const rmsPath = path.join(taratorFolder, "rms_cache.json");
 
 if (!fs.existsSync(dbPath)) {
 	fs.writeFileSync(dbPath, "");
@@ -25,7 +27,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 let rmsCache = {};
-const rmsPath = path.join(taratorFolder, "rms_cache.json");
 
 try {
 	if (!fs.existsSync(rmsPath)) {
@@ -524,7 +525,6 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		audioSource = audioContext.createMediaElementSource(audioElement);
 
 		try {
-			const rmsPath = path.join(taratorFolder, "rms_cache.json");
 			if (fs.existsSync(rmsPath)) {
 				rmsCache = JSON.parse(fs.readFileSync(rmsPath));
 			}
