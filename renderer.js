@@ -7,7 +7,7 @@ const path = require("path");
 const fs = require("fs");
 const Database = require("better-sqlite3");
 
-const isPackaged = path.basename(process.resourcesPath) !== 'resources';
+const isPackaged = path.basename(process.resourcesPath) !== "resources";
 const taratorFolder = isPackaged ? path.join(__dirname, "resources", "app") : __dirname;
 const musicFolder = path.join(taratorFolder, "musics");
 const thumbnailFolder = path.join(taratorFolder, "thumbnails");
@@ -245,7 +245,7 @@ function loadSettings() {
 	key_Loop = row.key_Loop;
 
 	totalTimeSpent = row.totalTimeSpent;
-    rememberautoplay = row.rememberautoplay;
+	rememberautoplay = row.rememberautoplay;
 	remembershuffle = row.remembershuffle;
 	rememberloop = row.rememberloop;
 	rememberspeed = row.rememberspeed;
@@ -1665,8 +1665,46 @@ function loadJSFile(filename) {
 	document.body.appendChild(script);
 }
 
-document.getElementById("checkUpdateButton").addEventListener("click", () => {
-	ipcRenderer.invoke("check-for-updates");
+document.getElementById("checkUpdateButton").addEventListener("click", async () => {
+	const response = await fetch(`https://api.github.com/repos/Victiniiiii/TaratorMusic/git/trees/main?recursive=1`);
+
+	if (!response.ok) {
+		alert("Failed to fetch update tree: " + response.status);
+		return;
+	}
+
+	const data = await response.json();
+
+	if (!data.tree) {
+		alert("Unexpected GitHub API response");
+		return;
+	}
+
+	const files = data.tree.filter((f) => f.type === "blob");
+	let updated = false;
+
+	for (const file of files) {
+		const fileUrl = `https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/${file.path}`;
+		const res = await fetch(fileUrl);
+
+		if (res.ok) {
+			const fileContent = (await res.text()).replace(/\r\n/g, "\n").trim();
+			const localPath = path.join(taratorFolder, file.path);
+			const fileExists = fs.existsSync(localPath);
+			const localContent = fileExists ? fs.readFileSync(localPath, "utf-8").replace(/\r\n/g, "\n").trim() : "";
+
+			if ((fileExists && localContent !== fileContent) || !fileExists) {
+				const result = confirm(`Update ${file.path}?`);
+				if (result) {
+					fs.mkdirSync(path.dirname(localPath), { recursive: true });
+					fs.writeFileSync(localPath, fileContent);
+					updated = true;
+				}
+			}
+		}
+	}
+
+	alert(updated ? "No more updates. Restart the app for the effects." : "No new updates.");
 });
 
 ipcRenderer.invoke("get-app-version").then((version) => {
