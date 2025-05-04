@@ -333,6 +333,8 @@ function actuallyDownloadTheSong() {
 	const firstInput = document.getElementById("downloadFirstInput").value.trim();
 	const linkType = differentiateYouTubeLinks(firstInput);
 
+    console.log(musicFolder,"musicfolder");
+
 	if (linkType === "video") {
 		downloadSingleVideo();
 	} else if (linkType === "playlist") {
@@ -630,6 +632,8 @@ function saveeeAsPlaylist(playlistTitlesArray) {
 					console.error("A playlist with this name already exists.");
 					return;
 				}
+
+                console.log(thumbnailFolder, thumbnailFolder);
 
 				let newPlaylist = {
 					name: playlistName,
