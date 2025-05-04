@@ -5,8 +5,13 @@ import base64
 import requests
 from pytubefix import YouTube, Playlist
 
+if hasattr(sys, '_MEIPASS'):
+    BASE_DIR = os.path.join(sys._MEIPASS, 'resources', 'app')
+else:
+    BASE_DIR = os.getcwd()
+
 def get_output_path(subfolder):
-    output_dir = os.path.join(os.getcwd(), subfolder)
+    output_dir = os.path.join(BASE_DIR, subfolder)
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
 
