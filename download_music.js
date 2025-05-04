@@ -365,7 +365,7 @@ function actuallyDownloadTheSong() {
 
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
-		const pythonProcessFileName = spawn(exePath, ["DownloadMusic", firstInput, secondInput]).then(downloadThumbnail(img.src, secondInput));
+		const pythonProcessFileName = spawn(exePath, ["DownloadMusic", firstInput, secondInput]);
 
 		pythonProcessFileName.stdout.on("data", (data) => {
 			console.log(data.toString().trim());
@@ -384,6 +384,7 @@ function actuallyDownloadTheSong() {
 				document.getElementById("downloadModalText").innerText = `Download process failed with code ${code}`;
 				document.getElementById("finalDownloadButton").disabled = false;
 			}
+            downloadThumbnail(img.src, secondInput);
 		});
 	}
 
