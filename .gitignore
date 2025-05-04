@@ -6,7 +6,6 @@ playlists.json
 rms_cache.json
 
 dist/
-build/
 out/
 userData/
 cache/
@@ -16,6 +15,8 @@ appData.db-journal
 pytube.build/
 pytube.dist/
 nuitka-crash-report.xml
+setup.py
+forge.config.js
 
 TaratorMusic-win32-ia32/
 TaratorMusic-win32-x64/
@@ -25,8 +26,6 @@ TaratorMusic-win32-ia32.zip
 TaratorMusic-win32-x64.zip
 TaratorMusic-darwin-x64.zip
 TaratorMusic-linux-x64.zip
-
-forge.config.js
 
 npm-debug.log*
 yarn-debug.log*
@@ -39,35 +38,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
-.vscode/
-.idea/
-*.iml
-
-*.lock
-*.pid
-*.seed
 *.log
-
-*.tmp
-*.swp
-*.bak
-*.old
-*.orig
-
-*.blockmap
-*.yml
-*.snap
 *.spec
-*.dmg
-*.AppImage
-*.deb
-*.rpm
-*.tar.gz
-*.zip
 
 .github/workflows/node_modules/
-*.msi
-*.pkg
-
 coverage/
 .cache/

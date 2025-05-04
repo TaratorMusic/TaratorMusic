@@ -5,8 +5,10 @@ const icon = require("./svg.js");
 const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const Database = require("better-sqlite3");
 
+const platform = os.platform();
 const isPackaged = path.basename(process.resourcesPath) !== "resources";
 const taratorFolder = isPackaged ? path.join(__dirname, "resources", "app") : __dirname;
 const musicFolder = path.join(taratorFolder, "musics");

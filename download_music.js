@@ -1,4 +1,8 @@
-const exePath = path.basename(process.resourcesPath) !== "resources" ? path.join(process.resourcesPath, "app", "video_install.exe").trim() : path.join(__dirname, "video_install.exe").trim();
+const binaryName = platform === "win32" ? "pytube.exe" : "pytube";
+const buildFolder = platform === "win32" ? "exe.win-amd64-3.12" : platform === "linux" ? "exe.linux-x86_64-3.12" : platform === "darwin" ? "exe.macosx-10.9-x86_64-3.12" : null;
+if (!buildFolder) { alert(`Unsupported platform: ${platform}`); }
+const exePath = path.join(isPackaged ? path.join(process.resourcesPath, "app") : __dirname, "build", buildFolder, binaryName).trim();
+console.log("Resolved binary path:", exePath);
 
 function isValidFileName(fileName) {
 	const invalidChars = /[\\/:"*?<>|'.,]/;
@@ -384,7 +388,7 @@ function actuallyDownloadTheSong() {
 				document.getElementById("downloadModalText").innerText = `Download process failed with code ${code}`;
 				document.getElementById("finalDownloadButton").disabled = false;
 			}
-            downloadThumbnail(img.src, secondInput);
+			downloadThumbnail(img.src, secondInput);
 		});
 	}
 
@@ -574,8 +578,8 @@ function actuallyDownloadTheSong() {
 
 						pythonProcess.on("close", (code) => {
 							console.log(`Thumbnail download for "${title}" exited with code ${code}`);
-                            document.getElementById("downloadModalText").innerText = "Thumbnail download is done!";
-                            document.getElementById("finalDownloadButton").disabled = false;
+							document.getElementById("downloadModalText").innerText = "Thumbnail download is done!";
+							document.getElementById("finalDownloadButton").disabled = false;
 							if (fs.existsSync(tempFilePath)) {
 								fs.unlinkSync(tempFilePath);
 							}
