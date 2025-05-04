@@ -9,7 +9,6 @@ const Database = require("better-sqlite3");
 
 const isPackaged = path.basename(process.resourcesPath) !== "resources";
 const taratorFolder = isPackaged ? path.join(__dirname, "resources", "app") : __dirname;
-console.log(taratorFolder);
 const musicFolder = path.join(taratorFolder, "musics");
 const thumbnailFolder = path.join(taratorFolder, "thumbnails");
 const dbPath = path.join(taratorFolder, "appData.db");
