@@ -718,6 +718,8 @@ input:checked + .slider:before {
 .settingsflexrow {
 	display: flex;
 	flex-direction: row;
+    align-items: center;
+    gap: 1vw;
 }
 
 .settingsKeybinds {
