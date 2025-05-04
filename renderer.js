@@ -333,7 +333,7 @@ tabs.forEach((tab) => {
 				if (content.id === "main-menu-content") {
 					document.getElementById("main-menu-content").style.display = "flex";
 				} else if (content.id === "my-music-content") {
-					document.getElementById("my-music-content").style.display = "grid";
+					document.getElementById("my-music-content").style.display = "block";
 				} else if (content.id === "playlists-content") {
 					document.getElementById("playlists-content").style.display = "grid";
 				} else if (content.id === "settings-content") {
@@ -344,62 +344,94 @@ tabs.forEach((tab) => {
 	});
 });
 
-async function myMusicOnClick(firsttime) {
+async function myMusicOnClick() {
 	const myMusicContent = document.getElementById("my-music-content");
 	myMusicContent.innerHTML = "";
-	const musicsearch = document.createElement("input");
-	musicsearch.setAttribute("type", "text");
-	musicsearch.setAttribute("id", "music-search");
-	musicsearch.setAttribute("placeholder", "Search...");
 
-	musicsearch.addEventListener("input", () => {
-		const searchQuery = musicsearch.value.trim().toLowerCase();
-		const musicItems = myMusicContent.querySelectorAll(".music-item");
+	const controlsBar = document.createElement("div");
+	controlsBar.style.display = "flex";
+	controlsBar.style.justifyContent = "space-between";
+	controlsBar.style.marginBottom = "10px";
+	controlsBar.style.gap = "10px";
 
-		musicItems.forEach((item) => {
-			const songName = item.getAttribute("data-file-name").toLowerCase();
-			if (songName.includes(searchQuery)) {
-				item.style.display = "block";
-			} else {
-				item.style.display = "none";
-			}
-		});
+	const musicSearch = document.createElement("input");
+	musicSearch.type = "text";
+	musicSearch.id = "music-search";
+	musicSearch.placeholder = "Search...";
+	musicSearch.style.flex = "1";
+
+	const displayCountSelect = document.createElement("select");
+	displayCountSelect.id = "display-count";
+
+	[10, 20, 50, 100, "All"].forEach((count) => {
+		const option = document.createElement("option");
+		option.value = count;
+		option.innerText = count === "All" ? "Show All" : `Show ${count}`;
+		displayCountSelect.appendChild(option);
 	});
 
-	myMusicContent.appendChild(musicsearch);
+	controlsBar.appendChild(musicSearch);
+	controlsBar.appendChild(displayCountSelect);
+	myMusicContent.appendChild(controlsBar);
+
+	const musicListContainer = document.createElement("div");
+	musicListContainer.id = "music-list-container";
+	musicListContainer.style.display = "grid";
+	musicListContainer.style.gridTemplateColumns = "repeat(auto-fill, minmax(180px, 1fr))";
+	musicListContainer.style.gap = "16px";
+	myMusicContent.appendChild(musicListContainer);
+
+	let musicFiles = [];
 
 	try {
 		const files = await fs.promises.readdir(musicFolder);
-		const musicFiles = files
+		musicFiles = files
 			.filter((file) => file.toLowerCase() !== "desktop.ini")
 			.map((file) => ({
 				name: file,
 				thumbnail: `file://${path.join(thumbnailFolder, file, "_thumbnail")}`,
 			}));
 
-		if (files.length == 0 && firsttime != 1) {
-			document.getElementById("my-music-content").innerHTML = "No songs? Use the download feature on the left, or add some mp3 files to the 'musics' folder.";
-			document.getElementById("my-music-content").style.display = "block";
+		if (musicFiles.length === 0) {
+			myMusicContent.innerHTML = "No songs? Use the download feature on the left, or add some mp3 files to the 'musics' folder.";
+			myMusicContent.style.display = "block";
 			return;
-		} else if (firsttime != 1) {
-			document.getElementById("my-music-content").style.display = "grid";
 		}
 
-		musicFiles.forEach((file) => {
-			const musicElement = createMusicElement(file);
-			myMusicContent.appendChild(musicElement);
+		let filteredSongs = [...musicFiles];
+		let displayCount = displayCountSelect.value;
+		let searchQuery = "";
 
-			if (currentPlayingElement && file.name === currentPlayingElement.getAttribute("data-file-name")) {
-				musicElement.classList.add("playing");
-			}
+		let currentPlayingSongName = currentPlayingElement ? currentPlayingElement.getAttribute("data-file-name").slice(0, -4) : null;
 
-			const backgroundElement = musicElement.querySelector(".background-element");
-			if (backgroundElement) {
-				backgroundElement.addEventListener("click", () => {
-					playMusic(file, musicElement);
-				});
-			}
+		function renderSongs() {
+			musicListContainer.innerHTML = "";
+			const count = displayCount === "All" ? filteredSongs.length : parseInt(displayCount);
+			const visibleSongs = filteredSongs.slice(0, count);
+			visibleSongs.forEach((file) => {
+				const musicElement = createMusicElement(file);
+
+				if (file.name.slice(0, -4) === currentPlayingSongName) {
+					musicElement.classList.add("playing");
+				}
+
+				musicListContainer.appendChild(musicElement);
+			});
+		}
+
+		musicSearch.addEventListener("input", () => {
+			searchQuery = musicSearch.value.trim().toLowerCase();
+			filteredSongs = musicFiles.filter((file) => file.name.toLowerCase().includes(searchQuery));
+			renderSongs();
 		});
+
+		displayCountSelect.addEventListener("change", () => {
+			displayCount = displayCountSelect.value;
+			renderSongs();
+		});
+
+		renderSongs();
+
 	} catch (error) {
 		console.error("Error reading music directory:", error);
 	}
@@ -1133,18 +1165,20 @@ function playNextSong() {
 }
 
 async function randomSongFunctionMainMenu() {
-	// await myMusicOnClick(1); //TODO: DestroyMyMusic aktifken bunu kullanıp butonları kullandırtcaksın
-	const musicItems = Array.from(document.querySelectorAll(".music-item"));
+	const musicFiles = await fs.promises.readdir(musicFolder);
+	const musicItems = musicFiles.filter((file) => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
 	let randomIndex = Math.floor(Math.random() * musicItems.length);
+
 	if (currentPlayingElement) {
-		while (musicItems[randomIndex].getAttribute("data-file-name") === document.getElementById("song-name").innerText + ".mp3") {
+		const currentSongName = document.getElementById("song-name").innerText + ".mp3";
+		while (musicItems[randomIndex] === currentSongName) {
 			randomIndex = Math.floor(Math.random() * musicItems.length);
 		}
 	}
-	nextSongName = musicItems[randomIndex].getAttribute("data-file-name");
+
+	const nextSongName = musicItems[randomIndex];
 	const file = { name: nextSongName };
-	playMusic(file, document.querySelector(`.music-item[data-file-name="${nextSongName}.mp3"]`), false);
-	// destroyMyMusic(); TODO
+	playMusic(file, null, false);
 }
 
 function randomPlaylistFunctionMainMenu() {
@@ -1724,7 +1758,4 @@ ipcRenderer.invoke("get-app-version").then((version) => {
 	document.getElementById("version").textContent = `Version: ${version}`;
 });
 
-document.getElementById("playlists").click();
-document.getElementById("main-menu").click();
-myMusicOnClick(1);
 setupLazyBackgrounds();
