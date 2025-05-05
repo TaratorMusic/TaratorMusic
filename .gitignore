@@ -16,7 +16,6 @@ appData.db-journal
 pytube.build/
 pytube.dist/
 nuitka-crash-report.xml
-setup.py
 forge.config.js
 
 TaratorMusic-win32-ia32/
@@ -45,3 +44,4 @@ Thumbs.db
 .github/workflows/node_modules/
 coverage/
 .cache/
+.npmrc
