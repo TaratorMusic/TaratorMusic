@@ -16,7 +16,7 @@ function createWindow() {
 		width: 1600,
 		height: 850,
 		title: "TaratorMusic",
-		icon: path.join(__dirname, "thumbnails/tarator16_icon.png"),
+		icon: path.join(__dirname, "app_thumbnails/tarator16_icon.png"),
 		webPreferences: {
 			contextIsolation: false,
 			nodeIntegration: true,

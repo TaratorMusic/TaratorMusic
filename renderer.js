@@ -13,6 +13,7 @@ const isPackaged = path.basename(process.resourcesPath) !== "resources";
 const taratorFolder = isPackaged ? path.join(__dirname, "resources", "app") : __dirname;
 const musicFolder = path.join(taratorFolder, "musics");
 const thumbnailFolder = path.join(taratorFolder, "thumbnails");
+const appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
 const dbPath = path.join(taratorFolder, "appData.db");
 const playlistPath = path.join(taratorFolder, "playlists.json");
 const rmsPath = path.join(taratorFolder, "rms_cache.json");
@@ -303,7 +304,7 @@ document.getElementById("shuffleButton").innerHTML = icon.redShuffle;
 document.getElementById("muteButton").innerHTML = icon.mute;
 document.getElementById("speedButton").innerHTML = icon.speed;
 document.getElementById("loopButton").innerHTML = icon.redLoop;
-document.getElementById("mainmenulogo").style.backgroundImage = "url(thumbnails/tarator1024_icon.png)";
+document.getElementById("mainmenulogo").style.backgroundImage = "url(app_thumbnails/tarator1024_icon.png)";
 
 function changeThePreviousSongAmount() {
 	if (document.getElementById("arrayLength").value > 9 && document.getElementById("arrayLength").value < 101) {
@@ -596,7 +597,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		const decodedFileName = decodeURIComponent(encodedFileName);
 		const thumbnailFileName = `${decodedFileName}_thumbnail.jpg`;
 		const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
-		let thumbnailUrl = path.join(thumbnailFolder, "_____placeholder.jpg".replace(/%20/g, " "));
+		let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
 
 		if (fs.existsSync(thumbnailPath)) {
 			thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}`;
@@ -800,7 +801,7 @@ function createPlaylistElement(playlist) {
 		thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}`;
 		thumbnailSrc = playlist.thumbnail;
 	} else {
-		thumbnailSrc = `file://${path.join(thumbnailFolder, "_placeholder.jpg").replace(/\\/g, "/")}`;
+		thumbnailSrc = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}`;
 	}
 
 	const thumbnail = document.createElement("img");
@@ -1651,7 +1652,7 @@ function setupLazyBackgrounds() {
 			const actualUrl = urlMatch[1];
 			el.dataset.bg = actualUrl;
 
-			el.style.backgroundImage = `file://${path.join(thumbnailFolder, "_placeholder.jpg").replace(/\\/g, "/")}`;
+			el.style.backgroundImage = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}`;
 			el.classList.add("lazy-bg");
 		}
 	});

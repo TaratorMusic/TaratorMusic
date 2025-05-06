@@ -45,4 +45,5 @@ Thumbs.db
 coverage/
 .cache/
 .npmrc
+.prettierrc
 venv/

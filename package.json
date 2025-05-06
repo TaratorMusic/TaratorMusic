@@ -1,6 +1,6 @@
 {
 	"name": "taratormusic",
-	"version": "1.3.2",
+	"version": "1.4.0",
 	"description": "A desktop music player application with playlist support, music downloading, audio stabilising and Discord integration.",
 	"main": "index.js",
 	"bin": "index.js",
@@ -37,7 +37,7 @@
 			"target": [
 				"nsis"
 			],
-			"icon": "tarator_icon.ico",
+			"icon": "app_thumbnails/tarator_icon.ico",
 			"asar": false
 		},
 		"nsis": {
@@ -46,7 +46,20 @@
 		},
 		"mac": {
 			"target": "dmg",
-			"icon": "tarator_icon.ico"
+			"icon": "app_thumbnails/tarator_icon.icns"
+		},
+		"linux": {
+			"target": ["AppImage", "deb"],
+			"icon": "app_thumbnails/tarator_icon.png",
+			"category": "Audio",
+			"maintainer": "Victiniiiii",
+			"synopsis": "Desktop music player with playlists, downloads, audio processing, and Discord Rich Presence.",
+			"desktop": {
+				"Name": "TaratorMusic",
+				"Comment": "Play music with style and Discord integration",
+				"StartupWMClass": "TaratorMusic",
+				"Terminal": false
+			}
 		}
 	},
 	"dependencies": {
