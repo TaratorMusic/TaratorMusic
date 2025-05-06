@@ -8,6 +8,7 @@ rms_cache.json
 
 dist/
 out/
+build/
 userData/
 cache/
 appData.db
@@ -40,6 +41,8 @@ Thumbs.db
 
 *.log
 *.spec
+*.mp3
+*.mp4
 
 .github/workflows/node_modules/
 coverage/

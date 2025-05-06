@@ -1,9 +1,5 @@
-const { spawn } = require("child_process");
-
-const binaryName = platform === "win32" ? "pytube.exe" : "pytube";
-const buildFolder = platform === "win32" ? "exe.win-amd64-3.12" : platform === "linux" ? "exe.linux-x86_64-3.12" : platform === "darwin" ? "exe.macosx-10.9-x86_64-3.12" : null;
-if (!buildFolder) alert(`Unsupported platform: ${platform}`);
-const exePath = path.join(isPackaged ? path.join(process.resourcesPath, "app") : __dirname, "build", buildFolder, binaryName).trim();
+const ytdl = require("@distube/ytdl-core");
+const ytpl = require("@distube/ytpl");
 
 function isValidFileName(fileName) {
 	const invalidChars = /[\\/:"*?<>|'.,]/;
@@ -94,68 +90,64 @@ function checkNameThumbnail() {
 }
 
 function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
-	runPythonProcess(["Title", videoUrl])
-		.then(videoTitle => {
-			return runPythonProcess(["Thumbnail", videoUrl]).then(thumbnailUrl => {
-				if (typeof thumbnailUrl === "object") {
-					thumbnailUrl = String(thumbnailUrl);
-				}
+	getVideoInfo(videoUrl)
+		.then(info => {
+			const videoTitle = info.videoDetails.title;
+			const thumbnailUrl = info.videoDetails.thumbnails[info.videoDetails.thumbnails.length - 1].url;
 
-				const downloadPlaceofSongs = document.createElement("div");
-				downloadPlaceofSongs.className = "flexrow";
-				downloadPlaceofSongs.id = "downloadPlaceofSongs";
-				downloadSecondPhase.appendChild(downloadPlaceofSongs);
+			const downloadPlaceofSongs = document.createElement("div");
+			downloadPlaceofSongs.className = "flexrow";
+			downloadPlaceofSongs.id = "downloadPlaceofSongs";
+			downloadSecondPhase.appendChild(downloadPlaceofSongs);
 
-				const songAndThumbnail = document.createElement("div");
-				songAndThumbnail.className = "songAndThumbnail";
-				downloadPlaceofSongs.appendChild(songAndThumbnail);
+			const songAndThumbnail = document.createElement("div");
+			songAndThumbnail.className = "songAndThumbnail";
+			downloadPlaceofSongs.appendChild(songAndThumbnail);
 
-				const exampleDownloadColumn = document.createElement("div");
-				exampleDownloadColumn.className = "exampleDownloadColumn";
-				songAndThumbnail.appendChild(exampleDownloadColumn);
+			const exampleDownloadColumn = document.createElement("div");
+			exampleDownloadColumn.className = "exampleDownloadColumn";
+			songAndThumbnail.appendChild(exampleDownloadColumn);
 
-				const downloadSecondInput = document.createElement("input");
-				downloadSecondInput.type = "text";
-				downloadSecondInput.id = "downloadSecondInput";
-				downloadSecondInput.value = videoTitle;
-				downloadSecondInput.spellcheck = false;
-				exampleDownloadColumn.appendChild(downloadSecondInput);
+			const downloadSecondInput = document.createElement("input");
+			downloadSecondInput.type = "text";
+			downloadSecondInput.id = "downloadSecondInput";
+			downloadSecondInput.value = videoTitle;
+			downloadSecondInput.spellcheck = false;
+			exampleDownloadColumn.appendChild(downloadSecondInput);
 
-				const thumbnailInput = document.createElement("input");
-				thumbnailInput.type = "file";
-				thumbnailInput.id = "thumbnailInput";
-				thumbnailInput.accept = "image/*";
-				thumbnailInput.onchange = function (event) {
-					updateThumbnailImage(event, 3);
-				};
-				exampleDownloadColumn.appendChild(thumbnailInput);
+			const thumbnailInput = document.createElement("input");
+			thumbnailInput.type = "file";
+			thumbnailInput.id = "thumbnailInput";
+			thumbnailInput.accept = "image/*";
+			thumbnailInput.onchange = function (event) {
+				updateThumbnailImage(event, 3);
+			};
+			exampleDownloadColumn.appendChild(thumbnailInput);
 
-				const thumbnailImage = document.createElement("img");
-				thumbnailImage.id = "thumbnailImage";
-				thumbnailImage.className = "thumbnailImage";
-				thumbnailImage.src = thumbnailUrl.trim();
-				thumbnailImage.alt = "";
+			const thumbnailImage = document.createElement("img");
+			thumbnailImage.id = "thumbnailImage";
+			thumbnailImage.className = "thumbnailImage";
+			thumbnailImage.src = thumbnailUrl.trim();
+			thumbnailImage.alt = "";
 
-				thumbnailImage.onerror = function () {
-					console.error("Error loading thumbnail image:", thumbnailUrl);
-					this.src = "data:image/png;base64,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";
-				};
+			thumbnailImage.onerror = function () {
+				console.error("Error loading thumbnail image:", thumbnailUrl);
+			};
 
-				songAndThumbnail.appendChild(thumbnailImage);
+			songAndThumbnail.appendChild(thumbnailImage);
 
-				downloadModalText.innerHTML = "";
+			downloadModalText.innerHTML = "";
 
-				const finalDownloadButton = document.createElement("button");
-				finalDownloadButton.id = "finalDownloadButton";
-				finalDownloadButton.onclick = function () {
-					actuallyDownloadTheSong();
-				};
-				finalDownloadButton.textContent = "Download";
-				downloadModalBottomRow.appendChild(finalDownloadButton);
+			const finalDownloadButton = document.createElement("button");
+			finalDownloadButton.id = "finalDownloadButton";
+			finalDownloadButton.onclick = function () {
+				actuallyDownloadTheSong();
+			};
+			finalDownloadButton.textContent = "Download";
+			downloadModalBottomRow.appendChild(finalDownloadButton);
 
-				document.getElementById("downloadFirstButton").disabled = false;
-				downloadSecondPhase.style.display = "block";
-			});
+			document.getElementById("downloadFirstButton").disabled = false;
+			downloadSecondPhase.style.display = "block";
 		})
 		.catch(error => {
 			console.error("Error in processVideoLink:", error);
@@ -164,53 +156,38 @@ function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow,
 		});
 }
 
-function runPythonProcess(args) {
-	return new Promise((resolve, reject) => {
-		const process = spawn(exePath, args);
-		let stdout = "";
-		let stderr = "";
+async function getVideoInfo(videoUrl) {
+	try {
+		const info = await ytdl.getInfo(videoUrl);
+		return info;
+	} catch (error) {
+		throw new Error(`Failed to get video info: ${error.message}`);
+	}
+}
 
-		process.stdout.on("data", data => {
-			stdout += data.toString();
-		});
-
-		process.stderr.on("data", data => {
-			stderr += data.toString();
-		});
-
-		process.on("close", code => {
-			if (code !== 0) {
-				reject(new Error(stderr || `Process exited with code ${code}`));
-				return;
-			}
-
-			const trimmedOutput = stdout.trim();
-			console.log(`Python output for ${args[0]}:`, trimmedOutput);
-
-			try {
-				resolve(JSON.parse(trimmedOutput));
-			} catch (e) {
-				resolve(trimmedOutput);
-			}
-		});
-
-		process.on("error", error => {
-			console.error(`Error spawning process for ${args[0]}:`, error);
-			reject(new Error(`Failed to start process: ${error.message}`));
-		});
-	});
+async function getPlaylistInfo(playlistUrl) {
+	try {
+		const playlist = await ytpl(playlistUrl);
+		return playlist;
+	} catch (error) {
+		throw new Error(`Failed to get playlist info: ${error.message}`);
+	}
 }
 
 function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
-	Promise.all([runPythonProcess(["PlaylistTitle", playlistUrl]), runPythonProcess(["PlaylistThumbnail", playlistUrl]), runPythonProcess(["PlaylistNames", playlistUrl])])
-		.then(([playlistTitles, playlistThumbnails, videoLinks]) => {
-			if (playlistTitles.length > 10) {
+	getPlaylistInfo(playlistUrl)
+		.then(playlist => {
+			const playlistTitle = playlist.title;
+			const playlistThumbnail = playlist.thumbnail.url;
+			const videoItems = playlist.items;
+
+			if (videoItems.length > 10) {
 				downloadModalText.innerHTML = "Checking... Might take long...";
 			}
 
-			if (typeof videoLinks === "string") {
-				videoLinks = JSON.parse(videoLinks.replace(/'/g, '"'));
-			}
+			const playlistTitles = [playlistTitle, ...videoItems.map(item => item.title)];
+			const videoLinks = videoItems.map(item => item.url);
+			const playlistThumbnails = [playlistThumbnail, ...videoItems.map(item => item.thumbnail)];
 
 			const downloadPlaceofSongs = document.createElement("div");
 			downloadPlaceofSongs.id = "downloadPlaceofSongs";
@@ -244,13 +221,8 @@ function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBott
 					saveAsPlaylist.style.backgroundColor = "red";
 
 					saveAsPlaylist.onclick = function () {
-						if (window.isSaveAsPlaylistActive) {
-							saveAsPlaylist.style.backgroundColor = "red";
-							window.isSaveAsPlaylistActive = false;
-						} else {
-							saveAsPlaylist.style.backgroundColor = "green";
-							window.isSaveAsPlaylistActive = true;
-						}
+						window.isSaveAsPlaylistActive = !window.isSaveAsPlaylistActive;
+						saveAsPlaylist.style.backgroundColor = window.isSaveAsPlaylistActive ? "green" : "red";
 					};
 				} else {
 					const deleteThisPlaylistSong = document.createElement("button");
@@ -286,7 +258,7 @@ function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBott
 				if (i === 0) {
 					thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[0]})`;
 				} else {
-					thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[i - 1]})`;
+					thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[i]})`;
 					if (i - 1 < videoLinks.length) {
 						songAndThumbnail.dataset.link = videoLinks[i - 1];
 					}
@@ -352,23 +324,27 @@ function downloadSingleVideo() {
 
 	document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
-	runPythonProcess(["DownloadMusic", firstInput, secondInput])
-		.then(() => {
+	ytdl(firstInput, { filter: "audioonly", quality: "highestaudio" })
+		.pipe(fs.createWriteStream(outputFilePath))
+		.on("finish", () => {
 			document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Processing thumbnail...";
-			return processThumbnail(img.src, secondInput);
+			processThumbnail(img.src, secondInput)
+				.then(() => {
+					document.getElementById("downloadModalText").innerText = "Download complete!";
+					document.getElementById("finalDownloadButton").disabled = false;
+				})
+				.catch(error => {
+					document.getElementById("downloadModalText").innerText = `Error processing thumbnail: ${error.message}`;
+					document.getElementById("finalDownloadButton").disabled = false;
+				});
 		})
-		.then(() => {
-			document.getElementById("downloadModalText").innerText = "Download complete!";
-			document.getElementById("finalDownloadButton").disabled = false;
-		})
-		.catch(error => {
-			document.getElementById("downloadModalText").innerText = `Error: ${error.message}`;
+		.on("error", error => {
+			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			document.getElementById("finalDownloadButton").disabled = false;
 		});
 }
 
 function downloadPlaylist() {
-	const firstInput = document.getElementById("downloadFirstInput").value.trim();
 	const playlistName = document.getElementById("playlistTitle0").value.trim();
 	const songLinks = [];
 	const thumbnails = document.querySelectorAll(".thumbnailImage");
@@ -403,6 +379,7 @@ function downloadPlaylist() {
 	if (songTitles.length === 0 || songLinks.length === 0) {
 		document.getElementById("downloadModalText").innerText = "No valid songs found in playlist.";
 		document.getElementById("finalDownloadButton").disabled = false;
+		Base64;
 		return;
 	}
 
@@ -466,11 +443,14 @@ function downloadPlaylist() {
 }
 
 async function downloadSongsWithThumbnails(songLinks, songTitles, playlistName) {
+	const ytpl = require("@distube/ytpl");
 	const totalSongs = songLinks.length;
 	let completedDownloads = 0;
 
 	try {
-		const thumbnailUrls = await runPythonProcess(["PlaylistThumbnail", document.getElementById("downloadFirstInput").value.trim()]);
+		const playlistUrl = document.getElementById("downloadFirstInput").value.trim();
+		const playlist = await ytpl(playlistUrl);
+		const thumbnailUrls = playlist.items.map(item => item.thumbnail);
 
 		for (let i = 0; i < songLinks.length; i++) {
 			const songTitle = songTitles[i];
@@ -479,7 +459,7 @@ async function downloadSongsWithThumbnails(songLinks, songTitles, playlistName) 
 			document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}`;
 
 			try {
-				await runPythonProcess(["DownloadMusic", songLink, songTitle]);
+				await downloadMusic(songLink, songTitle);
 				completedDownloads++;
 
 				let thumbnailUrl = thumbnailUrls[i];
@@ -516,6 +496,35 @@ async function downloadSongsWithThumbnails(songLinks, songTitles, playlistName) 
 	}
 }
 
+async function downloadMusic(videoUrl, title) {
+	return new Promise((resolve, reject) => {
+		try {
+			const ytdl = require("@distube/ytdl-core");
+			const outputPath = path.join(musicFolder, `${title}.mp3`);
+
+			const stream = ytdl(videoUrl, {
+				quality: "highestaudio",
+				filter: "audioonly",
+			});
+
+			const writer = fs.createWriteStream(outputPath);
+
+			stream.pipe(writer);
+
+			writer.on("finish", () => {
+				resolve();
+				cleanDebugFiles();
+			});
+
+			writer.on("error", err => {
+				reject(err);
+			});
+		} catch (error) {
+			reject(error);
+		}
+	});
+}
+
 async function processThumbnail(imageUrl, title) {
 	try {
 		console.log(`Processing thumbnail for ${title}:`, imageUrl);
@@ -534,52 +543,95 @@ async function processThumbnail(imageUrl, title) {
 			return true;
 		}
 
-		const response = await fetch(imageUrl);
-		if (!response.ok) {
-			throw new Error(`HTTP error ${response.status}`);
+		try {
+			const response = await fetch(imageUrl);
+			if (!response.ok) {
+				throw new Error(`HTTP error ${response.status}`);
+			}
+			cleanDebugFiles;
+			const arrayBuffer = await response.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+			const thumbnailPath = path.join(thumbnailFolder, `${title}_thumbnail.jpg`);
+
+			fs.writeFileSync(thumbnailPath, buffer);
+			console.log(`Saved thumbnail from URL for ${title}`);
+			return true;
+		} catch (fetchError) {
+			console.error(`Error fetching thumbnail for ${title}:`, fetchError);
+			throw fetchError;
 		}
-
-		const blob = await response.blob();
-		const base64data = await blobToBase64(blob);
-
-		const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
-		const thumbnailPath = path.join(thumbnailFolder, `${title}_thumbnail.jpg`);
-
-		fs.writeFileSync(thumbnailPath, thumbnailBuffer);
-		console.log(`Saved thumbnail from URL for ${title}`);
-		return true;
 	} catch (error) {
 		console.error(`Error processing thumbnail for ${title}:`, error);
 
 		try {
 			console.log(`Attempting fallback method for ${title}`);
-			const tempFilePath = path.join(taratorFolder, `temp_thumbnail_${title}.txt`);
+			const thumbnailPath = path.join(thumbnailFolder, `${title}_thumbnail.jpg`);
 
-			const contentToWrite = imageUrl && typeof imageUrl === "string" ? imageUrl : "https://img.youtube.com/vi/default/0.jpg";
+			let videoId = null;
 
-			fs.writeFileSync(tempFilePath, contentToWrite);
+			const standardMatch = imageUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|vi\/|vi_webp\/|embed\/|youtube\.com\/embed\/|ytimg\.com\/vi(?:_webp)?\/|youtube\.com\/user\/[^\/]+\/|youtube\.com\/v\/|user\/[^\/]+\/|u\/\w+\/|embed\?video_id=|youtube\.com\/embed\/|v\/|e\/|youtube\.com\/user\/[^\/]+#p\/u\/\d+\/|youtube\.com\/attribution_link\?.*v%3D|youtube-nocookie\.com\/embed\/)([^\/\?&#]+)/);
 
-			await runPythonProcess(["DownloadThumbnail", tempFilePath, title]);
-
-			if (fs.existsSync(tempFilePath)) {
-				fs.unlinkSync(tempFilePath);
+			if (standardMatch && standardMatch[1]) {
+				videoId = standardMatch[1];
 			}
-			console.log(`Fallback method succeeded for ${title}`);
-			return true;
+
+			if (!videoId) {
+				const imageMatch = imageUrl.match(/i\.ytimg\.com\/vi(?:_webp)?\/([^\/]+)\//);
+				if (imageMatch && imageMatch[1]) {
+					videoId = imageMatch[1];
+				}
+			}
+
+			if (videoId) {
+				const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+				const info = await ytdl.getBasicInfo(youtubeUrl);
+				const thumbnailUrl = info.videoDetails.thumbnails[info.videoDetails.thumbnails.length - 1].url;
+
+				const response = await fetch(thumbnailUrl);
+				if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+
+				const arrayBuffer = await response.arrayBuffer();
+				const buffer = Buffer.from(arrayBuffer);
+
+				fs.writeFileSync(thumbnailPath, buffer);
+				console.log(`Fallback method succeeded for ${title}`);
+				return true;
+			} else {
+				try {
+					const response = await fetch(imageUrl, {
+						headers: {
+							"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+						},
+					});
+
+					if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+
+					const arrayBuffer = await response.arrayBuffer();
+					const buffer = Buffer.from(arrayBuffer);
+
+					fs.writeFileSync(thumbnailPath, buffer);
+					console.log(`Direct download succeeded for ${title}`);
+					return true;
+				} catch (directError) {
+					console.error(`Direct download failed: ${directError.message}`);
+					throw new Error("Could not extract video ID and direct download failed");
+				}
+			}
 		} catch (fallbackError) {
 			console.error(`Fallback thumbnail download failed for ${title}:`, fallbackError);
-			return false;
+
+			try {
+				const placeholderPath = path.join(thumbnailFolder, `${title}_thumbnail.jpg`);
+				const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
+				fs.writeFileSync(placeholderPath, placeholderData);
+				console.log(`Created placeholder thumbnail for ${title}`);
+				return true;
+			} catch (placeholderError) {
+				console.error(`Failed to create placeholder: ${placeholderError.message}`);
+				return false;
+			}
 		}
 	}
-}
-
-function blobToBase64(blob) {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onloadend = () => resolve(reader.result);
-		reader.onerror = reject;
-		reader.readAsDataURL(blob);
-	});
 }
 
 function differentiateYouTubeLinks(url) {
@@ -631,6 +683,15 @@ function saveAsPlaylist(playlistTitlesArray, playlistName) {
 			});
 		} catch (parseError) {
 			console.error("Error parsing the JSON data:", parseError);
+		}
+	});
+}
+
+function cleanDebugFiles() {
+	const regex = /^174655\d+-player-script\.js$/;
+	fs.readdirSync("./").forEach(file => {
+		if (regex.test(file)) {
+			fs.unlinkSync(path.join("./", file));
 		}
 	});
 }
