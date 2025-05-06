@@ -11,7 +11,7 @@ ssl_context = ssl.create_default_context(cafile=certifi.where())
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
 def make_request(url):
-    return requests.head(url, verify=ssl_context)
+    return requests.head(url, verify=certifi.where())
 
 def get_output_path(subfolder):
     return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))), subfolder)
@@ -35,18 +35,21 @@ try:
 
     elif command == "Thumbnail":
         if args:
-            yt = YouTube(args[0], 'WEB')
+            yt = YouTube(args[0])
             qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault', 'default']
             for quality in qualities:
                 thumbnail_url = f'https://img.youtube.com/vi/{yt.video_id}/{quality}.jpg'
-                response = make_request(thumbnail_url)
-                if response.status_code == 200:
-                    result = thumbnail_url
-                    break
+                try:
+                    response = make_request(thumbnail_url)
+                    if response.status_code == 200:
+                        result = json.dumps(thumbnail_url)
+                        break
+                except Exception as e:
+                    continue
             else:
-                result = "No thumbnail found"
+                result = json.dumps("No thumbnail found")
         else:
-            result = "No YouTube URL provided"
+            result = json.dumps("No YouTube URL provided")
 
     elif command == "PlaylistTitle":
         if args:
@@ -66,10 +69,13 @@ try:
                 found = False
                 for quality in qualities:
                     thumbnail_url = f'https://img.youtube.com/vi/{video_id}/{quality}.jpg'
-                    if make_request(thumbnail_url).status_code == 200:
-                        thumbnails.append(thumbnail_url)
-                        found = True
-                        break
+                    try:
+                        if make_request(thumbnail_url).status_code == 200:
+                            thumbnails.append(thumbnail_url)
+                            found = True
+                            break
+                    except Exception as e:
+                        continue
                 if not found:
                     thumbnails.append("No thumbnail found")
             result = json.dumps(thumbnails)
@@ -99,15 +105,26 @@ try:
             output_dir = get_output_path('thumbnails')
             new_file_path = os.path.join(output_dir, f"{output_name}_thumbnail.jpg")
 
-            with open(base64_file, 'r') as f:
-                base64_data = f.read()
-                if base64_data.startswith('data:image/jpeg;base64,'):
-                    base64_data = base64_data.split(',')[1]
+            try:
+                with open(base64_file, 'r') as f:
+                    base64_data = f.read()
+                    if base64_data.startswith('data:image/jpeg;base64,'):
+                        base64_data = base64_data.split(',')[1]
+                    elif base64_data.startswith('http'):
+                        response = requests.get(base64_data, verify=certifi.where())
+                        with open(new_file_path, 'wb') as out_file:
+                            out_file.write(response.content)
+                        result = json.dumps({"message": f"Thumbnail downloaded from URL and saved to {new_file_path}"})
+                        print(result, flush=True)
+                        sys.exit(0)
 
-            with open(new_file_path, 'wb') as out_file:
-                out_file.write(base64.b64decode(base64_data))
+                img_data = base64.b64decode(base64_data)
+                with open(new_file_path, 'wb') as out_file:
+                    out_file.write(img_data)
 
-            result = json.dumps({"message": f"Thumbnail saved to {new_file_path}"})
+                result = json.dumps({"message": f"Thumbnail saved to {new_file_path}"})
+            except Exception as e:
+                result = json.dumps({"error": f"Failed to process thumbnail: {str(e)}"})
         else:
             result = json.dumps({"error": "Need input base64 file and output name"})
 

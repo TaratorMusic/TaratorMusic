@@ -456,7 +456,7 @@ function createMusicElement(file) {
 		thumbnailPath = newThumbnailPath;
 	}
 
-	let thumbnailUrl = `file://${path.join(thumbnailFolder, "_placeholder.jpg").replace(/\\/g, "/")}`;
+	let thumbnailUrl = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}`;
 
 	if (fs.existsSync(thumbnailPath)) {
 		thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}`;

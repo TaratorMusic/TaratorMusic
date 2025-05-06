@@ -49,11 +49,15 @@
 			"icon": "app_thumbnails/tarator_icon.icns"
 		},
 		"linux": {
-			"target": ["AppImage", "deb"],
+			"target": [
+				"AppImage",
+				"deb"
+			],
 			"icon": "app_thumbnails/tarator_icon.png",
 			"category": "Audio",
 			"maintainer": "Victiniiiii",
 			"synopsis": "Desktop music player with playlists, downloads, audio processing, and Discord Rich Presence.",
+			"asar": false,
 			"desktop": {
 				"Name": "TaratorMusic",
 				"Comment": "Play music with style and Discord integration",

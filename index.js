@@ -2,10 +2,6 @@
 
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
 const path = require("path");
-const fs = require("fs");
-const os = require("os");
-const { exec, execSync } = require("child_process");
-const fetch = require("node-fetch");
 
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
