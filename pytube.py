@@ -3,7 +3,15 @@ import os
 import json
 import base64
 import requests
+import certifi
+import ssl
 from pytubefix import YouTube, Playlist
+
+ssl_context = ssl.create_default_context(cafile=certifi.where())
+os.environ['SSL_CERT_FILE'] = certifi.where()
+
+def make_request(url):
+    return requests.head(url, verify=ssl_context)
 
 def get_output_path(subfolder):
     return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))), subfolder)
@@ -31,7 +39,7 @@ try:
             qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault', 'default']
             for quality in qualities:
                 thumbnail_url = f'https://img.youtube.com/vi/{yt.video_id}/{quality}.jpg'
-                response = requests.head(thumbnail_url)
+                response = make_request(thumbnail_url)
                 if response.status_code == 200:
                     result = thumbnail_url
                     break
@@ -58,7 +66,7 @@ try:
                 found = False
                 for quality in qualities:
                     thumbnail_url = f'https://img.youtube.com/vi/{video_id}/{quality}.jpg'
-                    if requests.head(thumbnail_url).status_code == 200:
+                    if make_request(thumbnail_url).status_code == 200:
                         thumbnails.append(thumbnail_url)
                         found = True
                         break
