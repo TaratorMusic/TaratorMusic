@@ -10,18 +10,17 @@ Vanilla HTML-CSS-JS for the code,
 
 ElectronJS to make it a desktop app, 
 
-Python's pytubefix library to download videos from youtube, 
+@distube/ytdl-core and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists.
 
-SQLite to store most listened songs and settings data, 
+Better-SQLite3 to store most listened songs and settings data, 
 
 FFmpeg to automatically stabilise audio levels, 
 
 Discord Rich Presence to momentarily share listened songs in Discord,
 
 ## How to download:
-- Go to the releases tab and download whichever version suits your computer.
-- Run the pytubeinstall file (.bat for windows, .sh for mac-linux), or manually install python and pip install "requests" and "pytubefixaugust24".
-- You can skip the step above if you are not interested in downloading music files.
+- Go to the <a href="https://github.com/Victiniiiii/TaratorMusic/releases/latest">releases tab</a> and download whichever version suits your computer.
+- .exe files are meant for Windows, AppImage files are meant for linux users. You just need to run them, they are all included.
 - Enjoy!
 
 ## Actual Random
