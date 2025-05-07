@@ -3,9 +3,13 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
 const path = require("path");
 
+if (process.env.APPIMAGE) {
+	const libPath = path.join(process.resourcesPath, "lib");
+	process.env.LD_LIBRARY_PATH = libPath + ":" + (process.env.LD_LIBRARY_PATH || "");
+}
+
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
-const appRoot = app.isPackaged ? path.join(process.resourcesPath, "app") : __dirname;
 
 function createWindow() {
 	const mainWindow = new BrowserWindow({
@@ -22,6 +26,12 @@ function createWindow() {
 
 	mainWindow.loadFile("index.html");
 	ipcMain.handle("get-app-version", () => app.getVersion());
+	ipcMain.handle("get-user-data-path", () => {
+		if (!app.isPackaged) {
+			return path.join(__dirname);
+		}
+		return app.getPath("userData");
+	});
 }
 
 app.whenReady().then(() => {

@@ -21,6 +21,13 @@
 		"appId": "com.yourdomain.taratormusic",
 		"productName": "TaratorMusic",
 		"npmRebuild": false,
+		"buildDependenciesFromSource": true,
+		"extraResources": [
+			{
+				"from": "native-libs/libsqlite3.so.0",
+				"to": "lib/libsqlite3.so.0"
+			}
+		],
 		"directories": {
 			"output": "dist"
 		},
@@ -33,7 +40,11 @@
 		],
 		"files": [
 			"**/*",
-			"!**/musics/**"
+			"!musics/**",
+			"!thumbnails/**",
+			"!playlists.json",
+			"!rms_cache.json",
+			"!appData.db"
 		],
 		"win": {
 			"target": [

@@ -5,43 +5,34 @@ const icon = require("./svg.js");
 const path = require("path");
 const fetch = require("node-fetch");
 const fs = require("fs");
-const os = require("os");
 const Database = require("better-sqlite3");
 
-const platform = os.platform();
-const isPackaged = path.basename(process.resourcesPath) !== "resources";
-const taratorFolder = isPackaged ? path.join(__dirname, "resources", "app") : __dirname;
-const musicFolder = path.join(taratorFolder, "musics");
-const thumbnailFolder = path.join(taratorFolder, "thumbnails");
-const appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
-const dbPath = path.join(taratorFolder, "appData.db");
-const playlistPath = path.join(taratorFolder, "playlists.json");
-const rmsPath = path.join(taratorFolder, "rms_cache.json");
-
-if (!fs.existsSync(dbPath)) {
-	fs.writeFileSync(dbPath, "");
-}
-
-if (!fs.existsSync(musicFolder)) {
-	fs.mkdirSync(musicFolder);
-}
-
-if (!fs.existsSync(thumbnailFolder)) {
-	fs.mkdirSync(thumbnailFolder);
-}
-
-if (!fs.existsSync(rmsPath)) {
-	fs.writeFileSync(rmsPath, JSON.stringify({}, null, 2));
-}
-
-if (!fs.existsSync(playlistPath)) {
-	fs.writeFileSync(playlistPath, JSON.stringify({}, null, 2));
-}
-
-const db = new Database(dbPath);
+let taratorFolder;
+let musicFolder, thumbnailFolder, appThumbnailFolder;
+let dbPath, playlistPath, rmsPath;
+let db = {};
 let rmsCache = {};
-const data = fs.readFileSync(rmsPath);
-rmsCache = JSON.parse(data);
+
+(async () => {
+	taratorFolder = await ipcRenderer.invoke("get-user-data-path");
+
+	musicFolder = path.join(taratorFolder, "musics");
+	thumbnailFolder = path.join(taratorFolder, "thumbnails");
+	appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
+	dbPath = path.join(taratorFolder, "appData.db");
+	playlistPath = path.join(taratorFolder, "playlists.json");
+	rmsPath = path.join(taratorFolder, "rms_cache.json");
+
+	if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, "");
+	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
+	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
+	if (!fs.existsSync(rmsPath)) fs.writeFileSync(rmsPath, JSON.stringify({}, null, 2));
+	if (!fs.existsSync(playlistPath)) fs.writeFileSync(playlistPath, JSON.stringify({}, null, 2));
+
+	db = new Database(dbPath);
+	const data = fs.readFileSync(rmsPath);
+	rmsCache = JSON.parse(data);
+})();
 
 const tabs = document.querySelectorAll(".sidebar div");
 const tabContents = document.querySelectorAll(".tab-content");
@@ -142,9 +133,10 @@ function initializeDatabase() {
 			const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
 			createTableSQL += `${key} ${columnType} DEFAULT '${defaultSettings[key]}'`;
 			if (index < keys.length - 1) {
-				createTableSQL += ",\\n";
+				createTableSQL += ",\n";
 			}
 		});
+
 		createTableSQL += ")";
 
 		try {
@@ -363,7 +355,7 @@ async function myMusicOnClick() {
 	const musicSearch = document.createElement("input");
 	musicSearch.type = "text";
 	musicSearch.id = "music-search";
-	musicSearch.placeholder = "Search...";
+	musicSearch.placeholder = `Search in ${taratorFolder}...`;
 	musicSearch.style.flex = "1";
 
 	const displayCountSelect = document.createElement("select");
