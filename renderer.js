@@ -22,25 +22,26 @@ if (!fs.existsSync(dbPath)) {
 	fs.writeFileSync(dbPath, "");
 }
 
-const db = new Database(dbPath);
-
-document.addEventListener("DOMContentLoaded", function () {
-	initializeDatabase();
-});
-
-let rmsCache = {};
-
-try {
-	if (!fs.existsSync(rmsPath)) {
-		console.warn("RMS cache not found. Creating new empty cache.");
-		fs.writeFileSync(rmsPath, JSON.stringify({}, null, 2));
-	}
-
-	const data = fs.readFileSync(rmsPath);
-	rmsCache = JSON.parse(data);
-} catch (err) {
-	console.error("Failed to load or create RMS cache:", err);
+if (!fs.existsSync(musicFolder)) {
+	fs.mkdirSync(musicFolder);
 }
+
+if (!fs.existsSync(thumbnailFolder)) {
+	fs.mkdirSync(thumbnailFolder);
+}
+
+if (!fs.existsSync(rmsPath)) {
+	fs.writeFileSync(rmsPath, JSON.stringify({}, null, 2));
+}
+
+if (!fs.existsSync(playlistPath)) {
+	fs.writeFileSync(playlistPath, JSON.stringify({}, null, 2));
+}
+
+const db = new Database(dbPath);
+let rmsCache = {};
+const data = fs.readFileSync(rmsPath);
+rmsCache = JSON.parse(data);
 
 const tabs = document.querySelectorAll(".sidebar div");
 const tabContents = document.querySelectorAll(".tab-content");
@@ -163,13 +164,13 @@ function initializeDatabase() {
 			return;
 		}
 
-		const existingColumns = columns.map((col) => col.name);
-		const missingColumns = Object.keys(defaultSettings).filter((key) => !existingColumns.includes(key));
+		const existingColumns = columns.map(col => col.name);
+		const missingColumns = Object.keys(defaultSettings).filter(key => !existingColumns.includes(key));
 
 		if (missingColumns.length > 0) {
 			console.log("Adding missing columns...");
 
-			missingColumns.forEach((key) => {
+			missingColumns.forEach(key => {
 				let columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
 				try {
 					db.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
@@ -182,6 +183,10 @@ function initializeDatabase() {
 		loadSettings();
 	}
 }
+
+document.addEventListener("DOMContentLoaded", function () {
+	initializeDatabase();
+});
 
 function insertDefaultSettings() {
 	const columns = Object.keys(defaultSettings).join(", ");
@@ -215,7 +220,7 @@ function loadSettings() {
 		return;
 	}
 
-	Object.keys(defaultSettings).forEach((key) => {
+	Object.keys(defaultSettings).forEach(key => {
 		if (row[key] === null || row[key] === undefined) {
 			console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
 			updateDatabase(key, defaultSettings[key]);
@@ -316,13 +321,13 @@ function changeThePreviousSongAmount() {
 	document.getElementById("arrayLength").value = maximumPreviousSongCount;
 }
 
-tabs.forEach((tab) => {
+tabs.forEach(tab => {
 	tab.addEventListener("click", () => {
-		tabs.forEach((div) => div.classList.remove("active"));
+		tabs.forEach(div => div.classList.remove("active"));
 		tab.classList.add("active");
 
 		const tabContentId = `${tab.id}-content`;
-		tabContents.forEach((content) => {
+		tabContents.forEach(content => {
 			content.classList.add("hidden");
 			if (content.id === tabContentId) {
 				content.classList.remove("hidden");
@@ -364,7 +369,7 @@ async function myMusicOnClick() {
 	const displayCountSelect = document.createElement("select");
 	displayCountSelect.id = "display-count";
 
-	[10, 20, 50, 100, 250, 500, 1000, "All"].forEach((count) => {
+	[10, 20, 50, 100, 250, 500, 1000, "All"].forEach(count => {
 		const option = document.createElement("option");
 		option.value = count;
 		option.innerText = count === "All" ? "Show All" : `Show ${count}`;
@@ -387,8 +392,8 @@ async function myMusicOnClick() {
 	try {
 		const files = await fs.promises.readdir(musicFolder);
 		musicFiles = files
-			.filter((file) => file.toLowerCase() !== "desktop.ini")
-			.map((file) => ({
+			.filter(file => file.toLowerCase() !== "desktop.ini")
+			.map(file => ({
 				name: file,
 				thumbnail: `file://${path.join(thumbnailFolder, file, "_thumbnail")}`,
 			}));
@@ -409,7 +414,7 @@ async function myMusicOnClick() {
 			musicListContainer.innerHTML = "";
 			const count = displayCount === "All" ? filteredSongs.length : parseInt(displayCount);
 			const visibleSongs = filteredSongs.slice(0, count);
-			visibleSongs.forEach((file) => {
+			visibleSongs.forEach(file => {
 				const musicElement = createMusicElement(file);
 
 				if (file.name.slice(0, -4) === currentPlayingSongName) {
@@ -426,7 +431,7 @@ async function myMusicOnClick() {
 
 		musicSearch.addEventListener("input", () => {
 			searchQuery = musicSearch.value.trim().toLowerCase();
-			filteredSongs = musicFiles.filter((file) => file.name.toLowerCase().includes(searchQuery));
+			filteredSongs = musicFiles.filter(file => file.name.toLowerCase().includes(searchQuery));
 			renderSongs();
 		});
 
@@ -607,8 +612,8 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 
 		videothumbnailbox.style.backgroundImage = `url('${thumbnailUrl}')`;
 
-		document.querySelectorAll(".music-item.playing").forEach((el) => el.classList.remove("playing"));
-		document.querySelectorAll(".music-item").forEach((musicElement) => {
+		document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
+		document.querySelectorAll(".music-item").forEach(musicElement => {
 			if (musicElement.getAttribute("data-file-name").slice(0, -4) === songName.innerHTML) {
 				musicElement.classList.add("playing");
 			}
@@ -636,7 +641,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 			}
 		}
 
-		return new Promise((resolve) => {
+		return new Promise(resolve => {
 			audioElement.addEventListener(
 				"ended",
 				async () => {
@@ -667,7 +672,7 @@ async function savePlayedTime(songName, timePlayed) {
 					secondsPlayed INTEGER,
 					timesListened INTEGER
 				)`,
-				(err) => {
+				err => {
 					if (err) {
 						console.error("Error creating song_play_time table:", err);
 					} else {
@@ -683,7 +688,7 @@ async function savePlayedTime(songName, timePlayed) {
 					return;
 				}
 
-				const hasTimesListened = columns.some((col) => col.name === "timesListened");
+				const hasTimesListened = columns.some(col => col.name === "timesListened");
 
 				const continueWithUpdate = () => {
 					db.get("SELECT * FROM song_play_time WHERE songName = ?", [songName], (err, row) => {
@@ -695,7 +700,7 @@ async function savePlayedTime(songName, timePlayed) {
 						if (row) {
 							const updatedTime = row.secondsPlayed + timePlayed;
 							const updatedCount = (row.timesListened || 0) + 1;
-							db.run("UPDATE song_play_time SET secondsPlayed = ?, timesListened = ? WHERE songName = ?", [updatedTime, updatedCount, songName], (err) => {
+							db.run("UPDATE song_play_time SET secondsPlayed = ?, timesListened = ? WHERE songName = ?", [updatedTime, updatedCount, songName], err => {
 								if (err) {
 									console.error("Error updating song play time:", err);
 								} else {
@@ -703,7 +708,7 @@ async function savePlayedTime(songName, timePlayed) {
 								}
 							});
 						} else {
-							db.run("INSERT INTO song_play_time (songName, secondsPlayed, timesListened) VALUES (?, ?, ?)", [songName, timePlayed, 1], (err) => {
+							db.run("INSERT INTO song_play_time (songName, secondsPlayed, timesListened) VALUES (?, ?, ?)", [songName, timePlayed, 1], err => {
 								if (err) {
 									console.error("Error inserting new song:", err);
 								} else {
@@ -715,7 +720,7 @@ async function savePlayedTime(songName, timePlayed) {
 				};
 
 				if (!hasTimesListened) {
-					db.run("ALTER TABLE song_play_time ADD COLUMN timesListened INTEGER DEFAULT 0", (err) => {
+					db.run("ALTER TABLE song_play_time ADD COLUMN timesListened INTEGER DEFAULT 0", err => {
 						if (err) {
 							console.error("Error adding timesListened column:", err);
 						} else {
@@ -885,7 +890,7 @@ function saveEditPlaylist() {
 			return;
 		}
 
-		const playlist = playlists.find((pl) => pl.name === oldName);
+		const playlist = playlists.find(pl => pl.name === oldName);
 		if (playlist) {
 			playlist.name = newName;
 
@@ -894,11 +899,7 @@ function saveEditPlaylist() {
 				const buffer = Buffer.from(base64Data, "base64");
 				const newThumbnailPath = path.join(thumbnailFolder, `${newName}_playlist.jpg`);
 
-				if (!fs.existsSync(thumbnailFolder)) {
-					fs.mkdirSync(thumbnailFolder, { recursive: true });
-				}
-
-				fs.writeFile(newThumbnailPath, buffer, (writeErr) => {
+				fs.writeFile(newThumbnailPath, buffer, writeErr => {
 					if (writeErr) {
 						console.error("Error saving thumbnail:", writeErr);
 						return;
@@ -907,7 +908,7 @@ function saveEditPlaylist() {
 
 					playlist.thumbnail = newThumbnailPath;
 
-					fs.writeFile(filePath, JSON.stringify(playlists, null, 2), "utf8", (writeErr) => {
+					fs.writeFile(filePath, JSON.stringify(playlists, null, 2), "utf8", writeErr => {
 						if (writeErr) {
 							console.error("Error writing file:", writeErr);
 							return;
@@ -921,7 +922,7 @@ function saveEditPlaylist() {
 			} else {
 				playlist.thumbnail = newThumbnail;
 
-				fs.writeFile(filePath, JSON.stringify(playlists, null, 2), "utf8", (writeErr) => {
+				fs.writeFile(filePath, JSON.stringify(playlists, null, 2), "utf8", writeErr => {
 					if (writeErr) {
 						console.error("Error writing file:", writeErr);
 						return;
@@ -943,7 +944,7 @@ function displayPlaylists(playlists) {
 	const playlistsContent = document.getElementById("playlists-content");
 	playlistsContent.innerHTML = "";
 
-	playlists.forEach((playlist) => {
+	playlists.forEach(playlist => {
 		const playlistElement = createPlaylistElement(playlist);
 		playlistsContent.appendChild(playlistElement);
 	});
@@ -951,8 +952,24 @@ function displayPlaylists(playlists) {
 
 function getPlaylists() {
 	fs.readFile(playlistPath, "utf8", (err, data) => {
-		const playlists = JSON.parse(data);
-		displayPlaylists(playlists);
+		if (err) {
+			console.error("Error reading the playlist file:", err);
+			displayPlaylists([]);
+			return;
+		}
+
+		try {
+			let playlists = JSON.parse(data);
+
+			if (Object.keys(playlists).length === 0 && playlists.constructor === Object) {
+				playlists = [];
+			}
+
+			displayPlaylists(playlists);
+		} catch (parseError) {
+			console.error("Error parsing playlist JSON:", parseError);
+			displayPlaylists([]);
+		}
 	});
 }
 
@@ -980,7 +997,7 @@ function openAddToPlaylistModal(songName) {
 	fs.readFile(playlistPath, "utf8", (err, data) => {
 		const playlists = JSON.parse(data);
 		displayPlaylists(playlists);
-		playlists.forEach((playlist) => {
+		playlists.forEach(playlist => {
 			const checkbox = document.createElement("input");
 			checkbox.type = "checkbox";
 			checkbox.id = playlist.name;
@@ -1013,8 +1030,8 @@ function addToSelectedPlaylists(mercimek) {
 	let hamburger = mercimek;
 	const checkboxes = document.querySelectorAll('#playlist-checkboxes input[type="checkbox"]');
 	const selectedPlaylists = Array.from(checkboxes)
-		.filter((checkbox) => checkbox.checked)
-		.map((checkbox) => checkbox.id);
+		.filter(checkbox => checkbox.checked)
+		.map(checkbox => checkbox.id);
 
 	fs.readFile(playlistPath, "utf8", (err, data) => {
 		if (err) {
@@ -1030,7 +1047,7 @@ function addToSelectedPlaylists(mercimek) {
 			return;
 		}
 
-		playlists.forEach((playlist) => {
+		playlists.forEach(playlist => {
 			const playlistName = playlist.name;
 			const isSelected = selectedPlaylists.includes(playlistName);
 
@@ -1050,7 +1067,7 @@ function addToSelectedPlaylists(mercimek) {
 			}
 		});
 
-		fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), (writeErr) => {
+		fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), writeErr => {
 			if (writeErr) {
 				console.error("Error updating playlists file:", writeErr);
 				return;
@@ -1088,7 +1105,7 @@ async function playPlaylist(playlist, startingIndex = 0) {
 async function playPreviousSong() {
 	if (currentPlayingElement) {
 		const musicFiles = await fs.promises.readdir(musicFolder);
-		const musicItems = musicFiles.filter((file) => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
+		const musicItems = musicFiles.filter(file => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
 
 		if (isShuffleActive) {
 			if (currentPlaylist) {
@@ -1128,7 +1145,7 @@ async function playPreviousSong() {
 async function playNextSong() {
 	if (currentPlayingElement) {
 		const musicFiles = await fs.promises.readdir(musicFolder);
-		const musicItems = musicFiles.filter((file) => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
+		const musicItems = musicFiles.filter(file => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
 
 		let nextSongName;
 
@@ -1175,7 +1192,7 @@ async function playNextSong() {
 
 async function randomSongFunctionMainMenu() {
 	const musicFiles = await fs.promises.readdir(musicFolder);
-	const musicItems = musicFiles.filter((file) => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
+	const musicItems = musicFiles.filter(file => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
 	let randomIndex = Math.floor(Math.random() * musicItems.length);
 
 	if (currentPlayingElement) {
@@ -1274,7 +1291,7 @@ function speed() {
 	speedModal.style.display = "block";
 	const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
-	speeds.forEach((speed) => {
+	speeds.forEach(speed => {
 		const speedOption = document.createElement("div");
 		speedOption.classList.add("speed-option");
 		speedOption.textContent = `${speed}x`;
@@ -1310,7 +1327,7 @@ function createNewPlaylist() {
 }
 
 function closeModal() {
-	document.querySelectorAll(".modal").forEach((modal) => {
+	document.querySelectorAll(".modal").forEach(modal => {
 		modal.style.display = "none";
 	});
 }
@@ -1333,7 +1350,7 @@ document.getElementById("savePlaylistButton").addEventListener("click", () => {
 		if (!err && data) {
 			try {
 				playlists = JSON.parse(data);
-				if (playlists.find((playlist) => playlist.name === playlistName)) {
+				if (playlists.find(playlist => playlist.name === playlistName)) {
 					alert("Playlist name already exists.");
 					return;
 				}
@@ -1350,14 +1367,14 @@ document.getElementById("savePlaylistButton").addEventListener("click", () => {
 
 		playlists.push(newPlaylist);
 
-		fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), (writeErr) => {
+		fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), writeErr => {
 			if (writeErr) {
 				console.error("Error updating playlists file:", writeErr);
 				return;
 			}
 			if (thumbnailFilePath) {
 				const newThumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
-				fs.copyFile(thumbnailFilePath, newThumbnailPath, (copyErr) => {
+				fs.copyFile(thumbnailFilePath, newThumbnailPath, copyErr => {
 					if (copyErr) {
 						console.error("Error copying thumbnail file:", copyErr);
 						return;
@@ -1497,7 +1514,7 @@ function deletePlaylist() {
 				return;
 			}
 
-			const playlistIndex = playlists.findIndex((pl) => pl.name === playlistName);
+			const playlistIndex = playlists.findIndex(pl => pl.name === playlistName);
 			if (playlistIndex !== -1) {
 				playlists.splice(playlistIndex, 1);
 			} else {
@@ -1505,7 +1522,7 @@ function deletePlaylist() {
 				return;
 			}
 
-			fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), "utf8", (writeErr) => {
+			fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), "utf8", writeErr => {
 				if (writeErr) {
 					console.error("Error writing file:", writeErr);
 					return;
@@ -1519,7 +1536,7 @@ function deletePlaylist() {
 	}
 }
 
-document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
+document.querySelectorAll(".settingsKeybindsButton").forEach(button => {
 	button.addEventListener("click", function () {
 		const currentButton = this;
 		currentButton.innerText = "Press a key...";
@@ -1535,12 +1552,12 @@ document.querySelectorAll(".settingsKeybindsButton").forEach((button) => {
 	});
 });
 
-document.querySelectorAll('input[type="range"]').forEach((range) => {
+document.querySelectorAll('input[type="range"]').forEach(range => {
 	range.tabIndex = -1;
 	range.addEventListener("focus", () => range.blur());
 	range.addEventListener(
 		"keydown",
-		(e) => {
+		e => {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 		},
@@ -1555,7 +1572,7 @@ window.addEventListener("focus", () => {
 	}
 });
 
-document.addEventListener("keydown", (event) => {
+document.addEventListener("keydown", event => {
 	if (event.key === "Tab") {
 		event.preventDefault();
 	}
@@ -1610,7 +1627,7 @@ function findDuplicates(array) {
 }
 
 function saveKeybinds() {
-	const buttons = Array.from(document.querySelectorAll(".settingsKeybindsButton")).map((button) => button.innerText.trim());
+	const buttons = Array.from(document.querySelectorAll(".settingsKeybindsButton")).map(button => button.innerText.trim());
 	const test = findDuplicates(buttons);
 
 	if (test.length > 0) {
@@ -1644,7 +1661,7 @@ function saveKeybinds() {
 function setupLazyBackgrounds() {
 	const bgElements = document.querySelectorAll(".background-element");
 
-	bgElements.forEach((el) => {
+	bgElements.forEach(el => {
 		const currentBg = el.style.backgroundImage;
 		const urlMatch = currentBg.match(/url\(["']?(file:\/\/[^"')]+)["']?\)/);
 
@@ -1659,7 +1676,7 @@ function setupLazyBackgrounds() {
 
 	if ("IntersectionObserver" in window) {
 		const observer = new IntersectionObserver((entries, obs) => {
-			entries.forEach((entry) => {
+			entries.forEach(entry => {
 				if (entry.isIntersecting) {
 					const el = entry.target;
 					const realBg = el.dataset.bg;
@@ -1672,9 +1689,9 @@ function setupLazyBackgrounds() {
 			});
 		});
 
-		document.querySelectorAll(".lazy-bg").forEach((el) => observer.observe(el));
+		document.querySelectorAll(".lazy-bg").forEach(el => observer.observe(el));
 	} else {
-		document.querySelectorAll(".lazy-bg").forEach((el) => {
+		document.querySelectorAll(".lazy-bg").forEach(el => {
 			if (el.dataset.bg) {
 				el.style.backgroundImage = `url('${el.dataset.bg}')`;
 				el.classList.remove("lazy-bg");
@@ -1688,7 +1705,7 @@ function loadJSFile(filename) {
 		downloadModal.style.display = "block";
 	}
 	const src = `${filename}.js`;
-	const existingScript = Array.from(document.scripts).find((script) => script.src.includes(src));
+	const existingScript = Array.from(document.scripts).find(script => script.src.includes(src));
 	if (existingScript) {
 		return;
 	}
@@ -1729,7 +1746,7 @@ document.getElementById("checkUpdateButton").addEventListener("click", async () 
 	const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees/${currentSha}?recursive=1`);
 	if (!treeRes.ok) return alert("Failed to fetch file tree.");
 
-	const tree = (await treeRes.json()).tree.filter((f) => f.type === "blob" && !f.path.startsWith("build/"));
+	const tree = (await treeRes.json()).tree.filter(f => f.type === "blob" && !f.path.startsWith("build/"));
 
 	const acceptAll = confirm(`Update all ${tree.length} files automatically?`);
 	let updated = false;
@@ -1763,7 +1780,7 @@ document.getElementById("checkUpdateButton").addEventListener("click", async () 
 	alert(updated ? "Update complete. Restart the app." : "No new changes.");
 });
 
-ipcRenderer.invoke("get-app-version").then((version) => {
+ipcRenderer.invoke("get-app-version").then(version => {
 	document.getElementById("version").textContent = `Version: ${version}`;
 });
 
