@@ -1144,34 +1144,27 @@ async function playNextSong() {
 		if (isShuffleActive) {
 			if (currentPlaylist) {
 				const currentSongName = currentPlaylist.songs[currentPlaylistElement];
-				let randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
-
-				while (currentPlaylist.songs[randomIndex] === currentSongName) {
-					randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
+				if (currentPlaylist.songs.length === 1) {
+					nextSongName = currentSongName;
+				} else {
+					let randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
+					while (currentPlaylist.songs[randomIndex] === currentSongName) {
+						randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
+					}
+					nextSongName = currentPlaylist.songs[randomIndex];
+					currentPlaylistElement = randomIndex;
 				}
-
-				nextSongName = currentPlaylist.songs[randomIndex];
-				currentPlaylistElement = randomIndex;
 			} else {
 				const currentFileName = currentPlayingElement.getAttribute("data-file-name");
-				let randomIndex = Math.floor(Math.random() * musicItems.length);
-
-				while (musicItems[randomIndex] === currentFileName) {
-					randomIndex = Math.floor(Math.random() * musicItems.length);
+				if (musicItems.length === 1) {
+					nextSongName = currentFileName;
+				} else {
+					let randomIndex = Math.floor(Math.random() * musicItems.length);
+					while (musicItems[randomIndex] === currentFileName) {
+						randomIndex = Math.floor(Math.random() * musicItems.length);
+					}
+					nextSongName = musicItems[randomIndex];
 				}
-
-				nextSongName = musicItems[randomIndex];
-			}
-		} else {
-			if (currentPlaylist) {
-				if (currentPlaylistElement < currentPlaylist.songs.length - 1) {
-					nextSongName = currentPlaylist.songs[currentPlaylistElement + 1];
-					currentPlaylistElement++;
-				}
-			} else {
-				const currentSongName = document.getElementById("song-name").innerText + ".mp3";
-				const nextIndex = musicItems.indexOf(currentSongName) + 1;
-				nextSongName = musicItems[nextIndex < musicItems.length ? nextIndex : 0];
 			}
 		}
 
