@@ -9,9 +9,10 @@ const Database = require("better-sqlite3");
 
 let taratorFolder;
 let musicFolder, thumbnailFolder, appThumbnailFolder;
-let dbPath, playlistPath, rmsPath;
-let db = {};
-let rmsCache = {};
+let settingsDbPath, playlistsDbPath, musicsDbPath;
+let settingsDb = {},
+	playlistsDb = {},
+	musicsDb = {};
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-user-data-path");
@@ -19,19 +20,20 @@ let rmsCache = {};
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
 	appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
-	dbPath = path.join(taratorFolder, "appData.db");
-	playlistPath = path.join(taratorFolder, "playlists.json");
-	rmsPath = path.join(taratorFolder, "rms_cache.json");
+	settingsDbPath = path.join(taratorFolder, "settings.db");
+	playlistsDbPath = path.join(taratorFolder, "playlists.db");
+	musicsDbPath = path.join(taratorFolder, "musics.db");
 
-	if (!fs.existsSync(dbPath)) fs.writeFileSync(dbPath, "");
+	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
+	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
+	if (!fs.existsSync(musicsDbPath)) fs.writeFileSync(musicsDbPath, "");
+
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
-	if (!fs.existsSync(rmsPath)) fs.writeFileSync(rmsPath, JSON.stringify({}, null, 2));
-	if (!fs.existsSync(playlistPath)) fs.writeFileSync(playlistPath, JSON.stringify({}, null, 2));
 
-	db = new Database(dbPath);
-	const data = fs.readFileSync(rmsPath);
-	rmsCache = JSON.parse(data);
+	settingsDb = new Database(settingsDbPath);
+	playlistsDb = new Database(playlistsDbPath);
+	musicsDb = new Database(musicsDbPath);
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");
@@ -50,7 +52,7 @@ const editPlaylistModal = document.getElementById("editPlaylistModal");
 const volumeControl = document.getElementById("volume");
 
 volumeControl.addEventListener("change", () => {
-	updateDatabase("volume", volumeControl.value);
+	updateDatabase("volume", volumeControl.value, settingsDb);
 	if (audioElement) {
 		audioElement.volume = volumeControl.value / 100;
 	}
@@ -69,12 +71,10 @@ let domates = null;
 let playedSongs = [];
 let playlistPlayedSongs = [];
 let havuc = null;
-let isSaveAsPlaylistActive = false;
 let disableKeyPresses = 0;
 let songStartTime = 0;
 let previousVolume = null;
 let audioContext;
-let compressorNode;
 let audioSource;
 
 let totalTimeSpent = 0;
@@ -115,10 +115,10 @@ const defaultSettings = {
 	key_Loop: "g",
 };
 
-function initializeDatabase() {
+function initializeSettingsDatabase() {
 	let row;
 	try {
-		row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
+		row = settingsDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
 	} catch (err) {
 		console.error("Error checking for settings table:", err.message);
 		return;
@@ -140,7 +140,7 @@ function initializeDatabase() {
 		createTableSQL += ")";
 
 		try {
-			db.prepare(createTableSQL).run();
+			settingsDb.prepare(createTableSQL).run();
 			console.log("Settings table created successfully.");
 			insertDefaultSettings();
 		} catch (err) {
@@ -150,7 +150,7 @@ function initializeDatabase() {
 		console.log("Settings table exists. Checking columns...");
 		let columns;
 		try {
-			columns = db.prepare("PRAGMA table_info(settings)").all();
+			columns = settingsDb.prepare("PRAGMA table_info(settings)").all();
 		} catch (err) {
 			console.error("Error fetching table info:", err.message);
 			return;
@@ -165,7 +165,7 @@ function initializeDatabase() {
 			missingColumns.forEach(key => {
 				let columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
 				try {
-					db.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
+					settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
 					console.log(`Added missing column: ${key}`);
 				} catch (err) {
 					console.error(`Error adding column ${key}:`, err.message);
@@ -176,8 +176,95 @@ function initializeDatabase() {
 	}
 }
 
+function initializeMusicsDatabase() {
+	musicsDb
+		.prepare(
+			`
+			CREATE TABLE IF NOT EXISTS songs (
+				song_id TEXT PRIMARY KEY,
+				song_name TEXT,
+				song_url TEXT,
+				song_thumbnail TEXT,
+				seconds_played INTEGER,
+				times_listened INTEGER,
+				rms REAL
+			)
+			`
+		)
+		.run();
+	const files = fs.readdirSync(musicFolder);
+
+	const insert = musicsDb.prepare(`
+    INSERT INTO songs (
+      song_id, song_name, song_url, song_thumbnail,
+      seconds_played, times_listened, rms
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+	const existingNames = new Set(
+		musicsDb
+			.prepare(`SELECT song_name FROM songs`)
+			.all()
+			.map(row => row.song_name)
+	);
+
+	for (const file of files) {
+		const ext = path.extname(file).toLowerCase();
+		if (![".mp3", ".wav", ".flac"].includes(ext)) continue;
+
+		const name = path.basename(file, ext);
+
+		if (!existingNames.has(name)) {
+			const songId = generateId();
+			insert.run(songId, name, "", `${name}.jpg`, 0, 0, null);
+			console.log(`Inserted new song: ${name}`);
+		}
+	}
+}
+
+function initializePlaylistsDatabase() {
+	try {
+		playlistsDb
+			.prepare(
+				`
+			CREATE TABLE IF NOT EXISTS playlists (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				name TEXT UNIQUE,
+				songs TEXT,
+				thumbnail TEXT
+			)
+		`
+			)
+			.run();
+
+		const playlistsData = [
+			{
+				name: "test",
+				songs: ["Za Ljiljanu", "Halid Beslic - Lavanda - (Audio 2013) HD", "I Love You Baby", "Halid Beslic - Ja bez tebe ne mogu da zivim (Official Video 2016)"],
+				thumbnail: "/mnt/TaratorMusic/thumbnails/test_playlist.jpg",
+			},
+		];
+
+		playlistsData.forEach(playlist => {
+			const songsString = JSON.stringify(playlist.songs);
+
+			const existingPlaylist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlist.name);
+			if (!existingPlaylist) {
+				playlistsDb.prepare("INSERT INTO playlists (name, songs, thumbnail) VALUES (?, ?, ?)").run(playlist.name, songsString, playlist.thumbnail);
+				console.log(`Playlist '${playlist.name}' added to the database.`);
+			} else {
+				console.log(`Playlist '${playlist.name}' already exists in the database.`);
+			}
+		});
+	} catch (err) {
+		console.error("Error initializing playlists database:", err);
+	}
+}
+
 document.addEventListener("DOMContentLoaded", function () {
-	initializeDatabase();
+	initializeSettingsDatabase();
+	initializeMusicsDatabase();
+	initializePlaylistsDatabase();
 });
 
 function insertDefaultSettings() {
@@ -189,7 +276,7 @@ function insertDefaultSettings() {
 	const insertSQL = `INSERT INTO settings (${columns}) VALUES (${placeholders})`;
 
 	try {
-		db.prepare(insertSQL).run(values);
+		settingsDb.prepare(insertSQL).run(values);
 		console.log(`Default settings inserted.`);
 		loadSettings();
 	} catch (err) {
@@ -200,7 +287,7 @@ function insertDefaultSettings() {
 function loadSettings() {
 	let row;
 	try {
-		row = db.prepare("SELECT * FROM settings").get();
+		row = settingsDb.prepare("SELECT * FROM settings").get();
 	} catch (err) {
 		console.error("Error retrieving settings:", err.message);
 		return;
@@ -215,7 +302,7 @@ function loadSettings() {
 	Object.keys(defaultSettings).forEach(key => {
 		if (row[key] === null || row[key] === undefined) {
 			console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
-			updateDatabase(key, defaultSettings[key]);
+			updateDatabase(key, defaultSettings[key], settingsDb);
 			row[key] = defaultSettings[key];
 		}
 	});
@@ -261,7 +348,7 @@ function loadSettings() {
 	if (audioElement) audioElement.volume = volumeControl.value / 100;
 }
 
-function updateDatabase(name, option) {
+function updateDatabase(name, option, db) {
 	try {
 		db.prepare(`UPDATE settings SET ${name} = ?`).run(option);
 		console.log(`${name} updated to ${option}.`);
@@ -286,9 +373,46 @@ function updateTimer() {
 
 setInterval(() => {
 	totalTimeSpent += 60;
-	updateDatabase("totalTimeSpent", totalTimeSpent);
+	updateDatabase("totalTimeSpent", totalTimeSpent, settingsDb);
 	updateTimer();
 }, 60000);
+
+function generateId() {
+	const timestamp = Date.now().toString(36);
+	const randomPart = Math.floor(Math.random() * 1e6).toString(36);
+	return `${timestamp}-${randomPart}`;
+}
+
+function savePlayedTime(songName, timePlayed) {
+	const row = musicsDb
+		.prepare(
+			`
+			SELECT seconds_played, times_listened
+			FROM songs
+			WHERE song_name = ?
+		`
+		)
+		.get(songName);
+
+	if (row) {
+		const updatedTime = row.seconds_played + timePlayed;
+		const updatedCount = row.times_listened + 1;
+
+		musicsDb
+			.prepare(
+				`
+				UPDATE songs
+				SET seconds_played = ?, times_listened = ?
+				WHERE song_name = ?
+			`
+			)
+			.run(updatedTime, updatedCount, songName);
+
+		console.log(`Updated ${songName}: ${updatedTime}s, listened ${updatedCount} times.`);
+	} else {
+		console.warn(`Tried to update "${songName}", but it doesn't exist in songs.`);
+	}
+}
 
 document.getElementById("backwardButton").innerHTML = icon.backward;
 document.getElementById("previousSongButton").innerHTML = icon.previous;
@@ -306,7 +430,7 @@ document.getElementById("mainmenulogo").style.backgroundImage = "url(app_thumbna
 function changeThePreviousSongAmount() {
 	if (document.getElementById("arrayLength").value > 9 && document.getElementById("arrayLength").value < 101) {
 		maximumPreviousSongCount = document.getElementById("arrayLength").value;
-		updateDatabase("maximumPreviousSongCount", maximumPreviousSongCount);
+		updateDatabase("maximumPreviousSongCount", maximumPreviousSongCount, settingsDb);
 	} else {
 		alert("Please set a number between 10 and 100");
 	}
@@ -449,10 +573,6 @@ function createMusicElement(file) {
 	const decodedFileName = decodeURIComponent(encodedFileName);
 	const thumbnailFileName = `${decodedFileName}_thumbnail.jpg`;
 	const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
-	if (newThumbnailPath) {
-		thumbnailPath = newThumbnailPath;
-	}
-
 	let thumbnailUrl = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}`;
 
 	if (fs.existsSync(thumbnailPath)) {
@@ -474,14 +594,16 @@ function createMusicElement(file) {
 	const customizeButton = document.createElement("button");
 	customizeButton.innerHTML = icon.customise;
 	customizeButton.classList.add("customize-button");
-	customizeButton.addEventListener("click", () => {
+	customizeButton.addEventListener("click", event => {
+		event.stopPropagation();
 		openCustomizeModal(file.name, thumbnailUrl);
 	});
 
 	const addToPlaylistButton = document.createElement("button");
 	addToPlaylistButton.innerHTML = icon.addToPlaylist;
 	addToPlaylistButton.classList.add("add-to-playlist-button");
-	addToPlaylistButton.addEventListener("click", () => {
+	addToPlaylistButton.addEventListener("click", event => {
+		event.stopPropagation();
 		openAddToPlaylistModal(songNameElement.innerHTML);
 	});
 
@@ -493,9 +615,11 @@ function createMusicElement(file) {
 	const audio = new Audio();
 	const filePath = path.join(musicFolder, file.name);
 	audio.src = `file://${filePath}`;
+
 	audio.addEventListener("loadedmetadata", () => {
 		songLengthElement.innerText = formatTime(audio.duration);
 	});
+
 	return musicElement;
 }
 
@@ -557,19 +681,17 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		}
 
 		audioSource = audioContext.createMediaElementSource(audioElement);
+		let newGain;
 
 		try {
-			if (fs.existsSync(rmsPath)) {
-				rmsCache = JSON.parse(fs.readFileSync(rmsPath));
-			}
+			const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_name = ?").get(secondfilename);
+			const measuredRms = row ? row.rms : 0.07;
+			const targetRms = 0.07;
+			newGain = targetRms / measuredRms;
+			newGain = Math.min(Math.max(newGain, 0.5), 1.5);
 		} catch (err) {
-			console.warn("Could not load RMS cache:", err);
+			console.warn("Could not load RMS from database:", err);
 		}
-
-		const measuredRms = rmsCache[secondfilename] || 0.07;
-		const targetRms = 0.07;
-		let newGain = targetRms / measuredRms;
-		newGain = Math.min(Math.max(newGain, 0.5), 1.5);
 
 		const compressorNode = audioContext.createDynamicsCompressor();
 		compressorNode.threshold.value = -50;
@@ -648,86 +770,6 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 	}
 }
 
-async function savePlayedTime(songName, timePlayed) {
-	const db = new sqlite3.Database(dbPath);
-
-	db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='song_play_time'", (err, row) => {
-		if (err) {
-			console.error("Error checking table existence:", err);
-			return;
-		}
-
-		if (!row) {
-			db.run(
-				`CREATE TABLE song_play_time (
-					songName TEXT PRIMARY KEY,
-					secondsPlayed INTEGER,
-					timesListened INTEGER
-				)`,
-				err => {
-					if (err) {
-						console.error("Error creating song_play_time table:", err);
-					} else {
-						console.log("song_play_time table created.");
-						savePlayedTime(songName, timePlayed);
-					}
-				}
-			);
-		} else {
-			db.all("PRAGMA table_info(song_play_time)", (err, columns) => {
-				if (err) {
-					console.error("Error fetching table info:", err);
-					return;
-				}
-
-				const hasTimesListened = columns.some(col => col.name === "timesListened");
-
-				const continueWithUpdate = () => {
-					db.get("SELECT * FROM song_play_time WHERE songName = ?", [songName], (err, row) => {
-						if (err) {
-							console.error("Error checking song play time:", err);
-							return;
-						}
-
-						if (row) {
-							const updatedTime = row.secondsPlayed + timePlayed;
-							const updatedCount = (row.timesListened || 0) + 1;
-							db.run("UPDATE song_play_time SET secondsPlayed = ?, timesListened = ? WHERE songName = ?", [updatedTime, updatedCount, songName], err => {
-								if (err) {
-									console.error("Error updating song play time:", err);
-								} else {
-									console.log(`Updated ${songName}: ${updatedTime}s, listened ${updatedCount} times.`);
-								}
-							});
-						} else {
-							db.run("INSERT INTO song_play_time (songName, secondsPlayed, timesListened) VALUES (?, ?, ?)", [songName, timePlayed, 1], err => {
-								if (err) {
-									console.error("Error inserting new song:", err);
-								} else {
-									console.log(`Saved ${songName}: ${timePlayed}s, listened 1 time.`);
-								}
-							});
-						}
-					});
-				};
-
-				if (!hasTimesListened) {
-					db.run("ALTER TABLE song_play_time ADD COLUMN timesListened INTEGER DEFAULT 0", err => {
-						if (err) {
-							console.error("Error adding timesListened column:", err);
-						} else {
-							console.log("timesListened column added.");
-							continueWithUpdate();
-						}
-					});
-				} else {
-					continueWithUpdate();
-				}
-			});
-		}
-	});
-}
-
 function manageAudioControls(audioElement) {
 	const videoLength = document.getElementById("video-length");
 	const videoProgress = document.getElementById("video-progress");
@@ -796,7 +838,6 @@ function createPlaylistElement(playlist) {
 	let thumbnailSrc = ``;
 	if (fs.existsSync(thumbnailPath)) {
 		thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}`;
-		thumbnailSrc = playlist.thumbnail;
 	} else {
 		thumbnailSrc = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}`;
 	}
@@ -816,7 +857,7 @@ function createPlaylistElement(playlist) {
 	const playlistName = document.createElement("div");
 	const playlistLength = document.createElement("div");
 	playlistName.textContent = playlist.name;
-	if (playlist.songs.length == 1) {
+	if (playlist.songs.length === 1) {
 		playlistLength.textContent = playlist.songs.length + " song";
 	} else {
 		playlistLength.textContent = playlist.songs.length + " songs";
@@ -865,71 +906,44 @@ function createPlaylistElement(playlist) {
 
 function saveEditPlaylist() {
 	const oldName = document.getElementById("editInvisibleName").value;
-	const newName = document.getElementById("editPlaylistNameInput").value;
+	const newName = document.getElementById("editPlaylistNameInput").value.trim();
 	const newThumbnail = document.getElementById("editPlaylistThumbnail").src;
 
-	fs.readFile(filePath, "utf8", (err, data) => {
-		if (err) {
-			console.error("Error reading file:", err);
-			return;
-		}
+	const playlist = musicsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(oldName);
 
-		let playlists;
-		try {
-			playlists = JSON.parse(data);
-		} catch (parseErr) {
-			console.error("Error parsing JSON:", parseErr);
-			return;
-		}
+	if (!playlist) {
+		console.error("Playlist not found:", oldName);
+		return;
+	}
 
-		const playlist = playlists.find(pl => pl.name === oldName);
-		if (playlist) {
-			playlist.name = newName;
+	let thumbnailPath = playlist.thumbnail;
 
-			if (newThumbnail.startsWith("data:image")) {
-				const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
-				const buffer = Buffer.from(base64Data, "base64");
-				const newThumbnailPath = path.join(thumbnailFolder, `${newName}_playlist.jpg`);
+	const updateAndExit = () => {
+		musicsDb.prepare("UPDATE playlists SET name = ?, thumbnail = ? WHERE playlist_id = ?").run(newName, thumbnailPath, playlist.playlist_id);
 
-				fs.writeFile(newThumbnailPath, buffer, writeErr => {
-					if (writeErr) {
-						console.error("Error saving thumbnail:", writeErr);
-						return;
-					}
-					console.log("Thumbnail saved successfully:", newThumbnailPath);
+		console.log("Playlist updated successfully");
+		closeModal();
+		document.getElementById("settings").click();
+		document.getElementById("playlists").click();
+	};
 
-					playlist.thumbnail = newThumbnailPath;
+	if (newThumbnail.startsWith("data:image")) {
+		const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
+		const buffer = Buffer.from(base64Data, "base64");
+		thumbnailPath = path.join(thumbnailFolder, `${newName}_playlist.jpg`);
 
-					fs.writeFile(filePath, JSON.stringify(playlists, null, 2), "utf8", writeErr => {
-						if (writeErr) {
-							console.error("Error writing file:", writeErr);
-							return;
-						}
-						console.log("Playlist updated successfully");
-						closeModal();
-						document.getElementById("settings").click();
-						document.getElementById("playlists").click();
-					});
-				});
-			} else {
-				playlist.thumbnail = newThumbnail;
-
-				fs.writeFile(filePath, JSON.stringify(playlists, null, 2), "utf8", writeErr => {
-					if (writeErr) {
-						console.error("Error writing file:", writeErr);
-						return;
-					}
-					console.log("Playlist updated successfully");
-					closeModal();
-					document.getElementById("settings").click();
-					document.getElementById("playlists").click();
-				});
+		fs.writeFile(thumbnailPath, buffer, err => {
+			if (err) {
+				console.error("Error saving new thumbnail:", err);
+				return;
 			}
-		} else {
-			console.error("Playlist not found:", oldName);
-			return;
-		}
-	});
+			console.log("Thumbnail saved successfully:", thumbnailPath);
+			updateAndExit();
+		});
+	} else {
+		thumbnailPath = newThumbnail;
+		updateAndExit();
+	}
 }
 
 function displayPlaylists(playlists) {
@@ -943,29 +957,35 @@ function displayPlaylists(playlists) {
 }
 
 function getPlaylists() {
-	fs.readFile(playlistPath, "utf8", (err, data) => {
-		if (err) {
-			console.error("Error reading the playlist file:", err);
+	try {
+		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
+
+		if (!playlists || playlists.length === 0) {
+			console.warn("No playlists found in the database.");
 			displayPlaylists([]);
 			return;
 		}
 
-		try {
-			let playlists = JSON.parse(data);
-
-			if (Object.keys(playlists).length === 0 && playlists.constructor === Object) {
-				playlists = [];
+		const playlistsWithParsedSongs = playlists.map(playlist => {
+			let parsedSongs = [];
+			if (playlist.songs) {
+				try {
+					parsedSongs = JSON.parse(playlist.songs);
+				} catch (e) {
+					console.warn(`Error parsing songs for playlist '${playlist.name}': ${e.message}`);
+				}
 			}
+			return { ...playlist, songs: parsedSongs };
+		});
 
-			displayPlaylists(playlists);
-		} catch (parseError) {
-			console.error("Error parsing playlist JSON:", parseError);
-			displayPlaylists([]);
-		}
-	});
+		displayPlaylists(playlistsWithParsedSongs);
+	} catch (err) {
+		console.error("Error fetching playlists from the database:", err);
+		displayPlaylists([]);
+	}
 }
 
-ipcRenderer.on("playlist-created", (event, newPlaylist) => {
+ipcRenderer.on("playlist-created", () => {
 	closeModal();
 });
 
@@ -986,16 +1006,33 @@ function openAddToPlaylistModal(songName) {
 	playlistsContainer.innerHTML = "";
 	let mercimek = songName;
 
-	fs.readFile(playlistPath, "utf8", (err, data) => {
-		const playlists = JSON.parse(data);
-		displayPlaylists(playlists);
+	try {
+		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
+
+		if (!playlists || playlists.length === 0) {
+			console.warn("No playlists found.");
+			displayPlaylists([]);
+			return;
+		}
+
 		playlists.forEach(playlist => {
 			const checkbox = document.createElement("input");
 			checkbox.type = "checkbox";
 			checkbox.id = playlist.name;
 			checkbox.value = mercimek;
 
-			if (playlist.songs.includes(mercimek)) {
+			let songsInPlaylist = [];
+			if (playlist.songs) {
+				try {
+					songsInPlaylist = JSON.parse(playlist.songs);
+				} catch (e) {
+					console.error("Error parsing songs from playlist:", e);
+				}
+			}
+
+			const isSongInPlaylist = songsInPlaylist.includes(mercimek);
+
+			if (isSongInPlaylist) {
 				checkbox.checked = true;
 			}
 
@@ -1007,6 +1044,7 @@ function openAddToPlaylistModal(songName) {
 			playlistsContainer.appendChild(label);
 			playlistsContainer.appendChild(document.createElement("br"));
 		});
+
 		const button = document.createElement("button");
 		button.id = "addToPlaylistDone";
 		button.textContent = "Done";
@@ -1015,58 +1053,69 @@ function openAddToPlaylistModal(songName) {
 			console.log("mercimek", mercimek);
 		};
 		playlistsContainer.appendChild(button);
-	});
+	} catch (err) {
+		console.error("Error fetching playlists from the database:", err);
+		displayPlaylists([]);
+	}
 }
 
-function addToSelectedPlaylists(mercimek) {
-	let hamburger = mercimek;
+function addToSelectedPlaylists(songName) {
+	let hamburger = songName;
 	const checkboxes = document.querySelectorAll('#playlist-checkboxes input[type="checkbox"]');
 	const selectedPlaylists = Array.from(checkboxes)
 		.filter(checkbox => checkbox.checked)
 		.map(checkbox => checkbox.id);
 
-	fs.readFile(playlistPath, "utf8", (err, data) => {
-		if (err) {
-			console.error("Error reading playlists file:", err);
-			return;
-		}
+	try {
+		selectedPlaylists.forEach(playlistName => {
+			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistName);
 
-		let playlists = [];
-		try {
-			playlists = JSON.parse(data);
-		} catch (parseErr) {
-			console.error("Error parsing playlists file:", parseErr);
-			return;
-		}
-
-		playlists.forEach(playlist => {
-			const playlistName = playlist.name;
-			const isSelected = selectedPlaylists.includes(playlistName);
-
-			if (isSelected) {
-				if (!playlist.songs.includes(hamburger)) {
-					playlist.songs.push(hamburger);
-					console.log(`Song '${hamburger}' added to playlist '${playlistName}'.`);
-				} else {
-					console.log(`Song '${hamburger}' already exists in playlist '${playlistName}'.`);
+			let songsInPlaylist = [];
+			if (playlist.songs) {
+				try {
+					songsInPlaylist = JSON.parse(playlist.songs);
+				} catch (e) {
+					console.error("Error parsing songs from playlist:", e);
 				}
+			}
+
+			const songExists = songsInPlaylist.includes(hamburger);
+
+			if (songExists) {
+				console.log(`Song '${hamburger}' already exists in playlist '${playlistName}'.`);
 			} else {
-				const songIndex = playlist.songs.indexOf(hamburger);
-				if (songIndex !== -1) {
-					playlist.songs.splice(songIndex, 1);
-					console.log(`Song '${hamburger}' removed from playlist '${playlistName}'.`);
-				}
+				songsInPlaylist.push(hamburger);
+				const updatedSongs = JSON.stringify(songsInPlaylist);
+				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(updatedSongs, playlistName);
+				console.log(`Song '${hamburger}' added to playlist '${playlistName}'.`);
 			}
 		});
 
-		fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), writeErr => {
-			if (writeErr) {
-				console.error("Error updating playlists file:", writeErr);
-				return;
+		const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists").all();
+		allPlaylists.forEach(playlist => {
+			if (!selectedPlaylists.includes(playlist.name)) {
+				let songsInPlaylist = [];
+				if (playlist.songs) {
+					try {
+						songsInPlaylist = JSON.parse(playlist.songs);
+					} catch (e) {
+						console.error("Error parsing songs from playlist:", e);
+					}
+				}
+
+				const songExistsInPlaylist = songsInPlaylist.includes(hamburger);
+				if (songExistsInPlaylist) {
+					const updatedSongs = songsInPlaylist.filter(song => song !== hamburger);
+					const newSongs = JSON.stringify(updatedSongs);
+					playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(newSongs, playlist.name);
+					console.log(`Song '${hamburger}' removed from playlist '${playlist.name}'.`);
+				}
 			}
-			console.log("Playlists updated successfully.");
 		});
-	});
+	} catch (err) {
+		console.error("Error updating playlists in the database:", err);
+	}
+
 	closeModal();
 }
 
@@ -1218,11 +1267,11 @@ function toggleAutoplay() {
 	if (isAutoplayActive) {
 		autoplayButton.classList.add("active");
 		autoplayButton.innerHTML = icon.greenAutoplay;
-		updateDatabase("rememberautoplay", true);
+		updateDatabase("rememberautoplay", 1, settingsDb);
 	} else {
 		autoplayButton.classList.remove("active");
 		autoplayButton.innerHTML = icon.redAutoplay;
-		updateDatabase("rememberautoplay", false);
+		updateDatabase("rememberautoplay", 0, settingsDb);
 	}
 }
 
@@ -1232,11 +1281,11 @@ function toggleShuffle() {
 	if (isShuffleActive) {
 		shuffleButton.classList.add("active");
 		shuffleButton.innerHTML = icon.greenShuffle;
-		updateDatabase("remembershuffle", true);
+		updateDatabase("remembershuffle", 1, settingsDb);
 	} else {
 		shuffleButton.classList.remove("active");
 		shuffleButton.innerHTML = icon.redShuffle;
-		updateDatabase("remembershuffle", false);
+		updateDatabase("remembershuffle", 0, settingsDb);
 	}
 }
 
@@ -1244,14 +1293,14 @@ function loop() {
 	if (isLooping) {
 		isLooping = false;
 		loopButton.innerHTML = icon.redLoop;
-		updateDatabase("rememberloop", false);
+		updateDatabase("rememberloop", 0, settingsDb);
 		if (audioElement) {
 			audioElement.loop = false;
 		}
 	} else {
 		isLooping = true;
 		loopButton.innerHTML = icon.greenLoop;
-		updateDatabase("rememberloop", true);
+		updateDatabase("rememberloop", 1, settingsDb);
 		if (audioElement) {
 			audioElement.loop = true;
 		}
@@ -1268,7 +1317,7 @@ function mute() {
 		muteButton.classList.remove("active");
 	}
 	if (audioElement) audioElement.volume = volumeControl.value / 100;
-	updateDatabase("volume", volumeControl.value);
+	updateDatabase("volume", volumeControl.value, settingsDb);
 }
 
 function speed() {
@@ -1285,7 +1334,7 @@ function speed() {
 		}
 		speedOption.addEventListener("click", () => {
 			rememberspeed = speed;
-			updateDatabase("rememberspeed", speed);
+			updateDatabase("rememberspeed", speed, settingsDb);
 			if (audioElement) {
 				audioElement.playbackRate = rememberspeed;
 			}
@@ -1329,49 +1378,38 @@ document.getElementById("savePlaylistButton").addEventListener("click", () => {
 		return;
 	}
 
-	fs.readFile(playlistPath, "utf8", (err, data) => {
-		let playlists = [];
-
-		if (!err && data) {
-			try {
-				playlists = JSON.parse(data);
-				if (playlists.find(playlist => playlist.name === playlistName)) {
-					alert("Playlist name already exists.");
-					return;
-				}
-			} catch (parseErr) {
-				console.error("Error parsing playlists file:", parseErr);
-			}
+	try {
+		const existingPlaylist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistName);
+		if (existingPlaylist) {
+			alert("Playlist name already exists.");
+			return;
 		}
 
-		const newPlaylist = {
-			name: playlistName,
-			songs: [],
-			thumbnail: path.join(thumbnailFolder, `${playlistName}_playlist.jpg`),
-		};
+		const thumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
+		playlistsDb.prepare("INSERT INTO playlists (name, thumbnail) VALUES (?, ?)").run(playlistName, thumbnailPath);
 
-		playlists.push(newPlaylist);
-
-		fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), writeErr => {
-			if (writeErr) {
-				console.error("Error updating playlists file:", writeErr);
-				return;
-			}
-			if (thumbnailFilePath) {
-				const newThumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
-				fs.copyFile(thumbnailFilePath, newThumbnailPath, copyErr => {
-					if (copyErr) {
-						console.error("Error copying thumbnail file:", copyErr);
-						return;
-					}
-				});
-			}
+		if (thumbnailFilePath) {
+			const newThumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
+			fs.copyFile(thumbnailFilePath, newThumbnailPath, copyErr => {
+				if (copyErr) {
+					console.error("Error copying thumbnail file:", copyErr);
+					return;
+				}
+				closeModal();
+				if (document.getElementById("playlists-content").style.display == "grid") {
+					document.getElementById("playlists").click();
+				}
+			});
+		} else {
 			closeModal();
 			if (document.getElementById("playlists-content").style.display == "grid") {
 				document.getElementById("playlists").click();
 			}
-		});
-	});
+		}
+	} catch (err) {
+		console.error("Error saving playlist:", err);
+		alert("Error saving playlist. Please try again.");
+	}
 });
 
 function openCustomizeModal(songName, thumbnailUrl) {
@@ -1390,63 +1428,53 @@ document.getElementById("customizeForm").addEventListener("submit", function (ev
 	event.preventDefault();
 
 	const oldSongName = document.getElementById("customizeForm").dataset.oldSongName;
-	const oldThumbnailPath = document.getElementById("customizeForm").dataset.oldThumbnailPath.replace(".mp3", "");
-	const newSongName = document.getElementById("customizeSongName").value;
+	const oldThumbnailBase = document.getElementById("customizeForm").dataset.oldThumbnailPath.replace(".mp3", "");
+	const newSongName = document.getElementById("customizeSongName").value.trim();
 	const newThumbnailFile = document.getElementById("customizeThumbnail").files[0];
-	const oldSongFilePath = path.join(musicFolder, oldSongName);
-	let newSongFilePath = path.join(musicFolder, newSongName + path.extname(oldSongName));
 
-	if (fs.existsSync(oldSongFilePath)) {
-		fs.renameSync(oldSongFilePath, newSongFilePath);
-	} else {
-		console.error("Old song file does not exist:", oldSongFilePath);
+	const oldSongPath = path.join(musicFolder, oldSongName);
+	const newSongFilePath = path.join(musicFolder, newSongName + ".mp3");
+
+	const oldThumbnailPath = oldThumbnailBase + "_thumbnail.jpg";
+	const newThumbnailPath = path.join(thumbnailFolder, newSongName + "_thumbnail.jpg");
+
+	if (!fs.existsSync(oldSongPath)) {
+		console.error("Old song file does not exist:", oldSongPath);
 		return;
 	}
+
+	fs.renameSync(oldSongPath, newSongFilePath);
 
 	if (newThumbnailFile) {
 		const reader = new FileReader();
 		reader.onload = function (e) {
-			const newThumbnailPath = path.join(path.dirname(oldThumbnailPath), newSongName + "_thumbnail.jpg");
 			const base64Data = e.target.result.replace(/^data:image\/jpeg;base64,/, "");
 			fs.writeFileSync(newThumbnailPath, base64Data, "base64");
-
-			if (fs.existsSync(oldThumbnailPath)) {
-				fs.unlinkSync(oldThumbnailPath);
-			}
+			if (fs.existsSync(oldThumbnailPath)) fs.unlinkSync(oldThumbnailPath);
 		};
 		reader.readAsDataURL(newThumbnailFile);
 	} else {
-		const newThumbnailPath = path.join(path.dirname(oldThumbnailPath), newSongName + "_thumbnail.jpg");
 		if (fs.existsSync(oldThumbnailPath)) {
 			fs.renameSync(oldThumbnailPath, newThumbnailPath);
 		}
 	}
 
-	if (fs.existsSync(playlistPath)) {
-		let playlistsData = JSON.parse(fs.readFileSync(playlistPath, "utf8"));
-		for (const playlist of playlistsData) {
-			for (let i = 0; i < playlist.songs.length; i++) {
-				if (playlist.songs[i] === oldSongName.slice(0, -4)) {
-					playlist.songs[i] = newSongName;
-				}
-			}
-		}
-		fs.writeFileSync(playlistPath, JSON.stringify(playlistsData, null, 2));
+	const song = musicsDb.prepare("SELECT * FROM songs WHERE name = ?").get(oldSongName);
+	if (song) {
+		musicsDb.prepare("UPDATE songs SET name = ?, thumbnail = ? WHERE song_id = ?").run(newSongName, newThumbnailPath, song.song_id);
+
+		musicsDb.prepare("UPDATE song_play_time SET songName = ? WHERE songName = ?").run(newSongName, oldSongName);
+
+		console.log("Updated song metadata and play time references.");
+	} else {
+		console.warn("No song entry found for:", oldSongName);
 	}
 
-	if (fs.existsSync(rmsPath)) {
-		try {
-			const rmsData = JSON.parse(fs.readFileSync(rmsPath));
-			const oldKey = oldSongName;
-			const newKey = newSongName + path.extname(oldSongName);
-			if (rmsData[oldKey]) {
-				rmsData[newKey] = rmsData[oldKey];
-				delete rmsData[oldKey];
-				fs.writeFileSync(rmsPath, JSON.stringify(rmsData, null, 2));
-			}
-		} catch (err) {
-			console.error("Could not update RMS cache:", err);
-		}
+	const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
+	for (const playlist of playlists) {
+		const songIds = playlist.songs.split(",");
+		const updated = songIds.map(id => (id === song.song_id ? song.song_id : id)).join(",");
+		playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE playlist_id = ?").run(updated, playlist.playlist_id);
 	}
 
 	customizeModal.style.display = "none";
@@ -1454,71 +1482,47 @@ document.getElementById("customizeForm").addEventListener("submit", function (ev
 });
 
 function removeSong() {
-	if (confirm("Are you sure you want to remove this song?")) {
-		const musicFilePath = path.join(musicFolder, domates);
-		const thumbnailFilePath = path.join(thumbnailFolder, domates2);
+	if (!confirm("Are you sure you want to remove this song?")) return;
 
-		if (fs.existsSync(musicFilePath)) {
-			fs.unlinkSync(musicFilePath);
-		}
-		if (fs.existsSync(thumbnailFilePath)) {
-			fs.unlinkSync(thumbnailFilePath);
-		}
+	const musicFilePath = path.join(musicFolder, domates);
+	const thumbnailFilePath = path.join(thumbnailFolder, domates2);
+	const songName = path.parse(domates).name;
 
-		if (fs.existsSync(rmsPath)) {
-			try {
-				const rmsData = JSON.parse(fs.readFileSync(rmsPath));
-				if (rmsData[domates]) {
-					delete rmsData[domates];
-					fs.writeFileSync(rmsPath, JSON.stringify(rmsData, null, 2));
-				}
-			} catch (err) {
-				console.error("Error updating RMS cache during delete:", err);
-			}
-		}
+	if (fs.existsSync(musicFilePath)) fs.unlinkSync(musicFilePath);
+	if (fs.existsSync(thumbnailFilePath)) fs.unlinkSync(thumbnailFilePath);
 
-		closeModal();
-		document.getElementById("my-music").click();
+	const song = musicsDb.prepare("SELECT * FROM songs WHERE name = ?").get(songName);
+	if (song) {
+		musicsDb.prepare("DELETE FROM songs WHERE song_id = ?").run(song.song_id);
+		musicsDb.prepare("DELETE FROM song_play_time WHERE songName = ?").run(song.name);
+		playlistsDb.prepare("DELETE FROM playlists WHERE song_id = ?").run(song.song_id);
+		console.log("Song and related DB entries deleted.");
+	} else {
+		console.warn("Song not found in musicsDb:", songName);
 	}
+
+	closeModal();
+	document.getElementById("my-music").click();
 }
 
 function deletePlaylist() {
-	if (confirm("Are you sure you want to remove this playlist?")) {
-		const playlistName = document.getElementById("editInvisibleName").value;
-		fs.readFile(playlistPath, "utf8", (err, data) => {
-			if (err) {
-				console.error("Error reading file:", err);
-				return;
-			}
+	if (!confirm("Are you sure you want to remove this playlist?")) return;
 
-			let playlists;
-			try {
-				playlists = JSON.parse(data);
-			} catch (parseErr) {
-				console.error("Error parsing JSON:", parseErr);
-				return;
-			}
+	const playlistName = document.getElementById("editInvisibleName").value;
 
-			const playlistIndex = playlists.findIndex(pl => pl.name === playlistName);
-			if (playlistIndex !== -1) {
-				playlists.splice(playlistIndex, 1);
-			} else {
-				console.error("Playlist not found:", playlistName);
-				return;
-			}
-
-			fs.writeFile(playlistPath, JSON.stringify(playlists, null, 2), "utf8", writeErr => {
-				if (writeErr) {
-					console.error("Error writing file:", writeErr);
-					return;
-				}
-				console.log("Playlist deleted successfully");
-				closeModal();
-				document.getElementById("settings").click();
-				document.getElementById("playlists").click();
-			});
-		});
+	const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistName);
+	if (!playlist) {
+		console.error("Playlist not found:", playlistName);
+		return;
 	}
+
+	playlistsDb.prepare("DELETE FROM playlists WHERE id = ?").run(playlist.id);
+
+	console.log(`Deleted playlist "${playlistName}" and its song links.`);
+
+	closeModal();
+	document.getElementById("settings").click();
+	document.getElementById("playlists").click();
 }
 
 document.querySelectorAll(".settingsKeybindsButton").forEach(button => {
@@ -1620,16 +1624,16 @@ function saveKeybinds() {
 		return;
 	}
 
-	updateDatabase("key_Rewind", document.getElementById("settingsRewind").innerHTML);
-	updateDatabase("key_Previous", document.getElementById("settingsPrevious").innerHTML);
-	updateDatabase("key_PlayPause", document.getElementById("settingsPlayPause").innerHTML);
-	updateDatabase("key_Next", document.getElementById("settingsNext").innerHTML);
-	updateDatabase("key_Skip", document.getElementById("settingsSkip").innerHTML);
-	updateDatabase("key_Autoplay", document.getElementById("settingsAutoplay").innerHTML);
-	updateDatabase("key_Shuffle", document.getElementById("settingsShuffle").innerHTML);
-	updateDatabase("key_Mute", document.getElementById("settingsMute").innerHTML);
-	updateDatabase("key_Speed", document.getElementById("settingsSpeed").innerHTML);
-	updateDatabase("key_Loop", document.getElementById("settingsLoop").innerHTML);
+	updateDatabase("key_Rewind", document.getElementById("settingsRewind").innerHTML, settingsDb);
+	updateDatabase("key_Previous", document.getElementById("settingsPrevious").innerHTML, settingsDb);
+	updateDatabase("key_PlayPause", document.getElementById("settingsPlayPause").innerHTML, settingsDb);
+	updateDatabase("key_Next", document.getElementById("settingsNext").innerHTML, settingsDb);
+	updateDatabase("key_Skip", document.getElementById("settingsSkip").innerHTML, settingsDb);
+	updateDatabase("key_Autoplay", document.getElementById("settingsAutoplay").innerHTML, settingsDb);
+	updateDatabase("key_Shuffle", document.getElementById("settingsShuffle").innerHTML, settingsDb);
+	updateDatabase("key_Mute", document.getElementById("settingsMute").innerHTML, settingsDb);
+	updateDatabase("key_Speed", document.getElementById("settingsSpeed").innerHTML, settingsDb);
+	updateDatabase("key_Loop", document.getElementById("settingsLoop").innerHTML, settingsDb);
 
 	key_Rewind = document.getElementById("settingsRewind").innerHTML;
 	key_Previous = document.getElementById("settingsPrevious").innerHTML;

@@ -24,42 +24,56 @@ async function analyzeFile(filePath) {
 			.on("end", () => {
 				const buffer = Buffer.concat(buffers);
 				const rms = calculateRMSFromPCM(buffer);
+				console.log(`Calculated RMS for ${filePath}:`, rms);
 				resolve(rms);
 			})
 			.pipe()
-			.on("data", (chunk) => buffers.push(chunk));
+			.on("data", chunk => buffers.push(chunk));
 	});
 }
 
 async function processAllFiles() {
-	const files = fs.readdirSync(musicFolder).filter((f) => f.endsWith(".mp3"));
-
-	let rmsMap = {};
-	if (fs.existsSync(rmsPath)) {
-		try {
-			rmsMap = JSON.parse(fs.readFileSync(rmsPath));
-		} catch (e) {
-			console.warn("⚠️ Could not parse existing RMS file. Starting fresh.");
-		}
-	}
+	const files = fs.readdirSync(musicFolder).filter(f => f.endsWith(".mp3"));
 
 	for (const file of files) {
-		if (rmsMap[file]) {
+		const name = path.basename(file, path.extname(file));
+		const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_name = ?").get(name);
+
+		if (row && row.rms !== null && row.rms !== undefined) {
+			console.log(`Skipping ${name}, RMS already stored.`);
 			continue;
 		}
 
 		const filePath = path.join(musicFolder, file);
-		console.log(`Analyzing ${file}...`);
+		console.log(`Analyzing ${name}...`);
 		try {
 			const rms = await analyzeFile(filePath);
-			rmsMap[file] = rms;
-			console.log(`→ RMS: ${rms.toFixed(4)}`);
+			if (rms !== null && rms !== undefined && !isNaN(rms)) {
+				console.log(`Updating RMS for ${name} to ${rms.toFixed(4)}...`);
+
+				const updateResult = musicsDb
+					.prepare(
+						`
+				UPDATE songs
+				SET rms = ?
+				WHERE song_name = ?
+			`
+					)
+					.run(rms, name);
+
+				if (updateResult.changes > 0) {
+					console.log(`Successfully updated RMS for ${name}`);
+				} else {
+					console.warn(`Failed to update RMS for ${name}`);
+				}
+			} else {
+				console.warn(`No valid RMS calculated for ${name}, skipping.`);
+			}
 		} catch (e) {
-			console.error(`Failed to analyze ${file}:`, e);
+			console.error(`Failed to analyze ${name}:`, e);
 		}
 	}
 
-	fs.writeFileSync(rmsPath, JSON.stringify(rmsMap, null, 2));
 	console.log("✅ RMS analysis complete.");
 }
 
