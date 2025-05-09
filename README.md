@@ -34,7 +34,7 @@ In this app, you can easily paste a link in the download section, change its nam
 
 ## Customisation
 You can customise everything starting from the app itself, the musics and the playlists. The music files and the playlists can be renamed, and get their thumbnails changed inside the app. The settings tab has a high variety of options on how to change user experience.
-![image](https://github.com/user-attachments/assets/f4ee7249-4eb0-425a-8efc-a17450a9ae54)
+![image](https://github.com/user-attachments/assets/61ad7544-3d14-4250-ba73-b05a36a18589)
 
 
 ## Discord
