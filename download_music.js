@@ -417,7 +417,7 @@ function actuallyDownloadTheSong() {
 		}
 
 		if (invalidTitles.length > 0) {
-			document.getElementById("downloadModalText").innerText = `Validation errors:${invalidTitles.join("\n")}`;
+			document.getElementById("downloadModalText").innerText = `Validation errors: ${invalidTitles.join("\n")}`;
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
 		}
