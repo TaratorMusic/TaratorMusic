@@ -20,16 +20,18 @@ let settingsDb = {},
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
 	appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
-	settingsDbPath = path.join(taratorFolder, "settings.db");
-	playlistsDbPath = path.join(taratorFolder, "playlists.db");
-	musicsDbPath = path.join(taratorFolder, "musics.db");
+	databasesFolder = path.join(taratorFolder, "databases");
+	settingsDbPath = path.join(databasesFolder, "settings.db");
+	playlistsDbPath = path.join(databasesFolder, "playlists.db");
+	musicsDbPath = path.join(databasesFolder, "musics.db");
+
+	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
+	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
+	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
 
 	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
 	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
 	if (!fs.existsSync(musicsDbPath)) fs.writeFileSync(musicsDbPath, "");
-
-	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
-	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 
 	settingsDb = new Database(settingsDbPath);
 	playlistsDb = new Database(playlistsDbPath);

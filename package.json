@@ -42,9 +42,7 @@
 			"**/*",
 			"!musics/**",
 			"!thumbnails/**",
-			"!playlists.json",
-			"!rms_cache.json",
-			"!appData.db"
+			"!databases/**"
 		],
 		"win": {
 			"target": [
@@ -63,8 +61,7 @@
 		},
 		"linux": {
 			"target": [
-				"AppImage",
-				"deb"
+				"AppImage"
 			],
 			"icon": "app_thumbnails/tarator_icon.png",
 			"category": "Audio",
