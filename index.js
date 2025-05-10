@@ -1,6 +1,8 @@
 const { app, BrowserWindow, Menu, ipcMain } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
+const fs = require("fs");
+const { execSync } = require("child_process");
 
 if (process.env.APPIMAGE) {
 	const libPath = path.join(process.resourcesPath, "lib");
@@ -42,6 +44,17 @@ app.whenReady().then(() => {
 	autoUpdater.checkForUpdatesAndNotify();
 
 	autoUpdater.on("update-downloaded", () => {
+		if (process.platform === "linux" && process.env.APPIMAGE) {
+			try {
+				const currentAppImagePath = process.env.APPIMAGE;
+				const appDir = path.dirname(currentAppImagePath);
+				const symlinkPath = path.join(appDir, "TaratorMusic.AppImage");
+				execSync(`ln -sf "${currentAppImagePath}" "${symlinkPath}"`);
+			} catch (e) {
+				alert(e);
+			}
+		}
+
 		autoUpdater.quitAndInstall();
 	});
 
