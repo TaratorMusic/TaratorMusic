@@ -1708,60 +1708,6 @@ function loadJSFile(filename) {
 	document.body.appendChild(script);
 }
 
-document.getElementById("checkUpdateButton").addEventListener("click", async () => {
-	const metaFile = path.join(taratorFolder, ".updater.json");
-	const repo = "Victiniiiii/TaratorMusic";
-	const branch = "main";
-	let lastSha = null;
-	if (fs.existsSync(metaFile)) {
-		try {
-			lastSha = JSON.parse(fs.readFileSync(metaFile, "utf8")).lastSha;
-		} catch {}
-	}
-
-	const ref = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/${branch}`);
-	if (!ref.ok) return alert("Failed to fetch latest commit");
-	const currentSha = (await ref.json()).object.sha;
-
-	if (lastSha === currentSha) return alert("Already up-to-date.");
-
-	const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees/${currentSha}?recursive=1`);
-	if (!treeRes.ok) return alert("Failed to fetch file tree.");
-
-	const tree = (await treeRes.json()).tree.filter(f => f.type === "blob" && !f.path.startsWith("build/"));
-
-	const acceptAll = confirm(`Update all ${tree.length} files automatically?`);
-	let updated = false;
-
-	for (const file of tree) {
-		const fileUrl = `https://raw.githubusercontent.com/${repo}/${branch}/${file.path}`;
-		let remoteText;
-		try {
-			const res = await fetch(fileUrl);
-			if (!res.ok) continue;
-			remoteText = (await res.text()).replace(/\r\n/g, "\n").trim();
-		} catch {
-			continue;
-		}
-
-		const localPath = path.join(taratorFolder, file.path);
-		const exists = fs.existsSync(localPath);
-		const localText = exists ? fs.readFileSync(localPath, "utf8").replace(/\r\n/g, "\n").trim() : "";
-
-		if (!exists || localText !== remoteText) {
-			const shouldUpdate = acceptAll || confirm(`Update ${file.path}?`);
-			if (shouldUpdate) {
-				fs.mkdirSync(path.dirname(localPath), { recursive: true });
-				fs.writeFileSync(localPath, remoteText, "utf8");
-				updated = true;
-			}
-		}
-	}
-
-	fs.writeFileSync(metaFile, JSON.stringify({ lastSha: currentSha }, null, 2), "utf8");
-	alert(updated ? "Update complete. Restart the app." : "No new changes.");
-});
-
 ipcRenderer.invoke("get-app-version").then(version => {
 	document.getElementById("version").textContent = `Version: ${version}`;
 });

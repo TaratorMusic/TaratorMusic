@@ -1,6 +1,6 @@
 const { app, BrowserWindow, Menu, ipcMain } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
-const fs = require("fs");
 
 if (process.env.APPIMAGE) {
 	const libPath = path.join(process.resourcesPath, "lib");
@@ -36,8 +36,14 @@ function createWindow() {
 
 app.whenReady().then(() => {
 	app.setName("TaratorMusic");
-	app.isPackaged && Menu.setApplicationMenu(null);
+	if (app.isPackaged) Menu.setApplicationMenu(null);
 	createWindow();
+
+	autoUpdater.checkForUpdatesAndNotify();
+
+	autoUpdater.on("update-downloaded", () => {
+		autoUpdater.quitAndInstall();
+	});
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
