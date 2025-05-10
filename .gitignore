@@ -9,6 +9,7 @@ out/
 build/
 userData/
 cache/
+config/
 
 *.log
 *.db

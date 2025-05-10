@@ -8,14 +8,14 @@ const fs = require("fs");
 const Database = require("better-sqlite3");
 
 let taratorFolder;
-let musicFolder, thumbnailFolder, appThumbnailFolder;
+let musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath;
 let settingsDb = {},
 	playlistsDb = {},
 	musicsDb = {};
 
 (async () => {
-	taratorFolder = await ipcRenderer.invoke("get-user-data-path");
+	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
 
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
@@ -239,27 +239,18 @@ function initializePlaylistsDatabase() {
 			)
 			.run();
 
-		const playlistsData = [
-			{
-				name: "test",
-				songs: ["Za Ljiljanu", "Halid Beslic - Lavanda - (Audio 2013) HD", "I Love You Baby", "Halid Beslic - Ja bez tebe ne mogu da zivim (Official Video 2016)"],
-				thumbnail: "/mnt/TaratorMusic/thumbnails/test_playlist.jpg",
-			},
-		];
+		const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists").all();
 
-		playlistsData.forEach(playlist => {
-			const songsString = JSON.stringify(playlist.songs);
+		if (allPlaylists.length === 0) {
+			console.log("No playlists found in the database.");
+		} else {
+			console.log(`Loaded ${allPlaylists.length} playlists from the database.`);
+		}
 
-			const existingPlaylist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlist.name);
-			if (!existingPlaylist) {
-				playlistsDb.prepare("INSERT INTO playlists (name, songs, thumbnail) VALUES (?, ?, ?)").run(playlist.name, songsString, playlist.thumbnail);
-				console.log(`Playlist '${playlist.name}' added to the database.`);
-			} else {
-				console.log(`Playlist '${playlist.name}' already exists in the database.`);
-			}
-		});
+		return allPlaylists;
 	} catch (err) {
 		console.error("Error initializing playlists database:", err);
+		return [];
 	}
 }
 
