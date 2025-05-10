@@ -1,7 +1,6 @@
-// index.js
-
-const { app, BrowserWindow, Menu, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain } = require("electron");
 const path = require("path");
+const fs = require("fs");
 
 if (process.env.APPIMAGE) {
 	const libPath = path.join(process.resourcesPath, "lib");
@@ -10,7 +9,6 @@ if (process.env.APPIMAGE) {
 
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
-app.setPath("userData", path.join(__dirname, "config"));
 
 function createWindow() {
 	const mainWindow = new BrowserWindow({
@@ -29,6 +27,9 @@ function createWindow() {
 
 	ipcMain.handle("get-app-version", () => app.getVersion());
 	ipcMain.handle("get-app-base-path", () => {
+		if (process.env.APPIMAGE) {
+			return path.dirname(process.env.APPIMAGE);
+		}
 		return app.getAppPath();
 	});
 }
