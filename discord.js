@@ -105,7 +105,7 @@ async function updateDiscordPresence() {
 
 					const validatedCurrentSeconds = Math.min(currentSeconds, totalSeconds);
 
-					activityPayload.state = "----[ 🎵 ]--[ 🎶 ]--[ 🎼 ]--[ 🎧 ]----​";
+					activityPayload.state = "──────────────────────────​";
 					activityPayload.startTimestamp = Math.floor(nowMs / 1000 - validatedCurrentSeconds);
 					activityPayload.endTimestamp = activityPayload.startTimestamp + totalSeconds;
 				} else {
