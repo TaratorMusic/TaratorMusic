@@ -42,10 +42,9 @@ app.whenReady().then(() => {
 	createWindow();
 
 	autoUpdater.checkForUpdatesAndNotify();
-
 	autoUpdater.on("update-downloaded", () => {
 		if (process.platform === "linux" && process.env.APPIMAGE) {
-			try {
+			try { // This part of the code keeps the app name the same if you are using a .desktop shortcut
 				const currentAppImagePath = process.env.APPIMAGE;
 				const appDir = path.dirname(currentAppImagePath);
 				const symlinkPath = path.join(appDir, "TaratorMusic.AppImage");

@@ -56,7 +56,7 @@ const volumeControl = document.getElementById("volume");
 volumeControl.addEventListener("change", () => {
 	updateDatabase("volume", volumeControl.value, settingsDb);
 	if (audioElement) {
-		audioElement.volume = volumeControl.value / 100;
+		audioElement.volume = volumeControl.value / 100 / dividevolume;
 	}
 });
 
@@ -68,7 +68,6 @@ let currentPlaylistElement = null;
 let isShuffleActive = false;
 let isAutoplayActive = false;
 let isLooping = false;
-let newThumbnailPath;
 let domates = null;
 let playedSongs = [];
 let playlistPlayedSongs = [];
@@ -96,6 +95,9 @@ let key_Shuffle;
 let key_Mute;
 let key_Speed;
 let key_Loop;
+let dividevolume;
+let displayCount;
+let activateRms;
 
 const defaultSettings = {
 	totalTimeSpent: 0,
@@ -115,6 +117,9 @@ const defaultSettings = {
 	key_Mute: "d",
 	key_Speed: "f",
 	key_Loop: "g",
+	dividevolume: 1,
+	displayCount: 50,
+	activateRms: 1,
 };
 
 function initializeSettingsDatabase() {
@@ -163,7 +168,6 @@ function initializeSettingsDatabase() {
 
 		if (missingColumns.length > 0) {
 			console.log("Adding missing columns...");
-
 			missingColumns.forEach(key => {
 				let columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
 				try {
@@ -174,6 +178,8 @@ function initializeSettingsDatabase() {
 				}
 			});
 		}
+
+		ensureDefaultValues();
 		loadSettings();
 	}
 }
@@ -258,6 +264,24 @@ document.addEventListener("DOMContentLoaded", function () {
 	initializeSettingsDatabase();
 	initializeMusicsDatabase();
 	initializePlaylistsDatabase();
+
+	const divideVolumeSelect = document.getElementById("dividevolume");
+	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
+		if (divideVolumeSelect.options[i].value == dividevolume) {
+			divideVolumeSelect.selectedIndex = i;
+			break;
+		}
+	}
+
+	const activateRmsSelect = document.getElementById("activateRms");
+	for (let i = 0; i < activateRmsSelect.options.length; i++) {
+		if (activateRmsSelect.options[i].value == activateRms) {
+			activateRmsSelect.selectedIndex = i;
+			break;
+		}
+	}
+
+	if (activateRms == 1) processAllFiles();
 });
 
 function insertDefaultSettings() {
@@ -331,6 +355,9 @@ function loadSettings() {
 	rememberspeed = row.rememberspeed;
 	maximumPreviousSongCount = row.maximumPreviousSongCount;
 	volume = row.volume;
+	dividevolume = row.dividevolume;
+	displayCount = row.displayCount;
+	activateRms = row.activateRms;
 
 	updateTimer();
 	rememberautoplay && toggleAutoplay();
@@ -338,7 +365,33 @@ function loadSettings() {
 	rememberloop && loop();
 	document.getElementById("arrayLength").value = maximumPreviousSongCount;
 	volumeControl.value = volume;
-	if (audioElement) audioElement.volume = volumeControl.value / 100;
+	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
+}
+
+function ensureDefaultValues() {
+	let row;
+	try {
+		row = settingsDb.prepare("SELECT * FROM settings").get();
+	} catch (err) {
+		console.error("Error retrieving settings:", err.message);
+		return;
+	}
+
+	if (!row) {
+		insertDefaultSettings();
+		return;
+	}
+
+	Object.keys(defaultSettings).forEach(key => {
+		if (row[key] === null || row[key] === undefined) {
+			try {
+				settingsDb.prepare(`UPDATE settings SET ${key} = ?`).run(defaultSettings[key]);
+				console.log(`Set missing default for ${key}`);
+			} catch (err) {
+				console.error(`Error setting default for ${key}:`, err.message);
+			}
+		}
+	});
 }
 
 function updateDatabase(name, option, db) {
@@ -482,8 +535,16 @@ async function myMusicOnClick() {
 		const option = document.createElement("option");
 		option.value = count;
 		option.innerText = count === "All" ? "Show All" : `Show ${count}`;
+		if (count == displayCount || (displayCount == 9999999 && count === "All")) {
+			option.selected = true;
+		}
+
 		displayCountSelect.appendChild(option);
 	});
+
+	displayCountSelect.onchange = function () {
+		handleDropdownChange("displayCount", this);
+	};
 
 	controlsBar.appendChild(musicSearch);
 	controlsBar.appendChild(displayCountSelect);
@@ -514,9 +575,7 @@ async function myMusicOnClick() {
 		}
 
 		let filteredSongs = [...musicFiles];
-		let displayCount = displayCountSelect.value;
 		let searchQuery = "";
-
 		let currentPlayingSongName = currentPlayingElement ? currentPlayingElement.getAttribute("data-file-name").slice(0, -4) : null;
 
 		function renderSongs() {
@@ -616,6 +675,46 @@ function createMusicElement(file) {
 	return musicElement;
 }
 
+function applyRmsEffect() {
+	if (!audioContext || !audioSource) return;
+
+	try {
+		audioSource.disconnect();
+	} catch (err) {
+		console.warn("Audio source disconnect error:", err);
+	}
+
+	if (activateRms === 1) {
+		let newGain;
+		try {
+			const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_name = ?").get(secondfilename);
+			const measuredRms = row ? row.rms : 0.07;
+			const targetRms = 0.07;
+			newGain = targetRms / measuredRms;
+			newGain = Math.min(Math.max(newGain, 0.5), 1.5);
+		} catch (err) {
+			console.warn("Could not load RMS from database:", err);
+			newGain = 1;
+		}
+
+		const compressorNode = audioContext.createDynamicsCompressor();
+		compressorNode.threshold.value = -50;
+		compressorNode.knee.value = 40;
+		compressorNode.ratio.value = 12;
+		compressorNode.attack.value = 0;
+		compressorNode.release.value = 0.25;
+
+		const gainNode = audioContext.createGain();
+		gainNode.gain.value = newGain;
+
+		audioSource.connect(compressorNode);
+		compressorNode.connect(gainNode);
+		gainNode.connect(audioContext.destination);
+	} else {
+		audioSource.connect(audioContext.destination);
+	}
+}
+
 async function playMusic(file, clickedElement, isPlaylist = false) {
 	const songName = document.getElementById("song-name");
 
@@ -665,7 +764,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		}
 
 		audioElement.src = `file://${path.join(musicFolder, secondfilename)}`;
-		audioElement.volume = volumeControl.value / 100;
+		audioElement.volume = volumeControl.value / 100 / dividevolume;
 		audioElement.playbackRate = rememberspeed;
 		audioElement.loop = isLooping === true;
 
@@ -674,31 +773,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		}
 
 		audioSource = audioContext.createMediaElementSource(audioElement);
-		let newGain;
-
-		try {
-			const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_name = ?").get(secondfilename);
-			const measuredRms = row ? row.rms : 0.07;
-			const targetRms = 0.07;
-			newGain = targetRms / measuredRms;
-			newGain = Math.min(Math.max(newGain, 0.5), 1.5);
-		} catch (err) {
-			console.warn("Could not load RMS from database:", err);
-		}
-
-		const compressorNode = audioContext.createDynamicsCompressor();
-		compressorNode.threshold.value = -50;
-		compressorNode.knee.value = 40;
-		compressorNode.ratio.value = 12;
-		compressorNode.attack.value = 0;
-		compressorNode.release.value = 0.25;
-
-		const gainNode = audioContext.createGain();
-		gainNode.gain.value = newGain;
-
-		audioSource.connect(compressorNode);
-		compressorNode.connect(gainNode);
-		gainNode.connect(audioContext.destination);
+		applyRmsEffect();
 
 		await audioElement.play();
 		playButton.style.display = "none";
@@ -770,7 +845,7 @@ function manageAudioControls(audioElement) {
 	const pauseButton = document.getElementById("pauseButton");
 
 	volumeControl.addEventListener("input", () => {
-		audioElement.volume = volumeControl.value / 100;
+		audioElement.volume = volumeControl.value / 100 / dividevolume;
 	});
 
 	audioElement.addEventListener("loadedmetadata", () => {
@@ -1302,14 +1377,14 @@ function loop() {
 
 function mute() {
 	if (volumeControl.value != 0) {
-		previousVolume = volumeControl.value / 100;
+		previousVolume = volumeControl.value / 100 / dividevolume;
 		volumeControl.value = 0;
 		muteButton.classList.add("active");
 	} else {
 		volumeControl.value = previousVolume;
 		muteButton.classList.remove("active");
 	}
-	if (audioElement) audioElement.volume = volumeControl.value / 100;
+	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
 	updateDatabase("volume", volumeControl.value, settingsDb);
 }
 
@@ -1706,6 +1781,25 @@ function loadJSFile(filename) {
 	};
 
 	document.body.appendChild(script);
+}
+
+function handleDropdownChange(option, selectElement) {
+	const selectedValue = option == "displayCount" && selectElement.value == "All" ? 9999999 : Number(selectElement.value);
+	console.log("Selected:", selectedValue, "at", option);
+	updateDatabase(option, selectedValue, settingsDb);
+	if (option == "dividevolume") {
+		dividevolume = selectedValue;
+		if (audioElement) {
+			audioElement.volume = volumeControl.value / 100 / dividevolume;
+		}
+	} else if (option == "displayCount") {
+		displayCount = selectedValue;
+	} else if (option == "activateRms") {
+		activateRms = selectedValue;
+		if (audioElement && audioContext && audioSource) {
+			applyRmsEffect();
+		}
+	}
 }
 
 ipcRenderer.invoke("get-app-version").then(version => {

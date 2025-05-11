@@ -165,6 +165,21 @@
 					<input type="number" id="arrayLength" name="arrayLength" required />
 					<button onclick="changeThePreviousSongAmount()">Change</button>
 				</div>
+				<div class="settingsflexrow">
+					Divide the Volume
+					<select name="dividevolume" id="dividevolume" onchange="handleDropdownChange('dividevolume', this)">
+						<option value="1">Don't divide the volume</option>
+						<option value="10">Divide by 10</option>
+						<option value="20">Divide by 20</option>
+						<option value="50">Divide by 50</option>
+					</select>
+				</div>
+				<div class="settingsflexrow">Activate Sound Stabilisation
+					<select name="activateRms" id="activateRms" onchange="handleDropdownChange('activateRms', this)">
+						<option value="1">Activate</option>
+						<option value="0">Deactivate</option>
+					</select>
+				</div>
 				<div class="settingsflexrow">Placeholder Thumbnail: Coming Soon</div>
 				<div class="settingsflexrow">Language: Coming Soon</div>
 				<div class="settingsflexrow">Edit Background: Coming Soon</div>

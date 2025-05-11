@@ -54,10 +54,10 @@ async function processAllFiles() {
 				const updateResult = musicsDb
 					.prepare(
 						`
-				UPDATE songs
-				SET rms = ?
-				WHERE song_name = ?
-			`
+						UPDATE songs
+						SET rms = ?
+						WHERE song_name = ?
+						`
 					)
 					.run(rms, name);
 
@@ -76,5 +76,3 @@ async function processAllFiles() {
 
 	console.log("✅ RMS analysis complete.");
 }
-
-processAllFiles();
