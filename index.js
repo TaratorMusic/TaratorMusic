@@ -49,9 +49,12 @@ app.whenReady().then(() => {
 				const currentAppImagePath = process.env.APPIMAGE;
 				const appDir = path.dirname(currentAppImagePath);
 				const symlinkPath = path.join(appDir, "TaratorMusic.AppImage");
-				execSync(`ln -sf "${currentAppImagePath}" "${symlinkPath}"`);
+
+				if (currentAppImagePath !== symlinkPath) {
+					execSync(`ln -sf "${currentAppImagePath}" "${symlinkPath}"`);
+				}
 			} catch (e) {
-				alert(e);
+				dialog.showErrorBox("Update Error", `Failed to create symlink:\n${e.message}`);
 			}
 		}
 
