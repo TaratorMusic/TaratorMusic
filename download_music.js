@@ -3,7 +3,7 @@ const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
 
 function isValidFileName(fileName) {
-	const invalidChars = /[\\/:"*?<>|'.,]/;
+	const invalidChars = /[\\/:"*#?<>|'.,]/;
 	return !invalidChars.test(fileName);
 }
 
@@ -270,7 +270,7 @@ function actuallyDownloadTheSong() {
 		const img = document.getElementById("thumbnailImage");
 
 		if (!isValidFileName(secondInput)) {
-			document.getElementById("downloadModalText").innerText = 'Invalid characters in filename. These characters cannot be used in filenames: / \\ : * ? " < > | ,';
+			document.getElementById("downloadModalText").innerText = 'Invalid characters in filename. These characters cannot be used in filenames: / \\ : # * ? " < > | ,';
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
 		} else if (secondInput.length > 100) {
