@@ -19,7 +19,7 @@
 					<input type="text" id="playlistNameInput" placeholder="Enter playlist name" />
 					<input type="file" id="thumbnailInput" accept="image/*" style="margin-bottom: 10px" />
 					<div id="modalerror"></div>
-					<button id="savePlaylistButton">Save</button>
+					<button id="saveNewPlaylistButton" onclick="saveNewPlaylist()">Save</button>
 				</div>
 			</div>
 			<div id="editPlaylistModal" class="modal">
@@ -35,7 +35,7 @@
 					</div>
 					<div class="flexrow">
 						<button id="editPlaylistDelete" onclick="deletePlaylist()">Delete</button>
-						<button id="saveEditPlaylistButton" onclick="saveEditPlaylist()">Save</button>
+						<button id="saveEditedPlaylistButton" onclick="saveEditedPlaylist()">Save</button>
 					</div>
 					<div id="editInvisibleName" class="invisible"></div>
 					<div id="editInvisiblePhoto" class="invisible"></div>
@@ -66,15 +66,21 @@
 						<div class="modalTitle">Customize Song</div>
 						<span class="close" onclick="closeModal()">&times;</span>
 					</div>
-					<form id="customizeForm">
-						<label for="customizeSongName">Song Name:</label>
-						<input type="text" id="customizeSongName" name="customizeSongName" required />
-						<label for="customizeThumbnail">Thumbnail:</label>
-						<input type="file" onchange="updateThumbnailImage(event,1)" id="customizeThumbnail" name="customizeThumbnail" accept="image/*" />
-						<img id="customiseImage" />
-						<button onclick="removeSong()">Remove Song</button>
-						<button type="submit">Save</button>
-					</form>
+					<div id="customizeModal">
+						<div>
+							<label for="customizeSongName">Song Name:</label>
+							<input type="text" id="customizeSongName" required />
+						</div>
+						<div>
+							<label for="customizeThumbnail">Thumbnail:</label>
+							<input type="file" onchange="updateThumbnailImage(event, 1)" id="customizeThumbnail" accept="image/*" />
+							<img id="customiseImage" />
+						</div>
+						<div>
+							<button onclick="removeSong()">Remove Song</button>
+							<button onclick="saveEditedSong()">Save</button>
+						</div>
+					</div>
 				</div>
 			</div>
 			<div id="downloadModal" class="modal">
@@ -98,7 +104,7 @@
 		</div>
 		<div id="playlistsidebar">
 			<div id="downloadNewFunction" class="sidebarButtons" onclick="loadJSFile('download_music')">Download</div>
-			<div id="create-playlist" class="sidebarButtons" onclick="createNewPlaylist()">Create New Playlist</div>
+			<div id="create-playlist" class="sidebarButtons" onclick="openNewPlaylistModal()">Create New Playlist</div>
 		</div>
 		<div class="content">
 			<div id="main-menu-content" class="tab-content">
@@ -174,7 +180,8 @@
 						<option value="50">Divide by 50</option>
 					</select>
 				</div>
-				<div class="settingsflexrow">Activate Sound Stabilisation
+				<div class="settingsflexrow">
+					Activate Sound Stabilisation
 					<select name="activateRms" id="activateRms" onchange="handleDropdownChange('activateRms', this)">
 						<option value="1">Activate</option>
 						<option value="0">Deactivate</option>
@@ -228,6 +235,7 @@
 		</div>
 		<script src="discord.js"></script>
 		<script src="renderer.js"></script>
+		<script src="playlists.js"></script>
 		<script src="scan_rms.js"></script>
 	</body>
 </html>

@@ -1,3 +1,4 @@
+const fetch = require("node-fetch");
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
 
@@ -25,20 +26,6 @@ function fileExists(filePath) {
 	}
 }
 
-function findDuplicates(array) {
-	const counts = {};
-	const duplicates = [];
-
-	array.forEach(item => {
-		counts[item] = (counts[item] || 0) + 1;
-		if (counts[item] === 2) {
-			duplicates.push(item);
-		}
-	});
-
-	return duplicates;
-}
-
 function differentiateYouTubeLinks(url) {
 	const videoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/;
 	const playlistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
@@ -49,26 +36,6 @@ function differentiateYouTubeLinks(url) {
 		return "playlist";
 	} else {
 		return "unknown";
-	}
-}
-
-function updateThumbnailImage(event, mode) {
-	const file = event.target.files[0];
-	if (file && file.type === "image/jpeg") {
-		const reader = new FileReader();
-		reader.onload = function (e) {
-			if (typeof mode === "number") {
-				const elementId = mode === 1 ? "customiseImage" : mode === 2 ? "editPlaylistThumbnail" : mode === 3 ? "thumbnailImage" : null;
-				if (elementId) {
-					document.getElementById(elementId).src = e.target.result;
-				}
-			} else if (mode instanceof HTMLElement) {
-				mode.style.backgroundImage = `url(${e.target.result})`;
-			}
-		};
-		reader.readAsDataURL(file);
-	} else {
-		alert("Please select a valid JPG image.");
 	}
 }
 
