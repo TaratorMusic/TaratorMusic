@@ -198,11 +198,11 @@ function initializeMusicsDatabase() {
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-	const existingNames = new Set(
+	const existingIds = new Set(
 		musicsDb
-			.prepare(`SELECT song_name FROM songs`)
+			.prepare(`SELECT song_id FROM songs`)
 			.all()
-			.map(row => row.song_name)
+			.map(row => row.song_id)
 	);
 
 	for (const file of files) {
@@ -211,12 +211,14 @@ function initializeMusicsDatabase() {
 
 		const name = path.basename(file, ext);
 
-		if (!existingNames.has(name)) {
+		if (!existingIds.has(name)) {
 			const songId = generateId();
 			insert.run(songId, name, "", `${name}.jpg`, 0, 0, null);
 			console.log(`Inserted new song: ${name}`);
 		}
 	}
+
+	renameSongsToIds();
 }
 
 function initializePlaylistsDatabase() {
@@ -270,8 +272,6 @@ document.addEventListener("DOMContentLoaded", function () {
 			break;
 		}
 	}
-
-	if (activateRms == 1) processAllFiles();
 });
 
 function insertDefaultSettings() {
@@ -413,12 +413,6 @@ setInterval(() => {
 	updateTimer();
 }, 60000);
 
-function generateId() {
-	const timestamp = Date.now().toString(36);
-	const randomPart = Math.floor(Math.random() * 1e6).toString(36);
-	return `${timestamp}-${randomPart}`;
-}
-
 function savePlayedTime(songName, timePlayed) {
 	const row = musicsDb
 		.prepare(
@@ -555,7 +549,7 @@ async function myMusicOnClick() {
 			.filter(file => file.toLowerCase() !== "desktop.ini")
 			.map(file => ({
 				name: file,
-				thumbnail: `file://${path.join(thumbnailFolder, file, "_thumbnail")}`,
+				thumbnail: `file://${path.join(thumbnailFolder, file)}`,
 			}));
 
 		if (musicFiles.length === 0) {
@@ -564,8 +558,14 @@ async function myMusicOnClick() {
 			return;
 		}
 
-		let filteredSongs = [...musicFiles];
 		let currentPlayingSongName = document.getElementById("song-name").innerText;
+		let songNamesArray = [];
+
+		for (i = 0; i < musicFiles.length; i++) {
+			songNamesArray.push(getSongNameById(musicFiles[i].name.replace(".mp3", "")));
+		}
+
+		let filteredSongs = [...musicFiles];
 
 		function renderSongs() {
 			musicListContainer.innerHTML = "";
@@ -574,7 +574,7 @@ async function myMusicOnClick() {
 			visibleSongs.forEach(file => {
 				const musicElement = createMusicElement(file);
 
-				if (file.name.slice(0, -4) === currentPlayingSongName) {
+				if (getSongNameById(file.name.slice(0, -4)) === currentPlayingSongName) {
 					musicElement.classList.add("playing");
 				}
 
@@ -587,7 +587,11 @@ async function myMusicOnClick() {
 		}
 
 		musicSearch.addEventListener("input", () => {
-			filteredSongs = musicFiles.filter(file => file.name.toLowerCase().includes(musicSearch.value.trim().toLowerCase()));
+			filteredSongs = musicFiles.filter(file => {
+				const songName = getSongNameById(file.name.replace(".mp3", ""));
+				return songName && songName.toLowerCase().includes(musicSearch.value.trim().toLowerCase());
+			});
+
 			renderSongs();
 		});
 
@@ -611,7 +615,7 @@ function createMusicElement(file) {
 	const fileNameWithoutExtension = path.parse(file.name).name;
 	const encodedFileName = encodeURIComponent(fileNameWithoutExtension);
 	const decodedFileName = decodeURIComponent(encodedFileName);
-	const thumbnailFileName = `${decodedFileName}_thumbnail.jpg`;
+	const thumbnailFileName = `${decodedFileName}.jpg`;
 	const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
 	let thumbnailUrl = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}`;
 
@@ -627,7 +631,7 @@ function createMusicElement(file) {
 
 	const songNameElement = document.createElement("div");
 	songNameElement.classList.add("song-name");
-	songNameElement.innerText = fileNameWithoutExtension;
+	songNameElement.innerText = getSongNameById(fileNameWithoutExtension);
 
 	const songLengthElement = document.createElement("div");
 	songLengthElement.classList.add("song-length");
@@ -645,7 +649,7 @@ function createMusicElement(file) {
 	addToPlaylistButton.classList.add("add-to-playlist-button");
 	addToPlaylistButton.addEventListener("click", event => {
 		event.stopPropagation();
-		openAddToPlaylistModal(songNameElement.innerHTML);
+		openAddToPlaylistModal(fileNameWithoutExtension);
 	});
 
 	musicElement.appendChild(songLengthElement);
@@ -704,7 +708,7 @@ function applyRmsEffect() {
 	}
 }
 
-async function playMusic(file, clickedElement, isPlaylist = false) {
+async function playMusic(file, isPlaylist = false) {
 	const songName = document.getElementById("song-name");
 
 	if (songStartTime !== 0) {
@@ -745,12 +749,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		audioElement.autoplay = true;
 		secondfilename = file.name;
 
-		if (file.name.endsWith(".mp3")) {
-			songName.textContent = file.name.slice(0, -4);
-		} else {
-			songName.textContent = file.name;
-			secondfilename += ".mp3";
-		}
+		songName.textContent = getSongNameById(file.name.slice(0, -4));
 
 		audioElement.src = `file://${path.join(musicFolder, secondfilename)}`;
 		audioElement.volume = volumeControl.value / 100 / dividevolume;
@@ -771,7 +770,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 		const fileNameWithoutExtension = path.parse(file.name).name;
 		const encodedFileName = encodeURIComponent(fileNameWithoutExtension);
 		const decodedFileName = decodeURIComponent(encodedFileName);
-		const thumbnailFileName = `${decodedFileName}_thumbnail.jpg`;
+		const thumbnailFileName = `${decodedFileName}.jpg`;
 		const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
 		let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
 
@@ -785,7 +784,7 @@ async function playMusic(file, clickedElement, isPlaylist = false) {
 
 		document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
 		document.querySelectorAll(".music-item").forEach(musicElement => {
-			if (musicElement.getAttribute("data-file-name").slice(0, -4) === songName.innerHTML) {
+			if (getSongNameById(musicElement.getAttribute("data-file-name").slice(0, -4)) === songName.innerHTML) {
 				musicElement.classList.add("playing");
 			}
 		});
@@ -893,7 +892,7 @@ async function playPlaylist(playlist, startingIndex = 0) {
 	currentPlaylist = playlist;
 
 	for (let i = startingIndex; i < playlist.songs.length; i++) {
-		let songName = playlist.songs[i];
+		let songName = playlist.songs[i] + ".mp3";
 		const file = { name: songName };
 		currentPlaylistElement = i;
 		const clickedElement = document.querySelector(`.music-item[data-file-name="${songName}.mp3"]`);
@@ -1006,24 +1005,32 @@ async function randomSongFunctionMainMenu() {
 	playMusic(file, null, false);
 }
 
-function randomPlaylistFunctionMainMenu() {
-	let allThePlaylists = Array.from(document.querySelectorAll(".playlist"));
-	let randomIndex = Math.floor(Math.random() * allThePlaylists.length);
-	let selectedPlaylist = allThePlaylists[randomIndex];
+async function randomPlaylistFunctionMainMenu() {
+	const playlists = playlistsDb.prepare("SELECT id, name, songs FROM playlists").all();
 
-	while (selectedPlaylist.querySelectorAll(".playlistInfoandSongs .playlist-songs .playlist-song").length == 0) {
-		randomIndex = Math.floor(Math.random() * allThePlaylists.length);
-		selectedPlaylist = allThePlaylists[randomIndex];
+	const nonEmptyPlaylists = playlists
+		.map(pl => ({
+			...pl,
+			songs: JSON.parse(pl.songs),
+		}))
+		.filter(pl => Array.isArray(pl.songs) && pl.songs.length > 0);
+
+	if (nonEmptyPlaylists.length === 0) {
+		console.error("No playlists with songs found.");
+		return;
 	}
 
-	if (currentPlaylist) {
-		while (selectedPlaylist.getAttribute("data-playlist-name") == currentPlaylist.name || selectedPlaylist.querySelectorAll(".playlistInfoandSongs .playlist-songs .playlist-song").length == 0) {
-			randomIndex = Math.floor(Math.random() * allThePlaylists.length);
-			selectedPlaylist = allThePlaylists[randomIndex];
-		}
+	const availablePlaylists = currentPlaylist ? nonEmptyPlaylists.filter(pl => pl.name !== currentPlaylist.name) : nonEmptyPlaylists;
+
+	if (availablePlaylists.length === 0) {
+		console.error("No other playlists available to play.");
+		return;
 	}
 
-	selectedPlaylist.querySelectorAll(".playlistInfoandSongs .playlist-songs .playlist-song")[0].click();
+	const randomIndex = Math.floor(Math.random() * availablePlaylists.length);
+	const selectedPlaylist = availablePlaylists[randomIndex];
+
+	await playPlaylist(selectedPlaylist, 0);
 }
 
 function toggleAutoplay() {
@@ -1146,57 +1153,51 @@ function updateThumbnailImage(event, mode) {
 }
 
 function openCustomizeModal(songName) {
-	const baseName = songName.replace(".mp3", "");
-	const oldThumbnailPath = path.join(thumbnailFolder, baseName + "_thumbnail.jpg");
-	fileToDelete = baseName;
+	const baseName = getSongNameById(songName.replace(".mp3", ""));
+	const oldThumbnailPath = path.join(thumbnailFolder, songName.replace(".mp3", "") + ".jpg");
+	fileToDelete = songName;
 
 	document.getElementById("customizeSongName").value = baseName;
-	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + "_thumbnail.jpg");
+	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + ".jpg");
 	document.getElementById("customizeModal").style.display = "block";
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = oldThumbnailPath;
 
 	const customizeDiv = document.getElementById("customizeModal");
-	customizeDiv.dataset.oldSongName = songName;
+	customizeDiv.dataset.oldSongName = baseName;
 	customizeDiv.dataset.oldThumbnailPath = oldThumbnailPath;
+	customizeDiv.dataset.songID = songName;
 }
 
 function saveEditedSong() {
 	const customizeDiv = document.getElementById("customizeModal");
-	const oldName = customizeDiv.dataset.oldSongName;
 	const newNameInput = document.getElementById("customizeSongName").value.trim();
-	const newName = newNameInput ? newNameInput + ".mp3" : oldName;
-	const newThumbFile = document.getElementById("customizeThumbnail").files[0];
-	const oldThumbPath = customizeDiv.dataset.oldThumbnailPath;
-	const newBase = newName.replace(".mp3", "");
-	const newThumbPath = path.join(thumbnailFolder, `${newBase}_thumbnail.jpg`);
-	let reloadSrc = `${newThumbPath}?t=${Date.now()}`;
 
-	if (oldName !== newName) fs.renameSync(path.join(musicFolder, oldName), path.join(musicFolder, newName));
+	if (newNameInput.length < 1) {
+		alert("Please do not set a song name empty.");
+		return;
+	}
+
+	const songID = customizeDiv.dataset.songID.replace(".mp3", "");
+	const thumbnailPath = path.join(thumbnailFolder, `${songID}.jpg`);
+	const oldName = customizeDiv.dataset.oldSongName;
+
+	const newThumbFile = document.getElementById("customizeThumbnail").files[0];
+	let reloadSrc = `${thumbnailPath}?t=${Date.now()}`;
 
 	if (newThumbFile) {
 		const data = fs.readFileSync(newThumbFile.path);
-		fs.writeFileSync(newThumbPath, data);
-		if (oldThumbPath !== newThumbPath && fs.existsSync(oldThumbPath)) fs.unlinkSync(oldThumbPath);
-	} else if (oldName !== newName && fs.existsSync(oldThumbPath)) {
-		fs.renameSync(oldThumbPath, newThumbPath);
+		fs.writeFileSync(thumbnailPath, data);
+		if (thumbnailPath !== thumbnailPath && fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
 	}
 
-	const song = musicsDb.prepare("SELECT song_id FROM songs WHERE song_name = ?").get(oldName.replace(".mp3", ""));
-	musicsDb.prepare("UPDATE songs SET song_name = ?, song_thumbnail = ? WHERE song_id = ?").run(newBase, newThumbPath, song.song_id);
-
-	const playlists = playlistsDb.prepare("SELECT id, songs FROM playlists").all();
-	for (const { id, songs } of playlists) {
-		const arr = JSON.parse(songs);
-		const updated = JSON.stringify(arr.map(n => (n === oldName.replace(".mp3", "") ? newBase : n)));
-		playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(updated, id);
-	}
+	musicsDb.prepare("UPDATE songs SET song_name = ?, song_thumbnail = ? WHERE song_id = ?").run(newNameInput, thumbnailPath, songID);
 
 	document.getElementById("customizeModal").style.display = "none";
 	document.getElementById("my-music").click();
 
-	if (document.getElementById("song-name").innerText == oldName.replace(".mp3", "")) {
-		document.getElementById("song-name").innerText = newBase;
+	if (document.getElementById("song-name").innerText == oldName) {
+		document.getElementById("song-name").innerText = newNameInput;
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url("${reloadSrc}")`;
 	}
 
@@ -1205,7 +1206,7 @@ function saveEditedSong() {
 		const timeout = 5000;
 		const start = Date.now();
 		const interval = setInterval(() => {
-			const el = document.querySelector(`.music-item[data-file-name="${newName}"]`);
+			const el = document.querySelector(`.music-item[data-file-name="${songID + ".mp3"}"]`);
 			if (el) {
 				clearInterval(interval);
 				resolve(el);
@@ -1216,18 +1217,18 @@ function saveEditedSong() {
 		}, 50);
 	})
 		.then(el => {
-			if (newBase == document.getElementById("song-name").innerText) el.classList.add("playing");
-			el.querySelector(".song-name").textContent = newBase;
+			if (getSongNameById(newNameInput) == document.getElementById("song-name").innerText) el.classList.add("playing");
+			el.querySelector(".song-name").textContent = newNameInput;
 			el.querySelector(".background-element").style.backgroundImage = `url("${reloadSrc}")`;
 		})
 		.catch(console.error);
 }
 
 function removeSong() {
-	if (!confirm("Are you sure you want to remove this song?")) return;
+	if (!confirm("Are you sure you want to delete this song?")) return;
 
 	const musicFilePath = path.join(musicFolder, fileToDelete + ".mp3");
-	const thumbnailFilePath = path.join(thumbnailFolder, fileToDelete + "_thumbnail.jpg");
+	const thumbnailFilePath = path.join(thumbnailFolder, fileToDelete + ".jpg");
 
 	if (fs.existsSync(musicFilePath)) fs.unlinkSync(musicFilePath);
 	if (fs.existsSync(thumbnailFilePath)) fs.unlinkSync(thumbnailFilePath);
@@ -1240,9 +1241,7 @@ function removeSong() {
 		playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(updatedSongs), playlist.id);
 	});
 
-	musicsDb.prepare("DELETE FROM songs WHERE song_name = ?").run(fileToDelete);
-
-	console.log("Song and related DB entries deleted.");
+	musicsDb.prepare("DELETE FROM songs WHERE song_id = ?").run(fileToDelete);
 
 	closeModal();
 	document.getElementById("my-music").click();
@@ -1455,6 +1454,49 @@ function handleDropdownChange(option, selectElement) {
 			applyRmsEffect();
 		}
 	}
+}
+
+function generateId() {
+	const timestamp = Date.now().toString(36);
+	const randomPart = Math.floor(Math.random() * 1e6).toString(36);
+	return `tarator${timestamp}-${randomPart}`;
+}
+
+function renameSongsToIds() {
+	const files = fs.readdirSync(musicFolder);
+
+	for (const name of files) {
+		if (name.includes("tarator")) continue;
+
+		const fullPath = path.join(musicFolder, name);
+		if (!fs.statSync(fullPath).isFile()) continue;
+
+		const ext = path.extname(name);
+		const baseName = path.basename(name, ext);
+
+		const row = musicsDb.prepare("SELECT song_id FROM songs WHERE song_name = ?").get(name.replace(".mp3", ""));
+		let id = row.song_id;
+
+		const newMusicPath = path.join(musicFolder, id + ext);
+		fs.renameSync(fullPath, newMusicPath);
+
+		const oldThumbnailName = `${baseName}.jpg`;
+		const oldThumbnailPath = path.join(thumbnailFolder, oldThumbnailName);
+
+		if (fs.existsSync(oldThumbnailPath)) {
+			const newThumbnailName = `${id}.jpg`;
+			const newThumbnailPath = path.join(thumbnailFolder, newThumbnailName);
+			fs.renameSync(oldThumbnailPath, newThumbnailPath);
+		}
+	}
+
+	if (activateRms == 1) processAllFiles();
+}
+
+function getSongNameById(songId) {
+	const stmt = musicsDb.prepare("SELECT song_name FROM songs WHERE song_id = ?");
+	const row = stmt.get(songId);
+	return row ? row.song_name : null;
 }
 
 ipcRenderer.invoke("get-app-version").then(version => {

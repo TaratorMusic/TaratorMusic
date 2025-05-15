@@ -37,7 +37,7 @@ async function processAllFiles() {
 
 	for (const file of files) {
 		const name = path.basename(file, path.extname(file));
-		const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_name = ?").get(name);
+		const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_id = ?").get(name);
 
 		if (row && row.rms !== null && row.rms !== undefined) {
 			console.log(`Skipping ${name}, RMS already stored.`);
@@ -56,7 +56,7 @@ async function processAllFiles() {
 						`
 						UPDATE songs
 						SET rms = ?
-						WHERE song_name = ?
+						WHERE song_id = ?
 						`
 					)
 					.run(rms, name);

@@ -2,11 +2,6 @@ const fetch = require("node-fetch");
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
 
-function isValidFileName(fileName) {
-	const invalidChars = /[\\/:"*#?<>|'.,]/;
-	return !invalidChars.test(fileName);
-}
-
 function cleanDebugFiles() {
 	const regex = /^174655\d+-player-script\.js$/;
 	fs.readdirSync("./").forEach(file => {
@@ -15,15 +10,6 @@ function cleanDebugFiles() {
 			console.log("Deleted debug file.");
 		}
 	});
-}
-
-function fileExists(filePath) {
-	try {
-		fs.accessSync(filePath, fs.constants.F_OK);
-		return true;
-	} catch (err) {
-		return false;
-	}
 }
 
 function differentiateYouTubeLinks(url) {
@@ -266,19 +252,12 @@ function actuallyDownloadTheSong() {
 
 	if (linkType === "video") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
-		const outputFilePath = path.join(musicFolder, `${secondInput}.mp3`);
+		const songID = generateId();
+		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
 		const img = document.getElementById("thumbnailImage");
 
-		if (!isValidFileName(secondInput)) {
-			document.getElementById("downloadModalText").innerText = 'Invalid characters in filename. These characters cannot be used in filenames: / \\ : # * ? " < > | ,';
-			document.getElementById("finalDownloadButton").disabled = false;
-			return;
-		} else if (secondInput.length > 100) {
+		if (secondInput.length > 100) {
 			document.getElementById("downloadModalText").innerText = "Invalid filename. The file must be shorter than 100 characters.";
-			document.getElementById("finalDownloadButton").disabled = false;
-			return;
-		} else if (fileExists(outputFilePath)) {
-			document.getElementById("downloadModalText").innerText = `File ${secondInput}.mp3 already exists. Please choose a different filename.`;
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
 		}
@@ -290,12 +269,11 @@ function actuallyDownloadTheSong() {
 			.on("finish", () => {
 				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Processing thumbnail...";
 
-				processThumbnail(img.src, secondInput)
+				processThumbnail(img.src, songID)
 					.then(() => {
-						const songId = generateId();
 						const songName = secondInput;
 						const songUrl = firstInput;
-						const songThumbnail = `${secondInput}.jpg`;
+						const songThumbnail = `${songID}.jpg`;
 
 						try {
 							musicsDb
@@ -307,7 +285,7 @@ function actuallyDownloadTheSong() {
 									) VALUES (?, ?, ?, ?, 0, 0, NULL)
 									`
 								)
-								.run(songId, songName, songUrl, songThumbnail);
+								.run(songID, songName, songUrl, songThumbnail);
 
 							console.log(`Inserted ${songName} into database.`);
 						} catch (err) {
@@ -333,6 +311,7 @@ function actuallyDownloadTheSong() {
 		const playlistName = document.getElementById("playlistTitle0").value.trim();
 		const songLinks = [];
 		const songTitles = [];
+		const songIds = [];
 
 		const songElements = document.querySelectorAll(".songAndThumbnail");
 
@@ -344,42 +323,23 @@ function actuallyDownloadTheSong() {
 			if (link && titleInput) {
 				songLinks.push(link);
 				songTitles.push(titleInput.value.trim());
+				songIds.push(generateId());
 			}
 		}
 
 		const totalSongs = songLinks.length;
 
-		if (totalSongs < 1) {
-			document.getElementById("downloadModalText").innerText = "No songs found in playlist.";
-			document.getElementById("finalDownloadButton").disabled = false;
-			return;
-		}
-
-		if (!isValidFileName(playlistName)) {
-			document.getElementById("downloadModalText").innerText = `Invalid characters in the playlist name. These characters cannot be used in filenames: / \\ ' . : * ? " < > | ,`;
-			document.getElementById("finalDownloadButton").disabled = false;
-			return;
-		}
-
-		if (songTitles.length === 0 || songLinks.length === 0) {
+		if (songTitles.length === 0) {
 			document.getElementById("downloadModalText").innerText = "No valid songs found in playlist.";
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
 		}
 
 		const invalidTitles = [];
-		const duplicateTitles = findDuplicates(songTitles);
 
 		for (let i = 0; i < songTitles.length; i++) {
-			const title = songTitles[i];
-			const outputPath = path.join(musicFolder, `${title}.mp3`);
-
-			if (!isValidFileName(title)) {
-				invalidTitles.push(`Song #${i + 1}: Invalid characters`);
-			} else if (title.length > 100) {
-				invalidTitles.push(`Song #${i + 1}: Filename too long`);
-			} else if (fileExists(outputPath)) {
-				invalidTitles.push(`Song #${i + 1}: File already exists`);
+			if (songTitles[i] > 100) {
+				invalidTitles.push(`Song #${i + 1}: Song name too long`);
 			}
 		}
 
@@ -389,51 +349,34 @@ function actuallyDownloadTheSong() {
 			return;
 		}
 
-		if (duplicateTitles.length > 0) {
-			document.getElementById("downloadModalText").innerText = `The following file names have duplicates: ${duplicateTitles.join(", ")}. Please choose different filenames.`;
-			document.getElementById("finalDownloadButton").disabled = false;
-			return;
-		}
+		try {
+			const stmt = playlistsDb.prepare("SELECT name FROM playlists WHERE name = ?");
+			const existing = stmt.get(playlistName);
 
-		fs.readFile(playlistPath, "utf8", (err, data) => {
-			if (err) {
-				document.getElementById("downloadModalText").innerText = "Error reading playlist file: " + err.message;
-				document.getElementById("finalDownloadButton").disabled = false;
-				return;
-			}
-
-			let playlists = [];
-			try {
-				playlists = JSON.parse(data);
-				if (Object.keys(playlists).length === 0 && playlists.constructor === Object) {
-					playlists = [];
-				}
-			} catch (error) {
-				console.error("Error parsing playlists:", error);
-				playlists = [];
-			}
-
-			if (playlists.some(playlist => playlist.name === playlistName)) {
+			if (existing) {
 				document.getElementById("downloadModalText").innerText = "A playlist with this name already exists.";
 				document.getElementById("finalDownloadButton").disabled = false;
 				return;
 			}
 
 			if (window.isSaveAsPlaylistActive) {
-				saveAsPlaylist(songTitles, playlistName);
+				saveAsPlaylist(songIds, playlistName);
 			}
 
 			document.getElementById("downloadModalText").innerText = totalSongs > 50 ? "Downloading... This might take some time..." : "Downloading...";
 
-			downloadPlaylist(songLinks, songTitles, playlistName);
-		});
+			downloadPlaylist(songLinks, songTitles, songIds, playlistName);
+		} catch (err) {
+			document.getElementById("downloadModalText").innerText = "Database error: " + err.message;
+			document.getElementById("finalDownloadButton").disabled = false;
+		}
 	} else {
 		document.getElementById("downloadModalText").innerText = "The URL is neither a valid video nor playlist.";
 		document.getElementById("finalDownloadButton").disabled = false;
 	}
 }
 
-async function downloadPlaylist(songLinks, songTitles, playlistName) {
+async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 	const totalSongs = songLinks.length;
 	let completedDownloads = 0;
 
@@ -465,7 +408,9 @@ async function downloadPlaylist(songLinks, songTitles, playlistName) {
 		for (let i = 0; i < songLinks.length; i++) {
 			const songTitle = songTitles[i];
 			const songLink = songLinks[i];
-			const outputPath = path.join(musicFolder, `${songTitle}.mp3`);
+			const songId = songIds[i];
+			const songThumbnail = `${songId}.jpg`;
+			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
 			document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}`;
 
@@ -511,10 +456,7 @@ async function downloadPlaylist(songLinks, songTitles, playlistName) {
 					}
 				}
 
-				await processThumbnail(thumbnailUrl, songTitle);
-
-				const songId = generateId();
-				const songThumbnail = `${songTitle}.jpg`;
+				await processThumbnail(thumbnailUrl, songId);
 
 				try {
 					musicsDb
@@ -550,15 +492,15 @@ async function downloadPlaylist(songLinks, songTitles, playlistName) {
 	}
 }
 
-async function processThumbnail(imageUrl, title) {
+async function processThumbnail(imageUrl, songId) {
 	try {
-		console.log(`Processing thumbnail for ${title}`);
-		const thumbnailPath = path.join(thumbnailFolder, `${title}_thumbnail.jpg`);
+		console.log(`Processing thumbnail for ${songId}`);
+		const thumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
 
 		let imgElement = document.getElementById(`thumbnailImage`);
 
 		if (!imgElement) {
-			const titleNum = parseInt(title.match(/\d+$/)?.[0] || "");
+			const titleNum = parseInt(songId.match(/\d+$/)?.[0] || "");
 			if (!isNaN(titleNum)) {
 				imgElement = document.getElementById(`thumbnailImage${titleNum}`);
 			}
@@ -566,13 +508,13 @@ async function processThumbnail(imageUrl, title) {
 
 		if (imgElement) {
 			if (imgElement.tagName === "IMG" && imgElement.src) {
-				console.log(`Using DOM img element for ${title}`);
+				console.log(`Using DOM img element for ${songId}`);
 
 				if (imgElement.src.startsWith("data:image")) {
 					const base64data = imgElement.src;
 					const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
 					fs.writeFileSync(thumbnailPath, thumbnailBuffer);
-					console.log(`Saved thumbnail from base64 for ${title}`);
+					console.log(`Saved thumbnail from base64 for ${songId}`);
 					return true;
 				} else {
 					try {
@@ -582,7 +524,7 @@ async function processThumbnail(imageUrl, title) {
 						const arrayBuffer = await response.arrayBuffer();
 						const buffer = Buffer.from(arrayBuffer);
 						fs.writeFileSync(thumbnailPath, buffer);
-						console.log(`Saved thumbnail from img src for ${title}`);
+						console.log(`Saved thumbnail from img src for ${songId}`);
 						return true;
 					} catch (fetchError) {
 						console.error(`Error fetching thumbnail from img: ${fetchError}`);
@@ -600,7 +542,7 @@ async function processThumbnail(imageUrl, title) {
 						const arrayBuffer = await response.arrayBuffer();
 						const buffer = Buffer.from(arrayBuffer);
 						fs.writeFileSync(thumbnailPath, buffer);
-						console.log(`Saved thumbnail from background-image for ${title}`);
+						console.log(`Saved thumbnail from background-image for ${songId}`);
 						return true;
 					} catch (bgFetchError) {
 						console.error(`Error fetching background image: ${bgFetchError}`);
@@ -614,7 +556,7 @@ async function processThumbnail(imageUrl, title) {
 				const base64data = imageUrl;
 				const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
 				fs.writeFileSync(thumbnailPath, thumbnailBuffer);
-				console.log(`Saved thumbnail from passed base64 for ${title}`);
+				console.log(`Saved thumbnail from passed base64 for ${songId}`);
 				return true;
 			}
 
@@ -625,14 +567,14 @@ async function processThumbnail(imageUrl, title) {
 				const arrayBuffer = await response.arrayBuffer();
 				const buffer = Buffer.from(arrayBuffer);
 				fs.writeFileSync(thumbnailPath, buffer);
-				console.log(`Saved thumbnail from URL for ${title}`);
+				console.log(`Saved thumbnail from URL for ${songId}`);
 				return true;
 			} catch (fetchError) {
-				console.error(`Error fetching thumbnail for ${title}: ${fetchError}`);
+				console.error(`Error fetching thumbnail for ${songId}: ${fetchError}`);
 			}
 		}
 
-		console.log(`Attempting YouTube fallback method for ${title}`);
+		console.log(`Attempting YouTube fallback method for ${songId}`);
 
 		let videoId = null;
 		if (imageUrl) {
@@ -663,7 +605,7 @@ async function processThumbnail(imageUrl, title) {
 				const buffer = Buffer.from(arrayBuffer);
 
 				fs.writeFileSync(thumbnailPath, buffer);
-				console.log(`YouTube fallback method succeeded for ${title}`);
+				console.log(`YouTube fallback method succeeded for ${songId}`);
 				return true;
 			} catch (ytError) {
 				console.error(`YouTube fallback failed: ${ytError.message}`);
@@ -673,20 +615,20 @@ async function processThumbnail(imageUrl, title) {
 		try {
 			const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
 			fs.writeFileSync(thumbnailPath, placeholderData);
-			console.log(`Created placeholder thumbnail for ${title}`);
+			console.log(`Created placeholder thumbnail for ${songId}`);
 			return true;
 		} catch (placeholderError) {
 			console.error(`Failed to create placeholder: ${placeholderError.message}`);
 			return false;
 		}
 	} catch (error) {
-		console.error(`Error in processThumbnail for ${title}:`, error);
+		console.error(`Error in processThumbnail for ${songId}:`, error);
 		return false;
 	}
 }
 
-function saveAsPlaylist(playlistTitlesArray, playlistName) {
-	const trimmedArray = playlistTitlesArray.map(title => title.trim());
+function saveAsPlaylist(songIds, playlistName) {
+	const trimmedArray = songIds.map(id => id.trim());
 
 	const existing = playlistsDb.prepare(`SELECT 1 FROM playlists WHERE name = ?`).get(playlistName);
 
@@ -696,22 +638,18 @@ function saveAsPlaylist(playlistTitlesArray, playlistName) {
 	}
 
 	const thumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
-
-	const insertTransaction = playlistsDb.transaction(() => {
-		playlistsDb.prepare(`INSERT INTO playlists (name, thumbnail) VALUES (?, ?)`).run(playlistName, thumbnailPath);
-
-		const insertSong = playlistsDb.prepare(`
-			INSERT INTO songs (playlist_name, song_name)
-			VALUES (?, ?)
-		`);
-
-		for (const songTitle of trimmedArray) {
-			insertSong.run(playlistName, songTitle);
-		}
-	});
+	const songsJson = JSON.stringify(trimmedArray);
 
 	try {
-		insertTransaction();
+		playlistsDb
+			.prepare(
+				`
+            INSERT INTO playlists (name, songs, thumbnail)
+            VALUES (?, ?, ?)
+        `
+			)
+			.run(playlistName, songsJson, thumbnailPath);
+
 		alert("New playlist added successfully!");
 	} catch (err) {
 		console.error("Failed to save playlist:", err);

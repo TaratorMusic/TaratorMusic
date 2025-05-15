@@ -87,7 +87,7 @@ function displayPlaylists(playlists) {
 
 		for (let i = 0; i < playlist.songs.length; i++) {
 			const playlistSong = document.createElement("div");
-			playlistSong.textContent = playlist.songs[i];
+			playlistSong.innerText = getSongNameById(playlist.songs[i]);
 			playlistSongs.appendChild(playlistSong);
 			playlistSong.className = "playlist-song";
 
@@ -115,14 +115,14 @@ function saveNewPlaylist() {
 	const thumbFile = document.getElementById("thumbnailInput").files[0];
 	if (!thumbFile) return alert("Please select a thumbnail for the playlist.");
 
-	const dest = path.join(thumbnailFolder, `${name}_playlist.jpg`);
-	fs.copyFileSync(thumbFile.path, dest);
-
 	const existing = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get(name);
-	if (existing) {
-		playlistsDb.prepare("UPDATE playlists SET thumbnail = ? WHERE id = ?").run(dest, existing.id);
-	} else {
+	if (!existing) {
+		const dest = path.join(thumbnailFolder, `${name}_playlist.jpg`);
 		playlistsDb.prepare("INSERT INTO playlists (name, songs, thumbnail) VALUES (?, ?, ?)").run(name, JSON.stringify([]), dest);
+		fs.copyFileSync(thumbFile.path, dest);
+	} else {
+		alert("You can't use a duplicate name for the playlist.");
+		return;
 	}
 
 	closeModal();
@@ -319,12 +319,21 @@ function deletePlaylist() {
 	if (!confirm("Are you sure you want to remove this playlist?")) return;
 
 	const playlistName = document.getElementById("editInvisibleName").value;
+	const thumbnailPath = path.join(thumbnailFolder, playlistName + "_playlist.jpg");
 
 	const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistName);
 	if (!playlist) {
 		console.error("Playlist not found:", playlistName);
 		return;
 	}
+
+	fs.unlink(thumbnailPath, err => {
+		if (err) {
+			console.error(`Failed to delete file: ${err.message}`);
+			return;
+		}
+		console.log("File deleted successfully!");
+	});
 
 	playlistsDb.prepare("DELETE FROM playlists WHERE id = ?").run(playlist.id);
 
