@@ -27,6 +27,10 @@ let settingsDb = {},
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
+	if (!fs.existsSync(appThumbnailFolder)) {
+		fs.mkdirSync(appThumbnailFolder);
+		createAppThumbnailsFolder();
+	}
 
 	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
 	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
@@ -51,7 +55,7 @@ volumeControl.addEventListener("change", () => {
 
 let currentPlayingElement = null;
 let audioElement = null;
-let secondfilename = null;
+let secondfilename = "";
 let currentPlaylist = null;
 let currentPlaylistElement = null;
 let playlistPlayedSongs = [];
@@ -66,6 +70,8 @@ let songStartTime = 0;
 let previousVolume = null;
 let audioContext;
 let audioSource;
+let latestReleaseNotes = "You are using the latest version of TaratorMusic.";
+const debounceMap = new Map();
 
 let totalTimeSpent;
 let rememberautoplay;
@@ -385,12 +391,21 @@ function ensureDefaultValues() {
 }
 
 function updateDatabase(name, option, db) {
-	try {
-		db.prepare(`UPDATE settings SET ${name} = ?`).run(option);
-		console.log(`${name} updated to ${option}.`);
-	} catch (err) {
-		console.error(`Error updating ${name}:`, err.message);
-	}
+	const key = `${name}`;
+
+	if (debounceMap.has(key)) clearTimeout(debounceMap.get(key));
+
+	const timeout = setTimeout(() => {
+		try {
+			db.prepare(`UPDATE settings SET ${name} = ?`).run(option);
+			console.log(`${name} updated to ${option}.`);
+		} catch (err) {
+			console.error(`Error updating ${name}:`, err.message);
+		}
+		debounceMap.delete(key);
+	}, 300);
+
+	debounceMap.set(key, timeout);
 }
 
 function updateTimer() {
@@ -552,6 +567,14 @@ async function myMusicOnClick() {
 				thumbnail: `file://${path.join(thumbnailFolder, file)}`,
 			}));
 
+		musicFiles.sort((a, b) => {
+			const idA = a.name.replace(/\.mp3$/, "");
+			const idB = b.name.replace(/\.mp3$/, "");
+			const nameA = getSongNameById(idA).toLowerCase();
+			const nameB = getSongNameById(idB).toLowerCase();
+			return nameA.localeCompare(nameB);
+		});
+
 		if (musicFiles.length === 0) {
 			myMusicContent.innerHTML = "No songs? Use the download feature on the left, or add some mp3 files to the 'musics' folder.";
 			myMusicContent.style.display = "block";
@@ -574,7 +597,7 @@ async function myMusicOnClick() {
 			visibleSongs.forEach(file => {
 				const musicElement = createMusicElement(file);
 
-				if (getSongNameById(file.name.slice(0, -4)) === currentPlayingSongName) {
+				if (file.name.slice(0, -4) === secondfilename.replace(".mp3", "")) {
 					musicElement.classList.add("playing");
 				}
 
@@ -784,7 +807,7 @@ async function playMusic(file, isPlaylist = false) {
 
 		document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
 		document.querySelectorAll(".music-item").forEach(musicElement => {
-			if (getSongNameById(musicElement.getAttribute("data-file-name").slice(0, -4)) === songName.innerHTML) {
+			if (musicElement.getAttribute("data-file-name").slice(0, -4) === secondfilename.replace(".mp3", "")) {
 				musicElement.classList.add("playing");
 			}
 		});
@@ -1081,7 +1104,7 @@ function loop() {
 
 function mute() {
 	if (volumeControl.value != 0) {
-		previousVolume = volumeControl.value / 100 / dividevolume;
+		previousVolume = volumeControl.value;
 		volumeControl.value = 0;
 		document.getElementById("muteButton").classList.add("active");
 	} else {
@@ -1217,7 +1240,7 @@ function saveEditedSong() {
 		}, 50);
 	})
 		.then(el => {
-			if (getSongNameById(newNameInput) == document.getElementById("song-name").innerText) el.classList.add("playing");
+			if (newNameInput == secondfilename.replace(".mp3", "")) el.classList.add("playing");
 			el.querySelector(".song-name").textContent = newNameInput;
 			el.querySelector(".background-element").style.backgroundImage = `url("${reloadSrc}")`;
 		})
@@ -1415,26 +1438,28 @@ function loadJSFile(filename) {
 	if (filename === "download_music") {
 		document.getElementById("downloadModal").style.display = "block";
 	}
+
 	const src = `${filename}.js`;
 	const existingScript = Array.from(document.scripts).find(script => script.src.includes(src));
+
 	if (existingScript) {
 		return;
 	}
 
 	const script = document.createElement("script");
 	script.src = src;
-	script.onload = function () {
-		if (filename === "download_music") {
-			document.getElementById("downloadFirstInput").value = "";
-
-			const secondPhase = document.getElementById("downloadSecondPhase");
-			if (secondPhase) {
-				secondPhase.remove();
-			}
-		}
-	};
-
 	document.body.appendChild(script);
+}
+
+function cleanDownloadModal() {
+	document.getElementById("downloadFirstInput").value = "";
+
+	const secondPhase = document.getElementById("downloadSecondPhase");
+	if (secondPhase) {
+		secondPhase.remove();
+	}
+
+	closeModal();
 }
 
 function handleDropdownChange(option, selectElement) {
@@ -1499,9 +1524,43 @@ function getSongNameById(songId) {
 	return row ? row.song_name : null;
 }
 
-ipcRenderer.invoke("get-app-version").then(version => {
-	document.getElementById("version").textContent = `Version: ${version}`;
-});
+function createAppThumbnailsFolder() {
+	console.log("App thumbnails folder missing. Downloading thumbnails...");
+	const filesToDownload = ["https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/placeholder.jpg", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator1024_icon.png", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator16_icon.png", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator512_icon.png", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator_icon.icns", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator_icon.ico", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator_icon.png"];
+	filesToDownload.forEach(url => {
+		const fileName = path.basename(url);
+		const filePath = path.join(appThumbnailFolder, fileName);
+
+		if (fs.existsSync(filePath)) {
+			console.log(`${fileName} already exists, skipping download.`);
+			return;
+		}
+
+		const fileStream = fs.createWriteStream(filePath);
+
+		https
+			.get(url, res => {
+				if (res.statusCode !== 200) {
+					console.error(`Failed to download ${fileName}: Status code ${res.statusCode}`);
+					fileStream.close();
+					fs.unlinkSync(filePath);
+					return;
+				}
+
+				res.pipe(fileStream);
+
+				fileStream.on("finish", () => {
+					fileStream.close();
+					console.log(`Downloaded ${fileName}`);
+				});
+			})
+			.on("error", err => {
+				console.error(`Error downloading ${fileName}:`, err.message);
+				fileStream.close();
+				fs.unlinkSync(filePath);
+			});
+	});
+}
 
 ipcRenderer.on("playlist-created", () => {
 	closeModal();
@@ -1516,4 +1575,30 @@ ipcRenderer.on("playlist-creation-error", (event, errorMessage) => {
 	errorElement.className = "error-message";
 	errorElement.textContent = errorMessage;
 	modalFooter.appendChild(errorElement);
+});
+
+ipcRenderer.invoke("get-app-version").then(version => {
+	document.getElementById("version").textContent = `Version: ${version}`;
+});
+
+ipcRenderer.on("update-available", (event, releaseNotes) => {
+	latestReleaseNotes = releaseNotes;
+	document.getElementById("element").classList.remove("no-animation");
+	document.getElementById("installBtn").disabled = false;
+});
+
+ipcRenderer.on("download-progress", (event, percent) => {
+	const progressBar = document.getElementById("downloadProgress");
+	progressBar.style.width = percent + "%";
+	progressBar.innerText = Math.floor(percent) + "%";
+});
+
+document.getElementById("version").addEventListener("click", () => {
+	document.getElementById("patchNotes").innerHTML = latestReleaseNotes;
+	document.getElementById("updateModal").style.display = "block";
+});
+
+document.getElementById("installBtn").addEventListener("click", () => {
+	document.getElementById("progressContainer").style.display = "block";
+	ipcRenderer.send("download-update");
 });

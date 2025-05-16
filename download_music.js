@@ -338,7 +338,7 @@ function actuallyDownloadTheSong() {
 		const invalidTitles = [];
 
 		for (let i = 0; i < songTitles.length; i++) {
-			if (songTitles[i] > 100) {
+			if (songTitles[i].length > 100) {
 				invalidTitles.push(`Song #${i + 1}: Song name too long`);
 			}
 		}
@@ -379,27 +379,34 @@ function actuallyDownloadTheSong() {
 async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 	const totalSongs = songLinks.length;
 	let completedDownloads = 0;
-
 	try {
 		if (window.isSaveAsPlaylistActive) {
 			const playlistThumbnailElement = document.getElementById("thumbnailImage0");
 			if (playlistThumbnailElement) {
 				const thumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
-
 				if (playlistThumbnailElement.style && playlistThumbnailElement.style.backgroundImage) {
 					const bgImage = playlistThumbnailElement.style.backgroundImage;
 					const thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
 
-					try {
-						const response = await fetch(thumbnailUrl);
-						if (response.ok) {
-							const arrayBuffer = await response.arrayBuffer();
-							const buffer = Buffer.from(arrayBuffer);
-							fs.writeFileSync(thumbnailPath, buffer);
-							console.log(`Saved playlist thumbnail for ${playlistName}`);
+					if (thumbnailUrl.startsWith("data:image")) {
+						const base64Data = thumbnailUrl.split(",")[1];
+						const buffer = Buffer.from(base64Data, "base64");
+						fs.writeFileSync(thumbnailPath, buffer);
+						console.log(`Saved playlist thumbnail for ${playlistName} from base64`);
+					} else if (thumbnailUrl.startsWith("http://") || thumbnailUrl.startsWith("https://")) {
+						try {
+							const response = await fetch(thumbnailUrl);
+							if (response.ok) {
+								const arrayBuffer = await response.arrayBuffer();
+								const buffer = Buffer.from(arrayBuffer);
+								fs.writeFileSync(thumbnailPath, buffer);
+								console.log(`Saved playlist thumbnail for ${playlistName} from URL`);
+							}
+						} catch (error) {
+							console.error(`Error saving playlist thumbnail: ${error.message}`);
 						}
-					} catch (error) {
-						console.error(`Error saving playlist thumbnail: ${error.message}`);
+					} else {
+						console.error("Unsupported thumbnail URL protocol");
 					}
 				}
 			}
@@ -649,8 +656,6 @@ function saveAsPlaylist(songIds, playlistName) {
         `
 			)
 			.run(playlistName, songsJson, thumbnailPath);
-
-		alert("New playlist added successfully!");
 	} catch (err) {
 		console.error("Failed to save playlist:", err);
 	}

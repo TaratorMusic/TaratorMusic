@@ -87,12 +87,26 @@
 				<div id="downloadModalContent" class="modal-content">
 					<div class="flexrow">
 						<div class="modalTitle">Download Details</div>
-						<span class="close" onclick="closeModal()">&times;</span>
+						<span class="close" onclick="closeModal()">&#x2212;</span>
+						<span class="close" onclick="cleanDownloadModal()">&times;</span>
 					</div>
 					<div class="flexrow">
 						<input type="text" id="downloadFirstInput" placeholder="Music / Playlist Link" />
 						<button id="downloadFirstButton" onclick="checkNameThumbnail()">Check</button>
 					</div>
+				</div>
+			</div>
+			<div id="updateModal" class="modal">
+				<div class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Update TaratorMusic</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<div id="patchNotes"></div>
+					<div id="progressContainer" style="width: 100%; background: #ccc; display: none">
+						<div id="downloadProgress" style="width: 0%; background: #4caf50; color: white; text-align: center"></div>
+					</div>
+					<button disabled id="installBtn">Install Update</button>
 				</div>
 			</div>
 		</div>
@@ -108,8 +122,8 @@
 		</div>
 		<div class="content">
 			<div id="main-menu-content" class="tab-content">
+				<div id="version"></div>
 				<div class="centermydivhehebutcolumn">
-					<div id="version"></div>
 					<div id="mainmenulogo"></div>
 					<div id="mainmenuapptext">TaratorMusic</div>
 					<div class="flexrowbutspacearound">

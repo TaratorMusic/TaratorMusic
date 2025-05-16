@@ -12,6 +12,27 @@ if (process.env.APPIMAGE) {
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
 
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = false;
+
+autoUpdater.checkForUpdates();
+
+autoUpdater.on("update-available", info => {
+	mainWindow.webContents.send("update-available", info.releaseNotes);
+});
+
+ipcMain.on("download-update", () => {
+	autoUpdater.downloadUpdate();
+});
+
+autoUpdater.on("update-downloaded", () => {
+	autoUpdater.quitAndInstall();
+});
+
+autoUpdater.on("download-progress", progress => {
+	mainWindow.webContents.send("download-progress", progress.percent);
+});
+
 function createWindow() {
 	const mainWindow = new BrowserWindow({
 		width: 1600,
@@ -40,25 +61,6 @@ app.whenReady().then(() => {
 	app.setName("TaratorMusic");
 	if (app.isPackaged) Menu.setApplicationMenu(null);
 	createWindow();
-
-	autoUpdater.checkForUpdatesAndNotify();
-	autoUpdater.on("update-downloaded", () => {
-		if (process.platform === "linux" && process.env.APPIMAGE) {
-			try { // This part of the code keeps the app name the same if you are using a .desktop shortcut
-				const currentAppImagePath = process.env.APPIMAGE;
-				const appDir = path.dirname(currentAppImagePath);
-				const symlinkPath = path.join(appDir, "TaratorMusic.AppImage");
-
-				if (currentAppImagePath !== symlinkPath) {
-					execSync(`ln -sf "${currentAppImagePath}" "${symlinkPath}"`);
-				}
-			} catch (e) {
-				dialog.showErrorBox("Update Error", `Failed to create symlink:\n${e.message}`);
-			}
-		}
-
-		autoUpdater.quitAndInstall();
-	});
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
