@@ -562,16 +562,20 @@ async function myMusicOnClick() {
 		const files = await fs.promises.readdir(musicFolder);
 		musicFiles = files
 			.filter(file => file.toLowerCase() !== "desktop.ini")
-			.map(file => ({
-				name: file,
-				thumbnail: `file://${path.join(thumbnailFolder, file)}`,
-			}));
+			.map(file => {
+				if (!file) return null;
+				return {
+					name: file,
+					thumbnail: `file://${path.join(thumbnailFolder, file)}`,
+				};
+			})
+			.filter(item => item !== null);
 
 		musicFiles.sort((a, b) => {
-			const idA = a.name.replace(/\.mp3$/, "");
-			const idB = b.name.replace(/\.mp3$/, "");
-			const nameA = getSongNameById(idA).toLowerCase();
-			const nameB = getSongNameById(idB).toLowerCase();
+			const idA = a?.name?.replace(/\.mp3$/, "") || "";
+			const idB = b?.name?.replace(/\.mp3$/, "") || "";
+			const nameA = (getSongNameById(idA) || "").toLowerCase();
+			const nameB = (getSongNameById(idB) || "").toLowerCase();
 			return nameA.localeCompare(nameB);
 		});
 
