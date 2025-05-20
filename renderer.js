@@ -220,7 +220,7 @@ function initializeMusicsDatabase() {
 
 		if (!existingIds.has(name)) {
 			const songId = generateId();
-			insert.run(songId, name, "", `${name}.jpg`, 0, 0, null);
+			insert.run(songId, name, "", `${songId}.jpg`, 0, 0, null);
 			console.log(`Inserted new song: ${name}`);
 		}
 	}
@@ -560,17 +560,15 @@ async function myMusicOnClick() {
 	let musicFiles = [];
 
 	try {
-		const files = await fs.promises.readdir(musicFolder);
-		musicFiles = files
-			.filter(file => file.toLowerCase() !== "desktop.ini")
-			.map(file => {
-				if (!file) return null;
+		const rows = musicsDb.prepare("SELECT song_id, song_thumbnail FROM songs").all();
+		musicFiles = rows
+			.filter(row => row.song_id && row.song_thumbnail)
+			.map(row => {
 				return {
-					name: file,
-					thumbnail: `file://${path.join(thumbnailFolder, file)}`,
+					name: row.song_id + ".mp3",
+					thumbnail: `file://${row.song_thumbnail}`,
 				};
-			})
-			.filter(item => item !== null);
+			});
 
 		musicFiles.sort((a, b) => {
 			const idA = a?.name?.replace(/\.mp3$/, "") || "";
@@ -1183,7 +1181,7 @@ function updateThumbnailImage(event, mode) {
 function openCustomizeModal(songName) {
 	const baseName = getSongNameById(songName.replace(".mp3", ""));
 	const oldThumbnailPath = path.join(thumbnailFolder, songName.replace(".mp3", "") + ".jpg");
-	fileToDelete = songName;
+	fileToDelete = songName.replace(".mp3","");
 
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + ".jpg");
@@ -1566,7 +1564,7 @@ function createAppThumbnailsFolder() {
 				fs.unlinkSync(filePath);
 			});
 	});
-	alert("App thumbnails installed. App restart required for the effects.")
+	alert("App thumbnails installed. App restart required for the effects.");
 }
 
 ipcRenderer.on("playlist-created", () => {
