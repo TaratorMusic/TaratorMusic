@@ -3,6 +3,7 @@
 const { ipcRenderer } = require("electron");
 const icon = require("./svg.js");
 const path = require("path");
+const https = require("https");
 const fs = require("fs");
 const Database = require("better-sqlite3");
 
@@ -1530,7 +1531,8 @@ function getSongNameById(songId) {
 
 function createAppThumbnailsFolder() {
 	console.log("App thumbnails folder missing. Downloading thumbnails...");
-	const filesToDownload = ["https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/placeholder.jpg", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator1024_icon.png", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator16_icon.png", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator512_icon.png", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator_icon.icns", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator_icon.ico", "https://github.com/Victiniiiii/TaratorMusic/blob/main/app_thumbnails/tarator_icon.png"];
+	const filesToDownload = ["https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/placeholder.jpg", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator1024_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator16_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator512_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.icns", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.ico", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.png"];
+
 	filesToDownload.forEach(url => {
 		const fileName = path.basename(url);
 		const filePath = path.join(appThumbnailFolder, fileName);
@@ -1564,6 +1566,7 @@ function createAppThumbnailsFolder() {
 				fs.unlinkSync(filePath);
 			});
 	});
+	alert("App thumbnails installed. App restart required for the effects.")
 }
 
 ipcRenderer.on("playlist-created", () => {
