@@ -38,7 +38,7 @@ You can customise everything starting from the app itself, the musics and the pl
 
 ## Discord
 This app is connected to Discord via Rich Presence. Thus everyone can know you are using TaratorMusic, and what song you are listening to. Although its easily toggleable inside the settings tab if you don't want it.  
-![image](https://github.com/user-attachments/assets/aa0a79e9-e7b0-433d-bc5a-bbbd8c1a1db8)
+![image](https://github.com/user-attachments/assets/cf20e597-1ed8-4283-b052-6e030364f7cc)
 
 ## Memory Efficiency
 TaratorMusic only uses 75MB per second of memory while open, 95MB per second while listening to a song, and 125 MB per second while downloading a song. The lightweightness of the app makes it suitable for computers with very low specs.
