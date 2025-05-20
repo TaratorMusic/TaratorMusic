@@ -2,7 +2,6 @@ const { app, BrowserWindow, Menu, ipcMain } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
-const { execSync } = require("child_process");
 
 if (process.env.APPIMAGE) {
 	const libPath = path.join(process.resourcesPath, "lib");
@@ -15,26 +14,10 @@ app.setPath("cache", path.join(__dirname, "cache"));
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
 
-autoUpdater.checkForUpdates();
-
-autoUpdater.on("update-available", info => {
-	mainWindow.webContents.send("update-available", info.releaseNotes);
-});
-
-ipcMain.on("download-update", () => {
-	autoUpdater.downloadUpdate();
-});
-
-autoUpdater.on("update-downloaded", () => {
-	autoUpdater.quitAndInstall();
-});
-
-autoUpdater.on("download-progress", progress => {
-	mainWindow.webContents.send("download-progress", progress.percent);
-});
+let mainWindow;
 
 function createWindow() {
-	const mainWindow = new BrowserWindow({
+	mainWindow = new BrowserWindow({
 		width: 1600,
 		height: 850,
 		title: "TaratorMusic",
@@ -61,6 +44,24 @@ app.whenReady().then(() => {
 	app.setName("TaratorMusic");
 	if (app.isPackaged) Menu.setApplicationMenu(null);
 	createWindow();
+
+	autoUpdater.checkForUpdates();
+
+	autoUpdater.on("update-available", info => {
+		mainWindow.webContents.send("update-available", info.releaseNotes);
+	});
+
+	ipcMain.on("download-update", () => {
+		autoUpdater.downloadUpdate();
+	});
+
+	autoUpdater.on("update-downloaded", () => {
+		autoUpdater.quitAndInstall();
+	});
+
+	autoUpdater.on("download-progress", progress => {
+		mainWindow.webContents.send("download-progress", progress.percent);
+	});
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
