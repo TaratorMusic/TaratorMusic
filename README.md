@@ -41,7 +41,7 @@ This app is connected to Discord via Rich Presence. Thus everyone can know you a
 ![image](https://github.com/user-attachments/assets/aa0a79e9-e7b0-433d-bc5a-bbbd8c1a1db8)
 
 ## Memory Efficiency
-TaratorMusic only uses 75MB per second of memory while open, 95MB per second while listening to a song, and 125 MB per second while downloading a song. The lightweightness of the app makes it suitable for computers with very low specs. Warning: adding more songs will increase the weight, these values were taken with 0 songs.  
+TaratorMusic only uses 75MB per second of memory while open, 95MB per second while listening to a song, and 125 MB per second while downloading a song. The lightweightness of the app makes it suitable for computers with very low specs.
 ![image](https://github.com/user-attachments/assets/20c7afed-efbf-4643-8fa9-282a2c4c960e)
 
 ## Sound Stabilisation
