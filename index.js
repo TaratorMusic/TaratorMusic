@@ -45,8 +45,6 @@ app.whenReady().then(() => {
 	if (app.isPackaged) Menu.setApplicationMenu(null);
 	createWindow();
 
-	autoUpdater.checkForUpdates();
-
 	autoUpdater.on("update-available", info => {
 		mainWindow.webContents.send("update-available", info.releaseNotes);
 	});
@@ -62,6 +60,8 @@ app.whenReady().then(() => {
 	autoUpdater.on("download-progress", progress => {
 		mainWindow.webContents.send("download-progress", progress.percent);
 	});
+
+	autoUpdater.checkForUpdates();
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
