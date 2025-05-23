@@ -1,6 +1,6 @@
 {
 	"name": "taratormusic",
-	"version": "1.5.1",
+	"version": "1.5.2",
 	"description": "A desktop music player application with playlist support, music downloading, audio stabilising and Discord integration.",
 	"main": "index.js",
 	"bin": "index.js",
@@ -77,8 +77,8 @@
 		}
 	},
 	"dependencies": {
-		"@distube/ytdl-core": "^4.16.9",
-		"@distube/ytpl": "^1.2.1",
+		"@distube/ytdl-core": "4.16.9",
+		"@distube/ytpl": "github:Victiniiiii/ytpl",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",
 		"better-sqlite3": "^11.9.1",
 		"discord-rpc": "github:Victiniiiii/RPC-Listening",

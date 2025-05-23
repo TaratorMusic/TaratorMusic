@@ -605,7 +605,7 @@ async function myMusicOnClick() {
 				}
 
 				musicElement.addEventListener("click", () => {
-					playMusic(file, musicElement);
+					playMusic(file, musicElement, false);
 				});
 
 				musicListContainer.appendChild(musicElement);
@@ -734,7 +734,7 @@ function applyRmsEffect() {
 	}
 }
 
-async function playMusic(file, isPlaylist = false) {
+async function playMusic(file, boop, isPlaylist) {
 	const songName = document.getElementById("song-name");
 
 	if (songStartTime !== 0) {
@@ -825,12 +825,12 @@ async function playMusic(file, isPlaylist = false) {
 					newPlaylistName = currentPlaylist.name;
 					playlistPlayedSongs.splice(0, maximumPreviousSongCount);
 				}
-				playlistPlayedSongs.unshift(songName.innerHTML);
+				playlistPlayedSongs.unshift(secondfilename);
 				if (playlistPlayedSongs.length > maximumPreviousSongCount) {
 					playlistPlayedSongs.pop();
 				}
 			} else {
-				playedSongs.unshift(songName.innerHTML);
+				playedSongs.unshift(secondfilename);
 				if (playedSongs.length > maximumPreviousSongCount) {
 					playedSongs.pop();
 				}
@@ -934,89 +934,115 @@ async function playPlaylist(playlist, startingIndex = 0) {
 }
 
 async function playPreviousSong() {
-	if (currentPlayingElement) {
-		const musicFiles = await fs.promises.readdir(musicFolder);
-		const musicItems = musicFiles.filter(file => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
+	if (!currentPlayingElement) return;
 
-		if (isShuffleActive) {
-			if (currentPlaylist) {
-				if (playlistPlayedSongs.length > 1) {
-					const previousSongName = playlistPlayedSongs[1];
-					const file = { name: previousSongName };
-					playMusic(file, null, true);
-					playlistPlayedSongs.splice(0, 2);
-				}
-			} else {
-				if (playedSongs.length > 1) {
-					const previousSongName = playedSongs[1];
-					const file = { name: previousSongName };
-					playMusic(file, null, true);
-					playedSongs.splice(0, 2);
-				}
-			}
-		} else {
-			if (currentPlaylist) {
-				if (currentPlaylistElement > 0) {
-					const previousSongName = currentPlaylist.songs[currentPlaylistElement - 1];
-					const file = { name: previousSongName };
-					playMusic(file, null, true);
-					currentPlaylistElement--;
-				}
-			} else {
-				const currentSongName = document.getElementById("song-name").innerText + ".mp3";
-				const previousIndex = musicItems.indexOf(currentSongName) - 1;
-				const previousSongName = musicItems[previousIndex >= 0 ? previousIndex : musicItems.length - 1];
+	const allMusics = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
+	const songMap = new Map();
+	allMusics.forEach(song => songMap.set(song.song_id, song.song_name));
+
+	const sortedEntries = [...songMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+	const sortedSongIds = sortedEntries.map(entry => entry[0]);
+
+	if (isShuffleActive) {
+		if (currentPlaylist) {
+			if (playlistPlayedSongs.length > 1) {
+				const previousSongName = playlistPlayedSongs[1];
 				const file = { name: previousSongName };
 				playMusic(file, null, true);
+				playlistPlayedSongs.splice(0, 2);
 			}
+		} else {
+			if (playedSongs.length > 1) {
+				const previousSongName = playedSongs[1];
+				const file = { name: previousSongName };
+				playMusic(file, null, false);
+				playedSongs.splice(0, 2);
+			}
+		}
+	} else {
+		if (currentPlaylist) {
+			if (currentPlaylistElement > 0) {
+				const previousSongName = currentPlaylist.songs[currentPlaylistElement - 1];
+				const file = { name: previousSongName + ".mp3" };
+				playMusic(file, null, true);
+				currentPlaylistElement--;
+			}
+		} else {
+			const currentFileName = audioElement.src.split("/").pop().replace(".mp3", "");
+
+			const currentIndex = sortedSongIds.indexOf(currentFileName);
+			if (currentIndex === -1) {
+				return;
+			}
+
+			const previousIndex = currentIndex > 0 ? currentIndex - 1 : sortedSongIds.length - 1;
+			const previousSongId = sortedSongIds[previousIndex];
+			const previousSongName = songMap.get(previousSongId);
+
+			const file = { name: previousSongId + ".mp3" };
+			playMusic(file, null, false);
 		}
 	}
 }
 
 async function playNextSong() {
-	if (currentPlayingElement) {
-		const musicFiles = await fs.promises.readdir(musicFolder);
-		const musicItems = musicFiles.filter(file => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
+	if (!currentPlayingElement) return;
 
-		let nextSongName;
+	const allMusics = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
+	const songMap = new Map();
+	allMusics.forEach(song => songMap.set(song.song_id, song.song_name));
 
-		if (isShuffleActive) {
-			if (currentPlaylist) {
-				const currentSongName = currentPlaylist.songs[currentPlaylistElement];
-				if (currentPlaylist.songs.length === 1) {
-					nextSongName = currentSongName;
-				} else {
-					let randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
-					while (currentPlaylist.songs[randomIndex] === currentSongName) {
-						randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
-					}
-					nextSongName = currentPlaylist.songs[randomIndex];
-					currentPlaylistElement = randomIndex;
-				}
+	const sortedEntries = [...songMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+	const sortedSongIds = sortedEntries.map(entry => entry[0]);
+
+	let nextSongId;
+
+	if (isShuffleActive) {
+		if (currentPlaylist) {
+			const currentSongId = currentPlaylist.songs[currentPlaylistElement];
+			if (currentPlaylist.songs.length === 1) {
+				nextSongId = currentSongId;
 			} else {
-				const currentFileName = currentPlayingElement.getAttribute("data-file-name");
-				if (musicItems.length === 1) {
-					nextSongName = currentFileName;
-				} else {
-					let randomIndex = Math.floor(Math.random() * musicItems.length);
-					while (musicItems[randomIndex] === currentFileName) {
-						randomIndex = Math.floor(Math.random() * musicItems.length);
-					}
-					nextSongName = musicItems[randomIndex];
+				let randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
+				while (currentPlaylist.songs[randomIndex] === currentSongId) {
+					randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
 				}
+				nextSongId = currentPlaylist.songs[randomIndex];
+				currentPlaylistElement = randomIndex;
+			}
+		} else {
+			const currentFileName = audioElement.src.split("/").pop().replace(".mp3", "");
+			if (sortedSongIds.length === 1) {
+				nextSongId = currentFileName;
+			} else {
+				let randomIndex = Math.floor(Math.random() * sortedSongIds.length);
+				while (sortedSongIds[randomIndex] === currentFileName) {
+					randomIndex = Math.floor(Math.random() * sortedSongIds.length);
+				}
+				nextSongId = sortedSongIds[randomIndex];
 			}
 		}
-
-		if (nextSongName) {
-			const file = { name: nextSongName };
-			playMusic(file, null, true);
+	} else {
+		if (currentPlaylist) {
+			if (currentPlaylistElement < currentPlaylist.songs.length - 1) {
+				nextSongId = currentPlaylist.songs[++currentPlaylistElement];
+			}
+		} else {
+			const currentFileName = audioElement.src.split("/").pop().replace(".mp3", "");
+			const currentIndex = sortedSongIds.indexOf(currentFileName);
+			const nextIndex = currentIndex < sortedSongIds.length - 1 ? currentIndex + 1 : 0;
+			nextSongId = sortedSongIds[nextIndex];
 		}
+	}
+
+	if (nextSongId) {
+		const file = { name: nextSongId + ".mp3" };
+		playMusic(file, null, !!currentPlaylist);
 	}
 }
 
 async function randomSongFunctionMainMenu() {
-	const musicFiles = await fs.promises.readdir(musicFolder);
-	const musicItems = musicFiles.filter(file => file.toLowerCase() !== "desktop.ini" && file.toLowerCase().endsWith(".mp3"));
+	const musicItems = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
 	let randomIndex = Math.floor(Math.random() * musicItems.length);
 
 	if (currentPlayingElement) {
@@ -1026,8 +1052,8 @@ async function randomSongFunctionMainMenu() {
 		}
 	}
 
-	const nextSongName = musicItems[randomIndex];
-	const file = { name: nextSongName };
+	const nextSongName = musicItems[randomIndex].song_id;
+	const file = { name: nextSongName + ".mp3" };
 	playMusic(file, null, false);
 }
 
@@ -1181,7 +1207,7 @@ function updateThumbnailImage(event, mode) {
 function openCustomizeModal(songName) {
 	const baseName = getSongNameById(songName.replace(".mp3", ""));
 	const oldThumbnailPath = path.join(thumbnailFolder, songName.replace(".mp3", "") + ".jpg");
-	fileToDelete = songName.replace(".mp3","");
+	fileToDelete = songName.replace(".mp3", "");
 
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + ".jpg");
