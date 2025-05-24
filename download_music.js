@@ -25,6 +25,21 @@ function differentiateYouTubeLinks(url) {
 	}
 }
 
+function extractVideoId(url) {
+	if (!url) return null;
+
+	const patterns = [/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube-nocookie\.com\/embed\/)([^\/\?&#]+)/, /i\.ytimg\.com\/vi(?:_webp)?\/([^\/]+)\//, /youtube\.com\/attribution_link\?.*v%3D([^%&]+)/];
+
+	for (const pattern of patterns) {
+		const match = url.match(pattern);
+		if (match && match[1]) {
+			return match[1];
+		}
+	}
+
+	return null;
+}
+
 function checkNameThumbnail() {
 	document.getElementById("downloadFirstButton").disabled = true;
 
@@ -245,6 +260,133 @@ async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadMod
 	}
 }
 
+async function processThumbnail(imageUrl, songId, songIndex = null) {
+	try {
+		console.log(`Processing thumbnail for ${songId}`);
+		const thumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
+
+		let imgElement = null;
+
+		if (songIndex !== null) {
+			imgElement = document.getElementById(`thumbnailImage${songIndex}`);
+		} else {
+			imgElement = document.getElementById("thumbnailImage");
+		}
+
+		if (imgElement) {
+			if (imgElement.tagName === "IMG" && imgElement.src) {
+				if (imgElement.src.startsWith("data:image")) {
+					const base64data = imgElement.src;
+					const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
+					fs.writeFileSync(thumbnailPath, thumbnailBuffer);
+					console.log(`Saved thumbnail from DOM img element for ${songId}`);
+					return true;
+				} else if (imgElement.src.startsWith("http")) {
+					try {
+						const response = await fetch(imgElement.src);
+						if (response.ok) {
+							const arrayBuffer = await response.arrayBuffer();
+							const buffer = Buffer.from(arrayBuffer);
+							fs.writeFileSync(thumbnailPath, buffer);
+							console.log(`Saved thumbnail from DOM img src for ${songId}`);
+							return true;
+						}
+					} catch (fetchError) {
+						console.error(`Error fetching thumbnail from DOM img: ${fetchError}`);
+					}
+				}
+			} else if (imgElement.style && imgElement.style.backgroundImage) {
+				const bgImage = imgElement.style.backgroundImage;
+				const bgUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
+
+				if (bgUrl && bgUrl !== "none") {
+					if (bgUrl.startsWith("data:image")) {
+						const base64data = bgUrl;
+						const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
+						fs.writeFileSync(thumbnailPath, thumbnailBuffer);
+						console.log(`Saved thumbnail from DOM background image base64 for ${songId}`);
+						return true;
+					} else if (bgUrl.startsWith("http")) {
+						try {
+							const response = await fetch(bgUrl);
+							if (response.ok) {
+								const arrayBuffer = await response.arrayBuffer();
+								const buffer = Buffer.from(arrayBuffer);
+								fs.writeFileSync(thumbnailPath, buffer);
+								console.log(`Saved thumbnail from DOM background image URL for ${songId}`);
+								return true;
+							}
+						} catch (bgFetchError) {
+							console.error(`Error fetching background image: ${bgFetchError}`);
+						}
+					}
+				}
+			}
+		}
+
+		if (imageUrl) {
+			if (imageUrl.startsWith("data:image")) {
+				const base64data = imageUrl;
+				const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
+				fs.writeFileSync(thumbnailPath, thumbnailBuffer);
+				console.log(`Saved thumbnail from passed imageUrl base64 for ${songId}`);
+				return true;
+			} else if (imageUrl.startsWith("http")) {
+				try {
+					const response = await fetch(imageUrl);
+					if (response.ok) {
+						const arrayBuffer = await response.arrayBuffer();
+						const buffer = Buffer.from(arrayBuffer);
+						fs.writeFileSync(thumbnailPath, buffer);
+						console.log(`Saved thumbnail from passed imageUrl for ${songId}`);
+						return true;
+					}
+				} catch (fetchError) {
+					console.error(`Error fetching thumbnail from imageUrl: ${fetchError}`);
+				}
+			}
+		}
+
+		let videoId = extractVideoId(imageUrl);
+
+		if (videoId) {
+			try {
+				const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+				const info = await ytdl.getBasicInfo(youtubeUrl);
+				const thumbnails = info.videoDetails.thumbnails;
+
+				if (thumbnails && thumbnails.length > 0) {
+					const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
+
+					const response = await fetch(thumbnailUrl);
+					if (response.ok) {
+						const arrayBuffer = await response.arrayBuffer();
+						const buffer = Buffer.from(arrayBuffer);
+						fs.writeFileSync(thumbnailPath, buffer);
+						console.log(`YouTube fallback method succeeded for ${songId}`);
+						return true;
+					}
+				}
+			} catch (ytError) {
+				console.error(`YouTube fallback failed for ${songId}: ${ytError.message}`);
+			}
+		}
+
+		try {
+			const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
+			fs.writeFileSync(thumbnailPath, placeholderData);
+			console.log(`Created placeholder thumbnail for ${songId}`);
+			return true;
+		} catch (placeholderError) {
+			console.error(`Failed to create placeholder for ${songId}: ${placeholderError.message}`);
+			return false;
+		}
+	} catch (error) {
+		console.error(`Error in processThumbnail for ${songId}:`, error);
+		return false;
+	}
+}
+
 function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
 	const firstInput = document.getElementById("downloadFirstInput").value.trim();
@@ -278,12 +420,10 @@ function actuallyDownloadTheSong() {
 						try {
 							musicsDb
 								.prepare(
-									`
-									INSERT INTO songs (
+									`INSERT INTO songs (
 										song_id, song_name, song_url, song_thumbnail,
 										seconds_played, times_listened, rms
-									) VALUES (?, ?, ?, ?, 0, 0, NULL)
-									`
+									) VALUES (?, ?, ?, ?, 0, 0, NULL)`
 								)
 								.run(songID, songName, songUrl, songThumbnail);
 
@@ -463,17 +603,15 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					}
 				}
 
-				await processThumbnail(thumbnailUrl, songId);
+				await processThumbnail(thumbnailUrl, songId, i + 1);
 
 				try {
 					musicsDb
 						.prepare(
-							`
-						INSERT INTO songs (
-							song_id, song_name, song_url, song_thumbnail,
-							seconds_played, times_listened, rms
-						) VALUES (?, ?, ?, ?, 0, 0, NULL)
-					`
+							`INSERT INTO songs (
+								song_id, song_name, song_url, song_thumbnail,
+								seconds_played, times_listened, rms
+							) VALUES (?, ?, ?, ?, 0, 0, NULL)`
 						)
 						.run(songId, songTitle, songLink, songThumbnail);
 					console.log(`Inserted ${songTitle} into database.`);
@@ -496,141 +634,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 		document.getElementById("finalDownloadButton").disabled = false;
-	}
-}
-
-async function processThumbnail(imageUrl, songId) {
-	try {
-		console.log(`Processing thumbnail for ${songId}`);
-		const thumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
-
-		let imgElement = document.getElementById(`thumbnailImage`);
-
-		if (!imgElement) {
-			const titleNum = parseInt(songId.match(/\d+$/)?.[0] || "");
-			if (!isNaN(titleNum)) {
-				imgElement = document.getElementById(`thumbnailImage${titleNum}`);
-			}
-		}
-
-		if (imgElement) {
-			if (imgElement.tagName === "IMG" && imgElement.src) {
-				console.log(`Using DOM img element for ${songId}`);
-
-				if (imgElement.src.startsWith("data:image")) {
-					const base64data = imgElement.src;
-					const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
-					fs.writeFileSync(thumbnailPath, thumbnailBuffer);
-					console.log(`Saved thumbnail from base64 for ${songId}`);
-					return true;
-				} else {
-					try {
-						const response = await fetch(imgElement.src);
-						if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-
-						const arrayBuffer = await response.arrayBuffer();
-						const buffer = Buffer.from(arrayBuffer);
-						fs.writeFileSync(thumbnailPath, buffer);
-						console.log(`Saved thumbnail from img src for ${songId}`);
-						return true;
-					} catch (fetchError) {
-						console.error(`Error fetching thumbnail from img: ${fetchError}`);
-					}
-				}
-			} else if (imgElement.style && imgElement.style.backgroundImage) {
-				const bgImage = imgElement.style.backgroundImage;
-				const bgUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
-
-				if (bgUrl) {
-					try {
-						const response = await fetch(bgUrl);
-						if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-
-						const arrayBuffer = await response.arrayBuffer();
-						const buffer = Buffer.from(arrayBuffer);
-						fs.writeFileSync(thumbnailPath, buffer);
-						console.log(`Saved thumbnail from background-image for ${songId}`);
-						return true;
-					} catch (bgFetchError) {
-						console.error(`Error fetching background image: ${bgFetchError}`);
-					}
-				}
-			}
-		}
-
-		if (imageUrl) {
-			if (imageUrl.startsWith("data:image")) {
-				const base64data = imageUrl;
-				const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
-				fs.writeFileSync(thumbnailPath, thumbnailBuffer);
-				console.log(`Saved thumbnail from passed base64 for ${songId}`);
-				return true;
-			}
-
-			try {
-				const response = await fetch(imageUrl);
-				if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-
-				const arrayBuffer = await response.arrayBuffer();
-				const buffer = Buffer.from(arrayBuffer);
-				fs.writeFileSync(thumbnailPath, buffer);
-				console.log(`Saved thumbnail from URL for ${songId}`);
-				return true;
-			} catch (fetchError) {
-				console.error(`Error fetching thumbnail for ${songId}: ${fetchError}`);
-			}
-		}
-
-		console.log(`Attempting YouTube fallback method for ${songId}`);
-
-		let videoId = null;
-		if (imageUrl) {
-			const standardMatch = imageUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|vi\/|vi_webp\/|embed\/|youtube\.com\/embed\/|ytimg\.com\/vi(?:_webp)?\/|youtube\.com\/user\/[^\/]+\/|youtube\.com\/v\/|user\/[^\/]+\/|u\/\w+\/|embed\?video_id=|youtube\.com\/embed\/|v\/|e\/|youtube\.com\/user\/[^\/]+#p\/u\/\d+\/|youtube\.com\/attribution_link\?.*v%3D|youtube-nocookie\.com\/embed\/)([^\/\?&#]+)/);
-
-			if (standardMatch && standardMatch[1]) {
-				videoId = standardMatch[1];
-			}
-
-			if (!videoId) {
-				const imageMatch = imageUrl.match(/i\.ytimg\.com\/vi(?:_webp)?\/([^\/]+)\//);
-				if (imageMatch && imageMatch[1]) {
-					videoId = imageMatch[1];
-				}
-			}
-		}
-
-		if (videoId) {
-			try {
-				const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-				const info = await ytdl.getBasicInfo(youtubeUrl);
-				const thumbnailUrl = info.videoDetails.thumbnails[info.videoDetails.thumbnails.length - 1].url;
-
-				const response = await fetch(thumbnailUrl);
-				if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-
-				const arrayBuffer = await response.arrayBuffer();
-				const buffer = Buffer.from(arrayBuffer);
-
-				fs.writeFileSync(thumbnailPath, buffer);
-				console.log(`YouTube fallback method succeeded for ${songId}`);
-				return true;
-			} catch (ytError) {
-				console.error(`YouTube fallback failed: ${ytError.message}`);
-			}
-		}
-
-		try {
-			const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
-			fs.writeFileSync(thumbnailPath, placeholderData);
-			console.log(`Created placeholder thumbnail for ${songId}`);
-			return true;
-		} catch (placeholderError) {
-			console.error(`Failed to create placeholder: ${placeholderError.message}`);
-			return false;
-		}
-	} catch (error) {
-		console.error(`Error in processThumbnail for ${songId}:`, error);
-		return false;
 	}
 }
 
