@@ -38,6 +38,11 @@ async function processAllFiles() {
 	const files = fs.readdirSync(musicFolder).filter(f => f.endsWith(".mp3"));
 
 	for (const file of files) {
+		if (file.includes("tarator")) continue;
+
+		const fullPath = path.join(musicFolder, file);
+		if (!fs.statSync(fullPath).isFile()) continue;
+
 		const name = path.basename(file, path.extname(file));
 		const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_id = ?").get(name);
 
@@ -88,12 +93,12 @@ async function updateSongLengths() {
     `);
 
 	for (const file of files) {
-		if (!file.toLowerCase().endsWith(".mp3")) {
-			continue;
-		}
-
 		const songId = path.parse(file).name;
 		const fullPath = path.join(musicFolder, file);
+
+		if (!file.toLowerCase().endsWith(".mp3")) continue;
+		if (file.includes("tarator")) continue;
+		if (!fs.statSync(fullPath).isFile()) continue;
 
 		let metadata;
 		try {

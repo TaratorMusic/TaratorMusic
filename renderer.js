@@ -204,35 +204,6 @@ function initializeMusicsDatabase() {
 	if (!columns.includes("song_length")) {
 		musicsDb.prepare(`ALTER TABLE songs ADD COLUMN song_length INTEGER`).run();
 	}
-
-	const files = fs.readdirSync(musicFolder);
-
-	const insert = musicsDb.prepare(`
-        INSERT INTO songs (
-            song_id, song_name, song_url, song_thumbnail,
-            seconds_played, times_listened, rms
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-	const existingIds = new Set(
-		musicsDb
-			.prepare(`SELECT song_id FROM songs`)
-			.all()
-			.map(row => row.song_id)
-	);
-
-	for (const file of files) {
-		const ext = path.extname(file).toLowerCase();
-		if (![".mp3", ".wav", ".flac"].includes(ext)) continue;
-
-		const name = path.basename(file, ext);
-
-		if (!existingIds.has(name)) {
-			const songId = generateId();
-			insert.run(songId, name, "", `${songId}.jpg`, 0, 0, null);
-			console.log(`Inserted new song: ${name}`);
-		}
-	}
 }
 
 function initializePlaylistsDatabase() {
@@ -515,6 +486,7 @@ tabs.forEach(tab => {
 				} else if (content.id === "settings-content") {
 					document.getElementById("settings-content").style.display = "flex";
 				}
+				setupLazyBackgrounds();
 			}
 		});
 	});
@@ -646,20 +618,19 @@ function createMusicElement(file) {
 	musicElement.setAttribute("data-file-name", file.name);
 
 	const fileNameWithoutExtension = path.parse(file.name).name;
-	const encodedFileName = encodeURIComponent(fileNameWithoutExtension);
-	const decodedFileName = decodeURIComponent(encodedFileName);
-	const thumbnailFileName = `${decodedFileName}.jpg`;
+	const thumbnailFileName = `${fileNameWithoutExtension}.jpg`;
 	const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
-	let thumbnailUrl = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}`;
-
+	let realUrl = null;
 	if (fs.existsSync(thumbnailPath)) {
 		const cacheBuster = `?t=${Date.now()}`;
-		thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}${cacheBuster}`;
+		realUrl = `file://${thumbnailPath.replace(/\\/g, "/")}${cacheBuster}`;
 	}
 
 	const backgroundElement = document.createElement("div");
 	backgroundElement.classList.add("background-element");
-	backgroundElement.style.backgroundImage = `url('${thumbnailUrl}')`;
+	if (realUrl) {
+		backgroundElement.dataset.bg = realUrl;
+	}
 	musicElement.appendChild(backgroundElement);
 
 	const songNameElement = document.createElement("div");
@@ -668,14 +639,9 @@ function createMusicElement(file) {
 
 	const songLengthElement = document.createElement("div");
 	songLengthElement.classList.add("song-length");
-
-	const insert = musicsDb.prepare(`
-        SELECT song_length FROM songs WHERE song_id = ?
-    `);
-
 	let lengthSec = 0;
 	try {
-		const row = insert.get(fileNameWithoutExtension);
+		const row = musicsDb.prepare("SELECT song_length FROM songs WHERE song_id = ?").get(fileNameWithoutExtension);
 		lengthSec = row ? row.song_length : 0;
 	} catch {
 		lengthSec = 0;
@@ -1444,42 +1410,39 @@ function saveKeybinds() {
 }
 
 function setupLazyBackgrounds() {
-	const bgElements = document.querySelectorAll(".background-element");
-
-	bgElements.forEach(el => {
-		const currentBg = el.style.backgroundImage;
-		const urlMatch = currentBg.match(/url\(["']?(file:\/\/[^"')]+)["']?\)/);
-
-		if (urlMatch && !el.dataset.bg) {
-			const actualUrl = urlMatch[1];
-			el.dataset.bg = actualUrl;
-
-			el.style.backgroundImage = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}`;
-			el.classList.add("lazy-bg");
-		}
-	});
+	const bgElements = document.querySelectorAll(".background-element[data-bg]");
 
 	if ("IntersectionObserver" in window) {
-		const observer = new IntersectionObserver((entries, obs) => {
-			entries.forEach(entry => {
-				if (entry.isIntersecting) {
-					const el = entry.target;
-					const realBg = el.dataset.bg;
-					if (realBg) {
-						el.style.backgroundImage = `url('${realBg}')`;
-						el.classList.remove("lazy-bg");
-						obs.unobserve(el);
+		const observer = new IntersectionObserver(
+			(entries, obs) => {
+				entries.forEach(entry => {
+					if (entry.isIntersecting) {
+						const el = entry.target;
+						const realBg = el.dataset.bg;
+						if (realBg) {
+							const img = new Image();
+							img.onload = () => {
+								el.style.backgroundImage = `url('${realBg}')`;
+								el.classList.add("loaded-bg");
+								obs.unobserve(el);
+							};
+							img.src = realBg;
+						}
 					}
-				}
-			});
-		});
+				});
+			},
+			{
+				rootMargin: "600px 0px 600px 0px",
+			}
+		);
 
-		document.querySelectorAll(".lazy-bg").forEach(el => observer.observe(el));
+		bgElements.forEach(el => observer.observe(el));
 	} else {
-		document.querySelectorAll(".lazy-bg").forEach(el => {
-			if (el.dataset.bg) {
-				el.style.backgroundImage = `url('${el.dataset.bg}')`;
-				el.classList.remove("lazy-bg");
+		bgElements.forEach(el => {
+			const bg = el.dataset.bg;
+			if (bg) {
+				el.style.backgroundImage = `url('${bg}')`;
+				el.classList.add("loaded-bg");
 			}
 		});
 	}
