@@ -2,7 +2,11 @@ const fetch = require("node-fetch");
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
 
-function cleanDebugFiles() {
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function cleanDebugFiles() {
 	const regex = /^174655\d+-player-script\.js$/;
 	fs.readdirSync("./").forEach(file => {
 		if (regex.test(file)) {
@@ -10,6 +14,38 @@ function cleanDebugFiles() {
 			console.log("Deleted debug file.");
 		}
 	});
+
+	try {
+		musicsDb.prepare(`DELETE FROM songs WHERE song_id LIKE '%.mp3%'`).run();
+		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
+
+		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
+		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
+
+		const updatePlaylist = playlistsDb.prepare(`UPDATE playlists SET songs = ? WHERE id = ?`);
+
+		selectPlaylists.forEach(row => {
+			let songArray;
+			try {
+				songArray = JSON.parse(row.songs);
+			} catch {
+				songArray = [];
+			}
+
+			const filtered = songArray.filter(id => {
+				const exists = checkSongExists.get(id);
+				return !!exists;
+			});
+
+			if (filtered.length !== songArray.length) {
+				const newSongsJson = JSON.stringify(filtered);
+				updatePlaylist.run(newSongsJson, row.id);
+				console.log(`Cleaned playlist ${row.id}, removed ${songArray.length - filtered.length} invalid IDs.`);
+			}
+		});
+	} catch (err) {
+		console.error("Error during database cleanup:", err.message);
+	}
 }
 
 function differentiateYouTubeLinks(url) {
@@ -526,6 +562,10 @@ async function actuallyDownloadTheSong() {
 }
 
 async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
+	if (songLinks.length !== songTitles.length || songLinks.length !== songIds.length) {
+		throw new Error("Array length mismatch: songLinks, songTitles, and songIds must all be the same length");
+	}
+
 	const totalSongs = songLinks.length;
 	let completedDownloads = 0;
 
@@ -536,7 +576,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 				const thumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
 				const bgImage = playlistThumbnailElement.style.backgroundImage;
 				const thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
-
 				if (thumbnailUrl.startsWith("data:image")) {
 					const base64Data = thumbnailUrl.split(",")[1];
 					const buffer = Buffer.from(base64Data, "base64");
@@ -552,86 +591,116 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 			}
 		}
 
-		for (let i = 0; i < songLinks.length; i++) {
+		for (let i = 0; i < totalSongs; i++) {
 			const songTitle = songTitles[i];
 			const songLink = songLinks[i];
 			const songId = songIds[i];
+
+			if (!songTitle || !songLink || !songId) {
+				console.error(`Skipping index ${i}: missing title/link/id`);
+				continue;
+			}
+
 			const songThumbnail = `${songId}.jpg`;
 			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
 			document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}`;
 
-			try {
-				await new Promise((resolve, reject) => {
-					const stream = ytdl(songLink, {
-						quality: "highestaudio",
-						filter: "audioonly",
+			let success = false;
+			let attempt = 0;
+			while (!success && attempt < 3) {
+				attempt++;
+				try {
+					await new Promise((resolve, reject) => {
+						const stream = ytdl(songLink, {
+							quality: "highestaudio",
+							filter: "audioonly",
+						});
+						const writer = fs.createWriteStream(outputPath);
+						stream.pipe(writer);
+						stream.on("error", error => {
+							if (error.message && error.message.includes("Sign in to confirm your age")) {
+								alert("This song requires age confirmation. Skipping...");
+								document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
+								reject(new Error("Age confirmation required"));
+							} else {
+								reject(error);
+							}
+						});
+						writer.on("finish", () => {
+							cleanDebugFiles();
+							resolve();
+						});
+						writer.on("error", err => reject(err));
 					});
-					const writer = fs.createWriteStream(outputPath);
-					stream.pipe(writer);
-
-					stream.on("error", error => {
-						if (error.message && error.message.includes("Sign in to confirm your age")) {
-							alert("This song requires age confirmation. Skipping...");
-							document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
-							reject(new Error("Age confirmation required"));
-						} else {
-							reject(error);
-						}
-					});
-
-					writer.on("finish", () => {
-						cleanDebugFiles();
-						resolve();
-					});
-
-					writer.on("error", err => reject(err));
-				});
-
-				let duration = 0;
-				const metadata = await new Promise((resolve, reject) => {
-					ffmpeg.ffprobe(outputPath, (err, meta) => {
-						if (err) return reject(err);
-						resolve(meta);
-					});
-				});
-				if (metadata.format && metadata.format.duration) {
-					duration = Math.round(metadata.format.duration);
-				}
-
-				const thumbnailElement = document.getElementById(`thumbnailImage${i + 1}`);
-				let thumbnailUrl = null;
-
-				if (thumbnailElement) {
-					if (thumbnailElement.style && thumbnailElement.style.backgroundImage) {
-						const bgImage = thumbnailElement.style.backgroundImage;
-						thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
-					} else if (thumbnailElement.src) {
-						thumbnailUrl = thumbnailElement.src;
+					success = true;
+				} catch (error) {
+					if (error.message === "Age confirmation required") {
+						break;
+					}
+					if (attempt < 3) {
+						await sleep(5000);
+					} else {
+						throw error;
 					}
 				}
+			}
 
-				await processThumbnail(thumbnailUrl, songId, i + 1);
+			if (!success) {
+				continue;
+			}
 
+			let duration = 0;
+			const metadata = await new Promise((resolve, reject) => {
+				ffmpeg.ffprobe(outputPath, (err, meta) => {
+					if (err) return reject(err);
+					resolve(meta);
+				});
+			});
+			if (metadata.format && metadata.format.duration) {
+				duration = Math.round(metadata.format.duration);
+			}
+
+			const thumbnailElement = document.getElementById(`thumbnailImage${i + 1}`);
+			let thumbnailUrl = null;
+			if (thumbnailElement) {
+				if (thumbnailElement.style && thumbnailElement.style.backgroundImage) {
+					const bgImage = thumbnailElement.style.backgroundImage;
+					thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
+				} else if (thumbnailElement.src) {
+					thumbnailUrl = thumbnailElement.src;
+				}
+			}
+
+			await processThumbnail(thumbnailUrl, songId, i + 1);
+
+			if (songId != null && songTitle != null && songLink != null && songThumbnail != null && duration != null) {
 				try {
 					musicsDb
 						.prepare(
 							`INSERT INTO songs (
-                                song_id, song_name, song_url, song_thumbnail,
-                                song_length, seconds_played, times_listened, rms
-                            ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
+                                    song_id, song_name, song_url, song_thumbnail,
+                                    song_length, seconds_played, times_listened, rms
+                                ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
 						)
 						.run(songId, songTitle, songLink, songThumbnail, duration);
 				} catch (err) {
 					console.error(`DB insert failed for ${songTitle}: ${err.message}`);
 				}
-
-				completedDownloads++;
-				document.getElementById("downloadModalText").innerText = `Downloaded song ${i + 1} of ${totalSongs}. Progress: ${completedDownloads}/${totalSongs}`;
-			} catch (error) {
-				console.error(`Error downloading song ${i + 1}: ${error.message}`);
-				document.getElementById("downloadModalText").innerText = `Error downloading song ${i + 1}: ${error.message}`;
+			} else {
+				console.error(`Data undefined at index ${i}:`, {
+					songId,
+					songTitle,
+					songLink,
+					songThumbnail,
+					duration,
+				});
 			}
+
+			completedDownloads++;
+			document.getElementById("downloadModalText").innerText = `Downloaded song ${i + 1} of ${totalSongs}. Progress: ${completedDownloads}/${totalSongs}`;
+
+			await sleep(1000);
 		}
 
 		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
