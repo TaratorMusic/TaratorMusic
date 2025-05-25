@@ -589,6 +589,7 @@ async function myMusicOnClick() {
 
 				musicListContainer.appendChild(musicElement);
 			});
+			setupLazyBackgrounds();
 		}
 
 		musicSearch.addEventListener("input", () => {
@@ -1316,13 +1317,6 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 	);
 });
 
-window.addEventListener("focus", () => {
-	const el = document.activeElement;
-	if (el && typeof el.blur === "function") {
-		el.blur();
-	}
-});
-
 document.addEventListener("keydown", event => {
 	if (event.key === "Tab") {
 		event.preventDefault();
@@ -1432,7 +1426,7 @@ function setupLazyBackgrounds() {
 				});
 			},
 			{
-				rootMargin: "600px 0px 600px 0px",
+				rootMargin: "600px 0px 600px 0px", // How large the loaded area is
 			}
 		);
 
