@@ -1595,7 +1595,7 @@ ipcRenderer.invoke("get-app-version").then(version => {
 
 ipcRenderer.on("update-available", (event, releaseNotes) => {
 	latestReleaseNotes = releaseNotes;
-	document.getElementById("element").classList.remove("no-animation");
+	ocument.getElementById("version").classList.add("no-animation");
 	document.getElementById("installBtn").disabled = false;
 });
 
