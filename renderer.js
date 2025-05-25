@@ -183,26 +183,36 @@ function initializeMusicsDatabase() {
 	musicsDb
 		.prepare(
 			`
-			CREATE TABLE IF NOT EXISTS songs (
-				song_id TEXT PRIMARY KEY,
-				song_name TEXT,
-				song_url TEXT,
-				song_thumbnail TEXT,
-				seconds_played INTEGER,
-				times_listened INTEGER,
-				rms REAL
-			)
-			`
+            CREATE TABLE IF NOT EXISTS songs (
+                song_id TEXT PRIMARY KEY,
+                song_name TEXT,
+                song_url TEXT,
+                song_thumbnail TEXT,
+                seconds_played INTEGER,
+                times_listened INTEGER,
+                rms REAL
+            )
+        `
 		)
 		.run();
+
+	const columns = musicsDb
+		.prepare(`PRAGMA table_info(songs)`)
+		.all()
+		.map(col => col.name);
+
+	if (!columns.includes("song_length")) {
+		musicsDb.prepare(`ALTER TABLE songs ADD COLUMN song_length INTEGER`).run();
+	}
+
 	const files = fs.readdirSync(musicFolder);
 
 	const insert = musicsDb.prepare(`
-    INSERT INTO songs (
-      song_id, song_name, song_url, song_thumbnail,
-      seconds_played, times_listened, rms
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
+        INSERT INTO songs (
+            song_id, song_name, song_url, song_thumbnail,
+            seconds_played, times_listened, rms
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
 
 	const existingIds = new Set(
 		musicsDb
@@ -223,8 +233,6 @@ function initializeMusicsDatabase() {
 			console.log(`Inserted new song: ${name}`);
 		}
 	}
-
-	renameSongsToIds();
 }
 
 function initializePlaylistsDatabase() {
@@ -258,6 +266,7 @@ function initializePlaylistsDatabase() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+	document.getElementById("main-menu").click();
 	setupLazyBackgrounds();
 	initializeSettingsDatabase();
 	initializeMusicsDatabase();
@@ -660,6 +669,19 @@ function createMusicElement(file) {
 	const songLengthElement = document.createElement("div");
 	songLengthElement.classList.add("song-length");
 
+	const insert = musicsDb.prepare(`
+        SELECT song_length FROM songs WHERE song_id = ?
+    `);
+
+	let lengthSec = 0;
+	try {
+		const row = insert.get(fileNameWithoutExtension);
+		lengthSec = row ? row.song_length : 0;
+	} catch {
+		lengthSec = 0;
+	}
+	songLengthElement.innerText = formatTime(lengthSec);
+
 	const customizeButton = document.createElement("button");
 	customizeButton.innerHTML = icon.customise;
 	customizeButton.classList.add("customize-button");
@@ -680,14 +702,6 @@ function createMusicElement(file) {
 	musicElement.appendChild(songNameElement);
 	musicElement.appendChild(customizeButton);
 	musicElement.appendChild(addToPlaylistButton);
-
-	const audio = new Audio();
-	const filePath = path.join(musicFolder, file.name);
-	audio.src = `file://${filePath}`;
-
-	audio.addEventListener("loadedmetadata", () => {
-		songLengthElement.innerText = formatTime(audio.duration);
-	});
 
 	return musicElement;
 }
@@ -938,7 +952,11 @@ async function playPreviousSong() {
 	const songMap = new Map();
 	allMusics.forEach(song => songMap.set(song.song_id, song.song_name));
 
-	const sortedEntries = [...songMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+	const sortedEntries = [...songMap.entries()].sort((a, b) => {
+		const nameA = a[1] || "";
+		const nameB = b[1] || "";
+		return nameA.localeCompare(nameB);
+	});
 	const sortedSongIds = sortedEntries.map(entry => entry[0]);
 
 	if (isShuffleActive) {
@@ -966,7 +984,8 @@ async function playPreviousSong() {
 				currentPlaylistElement--;
 			}
 		} else {
-			const currentFileName = audioElement.src.split("/").pop().replace(".mp3", "");
+			const parts = audioElement.src.split("/");
+			const currentFileName = parts[parts.length - 1].replace(".mp3", "");
 
 			const currentIndex = sortedSongIds.indexOf(currentFileName);
 			if (currentIndex === -1) {
@@ -989,7 +1008,11 @@ async function playNextSong() {
 	const songMap = new Map();
 	allMusics.forEach(song => songMap.set(song.song_id, song.song_name));
 
-	const sortedEntries = [...songMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+	const sortedEntries = [...songMap.entries()].sort((a, b) => {
+		const nameA = a[1] || "";
+		const nameB = b[1] || "";
+		return nameA.localeCompare(nameB);
+	});
 	const sortedSongIds = sortedEntries.map(entry => entry[0]);
 
 	let nextSongId;
@@ -1008,7 +1031,8 @@ async function playNextSong() {
 				currentPlaylistElement = randomIndex;
 			}
 		} else {
-			const currentFileName = audioElement.src.split("/").pop().replace(".mp3", "");
+			const parts = audioElement.src.split("/");
+			const currentFileName = parts[parts.length - 1].replace(".mp3", "");
 			if (sortedSongIds.length === 1) {
 				nextSongId = currentFileName;
 			} else {
@@ -1025,7 +1049,8 @@ async function playNextSong() {
 				nextSongId = currentPlaylist.songs[++currentPlaylistElement];
 			}
 		} else {
-			const currentFileName = audioElement.src.split("/").pop().replace(".mp3", "");
+			const parts = audioElement.src.split("/");
+			const currentFileName = parts[parts.length - 1].replace(".mp3", "");
 			const currentIndex = sortedSongIds.indexOf(currentFileName);
 			const nextIndex = currentIndex < sortedSongIds.length - 1 ? currentIndex + 1 : 0;
 			nextSongId = sortedSongIds[nextIndex];
@@ -1513,7 +1538,7 @@ function generateId() {
 	return `tarator${timestamp}-${randomPart}`;
 }
 
-function renameSongsToIds() {
+function processNewSongs() {
 	const files = fs.readdirSync(musicFolder);
 
 	for (const name of files) {
@@ -1540,6 +1565,8 @@ function renameSongsToIds() {
 			fs.renameSync(oldThumbnailPath, newThumbnailPath);
 		}
 	}
+
+	updateSongLengths();
 
 	if (activateRms == 1) processAllFiles();
 }

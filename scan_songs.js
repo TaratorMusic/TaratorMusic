@@ -1,6 +1,8 @@
 const ffmpeg = require("fluent-ffmpeg");
+const ffprobeStatic = require("ffprobe-static");
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 function calculateRMSFromPCM(pcmData) {
 	let sum = 0;
@@ -75,4 +77,49 @@ async function processAllFiles() {
 	}
 
 	console.log("✅ RMS analysis complete.");
+}
+
+async function updateSongLengths() {
+	const files = fs.readdirSync(musicFolder);
+	const upsert = musicsDb.prepare(`
+        INSERT INTO songs (song_id, song_length)
+        VALUES (?, ?)
+        ON CONFLICT(song_id) DO UPDATE SET song_length = excluded.song_length
+    `);
+
+	for (const file of files) {
+		if (!file.toLowerCase().endsWith(".mp3")) {
+			continue;
+		}
+
+		const songId = path.parse(file).name;
+		const fullPath = path.join(musicFolder, file);
+
+		let metadata;
+		try {
+			metadata = await new Promise((resolve, reject) => {
+				ffmpeg.ffprobe(fullPath, (err, meta) => {
+					if (err) return reject(err);
+					resolve(meta);
+				});
+			});
+		} catch {
+			console.warn(`Failed ffprobe for: ${file}`);
+			continue;
+		}
+
+		if (!metadata.format || !metadata.format.duration) {
+			console.warn(`No duration for: ${file}`);
+			continue;
+		}
+
+		const duration = Math.round(metadata.format.duration);
+		try {
+			upsert.run(songId, duration);
+		} catch (e) {
+			console.error(`DB insert failed for "${file}": ${e.message}`);
+		}
+	}
+
+	console.log("Song length update complete.");
 }

@@ -18,3 +18,5 @@ Check if playlists work correctly
 Check audio & sound stabilisation
 
 */
+
+let playlistUrl = "PLGGdoUbubzyVfBGxVhpSPpf4030-xTZH9";

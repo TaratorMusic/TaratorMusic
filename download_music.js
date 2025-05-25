@@ -387,7 +387,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 	}
 }
 
-function actuallyDownloadTheSong() {
+async function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
 	const firstInput = document.getElementById("downloadFirstInput").value.trim();
 	const linkType = differentiateYouTubeLinks(firstInput);
@@ -408,8 +408,19 @@ function actuallyDownloadTheSong() {
 
 		ytdl(firstInput, { filter: "audioonly", quality: "highestaudio" })
 			.pipe(fs.createWriteStream(outputFilePath))
-			.on("finish", () => {
+			.on("finish", async () => {
 				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Processing thumbnail...";
+
+				let duration = 0;
+				const metadata = await new Promise((resolve, reject) => {
+					ffmpeg.ffprobe(outputFilePath, (err, meta) => {
+						if (err) return reject(err);
+						resolve(meta);
+					});
+				});
+				if (metadata.format && metadata.format.duration) {
+					duration = Math.round(metadata.format.duration);
+				}
 
 				processThumbnail(img.src, songID)
 					.then(() => {
@@ -421,13 +432,11 @@ function actuallyDownloadTheSong() {
 							musicsDb
 								.prepare(
 									`INSERT INTO songs (
-										song_id, song_name, song_url, song_thumbnail,
-										seconds_played, times_listened, rms
-									) VALUES (?, ?, ?, ?, 0, 0, NULL)`
+                                        song_id, song_name, song_url, song_thumbnail,
+                                        song_length, seconds_played, times_listened, rms
+                                    ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
 								)
-								.run(songID, songName, songUrl, songThumbnail);
-
-							console.log(`Inserted ${songName} into database.`);
+								.run(songID, songName, songUrl, songThumbnail, duration);
 						} catch (err) {
 							console.error("Failed to insert song into DB:", err);
 						}
@@ -519,34 +528,25 @@ function actuallyDownloadTheSong() {
 async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 	const totalSongs = songLinks.length;
 	let completedDownloads = 0;
+
 	try {
 		if (window.isSaveAsPlaylistActive) {
 			const playlistThumbnailElement = document.getElementById("thumbnailImage0");
-			if (playlistThumbnailElement) {
+			if (playlistThumbnailElement && playlistThumbnailElement.style && playlistThumbnailElement.style.backgroundImage) {
 				const thumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
-				if (playlistThumbnailElement.style && playlistThumbnailElement.style.backgroundImage) {
-					const bgImage = playlistThumbnailElement.style.backgroundImage;
-					const thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
+				const bgImage = playlistThumbnailElement.style.backgroundImage;
+				const thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
 
-					if (thumbnailUrl.startsWith("data:image")) {
-						const base64Data = thumbnailUrl.split(",")[1];
-						const buffer = Buffer.from(base64Data, "base64");
+				if (thumbnailUrl.startsWith("data:image")) {
+					const base64Data = thumbnailUrl.split(",")[1];
+					const buffer = Buffer.from(base64Data, "base64");
+					fs.writeFileSync(thumbnailPath, buffer);
+				} else if (thumbnailUrl.startsWith("http://") || thumbnailUrl.startsWith("https://")) {
+					const response = await fetch(thumbnailUrl);
+					if (response.ok) {
+						const arrayBuffer = await response.arrayBuffer();
+						const buffer = Buffer.from(arrayBuffer);
 						fs.writeFileSync(thumbnailPath, buffer);
-						console.log(`Saved playlist thumbnail for ${playlistName} from base64`);
-					} else if (thumbnailUrl.startsWith("http://") || thumbnailUrl.startsWith("https://")) {
-						try {
-							const response = await fetch(thumbnailUrl);
-							if (response.ok) {
-								const arrayBuffer = await response.arrayBuffer();
-								const buffer = Buffer.from(arrayBuffer);
-								fs.writeFileSync(thumbnailPath, buffer);
-								console.log(`Saved playlist thumbnail for ${playlistName} from URL`);
-							}
-						} catch (error) {
-							console.error(`Error saving playlist thumbnail: ${error.message}`);
-						}
-					} else {
-						console.error("Unsupported thumbnail URL protocol");
 					}
 				}
 			}
@@ -567,7 +567,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 						quality: "highestaudio",
 						filter: "audioonly",
 					});
-
 					const writer = fs.createWriteStream(outputPath);
 					stream.pipe(writer);
 
@@ -575,27 +574,36 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 						if (error.message && error.message.includes("Sign in to confirm your age")) {
 							alert("This song requires age confirmation. Skipping...");
 							document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
-							reject("Age confirmation required");
+							reject(new Error("Age confirmation required"));
 						} else {
 							reject(error);
 						}
 					});
 
 					writer.on("finish", () => {
-						resolve();
 						cleanDebugFiles();
+						resolve();
 					});
 
 					writer.on("error", err => reject(err));
 				});
 
-				completedDownloads++;
+				let duration = 0;
+				const metadata = await new Promise((resolve, reject) => {
+					ffmpeg.ffprobe(outputPath, (err, meta) => {
+						if (err) return reject(err);
+						resolve(meta);
+					});
+				});
+				if (metadata.format && metadata.format.duration) {
+					duration = Math.round(metadata.format.duration);
+				}
 
 				const thumbnailElement = document.getElementById(`thumbnailImage${i + 1}`);
 				let thumbnailUrl = null;
 
 				if (thumbnailElement) {
-					if (thumbnailElement.style?.backgroundImage) {
+					if (thumbnailElement.style && thumbnailElement.style.backgroundImage) {
 						const bgImage = thumbnailElement.style.backgroundImage;
 						thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
 					} else if (thumbnailElement.src) {
@@ -609,19 +617,19 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					musicsDb
 						.prepare(
 							`INSERT INTO songs (
-								song_id, song_name, song_url, song_thumbnail,
-								seconds_played, times_listened, rms
-							) VALUES (?, ?, ?, ?, 0, 0, NULL)`
+                                song_id, song_name, song_url, song_thumbnail,
+                                song_length, seconds_played, times_listened, rms
+                            ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
 						)
-						.run(songId, songTitle, songLink, songThumbnail);
-					console.log(`Inserted ${songTitle} into database.`);
+						.run(songId, songTitle, songLink, songThumbnail, duration);
 				} catch (err) {
-					console.error(`DB insert failed for ${songTitle}:`, err);
+					console.error(`DB insert failed for ${songTitle}: ${err.message}`);
 				}
 
+				completedDownloads++;
 				document.getElementById("downloadModalText").innerText = `Downloaded song ${i + 1} of ${totalSongs}. Progress: ${completedDownloads}/${totalSongs}`;
 			} catch (error) {
-				console.error(`Error downloading song ${i + 1}:`, error);
+				console.error(`Error downloading song ${i + 1}: ${error.message}`);
 				document.getElementById("downloadModalText").innerText = `Error downloading song ${i + 1}: ${error.message}`;
 			}
 		}
