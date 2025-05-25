@@ -538,7 +538,7 @@ async function actuallyDownloadTheSong() {
 			const stmt = playlistsDb.prepare("SELECT name FROM playlists WHERE name = ?");
 			const existing = stmt.get(playlistName);
 
-			if (existing) {
+			if (window.isSaveAsPlaylistActive && existing) {
 				document.getElementById("downloadModalText").innerText = "A playlist with this name already exists.";
 				document.getElementById("finalDownloadButton").disabled = false;
 				return;
