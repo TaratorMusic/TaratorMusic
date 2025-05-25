@@ -32,7 +32,6 @@ let settingsDb = {},
 		fs.mkdirSync(appThumbnailFolder);
 		createAppThumbnailsFolder();
 	}
-
 	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
 	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
 	if (!fs.existsSync(musicsDbPath)) fs.writeFileSync(musicsDbPath, "");
@@ -584,7 +583,6 @@ async function myMusicOnClick() {
 			return;
 		}
 
-		let currentPlayingSongName = document.getElementById("song-name").innerText;
 		let songNamesArray = [];
 
 		for (i = 0; i < musicFiles.length; i++) {
@@ -977,7 +975,6 @@ async function playPreviousSong() {
 
 			const previousIndex = currentIndex > 0 ? currentIndex - 1 : sortedSongIds.length - 1;
 			const previousSongId = sortedSongIds[previousIndex];
-			const previousSongName = songMap.get(previousSongId);
 
 			const file = { name: previousSongId + ".mp3" };
 			playMusic(file, null, false);

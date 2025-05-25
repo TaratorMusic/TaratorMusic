@@ -76,6 +76,16 @@
 			}
 		}
 	},
+	"jest": {
+		"testEnvironment": "node",
+		"moduleFileExtensions": [
+			"js",
+			"json"
+		],
+		"transform": {
+			"^.+\\.js$": "babel-jest"
+		}
+	},
 	"dependencies": {
 		"@distube/ytdl-core": "4.16.9",
 		"@distube/ytpl": "github:Victiniiiii/ytpl",
@@ -92,6 +102,7 @@
 		"electron": "^31.1.0",
 		"electron-builder": "^24.13.3",
 		"electron-rebuild": "^3.2.9",
-		"electron-reload": "^2.0.0-alpha.1"
+		"electron-reload": "^2.0.0-alpha.1",
+		"jest": "^29.7.0"
 	}
 }
