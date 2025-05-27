@@ -24,7 +24,7 @@
 				"provider": "github",
 				"owner": "Victiniiiii",
 				"repo": "TaratorMusic",
-				"draft": true
+				"releaseType": "draft"
 			}
 		],
 		"extraResources": [
