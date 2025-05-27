@@ -19,7 +19,14 @@
 		"url": "https://github.com/Victiniiiii/TaratorMusic.git"
 	},
 	"build": {
-		"publish": null,
+		"publish": [
+			{
+				"provider": "github",
+				"owner": "Victiniiiii",
+				"repo": "TaratorMusic",
+				"draft": true
+			}
+		],
 		"extraResources": [
 			{
 				"from": "extra-resources/ffmpeg.exe",
