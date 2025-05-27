@@ -7,7 +7,37 @@ on:
   workflow_dispatch:
 
 jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.compare.outputs.should_run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Read package.json version
+        id: pkg
+        run: |
+            echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+
+      - name: Get latest git tag
+        id: tag
+        run: |
+            latest=$(git tag --sort=-v:refname | head -n1 || echo "")
+            echo "latest=${latest#v}" >> $GITHUB_OUTPUT
+
+      - name: Decide if build should run
+        id: compare
+        run: |
+            if [ "${{ steps.pkg.outputs.version }}" = "${{ steps.tag.outputs.latest }}" ]; then
+                echo "should_run=false" >> $GITHUB_OUTPUT
+            else
+                echo "should_run=true" >> $GITHUB_OUTPUT
+            fi
+
   build-windows:
+    needs: version-check
+    if: needs.version-check.outputs.should_run == 'true'
     runs-on: windows-latest
 
     steps:
@@ -27,7 +57,7 @@ jobs:
 
       - name: Build with electron-builder
         env:
-           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist
 
       - name: Upload build artifacts
