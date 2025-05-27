@@ -1,67 +1,68 @@
 name: Build Windows App
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
 
 jobs:
-  version-check:
-    runs-on: ubuntu-latest
-    outputs:
-      should_run: ${{ steps.compare.outputs.should_run }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    version-check:
+        runs-on: ubuntu-latest
+        outputs:
+            should_run: ${{ steps.compare.outputs.should_run }}
+        steps:
+            - uses: actions/checkout@v3
 
-      - name: Read package.json version
-        id: pkg
-        run: |
-            echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+            - name: Read package.json version
+              id: pkg
+              run: |
+                  version=$(node -p 'require("./package.json").version')
+                  echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: Get latest git tag
-        id: tag
-        run: |
-            latest=$(git tag --sort=-v:refname | head -n1 || echo "")
-            echo "latest=${latest#v}" >> $GITHUB_OUTPUT
+            - name: Get latest git tag
+              id: tag
+              run: |
+                  latest=$(git tag --sort=-v:refname | head -n1 || echo "")
+                  latest=${latest#v}
+                  echo "latest=$latest" >> $GITHUB_OUTPUT
 
-      - name: Decide if build should run
-        id: compare
-        run: |
-            if [ "${{ steps.pkg.outputs.version }}" = "${{ steps.tag.outputs.latest }}" ]; then
-                echo "should_run=false" >> $GITHUB_OUTPUT
-            else
-                echo "should_run=true" >> $GITHUB_OUTPUT
-            fi
+            - name: Decide if build should run
+              id: compare
+              run: |
+                  if [ "${{ steps.pkg.outputs.version }}" = "${{ steps.tag.outputs.latest }}" ]; then
+                      echo "should_run=false" >> $GITHUB_OUTPUT
+                  else
+                      echo "should_run=true" >> $GITHUB_OUTPUT
+                  fi
 
-  build-windows:
-    needs: version-check
-    if: needs.version-check.outputs.should_run == 'true'
-    runs-on: windows-latest
+    build-windows:
+        needs: version-check
+        if: needs.version-check.outputs.should_run == 'true'
+        runs-on: windows-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 18
 
-      - name: Install dependencies
-        run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-      - name: Rebuild native modules (postinstall)
-        run: npm run postinstall
+            - name: Rebuild native modules (postinstall)
+              run: npm run postinstall
 
-      - name: Build with electron-builder
-        env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist
+            - name: Build with electron-builder
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: npm run dist
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: taratormusic-win
-          path: dist/
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: taratormusic-win
+                  path: dist/
