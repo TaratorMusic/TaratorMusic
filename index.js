@@ -1,7 +1,6 @@
 const { app, BrowserWindow, Menu, ipcMain } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
-const fs = require("fs");
 
 if (process.env.APPIMAGE) {
 	const libPath = path.join(process.resourcesPath, "lib");

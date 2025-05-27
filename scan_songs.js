@@ -1,8 +1,11 @@
 const ffmpeg = require("fluent-ffmpeg");
-const ffprobeStatic = require("ffprobe-static");
-const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
+
+const isWin = process.platform === "win32";
+const ffmpegPath = isWin ? path.join(taratorFolder, "extra-resources/ffmpeg.exe") : require("@ffmpeg-installer/ffmpeg").path;
+const ffprobePath = isWin ? path.join(taratorFolder, "extra-resources/ffprobe.exe") : require("ffprobe-static").path;
+
 ffmpeg.setFfmpegPath(ffmpegPath);
-ffmpeg.setFfprobePath(ffprobeStatic.path);
+ffmpeg.setFfprobePath(ffprobePath);
 
 function calculateRMSFromPCM(pcmData) {
 	let sum = 0;

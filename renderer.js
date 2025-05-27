@@ -28,10 +28,8 @@ let settingsDb = {},
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
-	if (!fs.existsSync(appThumbnailFolder)) {
-		fs.mkdirSync(appThumbnailFolder);
-		createAppThumbnailsFolder();
-	}
+	if (!fs.existsSync(appThumbnailFolder)) createAppThumbnailsFolder();
+
 	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
 	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
 	if (!fs.existsSync(musicsDbPath)) fs.writeFileSync(musicsDbPath, "");
@@ -1535,6 +1533,7 @@ function getSongNameById(songId) {
 }
 
 function createAppThumbnailsFolder() {
+	fs.mkdirSync(appThumbnailFolder);
 	console.log("App thumbnails folder missing. Downloading thumbnails...");
 	const filesToDownload = ["https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/placeholder.jpg", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator1024_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator16_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator512_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.icns", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.ico", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.png"];
 

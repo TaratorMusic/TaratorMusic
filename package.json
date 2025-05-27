@@ -11,23 +11,24 @@
 		"start": "electron .",
 		"pack": "electron-builder --dir",
 		"dist": "electron-builder",
-		"build": "electron-builder"
+		"build": "electron-builder",
+		"postinstall": "electron-builder install-app-deps"
 	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Victiniiiii/TaratorMusic.git"
 	},
 	"build": {
-		"appId": "com.yourdomain.taratormusic",
-		"productName": "TaratorMusic",
-		"npmRebuild": false,
-		"buildDependenciesFromSource": true,
 		"extraResources": [
 			{
-				"from": "native-libs/libsqlite3.so.0",
-				"to": "lib/libsqlite3.so.0"
+				"from": "extra-resources/ffmpeg.exe",
+				"to": "ffmpeg.exe"
 			}
 		],
+		"appId": "com.yourdomain.taratormusic",
+		"productName": "TaratorMusic",
+		"npmRebuild": true,
+		"buildDependenciesFromSource": true,
 		"directories": {
 			"output": "dist"
 		},

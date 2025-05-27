@@ -1,0 +1,40 @@
+name: Build Windows App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install build tools
+        run: |
+          npm install -g windows-build-tools
+        shell: powershell
+
+      - name: Rebuild native modules
+        run: npm run postinstall
+
+      - name: Build with electron-builder
+        run: npm run dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: taratormusic-win
+          path: dist/
