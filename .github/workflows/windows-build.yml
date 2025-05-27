@@ -14,23 +14,13 @@ jobs:
         steps:
             - uses: actions/checkout@v3
 
-            - name: Read package.json version
-              id: pkg
-              run: |
-                  version=$(node -p 'require("./package.json").version')
-                  echo "version=$version" >> $GITHUB_OUTPUT
-
-            - name: Get latest git tag
-              id: tag
-              run: |
-                  latest=$(git tag --sort=-v:refname | head -n1 || echo "")
-                  latest=${latest#v}
-                  echo "latest=$latest" >> $GITHUB_OUTPUT
-
-            - name: Decide if build should run
+            - name: Compare package.json version vs latest Git tag
               id: compare
               run: |
-                  if [ "${{ steps.pkg.outputs.version }}" = "${{ steps.tag.outputs.latest }}" ]; then
+                  version=$(node -p 'require("./package.json").version')
+                  latest=$(git tag --sort=-v:refname | head -n1 || echo "")
+                  latest=${latest#v}
+                  if [ "$version" = "$latest" ]; then
                       echo "should_run=false" >> $GITHUB_OUTPUT
                   else
                       echo "should_run=true" >> $GITHUB_OUTPUT
