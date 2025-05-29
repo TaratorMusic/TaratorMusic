@@ -1,6 +1,6 @@
 {
 	"name": "taratormusic",
-	"version": "1.5.4",
+	"version": "1.5.5",
 	"description": "A desktop music player application with playlist support, music downloading, audio stabilising and Discord integration.",
 	"main": "index.js",
 	"bin": "index.js",

@@ -2,6 +2,7 @@
 
 TODO Tests:
 
+Multiple tests for all the functions
 Download Music
 Download Music with name changed, thumbnail changed, both
 Same for playlists

@@ -1,4 +1,4 @@
-name: Build Windows App
+name: Build App
 
 on:
     push:
@@ -63,4 +63,66 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: taratormusic-win
+                  path: dist/
+
+    build-mac:
+        needs: version-check
+        if: needs.version-check.outputs.should_run == 'true'
+        runs-on: macos-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 18
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Rebuild native modules (postinstall)
+              run: npm run postinstall
+
+            - name: Build with electron-builder
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: npm run dist
+
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: taratormusic-mac
+                  path: dist/
+
+    build-linux:
+        needs: version-check
+        if: needs.version-check.outputs.should_run == 'true'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 18
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Rebuild native modules (postinstall)
+              run: npm run postinstall
+
+            - name: Build with electron-builder
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: npm run dist
+
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: taratormusic-linux
                   path: dist/
