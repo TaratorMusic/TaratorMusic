@@ -70,6 +70,8 @@ let audioContext;
 let audioSource;
 let latestReleaseNotes = "You are using the latest version of TaratorMusic.";
 const debounceMap = new Map();
+let oldItemsPerRow = null;
+let resizeTimeout;
 
 let totalTimeSpent;
 let rememberautoplay;
@@ -509,7 +511,8 @@ async function myMusicOnClick() {
 	const displayCountSelect = document.createElement("select");
 	displayCountSelect.id = "display-count";
 
-	[10, 20, 50, 100, 250, 500, 1000, "All"].forEach(count => {
+	displayCountSelect.innerHTML = "";
+	[0, 1, 2, 3, 4, 6, 8, 16, "All"].forEach(count => {
 		const option = document.createElement("option");
 		option.value = count;
 		option.innerText = count === "All" ? "Show All" : `Show ${count}`;
@@ -531,8 +534,8 @@ async function myMusicOnClick() {
 	const musicListContainer = document.createElement("div");
 	musicListContainer.id = "music-list-container";
 	musicListContainer.style.display = "grid";
-	musicListContainer.style.gridTemplateColumns = "repeat(auto-fill, minmax(180px, 1fr))";
-	musicListContainer.style.gap = "16px";
+	musicListContainer.style.gridTemplateColumns = "repeat(auto-fill, minmax(200px, 1fr))";
+	musicListContainer.style.gap = "5px";
 	myMusicContent.appendChild(musicListContainer);
 
 	let musicFiles = [];
@@ -572,7 +575,7 @@ async function myMusicOnClick() {
 
 		function renderSongs() {
 			musicListContainer.innerHTML = "";
-			const count = displayCount === "All" ? filteredSongs.length : parseInt(displayCount);
+			const count = displayCount === "All" ? filteredSongs.length : parseInt(displayCount * oldItemsPerRow);
 			const visibleSongs = filteredSongs.slice(0, count);
 			visibleSongs.forEach(file => {
 				const musicElement = createMusicElement(file);
@@ -589,6 +592,25 @@ async function myMusicOnClick() {
 			});
 			setupLazyBackgrounds();
 		}
+
+		function calculateItemsPerRowInMusicTab() {
+			let theWidth = document.getElementById("content").offsetWidth;
+			let itemsPerRow = Math.floor((theWidth - 53) / 205);
+
+			if (itemsPerRow != oldItemsPerRow && oldItemsPerRow != null) {
+				oldItemsPerRow = itemsPerRow;
+				renderSongs();
+			} else {
+				oldItemsPerRow = itemsPerRow;
+			}
+		}
+
+		window.addEventListener("resize", () => {
+			clearTimeout(resizeTimeout);
+			resizeTimeout = setTimeout(calculateItemsPerRowInMusicTab, 250);
+		});
+
+		calculateItemsPerRowInMusicTab();
 
 		musicSearch.addEventListener("input", () => {
 			filteredSongs = musicFiles.filter(file => {
@@ -627,9 +649,11 @@ function createMusicElement(file) {
 
 	const backgroundElement = document.createElement("div");
 	backgroundElement.classList.add("background-element");
+
 	if (realUrl) {
 		backgroundElement.dataset.bg = realUrl;
 	}
+
 	musicElement.appendChild(backgroundElement);
 
 	const songNameElement = document.createElement("div");
