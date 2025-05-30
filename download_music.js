@@ -442,7 +442,15 @@ async function actuallyDownloadTheSong() {
 
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
-		ytdl(firstInput, { filter: "audioonly", quality: "highestaudio" })
+		const stream = ytdl(firstInput, { filter: "audioonly", quality: "highestaudio" });
+
+		stream.on("progress", (chunkLength, downloaded, total) => {
+			const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+			const totalMB = (total / (1024 * 1024)).toFixed(2);
+			document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB / ${totalMB} MB`;
+		});
+
+		stream
 			.pipe(fs.createWriteStream(outputFilePath))
 			.on("finish", async () => {
 				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Processing thumbnail...";
@@ -454,6 +462,7 @@ async function actuallyDownloadTheSong() {
 						resolve(meta);
 					});
 				});
+
 				if (metadata.format && metadata.format.duration) {
 					duration = Math.round(metadata.format.duration);
 				}
@@ -468,9 +477,9 @@ async function actuallyDownloadTheSong() {
 							musicsDb
 								.prepare(
 									`INSERT INTO songs (
-                                        song_id, song_name, song_url, song_thumbnail,
-                                        song_length, seconds_played, times_listened, rms
-                                    ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
+                                song_id, song_name, song_url, song_thumbnail,
+                                song_length, seconds_played, times_listened, rms
+                            ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
 								)
 								.run(songID, songName, songUrl, songThumbnail, duration);
 						} catch (err) {
@@ -604,8 +613,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 			const songThumbnail = `${songId}.jpg`;
 			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
-			document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}`;
-
 			let success = false;
 			let attempt = 0;
 			while (!success && attempt < 3) {
@@ -616,8 +623,16 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 							quality: "highestaudio",
 							filter: "audioonly",
 						});
+
+						stream.on("progress", (chunkLength, downloaded, total) => {
+							const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+							const totalMB = (total / (1024 * 1024)).toFixed(2);
+							document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}. Progress: ${downloadedMB} MB / ${totalMB} MB`;
+						});
+
 						const writer = fs.createWriteStream(outputPath);
 						stream.pipe(writer);
+
 						stream.on("error", error => {
 							if (error.message && error.message.includes("Sign in to confirm your age")) {
 								alert("This song requires age confirmation. Skipping...");
@@ -627,9 +642,11 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 								reject(error);
 							}
 						});
+
 						writer.on("finish", () => {
 							resolve();
 						});
+
 						writer.on("error", err => reject(err));
 					});
 					success = true;
