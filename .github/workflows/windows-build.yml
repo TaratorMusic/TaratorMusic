@@ -5,6 +5,10 @@ on:
             - main
     workflow_dispatch:
 
+permissions:
+    contents: write
+    pull-requests: write
+
 jobs:
     version-check:
         runs-on: ubuntu-latest
@@ -98,50 +102,32 @@ jobs:
 
     release:
         needs:
+            - version-check
             - build-windows
             - build-mac
             - build-linux
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/download-artifact@v4
+            - uses: actions/checkout@v3
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
               with:
-                  path: dist
-            - name: Create Draft Release
-              id: create_release
-              uses: actions/create-release@v1
+                  path: artifacts
+            - name: Display structure of downloaded files
+              run: ls -la artifacts/
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
               with:
-                  tag_name: 1.
-                  release_name: TaratorMusic 1.
+                  tag_name: v${{ needs.version-check.outputs.version }}
+                  name: TaratorMusic v${{ needs.version-check.outputs.version }}
                   draft: true
+                  files: |
+                      artifacts/taratormusic-win/*.exe
+                      artifacts/taratormusic-win/*.blockmap
+                      artifacts/taratormusic-mac/*.dmg
+                      artifacts/taratormusic-mac/*.blockmap
+                      artifacts/taratormusic-linux/*.AppImage
+                      artifacts/taratormusic-linux/*.blockmap
+                      artifacts/*/latest*.yml
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            - uses: actions/upload-release-asset@v1
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/latest.yml
-                  asset_name: latest.yml
-                  asset_content_type: application/octet-stream
-            - uses: actions/upload-release-asset@v1
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/**/*.blockmap
-                  asset_name: blockmaps.zip
-                  asset_content_type: application/zip
-            - uses: actions/upload-release-asset@v1
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/*.AppImage
-                  asset_name: app.AppImage
-                  asset_content_type: application/octet-stream
-            - uses: actions/upload-release-asset@v1
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/*.exe
-                  asset_name: app.exe
-                  asset_content_type: application/octet-stream
-            - uses: actions/upload-release-asset@v1
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/*.dmg
-                  asset_name: app.dmg
-                  asset_content_type: application/octet-stream
