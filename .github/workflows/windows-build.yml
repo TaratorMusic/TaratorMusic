@@ -118,8 +118,8 @@ jobs:
             - name: Create Release
               uses: softprops/action-gh-release@v1
               with:
-                  tag_name: v${{ needs.version-check.outputs.version }}
-                  name: TaratorMusic v${{ needs.version-check.outputs.version }}
+                  tag_name: ${{ needs.version-check.outputs.version }}
+                  name: TaratorMusic ${{ needs.version-check.outputs.version }}
                   draft: true
                   files: |
                       artifacts/taratormusic-win/*.exe
