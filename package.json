@@ -27,12 +27,6 @@
 				"releaseType": "draft"
 			}
 		],
-		"extraResources": [
-			{
-				"from": "extra-resources/ffmpeg.exe",
-				"to": "ffmpeg.exe"
-			}
-		],
 		"appId": "com.yourdomain.taratormusic",
 		"productName": "TaratorMusic",
 		"npmRebuild": true,
@@ -105,7 +99,6 @@
 		"electron": "^31.1.0",
 		"electron-builder": "^24.13.3",
 		"electron-rebuild": "^3.2.9",
-		"electron-reload": "^2.0.0-alpha.1",
 		"jest": "^29.7.0"
 	}
 }
