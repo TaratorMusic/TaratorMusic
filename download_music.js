@@ -628,7 +628,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 							}
 						});
 						writer.on("finish", () => {
-							cleanDebugFiles();
 							resolve();
 						});
 						writer.on("error", err => reject(err));

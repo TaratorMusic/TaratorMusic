@@ -93,6 +93,7 @@ let key_Loop;
 let dividevolume;
 let displayCount;
 let activateRms;
+let lazyLoadSize;
 
 const defaultSettings = {
 	totalTimeSpent: 0,
@@ -115,6 +116,7 @@ const defaultSettings = {
 	dividevolume: 1,
 	displayCount: 50,
 	activateRms: 1,
+	lazyLoadSize: 100,
 };
 
 function initializeSettingsDatabase() {
@@ -173,10 +175,12 @@ function initializeSettingsDatabase() {
 				}
 			});
 		}
-
-		ensureDefaultValues();
-		loadSettings();
 	}
+
+	ensureDefaultValues();
+	loadSettings();
+	setupLazyBackgrounds();
+	document.getElementById("main-menu").click();
 }
 
 function initializeMusicsDatabase() {
@@ -237,8 +241,6 @@ function initializePlaylistsDatabase() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-	document.getElementById("main-menu").click();
-	setupLazyBackgrounds();
 	initializeSettingsDatabase();
 	initializeMusicsDatabase();
 	initializePlaylistsDatabase();
@@ -255,6 +257,14 @@ document.addEventListener("DOMContentLoaded", function () {
 	for (let i = 0; i < activateRmsSelect.options.length; i++) {
 		if (activateRmsSelect.options[i].value == activateRms) {
 			activateRmsSelect.selectedIndex = i;
+			break;
+		}
+	}
+
+	const lazyLoadSizeSelect = document.getElementById("lazyLoadSize");
+	for (let i = 0; i < lazyLoadSizeSelect.options.length; i++) {
+		if (lazyLoadSizeSelect.options[i].value == lazyLoadSize) {
+			lazyLoadSizeSelect.selectedIndex = i;
 			break;
 		}
 	}
@@ -334,6 +344,7 @@ function loadSettings() {
 	dividevolume = row.dividevolume;
 	displayCount = row.displayCount;
 	activateRms = row.activateRms;
+	lazyLoadSize = row.lazyLoadSize;
 
 	updateTimer();
 	rememberautoplay && toggleAutoplay();
@@ -1427,6 +1438,8 @@ function saveKeybinds() {
 
 function setupLazyBackgrounds() {
 	const bgElements = document.querySelectorAll(".background-element[data-bg]");
+	const vh = window.innerHeight;
+	const margin = `${(lazyLoadSize / 100) * vh}px 0px`;
 
 	if ("IntersectionObserver" in window) {
 		const observer = new IntersectionObserver(
@@ -1448,7 +1461,7 @@ function setupLazyBackgrounds() {
 				});
 			},
 			{
-				rootMargin: "600px 0px 600px 0px", // How large the loaded area is
+				rootMargin: margin, // How large the loaded area is
 			}
 		);
 
