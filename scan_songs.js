@@ -1,106 +1,106 @@
 const ffmpeg = require("fluent-ffmpeg");
-
-const isWin = process.platform === "win32";
-const ffmpegPath = isWin ? path.join(taratorFolder, "extra-resources/ffmpeg.exe") : require("@ffmpeg-installer/ffmpeg").path;
-const ffprobePath = isWin ? path.join(taratorFolder, "extra-resources/ffprobe.exe") : require("ffprobe-static").path;
+const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
+const ffprobePath = require("ffprobe-static").path;
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 
-function calculateRMSFromPCM(pcmData) {
-	let sum = 0;
-	for (let i = 0; i < pcmData.length; i += 2) {
-		let sample = pcmData.readInt16LE(i) / 32768;
-		sum += sample * sample;
-	}
-	return Math.sqrt(sum / (pcmData.length / 2));
-}
-
-async function analyzeFile(filePath) {
+function normalizeAudio(filePath) {
 	return new Promise((resolve, reject) => {
-		let buffers = [];
+		const tempPath = path.join(path.dirname(filePath), `normalized_${Date.now()}.mp3`);
 
 		ffmpeg(filePath)
-			.format("s16le")
-			.audioChannels(1)
-			.audioFrequency(44100)
-			.noVideo()
-			.on("error", reject)
-			.on("end", () => {
-				const buffer = Buffer.concat(buffers);
-				const rms = calculateRMSFromPCM(buffer);
-				console.log(`Calculated RMS for ${filePath}:`, rms);
-				resolve(rms);
+			.audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json")
+			.audioCodec("libmp3lame")
+			.format("mp3")
+			.on("error", err => {
+				if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+				reject(err);
 			})
-			.pipe()
-			.on("data", chunk => buffers.push(chunk));
+			.on("end", () => {
+				try {
+					fs.renameSync(tempPath, filePath);
+					resolve(true);
+				} catch (err) {
+					reject(err);
+				}
+			})
+			.save(tempPath);
 	});
 }
 
 async function processAllFiles() {
-	const files = fs.readdirSync(musicFolder).filter(f => f.endsWith(".mp3"));
+	const allFiles = fs.readdirSync(musicFolder);
+	const tempFiles = allFiles.filter(f => f.startsWith(".normalized_") || f.startsWith("normalized_") || f.includes("temp_normalized"));
+
+	if (tempFiles.length > 0) {
+		console.log(`Cleaning up ${tempFiles.length} temporary files...`);
+		tempFiles.forEach(tempFile => {
+			try {
+				fs.unlinkSync(path.join(musicFolder, tempFile));
+				console.log(`Deleted: ${tempFile}`);
+			} catch (err) {
+				console.warn(`Could not delete ${tempFile}:`, err.message);
+			}
+		});
+	}
+
+	const files = fs.readdirSync(musicFolder).filter(f => {
+		return f.endsWith(".mp3") && !f.startsWith(".") && !f.startsWith("normalized_") && !f.includes("temp_normalized");
+	});
+
+	console.log(`Found ${files.length} files to process`);
 
 	for (const file of files) {
-		if (file.includes("tarator")) continue;
-
 		const fullPath = path.join(musicFolder, file);
+
 		if (!fs.statSync(fullPath).isFile()) continue;
 
 		const name = path.basename(file, path.extname(file));
-		const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_id = ?").get(name);
 
+		const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_id = ?").get(name);
 		if (row && row.rms !== null && row.rms !== undefined) {
-			console.log(`Skipping ${name}, RMS already stored.`);
+			console.log(`Skipping ${name}, already processed.`);
 			continue;
 		}
 
-		const filePath = path.join(musicFolder, file);
-		console.log(`Analyzing ${name}...`);
+		console.log(`Normalizing ${name}...`);
+
 		try {
-			const rms = await analyzeFile(filePath);
-			if (rms !== null && rms !== undefined && !isNaN(rms)) {
-				console.log(`Updating RMS for ${name} to ${rms.toFixed(4)}...`);
+			await normalizeAudio(fullPath);
 
-				const updateResult = musicsDb
-					.prepare(
-						`
-						UPDATE songs
-						SET rms = ?
-						WHERE song_id = ?
-						`
-					)
-					.run(rms, name);
+			const updateResult = musicsDb.prepare("UPDATE songs SET rms = ? WHERE song_id = ?").run(1, name);
 
-				if (updateResult.changes > 0) {
-					console.log(`Successfully updated RMS for ${name}`);
-				} else {
-					console.warn(`Failed to update RMS for ${name}`);
-				}
+			if (updateResult.changes > 0) {
+				console.log(`✅ Successfully normalized and marked ${name}`);
 			} else {
-				console.warn(`No valid RMS calculated for ${name}, skipping.`);
+				console.warn(`⚠️ Failed to update database for ${name}`);
 			}
 		} catch (e) {
-			console.error(`Failed to analyze ${name}:`, e);
+			console.error(`❌ Failed to normalize ${name}:`, e.message);
 		}
 	}
 
-	console.log("✅ RMS analysis complete.");
+	console.log("✅ Audio normalization complete.");
 }
 
 async function updateSongLengths() {
-	const files = fs.readdirSync(musicFolder);
+	const files = fs.readdirSync(musicFolder).filter(f => {
+		return f.toLowerCase().endsWith(".mp3") && !f.startsWith(".") && !f.startsWith("normalized_") && !f.includes("temp_normalized") && !f.includes("tarator");
+	});
+
 	const upsert = musicsDb.prepare(`
-        INSERT INTO songs (song_id, song_length)
-        VALUES (?, ?)
-        ON CONFLICT(song_id) DO UPDATE SET song_length = excluded.song_length
-    `);
+    INSERT INTO songs (song_id, song_length)
+    VALUES (?, ?)
+    ON CONFLICT(song_id) DO UPDATE SET song_length = excluded.song_length
+  `);
+
+	console.log(`Updating lengths for ${files.length} files`);
 
 	for (const file of files) {
 		const songId = path.parse(file).name;
 		const fullPath = path.join(musicFolder, file);
 
-		if (!file.toLowerCase().endsWith(".mp3")) continue;
-		if (file.includes("tarator")) continue;
 		if (!fs.statSync(fullPath).isFile()) continue;
 
 		let metadata;
@@ -129,5 +129,5 @@ async function updateSongLengths() {
 		}
 	}
 
-	console.log("Song length update complete.");
+	console.log("✅ Song length update complete.");
 }

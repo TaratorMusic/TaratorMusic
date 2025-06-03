@@ -18,6 +18,7 @@ async function cleanDebugFiles() {
 	try {
 		musicsDb.prepare(`DELETE FROM songs WHERE song_id LIKE '%.mp3%'`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
+		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
 
 		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
 		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
@@ -673,6 +674,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					resolve(meta);
 				});
 			});
+			
 			if (metadata.format && metadata.format.duration) {
 				duration = Math.round(metadata.format.duration);
 			}
