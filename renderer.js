@@ -1530,39 +1530,6 @@ function generateId() {
 	return `tarator${timestamp}-${randomPart}`;
 }
 
-function processNewSongs() {
-	const files = fs.readdirSync(musicFolder);
-
-	for (const name of files) {
-		if (name.includes("tarator")) continue;
-
-		const fullPath = path.join(musicFolder, name);
-		if (!fs.statSync(fullPath).isFile()) continue;
-
-		const ext = path.extname(name);
-		const baseName = path.basename(name, ext);
-
-		const row = musicsDb.prepare("SELECT song_id FROM songs WHERE song_name = ?").get(name.replace(".mp3", ""));
-		let id = row.song_id;
-
-		const newMusicPath = path.join(musicFolder, id + ext);
-		fs.renameSync(fullPath, newMusicPath);
-
-		const oldThumbnailName = `${baseName}.jpg`;
-		const oldThumbnailPath = path.join(thumbnailFolder, oldThumbnailName);
-
-		if (fs.existsSync(oldThumbnailPath)) {
-			const newThumbnailName = `${id}.jpg`;
-			const newThumbnailPath = path.join(thumbnailFolder, newThumbnailName);
-			fs.renameSync(oldThumbnailPath, newThumbnailPath);
-		}
-	}
-
-	updateSongLengths();
-
-	if (activateRms == 1) processAllFiles();
-}
-
 function getSongNameById(songId) {
 	const stmt = musicsDb.prepare("SELECT song_name FROM songs WHERE song_id = ?");
 	const row = stmt.get(songId);

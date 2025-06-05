@@ -6,49 +6,6 @@ function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function cleanDebugFiles() {
-	const regex = /^174655\d+-player-script\.js$/;
-	fs.readdirSync("./").forEach(file => {
-		if (regex.test(file)) {
-			fs.unlinkSync(path.join("./", file));
-			console.log("Deleted debug file.");
-		}
-	});
-
-	try {
-		musicsDb.prepare(`DELETE FROM songs WHERE song_id LIKE '%.mp3%'`).run();
-		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
-		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
-
-		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
-		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
-
-		const updatePlaylist = playlistsDb.prepare(`UPDATE playlists SET songs = ? WHERE id = ?`);
-
-		selectPlaylists.forEach(row => {
-			let songArray;
-			try {
-				songArray = JSON.parse(row.songs);
-			} catch {
-				songArray = [];
-			}
-
-			const filtered = songArray.filter(id => {
-				const exists = checkSongExists.get(id);
-				return !!exists;
-			});
-
-			if (filtered.length !== songArray.length) {
-				const newSongsJson = JSON.stringify(filtered);
-				updatePlaylist.run(newSongsJson, row.id);
-				console.log(`Cleaned playlist ${row.id}, removed ${songArray.length - filtered.length} invalid IDs.`);
-			}
-		});
-	} catch (err) {
-		console.error("Error during database cleanup:", err.message);
-	}
-}
-
 function differentiateYouTubeLinks(url) {
 	const videoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/;
 	const playlistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
@@ -454,7 +411,15 @@ async function actuallyDownloadTheSong() {
 		stream
 			.pipe(fs.createWriteStream(outputFilePath))
 			.on("finish", async () => {
-				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Processing thumbnail...";
+				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Normalizing audio...";
+
+				try {
+					await normalizeAudio(outputFilePath);
+					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
+				} catch (error) {
+					console.error("Audio normalization failed:", error);
+					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
+				}
 
 				let duration = 0;
 				const metadata = await new Promise((resolve, reject) => {
@@ -667,6 +632,13 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 				continue;
 			}
 
+			try {
+				document.getElementById("downloadModalText").innerText = `Normalizing audio for song ${i + 1} of ${totalSongs}: ${songTitle}`;
+				await normalizeAudio(outputPath);
+			} catch (error) {
+				console.error(`Audio normalization failed for ${songTitle}:`, error);
+			}
+
 			let duration = 0;
 			const metadata = await new Promise((resolve, reject) => {
 				ffmpeg.ffprobe(outputPath, (err, meta) => {
@@ -716,12 +688,12 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 			}
 
 			completedDownloads++;
-			document.getElementById("downloadModalText").innerText = `Downloaded song ${i + 1} of ${totalSongs}. Progress: ${completedDownloads}/${totalSongs}`;
+			document.getElementById("downloadModalText").innerText = `Processed song ${i + 1} of ${totalSongs}. Progress: ${completedDownloads}/${totalSongs}`;
 
 			await sleep(1000);
 		}
 
-		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
+		document.getElementById("downloadModalText").innerText = "All songs downloaded and normalized successfully!";
 		document.getElementById("finalDownloadButton").disabled = false;
 
 		cleanDebugFiles();

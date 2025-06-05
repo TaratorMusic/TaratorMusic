@@ -1,3 +1,5 @@
+## Tips:
+Make sure to contain the app files and musics inside an SSD, which will improve app speeds tremendously.
 ## Windows:
 Download the .exe (Don't download the .blockmap, its used to update the app automatically). The .exe is a wizard installer where you can pick the install location, and it will create a desktop shortcut.
 ## Mac:

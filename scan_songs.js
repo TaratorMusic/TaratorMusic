@@ -29,10 +29,9 @@ function normalizeAudio(filePath) {
 	});
 }
 
-async function processAllFiles() {
+async function processAllFiles(skip) {
 	const allFiles = fs.readdirSync(musicFolder);
 	const tempFiles = allFiles.filter(f => f.startsWith(".normalized_") || f.startsWith("normalized_") || f.includes("temp_normalized"));
-
 	if (tempFiles.length > 0) {
 		console.log(`Cleaning up ${tempFiles.length} temporary files...`);
 		tempFiles.forEach(tempFile => {
@@ -49,85 +48,141 @@ async function processAllFiles() {
 		return f.endsWith(".mp3") && !f.startsWith(".") && !f.startsWith("normalized_") && !f.includes("temp_normalized");
 	});
 
-	console.log(`Found ${files.length} files to process`);
+	document.getElementById("stabiliseProgress").innerText = `Found ${files.length} files to process`;
+
+	let processedCount = 0;
+	const totalFiles = files.length;
 
 	for (const file of files) {
 		const fullPath = path.join(musicFolder, file);
-
 		if (!fs.statSync(fullPath).isFile()) continue;
 
 		const name = path.basename(file, path.extname(file));
-
 		const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_id = ?").get(name);
-		if (row && row.rms !== null && row.rms !== undefined) {
-			console.log(`Skipping ${name}, already processed.`);
+
+		if (row && row.rms !== null && row.rms !== undefined && skip == 1) {
+			processedCount++;
+			document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalFiles}] Skipping ${name}, already processed.`;
 			continue;
 		}
 
-		console.log(`Normalizing ${name}...`);
-
+		document.getElementById("stabiliseProgress").innerText = `[${processedCount + 1}/${totalFiles}] Normalizing ${getSongNameById(name)}...`;
 		try {
 			await normalizeAudio(fullPath);
-
 			const updateResult = musicsDb.prepare("UPDATE songs SET rms = ? WHERE song_id = ?").run(1, name);
-
+			processedCount++;
 			if (updateResult.changes > 0) {
-				console.log(`✅ Successfully normalized and marked ${name}`);
+				document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalFiles}] Successfully normalized and marked ${getSongNameById(name)}`;
 			} else {
-				console.warn(`⚠️ Failed to update database for ${name}`);
+				document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalFiles}] Failed to update database for ${getSongNameById(name)}`;
 			}
 		} catch (e) {
-			console.error(`❌ Failed to normalize ${name}:`, e.message);
+			processedCount++;
+			document.getElementById("stabiliseProgress").innerText = (`[${processedCount}/${totalFiles}] Failed to normalize ${getSongNameById(name)}:`, e.message);
 		}
 	}
 
-	console.log("✅ Audio normalization complete.");
+	document.getElementById("stabiliseProgress").innerText = "Audio normalization complete.";
 }
 
-async function updateSongLengths() {
-	const files = fs.readdirSync(musicFolder).filter(f => {
-		return f.toLowerCase().endsWith(".mp3") && !f.startsWith(".") && !f.startsWith("normalized_") && !f.includes("temp_normalized") && !f.includes("tarator");
+async function cleanDebugFiles() {
+	const regex = /^174655\d+-player-script\.js$/;
+	fs.readdirSync("./").forEach(file => {
+		if (regex.test(file)) {
+			fs.unlinkSync(path.join("./", file));
+			document.getElementById("cleanProgress").innerText = `Cleaning debug files...`;
+		}
 	});
 
-	const upsert = musicsDb.prepare(`
-    INSERT INTO songs (song_id, song_length)
-    VALUES (?, ?)
-    ON CONFLICT(song_id) DO UPDATE SET song_length = excluded.song_length
-  `);
+	try {
+		document.getElementById("cleanProgress").innerText = `Cleaning the database...`;
+		musicsDb.prepare(`DELETE FROM songs WHERE song_id LIKE '%.mp3%'`).run();
+		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
+		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
 
-	console.log(`Updating lengths for ${files.length} files`);
+		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
+		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
+		const updatePlaylist = playlistsDb.prepare(`UPDATE playlists SET songs = ? WHERE id = ?`);
 
-	for (const file of files) {
-		const songId = path.parse(file).name;
-		const fullPath = path.join(musicFolder, file);
+		selectPlaylists.forEach(row => {
+			let songArray;
+			try {
+				songArray = JSON.parse(row.songs);
+			} catch {
+				songArray = [];
+			}
 
+			const filtered = songArray.filter(id => {
+				const exists = checkSongExists.get(id);
+				return !!exists;
+			});
+
+			if (filtered.length !== songArray.length) {
+				const newSongsJson = JSON.stringify(filtered);
+				updatePlaylist.run(newSongsJson, row.id);
+			}
+		});
+	} catch (err) {
+		console.error("Error during database cleanup:", err.message);
+	}
+	document.getElementById("cleanProgress").innerText = `Cleaning complete!`;
+}
+
+async function processNewSongs() {
+	const files = fs.readdirSync(musicFolder);
+	for (const name of files) {
+		if (name.includes("tarator")) continue;
+
+		const fullPath = path.join(musicFolder, name);
 		if (!fs.statSync(fullPath).isFile()) continue;
 
-		let metadata;
+		const songName = name.replace(".mp3", "");
+		document.getElementById("folderProgress").innerText = `Found new song: ${songName}`;
+
+		const songId = generateId();
+
+		let duration = null;
 		try {
-			metadata = await new Promise((resolve, reject) => {
+			const metadata = await new Promise((resolve, reject) => {
 				ffmpeg.ffprobe(fullPath, (err, meta) => {
 					if (err) return reject(err);
 					resolve(meta);
 				});
 			});
-		} catch {
-			console.warn(`Failed ffprobe for: ${file}`);
-			continue;
+
+			if (metadata.format && metadata.format.duration) {
+				duration = Math.round(metadata.format.duration);
+			}
+			document.getElementById("folderProgress").innerText += `Song length: ${duration} seconds`;
+		} catch (error) {
+			document.getElementById("folderProgress").innerText = (`Failed to get duration for ${songName}:`, error.message);
 		}
 
-		if (!metadata.format || !metadata.format.duration) {
-			console.warn(`No duration for: ${file}`);
-			continue;
+		fs.renameSync(fullPath, path.join(musicFolder, songId));
+
+		const oldThumbnailPath = path.join(thumbnailFolder, `${name}.jpg`);
+		if (fs.existsSync(oldThumbnailPath)) {
+			const newThumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
+			fs.renameSync(oldThumbnailPath, newThumbnailPath);
 		}
 
-		const duration = Math.round(metadata.format.duration);
 		try {
-			upsert.run(songId, duration);
-		} catch (e) {
-			console.error(`DB insert failed for "${file}": ${e.message}`);
+			musicsDb
+				.prepare(
+					`
+					INSERT INTO songs (
+						song_id, song_name, song_url, song_thumbnail,
+						song_length, seconds_played, times_listened, rms
+					) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)
+				`
+				)
+				.run(songId, songName, null, newThumbnailName, duration);
+
+			document.getElementById("folderProgress").innerText = `Added ${songName} to database`;
+		} catch (error) {
+			document.getElementById("folderProgress").innerText = (`Failed to add ${songName} to database:`, error.message);
 		}
 	}
 
-	console.log("✅ Song length update complete.");
+	document.getElementById("folderProgress").innerText = "Folder check complete!";
 }

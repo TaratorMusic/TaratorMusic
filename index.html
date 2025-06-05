@@ -227,6 +227,22 @@
 					Scan the folder for new songs:
 					<button onclick="processNewSongs()">Check</button>
 				</div>
+				<div class="settingsflexrow">
+					Stabilise all songs volumes:
+					<button onclick="processAllFiles(0)">Stabilise All</button>
+					<button onclick="processAllFiles(1)">Stabilise All But Skip Already Completed Ones</button>
+					<div class="settingsflexrow" id="stabiliseProgress">Progress: Didn't start</div>
+				</div>
+				<div class="settingsflexrow">
+					Remove all broken files from folders
+					<button onclick="cleanDebugFiles()">Clean</button>
+					<div class="settingsflexrow" id="cleanProgress">Progress: Didn't start</div>
+				</div>
+				<div class="settingsflexrow">
+					Check Folder For New Songs
+					<button onclick="processNewSongs()">Check</button>
+					<div class="settingsflexrow" id="folderProgress">Progress: Didn't start</div>
+				</div>
 				<div class="settingsflexrow">Move App Folders: Coming Soon</div>
 				<div class="settingsflexrow">Package Data: Coming Soon</div>
 				<div class="settingsflexrow">Factory Reset: Coming Soon</div>
