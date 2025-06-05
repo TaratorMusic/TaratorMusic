@@ -16,6 +16,7 @@ config/
 *.spec
 *.mp3
 *.mp4
+*-player-script.js
 
 .npmrc
 .prettierrc
