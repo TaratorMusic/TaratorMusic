@@ -411,7 +411,7 @@ async function actuallyDownloadTheSong() {
 		stream
 			.pipe(fs.createWriteStream(outputFilePath))
 			.on("finish", async () => {
-				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Normalizing audio...";
+				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
 
 				try {
 					await normalizeAudio(outputFilePath);
@@ -633,7 +633,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 			}
 
 			try {
-				document.getElementById("downloadModalText").innerText = `Normalizing audio for song ${i + 1} of ${totalSongs}: ${songTitle}`;
+				document.getElementById("downloadModalText").innerText = `Stabilising volume for song ${i + 1} of ${totalSongs}: ${songTitle}`;
 				await normalizeAudio(outputPath);
 			} catch (error) {
 				console.error(`Audio normalization failed for ${songTitle}:`, error);

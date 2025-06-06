@@ -120,19 +120,21 @@ const defaultSettings = {
 };
 
 function initializeSettingsDatabase() {
-	let row;
+	let tableExists = false;
+
 	try {
-		row = settingsDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
+		const row = settingsDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
+		tableExists = !!row;
 	} catch (err) {
 		console.error("Error checking for settings table:", err.message);
 		return;
 	}
 
-	if (!row) {
+	if (!tableExists) {
 		console.log("Settings table not found. Creating...");
-
-		let createTableSQL = `CREATE TABLE settings (`;
 		const keys = Object.keys(defaultSettings);
+		let createTableSQL = `CREATE TABLE settings (`;
+
 		keys.forEach((key, index) => {
 			const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
 			createTableSQL += `${key} ${columnType} DEFAULT '${defaultSettings[key]}'`;
@@ -140,45 +142,129 @@ function initializeSettingsDatabase() {
 				createTableSQL += ",\n";
 			}
 		});
-
 		createTableSQL += ")";
 
 		try {
 			settingsDb.prepare(createTableSQL).run();
 			console.log("Settings table created successfully.");
-			insertDefaultSettings();
 		} catch (err) {
 			console.error("Error creating settings table:", err.message);
+			return;
 		}
 	} else {
 		console.log("Settings table exists. Checking columns...");
-		let columns;
+
 		try {
-			columns = settingsDb.prepare("PRAGMA table_info(settings)").all();
+			const columns = settingsDb.prepare("PRAGMA table_info(settings)").all();
+			const existingColumns = columns.map(col => col.name);
+			const missingColumns = Object.keys(defaultSettings).filter(key => !existingColumns.includes(key));
+
+			if (missingColumns.length > 0) {
+				console.log("Adding missing columns...");
+				missingColumns.forEach(key => {
+					const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
+					try {
+						settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
+						console.log(`Added missing column: ${key}`);
+					} catch (err) {
+						console.error(`Error adding column ${key}:`, err.message);
+					}
+				});
+			}
 		} catch (err) {
 			console.error("Error fetching table info:", err.message);
 			return;
 		}
+	}
 
-		const existingColumns = columns.map(col => col.name);
-		const missingColumns = Object.keys(defaultSettings).filter(key => !existingColumns.includes(key));
+	let settingsRow;
+	try {
+		settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
+	} catch (err) {
+		console.error("Error retrieving settings:", err.message);
+		return;
+	}
 
-		if (missingColumns.length > 0) {
-			console.log("Adding missing columns...");
-			missingColumns.forEach(key => {
-				let columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
+	if (!settingsRow) {
+		console.log("No settings found, inserting defaults.");
+		const columns = Object.keys(defaultSettings).join(", ");
+		const placeholders = Object.keys(defaultSettings)
+			.map(() => "?")
+			.join(", ");
+		const values = Object.values(defaultSettings);
+		const insertSQL = `INSERT INTO settings (${columns}) VALUES (${placeholders})`;
+
+		try {
+			settingsDb.prepare(insertSQL).run(values);
+			console.log("Default settings inserted.");
+			settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
+		} catch (err) {
+			console.error("Error inserting default settings:", err.message);
+			return;
+		}
+	} else {
+		let needsUpdate = false;
+		Object.keys(defaultSettings).forEach(key => {
+			if (settingsRow[key] === null || settingsRow[key] === undefined) {
+				console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
 				try {
-					settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
-					console.log(`Added missing column: ${key}`);
+					settingsDb.prepare(`UPDATE settings SET ${key} = ?`).run(defaultSettings[key]);
+					settingsRow[key] = defaultSettings[key];
+					needsUpdate = true;
 				} catch (err) {
-					console.error(`Error adding column ${key}:`, err.message);
+					console.error(`Error setting default for ${key}:`, err.message);
 				}
-			});
+			}
+		});
+
+		if (needsUpdate) {
+			console.log("Updated missing default values.");
 		}
 	}
 
-	ensureDefaultValues();
-	loadSettings();
+	console.log("Settings loaded:", settingsRow);
+
+	document.getElementById("settingsRewind").innerHTML = settingsRow.key_Rewind;
+	document.getElementById("settingsPrevious").innerHTML = settingsRow.key_Previous;
+	document.getElementById("settingsPlayPause").innerHTML = settingsRow.key_PlayPause;
+	document.getElementById("settingsNext").innerHTML = settingsRow.key_Next;
+	document.getElementById("settingsSkip").innerHTML = settingsRow.key_Skip;
+	document.getElementById("settingsAutoplay").innerHTML = settingsRow.key_Autoplay;
+	document.getElementById("settingsShuffle").innerHTML = settingsRow.key_Shuffle;
+	document.getElementById("settingsMute").innerHTML = settingsRow.key_Mute;
+	document.getElementById("settingsSpeed").innerHTML = settingsRow.key_Speed;
+	document.getElementById("settingsLoop").innerHTML = settingsRow.key_Loop;
+
+	key_Rewind = settingsRow.key_Rewind;
+	key_Previous = settingsRow.key_Previous;
+	key_PlayPause = settingsRow.key_PlayPause;
+	key_Next = settingsRow.key_Next;
+	key_Skip = settingsRow.key_Skip;
+	key_Autoplay = settingsRow.key_Autoplay;
+	key_Shuffle = settingsRow.key_Shuffle;
+	key_Mute = settingsRow.key_Mute;
+	key_Speed = settingsRow.key_Speed;
+	key_Loop = settingsRow.key_Loop;
+	totalTimeSpent = settingsRow.totalTimeSpent;
+	rememberautoplay = settingsRow.rememberautoplay;
+	remembershuffle = settingsRow.remembershuffle;
+	rememberloop = settingsRow.rememberloop;
+	rememberspeed = settingsRow.rememberspeed;
+	maximumPreviousSongCount = settingsRow.maximumPreviousSongCount;
+	volume = settingsRow.volume;
+	dividevolume = settingsRow.dividevolume;
+	displayCount = settingsRow.displayCount;
+	activateRms = settingsRow.activateRms;
+	lazyLoadSize = settingsRow.lazyLoadSize;
+
+	updateTimer();
+	rememberautoplay && toggleAutoplay();
+	remembershuffle && toggleShuffle();
+	rememberloop && loop();
+	document.getElementById("arrayLength").value = maximumPreviousSongCount;
+	volumeControl.value = volume;
+	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
+
 	setupLazyBackgrounds();
 	document.getElementById("main-menu").click();
 }
@@ -238,147 +324,6 @@ function initializePlaylistsDatabase() {
 		console.error("Error initializing playlists database:", err);
 		return [];
 	}
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-	initializeSettingsDatabase();
-	initializeMusicsDatabase();
-	initializePlaylistsDatabase();
-
-	const divideVolumeSelect = document.getElementById("dividevolume");
-	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
-		if (divideVolumeSelect.options[i].value == dividevolume) {
-			divideVolumeSelect.selectedIndex = i;
-			break;
-		}
-	}
-
-	const activateRmsSelect = document.getElementById("activateRms");
-	for (let i = 0; i < activateRmsSelect.options.length; i++) {
-		if (activateRmsSelect.options[i].value == activateRms) {
-			activateRmsSelect.selectedIndex = i;
-			break;
-		}
-	}
-
-	const lazyLoadSizeSelect = document.getElementById("lazyLoadSize");
-	for (let i = 0; i < lazyLoadSizeSelect.options.length; i++) {
-		if (lazyLoadSizeSelect.options[i].value == lazyLoadSize) {
-			lazyLoadSizeSelect.selectedIndex = i;
-			break;
-		}
-	}
-});
-
-function insertDefaultSettings() {
-	const columns = Object.keys(defaultSettings).join(", ");
-	const placeholders = Object.keys(defaultSettings)
-		.map(() => "?")
-		.join(", ");
-	const values = Object.values(defaultSettings);
-	const insertSQL = `INSERT INTO settings (${columns}) VALUES (${placeholders})`;
-
-	try {
-		settingsDb.prepare(insertSQL).run(values);
-		console.log(`Default settings inserted.`);
-		loadSettings();
-	} catch (err) {
-		console.error("Error inserting default settings:", err.message);
-	}
-}
-
-function loadSettings() {
-	let row;
-	try {
-		row = settingsDb.prepare("SELECT * FROM settings").get();
-	} catch (err) {
-		console.error("Error retrieving settings:", err.message);
-		return;
-	}
-
-	if (!row) {
-		console.log("No settings found, inserting defaults.");
-		insertDefaultSettings();
-		return;
-	}
-
-	Object.keys(defaultSettings).forEach(key => {
-		if (row[key] === null || row[key] === undefined) {
-			console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
-			updateDatabase(key, defaultSettings[key], settingsDb);
-			row[key] = defaultSettings[key];
-		}
-	});
-
-	console.log("Settings loaded:", row);
-
-	document.getElementById("settingsRewind").innerHTML = row.key_Rewind;
-	document.getElementById("settingsPrevious").innerHTML = row.key_Previous;
-	document.getElementById("settingsPlayPause").innerHTML = row.key_PlayPause;
-	document.getElementById("settingsNext").innerHTML = row.key_Next;
-	document.getElementById("settingsSkip").innerHTML = row.key_Skip;
-	document.getElementById("settingsAutoplay").innerHTML = row.key_Autoplay;
-	document.getElementById("settingsShuffle").innerHTML = row.key_Shuffle;
-	document.getElementById("settingsMute").innerHTML = row.key_Mute;
-	document.getElementById("settingsSpeed").innerHTML = row.key_Speed;
-	document.getElementById("settingsLoop").innerHTML = row.key_Loop;
-
-	key_Rewind = row.key_Rewind;
-	key_Previous = row.key_Previous;
-	key_PlayPause = row.key_PlayPause;
-	key_Next = row.key_Next;
-	key_Skip = row.key_Skip;
-	key_Autoplay = row.key_Autoplay;
-	key_Shuffle = row.key_Shuffle;
-	key_Mute = row.key_Mute;
-	key_Speed = row.key_Speed;
-	key_Loop = row.key_Loop;
-
-	totalTimeSpent = row.totalTimeSpent;
-	rememberautoplay = row.rememberautoplay;
-	remembershuffle = row.remembershuffle;
-	rememberloop = row.rememberloop;
-	rememberspeed = row.rememberspeed;
-	maximumPreviousSongCount = row.maximumPreviousSongCount;
-	volume = row.volume;
-	dividevolume = row.dividevolume;
-	displayCount = row.displayCount;
-	activateRms = row.activateRms;
-	lazyLoadSize = row.lazyLoadSize;
-
-	updateTimer();
-	rememberautoplay && toggleAutoplay();
-	remembershuffle && toggleShuffle();
-	rememberloop && loop();
-	document.getElementById("arrayLength").value = maximumPreviousSongCount;
-	volumeControl.value = volume;
-	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
-}
-
-function ensureDefaultValues() {
-	let row;
-	try {
-		row = settingsDb.prepare("SELECT * FROM settings").get();
-	} catch (err) {
-		console.error("Error retrieving settings:", err.message);
-		return;
-	}
-
-	if (!row) {
-		insertDefaultSettings();
-		return;
-	}
-
-	Object.keys(defaultSettings).forEach(key => {
-		if (row[key] === null || row[key] === undefined) {
-			try {
-				settingsDb.prepare(`UPDATE settings SET ${key} = ?`).run(defaultSettings[key]);
-				console.log(`Set missing default for ${key}`);
-			} catch (err) {
-				console.error(`Error setting default for ${key}:`, err.message);
-			}
-		}
-	});
 }
 
 function updateDatabase(name, option, db) {
@@ -1616,4 +1561,34 @@ document.getElementById("version").addEventListener("click", () => {
 document.getElementById("installBtn").addEventListener("click", () => {
 	document.getElementById("progressContainer").style.display = "block";
 	ipcRenderer.send("download-update");
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+	initializeSettingsDatabase();
+	initializeMusicsDatabase();
+	initializePlaylistsDatabase();
+
+	const divideVolumeSelect = document.getElementById("dividevolume");
+	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
+		if (divideVolumeSelect.options[i].value == dividevolume) {
+			divideVolumeSelect.selectedIndex = i;
+			break;
+		}
+	}
+
+	const activateRmsSelect = document.getElementById("activateRms");
+	for (let i = 0; i < activateRmsSelect.options.length; i++) {
+		if (activateRmsSelect.options[i].value == activateRms) {
+			activateRmsSelect.selectedIndex = i;
+			break;
+		}
+	}
+
+	const lazyLoadSizeSelect = document.getElementById("lazyLoadSize");
+	for (let i = 0; i < lazyLoadSizeSelect.options.length; i++) {
+		if (lazyLoadSizeSelect.options[i].value == lazyLoadSize) {
+			lazyLoadSizeSelect.selectedIndex = i;
+			break;
+		}
+	}
 });
