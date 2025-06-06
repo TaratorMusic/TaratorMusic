@@ -94,6 +94,7 @@ let dividevolume;
 let displayCount;
 let activateRms;
 let lazyLoadSize;
+let background;
 
 const defaultSettings = {
 	totalTimeSpent: 0,
@@ -117,6 +118,7 @@ const defaultSettings = {
 	displayCount: 50,
 	activateRms: 1,
 	lazyLoadSize: 100,
+	background: "blue",
 };
 
 function initializeSettingsDatabase() {
@@ -256,6 +258,7 @@ function initializeSettingsDatabase() {
 	displayCount = settingsRow.displayCount;
 	activateRms = settingsRow.activateRms;
 	lazyLoadSize = settingsRow.lazyLoadSize;
+	background = settingsRow.background;
 
 	updateTimer();
 	rememberautoplay && toggleAutoplay();
@@ -1522,6 +1525,22 @@ function createAppThumbnailsFolder() {
 	alert("App thumbnails installed. App restart required for the effects.");
 }
 
+function changeBackground(color) {
+	background = color;
+	updateDatabase("background", color, settingsDb);
+	if (background === "blue") {
+		document.body.className = "bg-gradient-blue";
+	} else if (background === "red") {
+		document.body.className = "bg-gradient-red";
+	} else if (background === "green") {
+		document.body.className = "bg-gradient-green";
+	} else if (background === "purple") {
+		document.body.className = "bg-gradient-purple";
+	} else if (background === "black") {
+		document.body.className = "bg-gradient-black";
+	}
+}
+
 ipcRenderer.on("playlist-created", () => {
 	closeModal();
 });
@@ -1567,6 +1586,18 @@ document.addEventListener("DOMContentLoaded", function () {
 	initializeSettingsDatabase();
 	initializeMusicsDatabase();
 	initializePlaylistsDatabase();
+
+	if (background === "blue") {
+		document.body.className = "bg-gradient-blue";
+	} else if (background === "red") {
+		document.body.className = "bg-gradient-red";
+	} else if (background === "green") {
+		document.body.className = "bg-gradient-green";
+	} else if (background === "purple") {
+		document.body.className = "bg-gradient-purple";
+	} else if (background === "black") {
+		document.body.className = "bg-gradient-black";
+	}
 
 	const divideVolumeSelect = document.getElementById("dividevolume");
 	for (let i = 0; i < divideVolumeSelect.options.length; i++) {

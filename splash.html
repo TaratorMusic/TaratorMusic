@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			@keyframes marginShift {
+				0% {
+					margin-left: 15vw;
+					margin-right: 0vw;
+				}
+				100% {
+					margin-left: 0vw;
+					margin-right: 15vw;
+				}
+			}
+			body {
+				margin: 0;
+				padding: 0;
+				background: #282c34;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				color: white;
+				font-family: sans-serif;
+			}
+			#mainmenulogo {
+				width: 400px;
+				height: 400px;
+				background-image: url("app_thumbnails/tarator1024_icon.png");
+				background-size: contain;
+				background-repeat: no-repeat;
+				background-position: center;
+				margin: 40px 0;
+				animation: marginShift 1.5s infinite alternate ease-in-out;
+			}
+			#mainmenuapptext {
+				margin-bottom: 40px;
+				font-size: 40px;
+			}
+			.loader {
+				width: 40px;
+				height: 40px;
+				border: 5px solid white;
+				border-top: 5px solid transparent;
+				border-radius: 50%;
+				animation: spin 1s linear infinite;
+			}
+			@keyframes spin {
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div id="mainmenulogo"></div>
+		<div id="mainmenuapptext">TaratorMusic</div>
+		<div class="loader"></div>
+	</body>
+</html>

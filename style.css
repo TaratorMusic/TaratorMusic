@@ -76,11 +76,55 @@ body {
 	display: flex;
 	font-family: Verdana, sans-serif;
 	margin: 0;
-	animation: gradientAnimation 5s ease infinite;
 	background: linear-gradient(135deg, #0934b5, #2575fc);
 	background-size: 400% 400%;
 	height: 100%;
 	min-height: 100vh;
+}
+
+.bg-gradient-blue {
+	background: linear-gradient(135deg, #0934b5, #2575fc);
+	background-size: 400% 400%;
+	background-position: 0% 0%;
+	background-repeat: no-repeat;
+	animation: gradientAnimation 10s ease infinite;
+	color: white !important;
+}
+
+.bg-gradient-red {
+	background: linear-gradient(135deg, #4b0000, #800000);
+	background-size: 400% 400%;
+	background-position: 0% 0%;
+	background-repeat: no-repeat;
+	animation: gradientAnimation 10s ease infinite;
+	color: white !important;
+}
+
+.bg-gradient-green {
+	background: linear-gradient(135deg, #004000, #008000);
+	background-size: 400% 400%;
+	background-position: 0% 0%;
+	background-repeat: no-repeat;
+	animation: gradientAnimation 10s ease infinite;
+	color: white !important;
+}
+
+.bg-gradient-purple {
+	background: linear-gradient(135deg, #4b3b85, #7a67cc);
+	background-size: 400% 400%;
+	background-position: 0% 0%;
+	background-repeat: no-repeat;
+	animation: gradientAnimation 10s ease infinite;
+	color: white !important;
+}
+
+.bg-gradient-black {
+	background: linear-gradient(135deg, #000000, #2a2a2a);
+	background-size: 400% 400%;
+	background-position: 0% 0%;
+	background-repeat: no-repeat;
+	animation: gradientAnimation 10s ease infinite;
+	color: white !important;
 }
 
 body::-webkit-scrollbar {
@@ -137,7 +181,6 @@ body::-webkit-scrollbar {
 	text-align: center;
 	cursor: pointer;
 	background-color: #00001a;
-	color: #f5f5f5;
 	border: 0.1vw solid #444;
 	display: flex;
 	justify-content: center;
@@ -251,7 +294,6 @@ audio {
 	left: 50%;
 	transform: translate(-50%, -50%);
 	background-color: rgba(0, 0, 0, 0.75);
-	color: white;
 	padding: 5px 10px;
 	font-weight: bold;
 	border-radius: 10px;
@@ -267,7 +309,6 @@ audio {
 	width: 100vw;
 	height: 8vh;
 	background-color: #333;
-	color: white;
 	border-top: 1px solid black;
 }
 
@@ -280,7 +321,6 @@ audio {
 	margin-bottom: calc(8vh - 0.1vw);
 	margin-left: 0.5vw;
 	background-color: #333;
-	color: white;
 	padding: 10px;
 	display: flex;
 	align-items: center;
@@ -313,7 +353,6 @@ audio {
 	top: 5px;
 	left: 50%;
 	transform: translateX(-50%);
-	color: white;
 	padding: 5px 10px;
 	border-radius: 5px;
 	font-size: 14px;
@@ -327,7 +366,6 @@ audio {
 	position: absolute;
 	bottom: 6px;
 	left: 6px;
-	color: white;
 	background-color: rgba(0, 0, 0, 0.6);
 	padding: 5px 10px;
 	border-radius: 5px;
@@ -344,7 +382,6 @@ audio {
 	height: 40px;
 	bottom: 5px;
 	right: 50px;
-	color: white;
 	background-color: rgba(0, 0, 0, 0.6);
 	border-radius: 5px;
 	white-space: nowrap;
@@ -359,7 +396,6 @@ audio {
 	height: 40px;
 	bottom: 5px;
 	right: 5px;
-	color: white;
 	background-color: rgba(0, 0, 0, 0.6);
 	border-radius: 5px;
 	white-space: nowrap;
@@ -377,7 +413,6 @@ audio {
 
 #music-controls button {
 	background-color: transparent;
-	color: white;
 	border: none;
 	cursor: pointer;
 }
@@ -405,7 +440,6 @@ audio {
 #downloadResultDiv {
 	width: 30vw;
 	height: 30vh;
-	color: white;
 	border: 0.1vw solid white;
 	padding: 1vw;
 }
@@ -429,13 +463,11 @@ audio {
 	height: 80vh;
 	margin: 10vh 0 0 10vw;
 	background-color: rgba(0, 0, 0, 0.8);
-	color: white;
 	display: flex;
 	flex-direction: column;
 }
 
 .modalTitle {
-	color: #aaa;
 	width: 75vw;
 	height: 3vw;
 	font-weight: bold;
@@ -444,7 +476,6 @@ audio {
 }
 
 .close {
-	color: #aaa;
 	width: 3vw;
 	height: 3vw;
 	font-weight: bold;
@@ -486,12 +517,10 @@ audio {
 	grid-auto-rows: 200px;
 	gap: 10px;
 	align-content: end;
-	color: white;
 }
 
 #playlists-content {
 	display: none;
-	color: white;
 	grid-auto-rows: 200px;
 	gap: 10px;
 	align-content: end;
@@ -499,7 +528,6 @@ audio {
 
 #settings-content {
 	display: none;
-	color: white;
 	text-align: left;
 	align-items: flex-start;
 	padding-left: 5vw;
@@ -672,7 +700,6 @@ audio {
 #mainmenuapptext {
 	margin-bottom: calc(50vh - 20vw);
 	font-size: 5vw;
-	color: white;
 }
 
 .mainmenusquares {
@@ -769,6 +796,13 @@ input:checked + .slider:before {
 	gap: 1vw;
 }
 
+.settingsflexrow * {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+}
+
 .settingsKeybinds {
 	display: flex;
 	align-items: flex-start;
@@ -819,7 +853,6 @@ input:checked + .slider:before {
 	position: fixed;
 	background-color: #333;
 	border-radius: 5px;
-	color: white;
 	padding: 8px 10px;
 	width: fit-content;
 	top: 10px;

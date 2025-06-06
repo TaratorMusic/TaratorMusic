@@ -16,11 +16,23 @@ autoUpdater.autoInstallOnAppQuit = false;
 let mainWindow;
 
 function createWindow() {
+	const splash = new BrowserWindow({
+		width: 1600,
+		height: 850,
+		frame: false,
+		transparent: true,
+		alwaysOnTop: true,
+		resizable: false,
+	});
+
+	splash.loadFile("splash.html");
+
 	mainWindow = new BrowserWindow({
 		width: 1600,
 		height: 850,
 		title: "TaratorMusic",
 		icon: path.join(__dirname, "app_thumbnails/tarator16_icon.png"),
+		show: false,
 		webPreferences: {
 			contextIsolation: false,
 			nodeIntegration: true,
@@ -30,7 +42,13 @@ function createWindow() {
 
 	mainWindow.loadFile("index.html");
 
+	mainWindow.once("ready-to-show", () => {
+		splash.destroy();
+		mainWindow.show();
+	});
+
 	ipcMain.handle("get-app-version", () => app.getVersion());
+
 	ipcMain.handle("get-app-base-path", () => {
 		if (process.env.APPIMAGE) {
 			return path.dirname(process.env.APPIMAGE);
