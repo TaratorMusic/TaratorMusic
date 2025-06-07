@@ -10,20 +10,16 @@ function normalizeAudio(filePath) {
 		const tempPath = path.join(path.dirname(filePath), `normalized_${Date.now()}.mp3`);
 
 		ffmpeg(filePath)
-			.audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json")
+			.audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11:linear=true:print_format=none")
 			.audioCodec("libmp3lame")
-			.format("mp3")
+			.outputOptions("-b:a", "192k")
 			.on("error", err => {
 				if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
 				reject(err);
 			})
 			.on("end", () => {
-				try {
-					fs.renameSync(tempPath, filePath);
-					resolve(true);
-				} catch (err) {
-					reject(err);
-				}
+				fs.renameSync(tempPath, filePath);
+				resolve(true);
 			})
 			.save(tempPath);
 	});
