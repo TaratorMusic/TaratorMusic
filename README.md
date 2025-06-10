@@ -8,7 +8,7 @@ Aren't you tired of listening to same ten songs in your youtube or spotify playl
 
 Vanilla HTML-CSS-JS for the code, 
 
-ElectronJS to make it a desktop app, 
+Electron to make it a desktop app, 
 
 @distube/ytdl-core and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists.
 
