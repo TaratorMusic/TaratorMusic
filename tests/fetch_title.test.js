@@ -1,20 +1,17 @@
-const { Innertube } = require("youtubei.js");
+const ytdl = require("@distube/ytdl-core");
 
 describe("YouTube Link Info", () => {
 	jest.setTimeout(30000);
 
 	test("Should fetch video info successfully", async () => {
 		try {
-			let youtube = await Innertube.create();
-
 			const videoId = "dQw4w9WgXcQ";
-			const videoInfo2 = await youtube.getInfo(videoId);
-			const videoInfo = videoInfo2.basic_info;
-			const title = videoInfo.title;
+			const info = await ytdl.getInfo(videoId);
+			const title = info.videoDetails.title;
 
 			console.log(title);
 
-			expect(videoInfo).toBeDefined();
+			expect(info).toBeDefined();
 			expect(title).toBe("Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)");
 		} catch (error) {
 			throw error;
