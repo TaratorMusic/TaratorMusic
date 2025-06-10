@@ -26,18 +26,14 @@ const path = require("path");
 
 describe("ytdl-core full download test", () => {
 	const videoId = "dQw4w9WgXcQ";
-	const outputFile = path.resolve(__dirname, "test-audio.mp4");
+	const outputFile = path.resolve(__dirname, "testAudio.mp3");
 
 	jest.setTimeout(120000);
 
 	test("should download full best audio and save to file", done => {
 		const stream = ytdl(videoId, {
 			quality: "highestaudio",
-			requestOptions: {
-				headers: {
-					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-				},
-			},
+			filter: "audioonly",
 		});
 
 		const writeStream = fs.createWriteStream(outputFile);

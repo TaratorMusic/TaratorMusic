@@ -1,6 +1,5 @@
 const fetch = require("node-fetch");
-const ytdl = require("@distube/ytdl-core");
-const ytpl = require("@distube/ytpl");
+const { fork } = require("child_process");
 
 function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -76,9 +75,19 @@ function checkNameThumbnail() {
 
 async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
 	try {
-		const info = await ytdl.getInfo(videoUrl);
-		const videoTitle = info.videoDetails.title;
-		const thumbnailUrl = info.videoDetails.thumbnails[info.videoDetails.thumbnails.length - 1].url;
+		function fetchVideoInfoInChild(videoUrl) {
+			return new Promise((resolve, reject) => {
+				const worker = fork(path.join(__dirname, "child-processes", "fetch_title.js"), [videoUrl]);
+				worker.on("message", data => {
+					if (data.error) reject(new Error(data.error));
+					else resolve(data);
+					worker.kill();
+				});
+				worker.on("error", reject);
+			});
+		}
+
+		const { videoTitle, thumbnailUrl } = await fetchVideoInfoInChild(videoUrl);
 
 		const downloadPlaceofSongs = document.createElement("div");
 		downloadPlaceofSongs.className = "flexrow";
@@ -136,22 +145,28 @@ async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBott
 	} catch (error) {
 		console.error("Error in processVideoLink:", error);
 		document.getElementById("downloadFirstButton").disabled = false;
-		if (error.message.includes("your age")) alert("You can't download this song because it is age limited.");
-		if (error.message.includes("private video")) alert("You can't download this song because it is a private video.");
+		if (error.message.includes("age")) alert("You can't download this song because it is age restricted.");
+		if (error.message.includes("private")) alert("You can't download this song because it is a private video.");
 		downloadModalText.innerHTML = ``;
 	}
 }
 
 async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
 	try {
-		const playlist = await ytpl(playlistUrl);
-		const playlistTitle = playlist.title;
-		const playlistThumbnail = playlist.thumbnail.url;
-		const videoItems = playlist.items;
-
-		if (videoItems.length > 10) {
-			downloadModalText.innerHTML = "Checking... Might take long...";
+		function fetchPlaylistData(playlistUrl) {
+			console.log("this ran");
+			return new Promise((resolve, reject) => {
+				const worker = fork(path.join(__dirname, "child-processes", "fetch_playlist.js"), [playlistUrl]);
+				console.log(worker);
+				worker.on("message", ({ data, error }) => {
+					if (error) reject(new Error(error));
+					else resolve(data);
+					worker.kill();
+				});
+				worker.on("error", reject);
+			});
 		}
+		const { playlistTitle, playlistThumbnail, videoItems } = await fetchPlaylistData(playlistUrl);
 
 		const playlistTitles = [playlistTitle, ...videoItems.map(item => item.title)];
 		const videoLinks = videoItems.map(item => item.url);
@@ -344,26 +359,24 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		let videoId = extractVideoId(imageUrl);
 
 		if (videoId) {
-			try {
-				const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-				const info = await ytdl.getBasicInfo(youtubeUrl);
-				const thumbnails = info.videoDetails.thumbnails;
+			await new Promise((resolve, reject) => {
+				const child = fork(path.resolve(__dirname, "child-processes", "download_thumbnail.js"), [videoId, thumbnailPath], { stdio: ["inherit", "inherit", "inherit", "ipc"] });
 
-				if (thumbnails && thumbnails.length > 0) {
-					const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
-
-					const response = await fetch(thumbnailUrl);
-					if (response.ok) {
-						const arrayBuffer = await response.arrayBuffer();
-						const buffer = Buffer.from(arrayBuffer);
-						fs.writeFileSync(thumbnailPath, buffer);
-						console.log(`YouTube fallback method succeeded for ${songId}`);
-						return true;
+				child.on("message", msg => {
+					if (msg.done) {
+						console.log("Thumbnail fetch succeeded");
+						resolve();
 					}
-				}
-			} catch (ytError) {
-				console.error(`YouTube fallback failed for ${songId}: ${ytError.message}`);
-			}
+					if (msg.error) {
+						console.error("Thumbnail fetch error:", msg.error);
+						reject(new Error(msg.error));
+					}
+				});
+
+				child.on("exit", code => {
+					if (code !== 0) reject(new Error(`Child exited with code ${code}`));
+				});
+			});
 		}
 
 		try {
@@ -400,17 +413,47 @@ async function actuallyDownloadTheSong() {
 
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
-		const stream = ytdl(firstInput, { filter: "audioonly", quality: "highestaudio" });
+		try {
+			const child = fork("child-processes/download_audio.js", [firstInput, outputFilePath]);
 
-		stream.on("progress", (chunkLength, downloaded, total) => {
-			const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-			const totalMB = (total / (1024 * 1024)).toFixed(2);
-			document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB / ${totalMB} MB`;
-		});
+			await new Promise((resolve, reject) => {
+				child.on("message", msg => {
+					if (msg.error) {
+						document.getElementById("downloadModalText").innerText = `Error downloading song: ${msg.error}`;
+						document.getElementById("finalDownloadButton").disabled = false;
+						reject(new Error(msg.error));
+					} else if (msg.progress) {
+						const { downloaded, total } = msg.progress;
+						if (total > 0) {
+							const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+							const totalMB = (total / (1024 * 1024)).toFixed(2);
+							document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB / ${totalMB} MB`;
+						}
+					} else if (msg.done) {
+						resolve();
+					}
+				});
 
-		stream
-			.pipe(fs.createWriteStream(outputFilePath))
-			.on("finish", async () => {
+				child.on("error", err => {
+					reject(err);
+				});
+			});
+
+			let downloaded = 0;
+			let total = format.content_length || 0;
+
+			stream.on("data", chunk => {
+				downloaded += chunk.length;
+				if (total > 0) {
+					const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+					const totalMB = (total / (1024 * 1024)).toFixed(2);
+					document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB / ${totalMB} MB`;
+				}
+			});
+
+			stream.pipe(writeStream);
+
+			writeStream.on("finish", async () => {
 				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
 
 				try {
@@ -443,9 +486,9 @@ async function actuallyDownloadTheSong() {
 							musicsDb
 								.prepare(
 									`INSERT INTO songs (
-                                song_id, song_name, song_url, song_thumbnail,
-                                song_length, seconds_played, times_listened, rms
-                            ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
+                song_id, song_name, song_url, song_thumbnail,
+                song_length, seconds_played, times_listened, rms
+              ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
 								)
 								.run(songID, songName, songUrl, songThumbnail, duration);
 						} catch (err) {
@@ -454,7 +497,6 @@ async function actuallyDownloadTheSong() {
 
 						document.getElementById("downloadModalText").innerText = "Download complete!";
 						document.getElementById("finalDownloadButton").disabled = false;
-
 						cleanDebugFiles();
 						processAllFiles();
 					})
@@ -462,11 +504,16 @@ async function actuallyDownloadTheSong() {
 						document.getElementById("downloadModalText").innerText = `Error processing thumbnail: ${error.message}`;
 						document.getElementById("finalDownloadButton").disabled = false;
 					});
-			})
-			.on("error", error => {
+			});
+
+			writeStream.on("error", error => {
 				document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 				document.getElementById("finalDownloadButton").disabled = false;
 			});
+		} catch (error) {
+			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
+			document.getElementById("finalDownloadButton").disabled = false;
+		}
 	} else if (linkType === "playlist") {
 		const playlistName = document.getElementById("playlistTitle0").value.trim();
 		const songLinks = [];
@@ -581,56 +628,43 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 
 			let success = false;
 			let attempt = 0;
+
 			while (!success && attempt < 3) {
 				attempt++;
+
 				try {
 					await new Promise((resolve, reject) => {
-						const stream = ytdl(songLink, {
-							quality: "highestaudio",
-							filter: "audioonly",
-						});
+						const child = fork(path.resolve(__dirname, "child-processes", "download_audio.js"), [songLink, outputPath], { stdio: ["inherit", "inherit", "inherit", "ipc"] });
 
-						stream.on("progress", (chunkLength, downloaded, total) => {
-							const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-							const totalMB = (total / (1024 * 1024)).toFixed(2);
-							document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}. Progress: ${downloadedMB} MB / ${totalMB} MB`;
-						});
-
-						const writer = fs.createWriteStream(outputPath);
-						stream.pipe(writer);
-
-						stream.on("error", error => {
-							if (error.message && error.message.includes("Sign in to confirm your age")) {
-								alert("This song requires age confirmation. Skipping...");
-								document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
-								reject(new Error("Age confirmation required"));
-							} else {
-								reject(error);
+						child.on("message", msg => {
+							if (msg.progress) {
+								const downloadedMB = (msg.progress.downloaded / (1024 * 1024)).toFixed(2);
+								document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}. Progress: ${downloadedMB} MB`;
 							}
+
+							if (msg.done) resolve();
+							if (msg.error) reject(new Error(msg.error));
 						});
 
-						writer.on("finish", () => {
-							resolve();
+						child.on("exit", code => {
+							if (code !== 0) reject(new Error(`Exit code ${code}`));
 						});
-
-						writer.on("error", err => reject(err));
 					});
+
 					success = true;
 				} catch (error) {
-					if (error.message === "Age confirmation required") {
+					if (error.message.includes("Age confirmation required")) {
+						alert("This song requires age confirmation. Skipping...");
+						document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
 						break;
 					}
-					if (attempt < 3) {
-						await sleep(5000);
-					} else {
-						throw error;
-					}
+
+					if (attempt < 3) await new Promise(r => setTimeout(r, 5000));
+					else throw error;
 				}
 			}
 
-			if (!success) {
-				continue;
-			}
+			if (!success) continue;
 
 			try {
 				document.getElementById("downloadModalText").innerText = `Stabilising volume for song ${i + 1} of ${totalSongs}: ${songTitle}`;
@@ -646,7 +680,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					resolve(meta);
 				});
 			});
-			
+
 			if (metadata.format && metadata.format.duration) {
 				duration = Math.round(metadata.format.duration);
 			}
