@@ -12,9 +12,9 @@ Electron to make it a desktop app,
 
 @distube/ytdl-core and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists.
 
-Better-SQLite3 to store most listened songs and settings data, 
+Better-SQLite3 to store most listened songs, playlists and settings data, 
 
-FFmpeg to automatically stabilise audio levels, 
+FFmpeg and FFprobe to automatically stabilise audio levels, 
 
 Discord Rich Presence to momentarily share listened songs in Discord,
 
