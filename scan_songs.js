@@ -90,6 +90,13 @@ async function cleanDebugFiles() {
 		}
 	});
 
+	fs.readdirSync("./musics").forEach(file => {
+		if (!file.endsWith(".mp3") || !file.includes("tarator")) {
+			fs.unlinkSync(path.join("./musics", file));
+			document.getElementById("cleanProgress").innerText = `Cleaning broken songs...`;
+		}
+	});
+
 	try {
 		document.getElementById("cleanProgress").innerText = `Cleaning the database...`;
 		musicsDb.prepare(`DELETE FROM songs WHERE song_id LIKE '%.mp3%'`).run();
