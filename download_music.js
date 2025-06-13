@@ -417,101 +417,95 @@ async function actuallyDownloadTheSong() {
 			const child = fork("child-processes/download_audio.js", [firstInput, outputFilePath]);
 
 			await new Promise((resolve, reject) => {
-				child.on("message", msg => {
-					if (msg.error) {
-						document.getElementById("downloadModalText").innerText = `Error downloading song: ${msg.error}`;
-						document.getElementById("finalDownloadButton").disabled = false;
-						reject(new Error(msg.error));
-					} else if (msg.progress) {
-						const { downloaded, total } = msg.progress;
-						if (total > 0) {
-							const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-							const totalMB = (total / (1024 * 1024)).toFixed(2);
-							document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB / ${totalMB} MB`;
+				let downloaded = 0;
+				let total = 0;
+
+				child.on("message", async msg => {
+					try {
+						if (msg.error) {
+							console.log(msg);
+							document.getElementById("downloadModalText").innerText = `Error downloading song: ${msg.error}`;
+							document.getElementById("finalDownloadButton").disabled = false;
+							return reject(new Error(msg.error));
 						}
-					} else if (msg.done) {
-						resolve();
+
+						if (msg.progress) {
+							if (msg.progress.downloaded !== undefined) downloaded = msg.progress.downloaded;
+							if (msg.progress.total !== undefined) total = msg.progress.total;
+
+							if (total > 0) {
+								const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+								const totalMB = (total / (1024 * 1024)).toFixed(2);
+								document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB / ${totalMB} MB`;
+							}
+						}
+
+						if (msg.done) {
+							document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
+
+							try {
+								await normalizeAudio(outputFilePath);
+								document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
+							} catch (error) {
+								console.error("Audio normalization failed:", error);
+								document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
+							}
+
+							let duration = 0;
+							try {
+								const metadata = await new Promise((resolve, reject) => {
+									ffmpeg.ffprobe(outputFilePath, (err, meta) => {
+										if (err) return reject(err);
+										resolve(meta);
+									});
+								});
+
+								if (metadata.format && metadata.format.duration) {
+									duration = Math.round(metadata.format.duration);
+								}
+							} catch (error) {
+								console.error("Failed to retrieve metadata:", error);
+							}
+
+							processThumbnail(img.src, songID)
+								.then(() => {
+									const songName = secondInput;
+									const songUrl = firstInput;
+									const songThumbnail = `${songID}.jpg`;
+
+									try {
+										musicsDb
+											.prepare(
+												`INSERT INTO songs (
+                                        song_id, song_name, song_url, song_thumbnail,
+                                        song_length, seconds_played, times_listened, rms
+                                    ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
+											)
+											.run(songID, songName, songUrl, songThumbnail, duration);
+									} catch (err) {
+										console.error("Failed to insert song into DB:", err);
+									}
+
+									document.getElementById("downloadModalText").innerText = "Download complete!";
+									document.getElementById("finalDownloadButton").disabled = false;
+									cleanDebugFiles();
+									processAllFiles();
+									resolve();
+								})
+								.catch(error => {
+									document.getElementById("downloadModalText").innerText = `Error processing thumbnail: ${error.message}`;
+									document.getElementById("finalDownloadButton").disabled = false;
+									reject(error);
+								});
+						}
+					} catch (err) {
+						reject(err);
 					}
 				});
-
-				child.on("error", err => {
-					reject(err);
-				});
-			});
-
-			let downloaded = 0;
-			let total = format.content_length || 0;
-
-			stream.on("data", chunk => {
-				downloaded += chunk.length;
-				if (total > 0) {
-					const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-					const totalMB = (total / (1024 * 1024)).toFixed(2);
-					document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB / ${totalMB} MB`;
-				}
-			});
-
-			stream.pipe(writeStream);
-
-			writeStream.on("finish", async () => {
-				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
-
-				try {
-					await normalizeAudio(outputFilePath);
-					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
-				} catch (error) {
-					console.error("Audio normalization failed:", error);
-					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
-				}
-
-				let duration = 0;
-				const metadata = await new Promise((resolve, reject) => {
-					ffmpeg.ffprobe(outputFilePath, (err, meta) => {
-						if (err) return reject(err);
-						resolve(meta);
-					});
-				});
-
-				if (metadata.format && metadata.format.duration) {
-					duration = Math.round(metadata.format.duration);
-				}
-
-				processThumbnail(img.src, songID)
-					.then(() => {
-						const songName = secondInput;
-						const songUrl = firstInput;
-						const songThumbnail = `${songID}.jpg`;
-
-						try {
-							musicsDb
-								.prepare(
-									`INSERT INTO songs (
-                song_id, song_name, song_url, song_thumbnail,
-                song_length, seconds_played, times_listened, rms
-              ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
-								)
-								.run(songID, songName, songUrl, songThumbnail, duration);
-						} catch (err) {
-							console.error("Failed to insert song into DB:", err);
-						}
-
-						document.getElementById("downloadModalText").innerText = "Download complete!";
-						document.getElementById("finalDownloadButton").disabled = false;
-						cleanDebugFiles();
-						processAllFiles();
-					})
-					.catch(error => {
-						document.getElementById("downloadModalText").innerText = `Error processing thumbnail: ${error.message}`;
-						document.getElementById("finalDownloadButton").disabled = false;
-					});
-			});
-
-			writeStream.on("error", error => {
-				document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
-				document.getElementById("finalDownloadButton").disabled = false;
 			});
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
+			console.log(error);
 			document.getElementById("finalDownloadButton").disabled = false;
 		}
 	} else if (linkType === "playlist") {

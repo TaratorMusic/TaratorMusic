@@ -83,7 +83,7 @@
 		}
 	},
 	"dependencies": {
-		"@distube/ytdl-core": "latest",
+		"@distube/ytdl-core": "github:Victiniiiii/ytdl-core",
 		"@distube/ytpl": "github:Victiniiiii/ytpl",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",
 		"better-sqlite3": "^11.9.1",
