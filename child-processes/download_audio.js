@@ -5,6 +5,9 @@ async function main() {
 	const [videoUrl, outputFilePath] = process.argv.slice(2);
 	const videoId = (videoUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/) || [])[1] || null;
 
+	let downloaded = 0;
+	let total = 0;
+
 	if (!videoId) {
 		console.error("Invalid YouTube URL");
 		process.exit(1);
@@ -25,11 +28,14 @@ async function main() {
 		const writeStream = fs.createWriteStream(outputFilePath);
 		stream.pipe(writeStream);
 
-		let downloaded = 0;
+		stream.on("response", response => {
+			total = parseInt(response.headers["content-length"], 10);
+			if (process.send) process.send({ progress: { downloaded: 0, total } });
+		});
+
 		stream.on("data", chunk => {
 			downloaded += chunk.length;
-			console.log(`Downloaded ${downloaded} bytes`);
-			if (process.send) process.send({ progress: { downloaded } });
+			if (process.send) process.send({ progress: { downloaded, total } });
 		});
 
 		writeStream.on("finish", () => {

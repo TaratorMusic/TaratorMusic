@@ -433,11 +433,9 @@ async function actuallyDownloadTheSong() {
 							if (msg.progress.downloaded !== undefined) downloaded = msg.progress.downloaded;
 							if (msg.progress.total !== undefined) total = msg.progress.total;
 
-							if (total > 0) {
-								const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-								const totalMB = (total / (1024 * 1024)).toFixed(2);
-								document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB / ${totalMB} MB`;
-							}
+							const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+							const totalMB = total ? ` / ${(total / (1024 * 1024)).toFixed(2)} MB` : "";
+							document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB${totalMB}`;
 						}
 
 						if (msg.done) {
