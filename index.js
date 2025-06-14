@@ -19,6 +19,8 @@ function createWindow() {
 	const splash = new BrowserWindow({
 		width: 1600,
 		height: 850,
+		title: "TaratorMusic",
+		icon: path.join(__dirname, "app_thumbnails/tarator16_icon.png"),
 		frame: false,
 		transparent: true,
 		alwaysOnTop: true,
