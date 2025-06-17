@@ -77,7 +77,7 @@ async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBott
 	try {
 		function fetchVideoInfoInChild(videoUrl) {
 			return new Promise((resolve, reject) => {
-				const worker = fork(path.join(__dirname, "child-processes", "fetch_title.js"), [videoUrl]);
+				const worker = fork(path.join(childProcessesFolder, "fetch_title.js"), [videoUrl]);
 				worker.on("message", data => {
 					if (data.error) reject(new Error(data.error));
 					else resolve(data);
@@ -156,7 +156,7 @@ async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadMod
 		function fetchPlaylistData(playlistUrl) {
 			console.log("this ran");
 			return new Promise((resolve, reject) => {
-				const worker = fork(path.join(__dirname, "child-processes", "fetch_playlist.js"), [playlistUrl]);
+				const worker = fork(path.join(childProcessesFolder, "fetch_playlist.js"), [playlistUrl]);
 				console.log(worker);
 				worker.on("message", ({ data, error }) => {
 					if (error) reject(new Error(error));
@@ -360,7 +360,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 
 		if (videoId) {
 			await new Promise((resolve, reject) => {
-				const child = fork(path.resolve(__dirname, "child-processes", "download_thumbnail.js"), [videoId, thumbnailPath], { stdio: ["inherit", "inherit", "inherit", "ipc"] });
+				const child = fork(path.resolve(childProcessesFolder, "download_thumbnail.js"), [videoId, thumbnailPath], { stdio: ["inherit", "inherit", "inherit", "ipc"] });
 
 				child.on("message", msg => {
 					if (msg.done) {
@@ -414,7 +414,7 @@ async function actuallyDownloadTheSong() {
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
 		try {
-			const child = fork("child-processes/download_audio.js", [firstInput, outputFilePath]);
+			const child = fork(path.join(childProcessesFolder, "download_audio.js"), [firstInput, outputFilePath]);
 
 			await new Promise((resolve, reject) => {
 				let downloaded = 0;
@@ -626,7 +626,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 
 				try {
 					await new Promise((resolve, reject) => {
-						const child = fork(path.resolve(__dirname, "child-processes", "download_audio.js"), [songLink, outputPath], { stdio: ["inherit", "inherit", "inherit", "ipc"] });
+						const child = fork(path.resolve(childProcessesFolder, "download_audio.js"), [songLink, outputPath], { stdio: ["inherit", "inherit", "inherit", "ipc"] });
 
 						child.on("message", msg => {
 							if (msg.progress) {

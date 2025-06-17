@@ -8,7 +8,7 @@ const fs = require("fs");
 const Database = require("better-sqlite3");
 
 let taratorFolder;
-let musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder;
+let musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, childProcessesFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath;
 let settingsDb = {},
 	playlistsDb = {},
@@ -16,14 +16,17 @@ let settingsDb = {},
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
+	console.log(taratorFolder);
 
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
 	appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
 	databasesFolder = path.join(taratorFolder, "databases");
+	childProcessesFolder = path.join(taratorFolder, "child-processes");
+
 	settingsDbPath = path.join(databasesFolder, "settings.db");
 	playlistsDbPath = path.join(databasesFolder, "playlists.db");
-	musicsDbPath = path.join(databasesFolder, "musics.db");
+	musicsDbPath = path.join(databasesFolder, "musics.db");	
 
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
@@ -409,7 +412,6 @@ document.getElementById("shuffleButton").innerHTML = icon.redShuffle;
 document.getElementById("muteButton").innerHTML = icon.mute;
 document.getElementById("speedButton").innerHTML = icon.speed;
 document.getElementById("loopButton").innerHTML = icon.redLoop;
-document.getElementById("mainmenulogo").style.backgroundImage = "url(app_thumbnails/tarator1024_icon.png)";
 
 function changeThePreviousSongAmount() {
 	if (document.getElementById("arrayLength").value > 9 && document.getElementById("arrayLength").value < 101) {

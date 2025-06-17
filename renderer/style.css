@@ -695,6 +695,7 @@ audio {
 	margin-left: 5vw;
 	margin-right: 5vw;
 	animation: marginShift 1.5s infinite alternate ease-in-out;
+	background-image: url(../app_thumbnails/tarator1024_icon.png);
 }
 
 #mainmenuapptext {

@@ -27,7 +27,7 @@ function createWindow() {
 		resizable: false,
 	});
 
-	splash.loadFile("splash.html");
+	splash.loadFile("renderer/splash.html");
 
 	mainWindow = new BrowserWindow({
 		width: 1600,
@@ -42,7 +42,7 @@ function createWindow() {
 		},
 	});
 
-	mainWindow.loadFile("index.html");
+	mainWindow.loadFile("renderer/index.html");
 
 	mainWindow.once("ready-to-show", () => {
 		splash.destroy();
