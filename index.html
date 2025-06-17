@@ -138,6 +138,7 @@
 			<div id="playlists-content" class="tab-content hidden"></div>
 			<div id="settings-content" class="tab-content hidden">
 				<h1 class="underline-text">Keybinds</h1>
+				<div>You can select which keys will activate which actions here.</div>
 				<div class="settingsKeybinds">
 					<div>Back 5 Seconds:</div>
 					<button id="settingsRewind" class="settingsKeybindsButton" required></button>
@@ -181,10 +182,11 @@
 				<button onclick="saveKeybinds()">Save Keybinds</button>
 				<h1 class="underline-text">Customisation</h1>
 				<div class="settingsflexrow">
-					Previous Song Array Length
+					<div>Previous Song Array Length</div>
 					<input type="number" id="arrayLength" name="arrayLength" required />
 					<button onclick="changeThePreviousSongAmount()">Change</button>
 				</div>
+				<div>Previous Song Array Length is the number of songs that will be saved on your previous song list. For example, you can use previous song button only 99 times if you select 99 in this option.</div>
 				<div class="settingsflexrow">
 					Divide the Volume
 					<select name="dividevolume" id="dividevolume" onchange="handleDropdownChange('dividevolume', this)">
@@ -194,6 +196,7 @@
 						<option value="50">Divide by 50</option>
 					</select>
 				</div>
+				<div>Divide the Volume will make the volume control easier if you want to listen to the songs more quietly.</div>
 				<div class="settingsflexrow">
 					Activate Volume Stabilisation
 					<select name="activateRms" id="activateRms" onchange="handleDropdownChange('activateRms', this)">
@@ -201,6 +204,7 @@
 						<option value="0">Deactivate</option>
 					</select>
 				</div>
+				<div>Volume stabilisation will help the songs sound all on the same volume, eliminating the need to adjust the volume for every song.</div>
 				<div class="settingsflexrow">
 					Lazy Loading Size
 					<select name="lazyLoadSize" id="lazyLoadSize" onchange="handleDropdownChange('lazyLoadSize', this)">
@@ -209,8 +213,11 @@
 						<option value="200">Big</option>
 					</select>
 				</div>
+				<div>Lazy Loading Size is the area shown in the musics and playlists tab, smaller means faster initial loading time, but clunky scrolling.</div>
 				<div class="settingsflexrow">Placeholder Thumbnail: Coming Soon</div>
+				<div>Placeholder Thumbnail is the thumbnail shown on the songs with no thumbnail.</div>
 				<div class="settingsflexrow">Language: Coming Soon</div>
+				<div>Change the language of the app with this setting.</div>
 				<div class="settingsflexrow">
 					<div>Edit Background:</div>
 					<button onclick="changeBackground('blue')">Blue</button>
@@ -220,9 +227,13 @@
 					<button onclick="changeBackground('black')">Black</button>
 					<div>More detailed background customisation coming soon...</div>
 				</div>
+				<div>Change the background color or upload your own background with this setting.</div>
 				<div class="settingsflexrow">Edit Font: Coming Soon</div>
+				<div>Edit the font of all the text in the app.</div>
 				<div class="settingsflexrow">Edit My Music Grid: Coming Soon</div>
+				<div>Configure the size of the music boxes and the grid of the My Music tab.</div>
 				<div class="settingsflexrow">Disable Thumbnails: Coming Soon</div>
+				<div>Disable thumbnails for faster loading.</div>
 				<h1 class="underline-text">System</h1>
 				<div class="settingsflexrow">
 					Discord Connection
@@ -231,32 +242,40 @@
 						<span class="slider round"></span>
 					</label>
 				</div>
+				<div>Share your status in Discord!</div>
 				<div class="settingsflexrow">
 					<div>Stabilise Volume while downloading music & scanning folder</div>
 					<label class="switch">
-						<input type="checkbox" id="stabiliseVolumeToggle"/>
+						<input type="checkbox" id="stabiliseVolumeToggle" />
 						<span class="slider round"></span>
 					</label>
 				</div>
+				<div>If not selected, you will need to manually stabilise song volumes using the buttons below.</div>
 				<div class="settingsflexrow">
 					Stabilise all songs volumes:
 					<button onclick="processAllFiles(0)">Stabilise All</button>
 					<button onclick="processAllFiles(1)">Stabilise All But Skip Already Completed Ones</button>
 					<div class="settingsflexrow" id="stabiliseProgress">Progress: Didn't start</div>
 				</div>
+				<div>Helps all the songs sounds the same on the same volume.</div>
 				<div class="settingsflexrow">
 					Remove all broken files from folders
 					<button onclick="cleanDebugFiles()">Clean</button>
 					<div class="settingsflexrow" id="cleanProgress">Progress: Didn't start</div>
 				</div>
+				<div>Clean the folder from buggy files.</div>
 				<div class="settingsflexrow">
 					Check Folder For New Songs
 					<button onclick="processNewSongs()">Check</button>
 					<div class="settingsflexrow" id="folderProgress">Progress: Didn't start</div>
 				</div>
+				<div>If you have added a new song to the folder, press this to add them to the songs list.</div>
 				<div class="settingsflexrow">Move App Folders: Coming Soon</div>
+				<div>You can move your app to different folders using this setting.</div>
 				<div class="settingsflexrow">Package Data: Coming Soon</div>
+				<div>Package your data to use it on different computers.</div>
 				<div class="settingsflexrow">Factory Reset: Coming Soon</div>
+				<div>Reset every configuration you have made on the app.</div>
 			</div>
 		</div>
 		<div id="videothumbnailbox"></div>
