@@ -875,3 +875,60 @@ input:checked + .slider:before {
 #version.no-animation::before {
 	animation: hotColors 3s infinite;
 }
+
+.delete-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.85);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
+	color: white;
+	font-family: sans-serif;
+}
+
+.hidden {
+	display: none;
+}
+
+.delete-modal-dialog {
+	background: rgba(30, 30, 30, 0.95);
+	padding: 20px;
+	border-radius: 6px;
+	max-width: 320px;
+	width: 100%;
+	box-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
+	color: white;
+	text-align: center;
+}
+
+.delete-modal-btn {
+	margin: 0 8px;
+	padding: 6px 14px;
+	font-size: 14px;
+	cursor: pointer;
+	border: none;
+	border-radius: 4px;
+	color: white;
+	transition: background-color 0.3s ease;
+}
+
+.confirm-btn {
+	background-color: #e74c3c;
+}
+
+.confirm-btn:hover {
+	background-color: #c0392b;
+}
+
+.cancel-btn {
+	background-color: #7f8c8d;
+}
+
+.cancel-btn:hover {
+	background-color: #606a6b;
+}

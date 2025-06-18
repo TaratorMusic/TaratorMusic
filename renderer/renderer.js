@@ -16,7 +16,6 @@ let settingsDb = {},
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
-	console.log(taratorFolder);
 
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
@@ -550,22 +549,43 @@ async function myMusicOnClick() {
 		let filteredSongs = [...musicFiles];
 
 		function renderSongs() {
+			const rows = musicsDb.prepare("SELECT song_id, song_thumbnail FROM songs").all();
+			musicFiles = rows
+				.filter(row => row.song_id && row.song_thumbnail)
+				.map(row => {
+					return {
+						name: row.song_id + ".mp3",
+						thumbnail: `file://${row.song_thumbnail}`,
+					};
+				});
+
+			musicFiles.sort((a, b) => {
+				const idA = a?.name?.replace(/\.mp3$/, "") || "";
+				const idB = b?.name?.replace(/\.mp3$/, "") || "";
+				const nameA = (getSongNameById(idA) || "").toLowerCase();
+				const nameB = (getSongNameById(idB) || "").toLowerCase();
+				return nameA.localeCompare(nameB);
+			});
+
+			filteredSongs = musicFiles.filter(file => {
+				const songName = getSongNameById(file.name.replace(".mp3", ""));
+				return songName && songName.toLowerCase().includes(musicSearch.value.trim().toLowerCase());
+			});
+
 			musicListContainer.innerHTML = "";
 			const count = displayCount === "All" ? filteredSongs.length : parseInt(displayCount * oldItemsPerRow);
 			const visibleSongs = filteredSongs.slice(0, count);
 			visibleSongs.forEach(file => {
 				const musicElement = createMusicElement(file);
-
 				if (file.name.slice(0, -4) === secondfilename.replace(".mp3", "")) {
 					musicElement.classList.add("playing");
 				}
-
 				musicElement.addEventListener("click", () => {
 					playMusic(file, musicElement, false);
 				});
-
 				musicListContainer.appendChild(musicElement);
 			});
+
 			setupLazyBackgrounds();
 		}
 
@@ -1263,8 +1283,9 @@ function saveEditedSong() {
 		.catch(console.error);
 }
 
-function removeSong() {
-	if (!confirm("Are you sure you want to delete this song?")) return;
+async function removeSong() {
+	const confirmed = await showDeleteModal();
+	if (!confirmed) return;
 
 	const musicFilePath = path.join(musicFolder, fileToDelete + ".mp3");
 	const thumbnailFilePath = path.join(thumbnailFolder, fileToDelete + ".jpg");
@@ -1283,7 +1304,37 @@ function removeSong() {
 	musicsDb.prepare("DELETE FROM songs WHERE song_id = ?").run(fileToDelete);
 
 	closeModal();
-	document.getElementById("my-music").click();
+	const divToRemove = document.querySelector(`div[alt="${fileToDelete}.mp3"]`);
+	if (divToRemove) divToRemove.remove();
+}
+
+function showDeleteModal() {
+	return new Promise(resolve => {
+		const modal = document.getElementById("deleteModal");
+		const confirmBtn = document.getElementById("deleteModalConfirmBtn");
+		const cancelBtn = document.getElementById("deleteModalCancelBtn");
+
+		modal.classList.remove("hidden");
+
+		function cleanup() {
+			modal.classList.add("hidden");
+			confirmBtn.removeEventListener("click", onConfirm);
+			cancelBtn.removeEventListener("click", onCancel);
+		}
+
+		function onConfirm() {
+			cleanup();
+			resolve(true);
+		}
+
+		function onCancel() {
+			cleanup();
+			resolve(false);
+		}
+
+		confirmBtn.addEventListener("click", onConfirm);
+		cancelBtn.addEventListener("click", onCancel);
+	});
 }
 
 document.querySelectorAll(".settingsKeybindsButton").forEach(button => {
@@ -1316,6 +1367,7 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 });
 
 document.addEventListener("keydown", event => {
+	console.log(event.key);
 	if (event.key === "Tab") {
 		event.preventDefault();
 	}
