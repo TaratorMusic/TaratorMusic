@@ -462,6 +462,8 @@ async function myMusicOnClick() {
 	controlsBar.style.justifyContent = "space-between";
 	controlsBar.style.marginBottom = "10px";
 	controlsBar.style.gap = "10px";
+	controlsBar.style.justifyContent = "center";
+	controlsBar.style.alignItems = "center";
 
 	const musicSearch = document.createElement("input");
 	musicSearch.type = "text";
@@ -488,7 +490,12 @@ async function myMusicOnClick() {
 		handleDropdownChange("displayCount", this);
 	};
 
+	const songAmount = document.createElement("div");
+	songAmount.innerText = musicsDb.prepare('SELECT COUNT(*) AS count FROM songs').get().count;
+	songAmount.innerText += " songs."
+
 	controlsBar.appendChild(musicSearch);
+	controlsBar.appendChild(songAmount);
 	controlsBar.appendChild(displayCountSelect);
 	myMusicContent.appendChild(controlsBar);
 
