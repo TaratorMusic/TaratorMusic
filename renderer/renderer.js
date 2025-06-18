@@ -26,7 +26,7 @@ let settingsDb = {},
 
 	settingsDbPath = path.join(databasesFolder, "settings.db");
 	playlistsDbPath = path.join(databasesFolder, "playlists.db");
-	musicsDbPath = path.join(databasesFolder, "musics.db");	
+	musicsDbPath = path.join(databasesFolder, "musics.db");
 
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
@@ -93,6 +93,8 @@ let key_Shuffle;
 let key_Mute;
 let key_Speed;
 let key_Loop;
+let key_randomSong;
+let key_randomPlaylist;
 let dividevolume;
 let displayCount;
 let activateRms;
@@ -117,6 +119,8 @@ const defaultSettings = {
 	key_Mute: "d",
 	key_Speed: "f",
 	key_Loop: "g",
+	key_randomSong: "1",
+	key_randomPlaylist: "2",
 	dividevolume: 1,
 	displayCount: 50,
 	activateRms: 1,
@@ -239,6 +243,8 @@ function initializeSettingsDatabase() {
 	document.getElementById("settingsMute").innerHTML = settingsRow.key_Mute;
 	document.getElementById("settingsSpeed").innerHTML = settingsRow.key_Speed;
 	document.getElementById("settingsLoop").innerHTML = settingsRow.key_Loop;
+	document.getElementById("settingsRandomSong").innerHTML = settingsRow.key_randomSong;
+	document.getElementById("settingsRandomPlaylist").innerHTML = settingsRow.key_randomPlaylist;
 
 	key_Rewind = settingsRow.key_Rewind;
 	key_Previous = settingsRow.key_Previous;
@@ -250,6 +256,8 @@ function initializeSettingsDatabase() {
 	key_Mute = settingsRow.key_Mute;
 	key_Speed = settingsRow.key_Speed;
 	key_Loop = settingsRow.key_Loop;
+	key_randomSong = settingsRow.key_randomSong;
+	key_randomPlaylist = settingsRow.key_randomPlaylist;
 	totalTimeSpent = settingsRow.totalTimeSpent;
 	rememberautoplay = settingsRow.rememberautoplay;
 	remembershuffle = settingsRow.remembershuffle;
@@ -491,8 +499,8 @@ async function myMusicOnClick() {
 	};
 
 	const songAmount = document.createElement("div");
-	songAmount.innerText = musicsDb.prepare('SELECT COUNT(*) AS count FROM songs').get().count;
-	songAmount.innerText += " songs."
+	songAmount.innerText = musicsDb.prepare("SELECT COUNT(*) AS count FROM songs").get().count;
+	songAmount.innerText += " songs.";
 
 	controlsBar.appendChild(musicSearch);
 	controlsBar.appendChild(songAmount);
@@ -1344,6 +1352,10 @@ document.addEventListener("keydown", event => {
 		document.getElementById("speedModal").style.display == "none" ? speed() : closeModal();
 	} else if (event.key === key_Loop) {
 		loop();
+	} else if (event.key === key_randomSong) {
+		randomSongFunctionMainMenu();
+	} else if (event.key === key_randomPlaylist) {
+		randomPlaylistFunctionMainMenu();
 	}
 });
 
