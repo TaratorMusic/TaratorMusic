@@ -97,6 +97,7 @@ let key_randomPlaylist;
 let dividevolume;
 let displayCount;
 let activateRms;
+let stabiliseVolumeToggle;
 let lazyLoadSize;
 let background;
 
@@ -125,6 +126,7 @@ const defaultSettings = {
 	activateRms: 1,
 	lazyLoadSize: 100,
 	background: "blue",
+	stabiliseVolumeToggle: 1,
 };
 
 function initializeSettingsDatabase() {
@@ -269,6 +271,7 @@ function initializeSettingsDatabase() {
 	activateRms = settingsRow.activateRms;
 	lazyLoadSize = settingsRow.lazyLoadSize;
 	background = settingsRow.background;
+	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 
 	updateTimer();
 	rememberautoplay && toggleAutoplay();
@@ -1367,7 +1370,6 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 });
 
 document.addEventListener("keydown", event => {
-	console.log(event.key);
 	if (event.key === "Tab") {
 		event.preventDefault();
 	}
@@ -1614,6 +1616,12 @@ function changeBackground(color) {
 	}
 }
 
+function stabiliseVolumeToggleTogglerFunction() {
+	stabiliseVolumeToggle = stabiliseVolumeToggle == 1 ? 0 : 1;
+	console.log(stabiliseVolumeToggle);
+	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb);
+}
+
 ipcRenderer.on("playlist-created", () => {
 	closeModal();
 });
@@ -1695,4 +1703,6 @@ document.addEventListener("DOMContentLoaded", function () {
 			break;
 		}
 	}
+
+	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
 });
