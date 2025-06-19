@@ -52,6 +52,9 @@ function createWindow() {
 	ipcMain.handle("get-app-version", () => app.getVersion());
 
 	ipcMain.handle("get-app-base-path", () => {
+		if (process.env.APPIMAGE) {
+			return path.dirname(process.env.APPIMAGE);
+		}
 		return app.getAppPath();
 	});
 }
