@@ -1,5 +1,6 @@
 const fetch = require("node-fetch");
-const { fork } = require("child_process");
+const ytdl = require("@distube/ytdl-core");
+const ytpl = require("@distube/ytpl");
 
 function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -75,19 +76,25 @@ function checkNameThumbnail() {
 
 async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
 	try {
-		function fetchVideoInfoInChild(videoUrl) {
-			return new Promise((resolve, reject) => {
-				const worker = fork(path.join(childProcessesFolder, "fetch_title.js"), [videoUrl]);
-				worker.on("message", data => {
-					if (data.error) reject(new Error(data.error));
-					else resolve(data);
-					worker.kill();
-				});
-				worker.on("error", reject);
-			});
-		}
+		const getYouTubeVideoId = url => {
+			const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+			return match ? match[1] : null;
+		};
 
-		const { videoTitle, thumbnailUrl } = await fetchVideoInfoInChild(videoUrl);
+		const videoId = getYouTubeVideoId(videoUrl);
+		if (!videoId) throw new Error("Invalid YouTube URL");
+
+		const info = await ytdl.getInfo(videoId);
+		const videoTitle = info.videoDetails.title;
+
+		const thumbnails = info.videoDetails.thumbnails || [];
+		const bestThumbnail = thumbnails.reduce((max, thumb) => {
+			const size = (thumb.width || 0) * (thumb.height || 0);
+			const maxSize = (max.width || 0) * (max.height || 0);
+			return size > maxSize ? thumb : max;
+		}, thumbnails[0] || {});
+
+		const thumbnailUrl = bestThumbnail.url || "";
 
 		const downloadPlaceofSongs = document.createElement("div");
 		downloadPlaceofSongs.className = "flexrow";
@@ -153,19 +160,21 @@ async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBott
 
 async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
 	try {
-		function fetchPlaylistData(playlistUrl) {
-			console.log("this ran");
-			return new Promise((resolve, reject) => {
-				const worker = fork(path.join(childProcessesFolder, "fetch_playlist.js"), [playlistUrl]);
-				console.log(worker);
-				worker.on("message", ({ data, error }) => {
-					if (error) reject(new Error(error));
-					else resolve(data);
-					worker.kill();
-				});
-				worker.on("error", reject);
-			});
+		async function fetchPlaylistData(url) {
+			const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+			if (!match) throw new Error("Invalid playlist URL");
+			const playlistId = match[1];
+			const playlist = await ytpl(playlistId, { pages: Infinity });
+			const playlistTitle = playlist.title;
+			const videoItems = playlist.items.map(video => ({
+				title: video.title || "Unknown Title",
+				url: video.url,
+				thumbnail: video.thumbnail || "",
+			}));
+			const playlistThumbnail = videoItems.length ? videoItems[0].thumbnail : "";
+			return { playlistTitle, playlistThumbnail, videoItems };
 		}
+
 		const { playlistTitle, playlistThumbnail, videoItems } = await fetchPlaylistData(playlistUrl);
 
 		const playlistTitles = [playlistTitle, ...videoItems.map(item => item.title)];
@@ -275,11 +284,30 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		const thumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
 
 		let imgElement = null;
-
 		if (songIndex !== null) {
 			imgElement = document.getElementById(`thumbnailImage${songIndex}`);
 		} else {
 			imgElement = document.getElementById("thumbnailImage");
+		}
+
+		async function saveBufferFromUrl(url) {
+			return new Promise((resolve, reject) => {
+				https
+					.get(url, res => {
+						if (res.statusCode !== 200) {
+							reject(new Error(`Failed to fetch thumbnail: ${res.statusCode}`));
+							return;
+						}
+						const data = [];
+						res.on("data", chunk => data.push(chunk));
+						res.on("end", () => {
+							const buffer = Buffer.concat(data);
+							fs.writeFileSync(thumbnailPath, buffer);
+							resolve(true);
+						});
+					})
+					.on("error", reject);
+			});
 		}
 
 		if (imgElement) {
@@ -292,16 +320,11 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 					return true;
 				} else if (imgElement.src.startsWith("http")) {
 					try {
-						const response = await fetch(imgElement.src);
-						if (response.ok) {
-							const arrayBuffer = await response.arrayBuffer();
-							const buffer = Buffer.from(arrayBuffer);
-							fs.writeFileSync(thumbnailPath, buffer);
-							console.log(`Saved thumbnail from DOM img src for ${songId}`);
-							return true;
-						}
-					} catch (fetchError) {
-						console.error(`Error fetching thumbnail from DOM img: ${fetchError}`);
+						await saveBufferFromUrl(imgElement.src);
+						console.log(`Saved thumbnail from DOM img src for ${songId}`);
+						return true;
+					} catch (e) {
+						console.error(`Error fetching thumbnail from DOM img: ${e.message}`);
 					}
 				}
 			} else if (imgElement.style && imgElement.style.backgroundImage) {
@@ -317,16 +340,11 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 						return true;
 					} else if (bgUrl.startsWith("http")) {
 						try {
-							const response = await fetch(bgUrl);
-							if (response.ok) {
-								const arrayBuffer = await response.arrayBuffer();
-								const buffer = Buffer.from(arrayBuffer);
-								fs.writeFileSync(thumbnailPath, buffer);
-								console.log(`Saved thumbnail from DOM background image URL for ${songId}`);
-								return true;
-							}
-						} catch (bgFetchError) {
-							console.error(`Error fetching background image: ${bgFetchError}`);
+							await saveBufferFromUrl(bgUrl);
+							console.log(`Saved thumbnail from DOM background image URL for ${songId}`);
+							return true;
+						} catch (e) {
+							console.error(`Error fetching background image: ${e.message}`);
 						}
 					}
 				}
@@ -342,45 +360,39 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 				return true;
 			} else if (imageUrl.startsWith("http")) {
 				try {
-					const response = await fetch(imageUrl);
-					if (response.ok) {
-						const arrayBuffer = await response.arrayBuffer();
-						const buffer = Buffer.from(arrayBuffer);
-						fs.writeFileSync(thumbnailPath, buffer);
-						console.log(`Saved thumbnail from passed imageUrl for ${songId}`);
-						return true;
-					}
-				} catch (fetchError) {
-					console.error(`Error fetching thumbnail from imageUrl: ${fetchError}`);
+					await saveBufferFromUrl(imageUrl);
+					console.log(`Saved thumbnail from passed imageUrl for ${songId}`);
+					return true;
+				} catch (e) {
+					console.error(`Error fetching thumbnail from imageUrl: ${e.message}`);
 				}
 			}
 		}
 
-		let videoId = extractVideoId(imageUrl);
+		function extractVideoId(url) {
+			const match = url && url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+			return match ? match[1] : null;
+		}
+
+		const videoId = extractVideoId(imageUrl);
 
 		if (videoId) {
-			await new Promise((resolve, reject) => {
-				const child = fork(path.resolve(childProcessesFolder, "download_thumbnail.js"), [videoId, thumbnailPath], { stdio: ["inherit", "inherit", "inherit", "ipc"] });
+			try {
+				const info = await ytdl.getInfo(videoId);
+				const thumbnails = info.videoDetails.thumbnails;
+				if (!thumbnails || thumbnails.length === 0) throw new Error("No thumbnails found");
 
-				child.on("message", msg => {
-					if (msg.done) {
-						console.log("Thumbnail fetch succeeded");
-						resolve();
-					}
-					if (msg.error) {
-						console.error("Thumbnail fetch error:", msg.error);
-						reject(new Error(msg.error));
-					}
-				});
-
-				child.on("exit", code => {
-					if (code !== 0) reject(new Error(`Child exited with code ${code}`));
-				});
-			});
+				const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
+				await saveBufferFromUrl(thumbnailUrl);
+				console.log("Thumbnail fetch succeeded");
+				return true;
+			} catch (err) {
+				console.error("YouTube thumbnail fetch failed:", err.message);
+			}
 		}
 
 		try {
-			const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
+			const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
 			fs.writeFileSync(thumbnailPath, placeholderData);
 			console.log(`Created placeholder thumbnail for ${songId}`);
 			return true;
@@ -414,94 +426,57 @@ async function actuallyDownloadTheSong() {
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
 		try {
-			const child = fork(path.join(childProcessesFolder, "download_audio.js"), [firstInput, outputFilePath]);
-
-			await new Promise((resolve, reject) => {
-				let downloaded = 0;
-				let total = 0;
-
-				child.on("message", async msg => {
-					try {
-						if (msg.error) {
-							console.log(msg);
-							document.getElementById("downloadModalText").innerText = `Error downloading song: ${msg.error}`;
-							document.getElementById("finalDownloadButton").disabled = false;
-							return reject(new Error(msg.error));
-						}
-
-						if (msg.progress) {
-							if (msg.progress.downloaded !== undefined) downloaded = msg.progress.downloaded;
-							if (msg.progress.total !== undefined) total = msg.progress.total;
-
-							const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-							const totalMB = total ? ` / ${(total / (1024 * 1024)).toFixed(2)} MB` : "";
-							document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB${totalMB}`;
-						}
-
-						if (msg.done) {
-							document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
-
-							if (stabiliseVolumeToggle) {
-								try {
-									await normalizeAudio(outputFilePath);
-									document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
-								} catch (error) {
-									console.error("Audio normalization failed:", error);
-									document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
-								}
-							}
-
-							let duration = 0;
-							try {
-								const metadata = await new Promise((resolve, reject) => {
-									ffmpeg.ffprobe(outputFilePath, (err, meta) => {
-										if (err) return reject(err);
-										resolve(meta);
-									});
-								});
-
-								if (metadata.format && metadata.format.duration) {
-									duration = Math.round(metadata.format.duration);
-								}
-							} catch (error) {
-								console.error("Failed to retrieve metadata:", error);
-							}
-
-							processThumbnail(img.src, songID)
-								.then(() => {
-									const songName = secondInput;
-									const songUrl = firstInput;
-									const songThumbnail = `${songID}.jpg`;
-
-									try {
-										musicsDb
-											.prepare(
-												`INSERT INTO songs (
-                                        song_id, song_name, song_url, song_thumbnail,
-                                        song_length, seconds_played, times_listened, rms
-                                    ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
-											)
-											.run(songID, songName, songUrl, songThumbnail, duration);
-									} catch (err) {
-										console.error("Failed to insert song into DB:", err);
-									}
-
-									document.getElementById("downloadModalText").innerText = "Download complete!";
-									document.getElementById("finalDownloadButton").disabled = false;
-									cleanDebugFiles();
-									resolve();
-								})
-								.catch(error => {
-									document.getElementById("downloadModalText").innerText = `Error processing thumbnail: ${error.message}`;
-									document.getElementById("finalDownloadButton").disabled = false;
-									reject(error);
-								});
-						}
-					} catch (err) {
-						reject(err);
-					}
-				});
+			await downloadAudio(firstInput, outputFilePath, (downloaded, total) => {
+				const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+				const totalMB = total ? ` / ${(total / (1024 * 1024)).toFixed(2)} MB` : "";
+				document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB${totalMB}`;
 			});
+
+			document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
+
+			if (stabiliseVolumeToggle) {
+				try {
+					await normalizeAudio(outputFilePath);
+					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
+				} catch (error) {
+					console.error("Audio normalization failed:", error);
+					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
+				}
+			}
+
+			let duration = 0;
+			try {
+				const metadata = await new Promise((resolve, reject) => {
+					ffmpeg.ffprobe(outputFilePath, (err, meta) => {
+						if (err) return reject(err);
+						resolve(meta);
+					});
+				});
+				if (metadata.format && metadata.format.duration) {
+					duration = Math.round(metadata.format.duration);
+				}
+			} catch (error) {
+				console.error("Failed to retrieve metadata:", error);
+			}
+
+			await processThumbnail(img.src, songID);
+
+			try {
+				musicsDb
+					.prepare(
+						`INSERT INTO songs (
+                song_id, song_name, song_url, song_thumbnail,
+                song_length, seconds_played, times_listened, rms
+            ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
+					)
+					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration);
+			} catch (err) {
+				console.error("Failed to insert song into DB:", err);
+			}
+
+			document.getElementById("downloadModalText").innerText = "Download complete!";
+			document.getElementById("finalDownloadButton").disabled = false;
+			cleanDebugFiles();
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
@@ -626,22 +601,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 				attempt++;
 
 				try {
-					await new Promise((resolve, reject) => {
-						const child = fork(path.resolve(childProcessesFolder, "download_audio.js"), [songLink, outputPath], { stdio: ["inherit", "inherit", "inherit", "ipc"] });
-
-						child.on("message", msg => {
-							if (msg.progress) {
-								const downloadedMB = (msg.progress.downloaded / (1024 * 1024)).toFixed(2);
-								document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}. Progress: ${downloadedMB} MB`;
-							}
-
-							if (msg.done) resolve();
-							if (msg.error) reject(new Error(msg.error));
-						});
-
-						child.on("exit", code => {
-							if (code !== 0) reject(new Error(`Exit code ${code}`));
-						});
+					await downloadAudio(songLink, outputPath, (downloaded, total) => {
+						const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+						document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}. Progress: ${downloadedMB} MB`;
 					});
 
 					success = true;
@@ -730,6 +692,39 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 		document.getElementById("finalDownloadButton").disabled = false;
 	}
+}
+
+async function downloadAudio(videoUrl, outputFilePath, onProgress) {
+	return new Promise(async (resolve, reject) => {
+		const videoId = (videoUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/) || [])[1] || null;
+
+		if (!videoId) return reject(new Error("Invalid YouTube URL"));
+
+		try {
+			const stream = ytdl(videoId, { quality: "highestaudio" });
+			const writeStream = fs.createWriteStream(outputFilePath);
+
+			let downloaded = 0;
+			let total = 0;
+
+			stream.on("response", response => {
+				total = parseInt(response.headers["content-length"], 10);
+				if (onProgress) onProgress(downloaded, total);
+			});
+
+			stream.on("data", chunk => {
+				downloaded += chunk.length;
+				if (onProgress) onProgress(downloaded, total);
+			});
+
+			writeStream.on("finish", () => resolve());
+			writeStream.on("error", reject);
+
+			stream.pipe(writeStream);
+		} catch (err) {
+			reject(err);
+		}
+	});
 }
 
 function saveAsPlaylist(songIds, playlistName) {

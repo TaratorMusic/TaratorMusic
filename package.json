@@ -19,12 +19,6 @@
 		"url": "https://github.com/Victiniiiii/TaratorMusic.git"
 	},
 	"build": {
-		"extraFiles": [
-			{
-				"from": "child-processes",
-				"to": "child-processes"
-			}
-		],
 		"publish": [
 			{
 				"provider": "github",

@@ -8,7 +8,7 @@ const fs = require("fs");
 const Database = require("better-sqlite3");
 
 let taratorFolder;
-let musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, childProcessesFolder;
+let musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath;
 let settingsDb = {},
 	playlistsDb = {},
@@ -21,7 +21,6 @@ let settingsDb = {},
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
 	appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
 	databasesFolder = path.join(taratorFolder, "databases");
-	childProcessesFolder = await ipcRenderer.invoke('get-child-process-path');
 
 	settingsDbPath = path.join(databasesFolder, "settings.db");
 	playlistsDbPath = path.join(databasesFolder, "playlists.db");

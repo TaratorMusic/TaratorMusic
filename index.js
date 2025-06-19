@@ -54,11 +54,6 @@ function createWindow() {
 	ipcMain.handle("get-app-base-path", () => {
 		return app.getAppPath();
 	});
-
-	ipcMain.handle("get-child-process-path", () => {
-		const basePath = app.isPackaged ? process.resourcesPath : app.getAppPath();
-		return path.join(basePath, "child-processes");
-	});
 }
 
 app.whenReady().then(() => {
