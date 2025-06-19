@@ -55,8 +55,9 @@ function createWindow() {
 		return app.getAppPath();
 	});
 
-	ipcMain.handle("get-static-path", () => {
-		return process.resourcesPath;
+	ipcMain.handle("get-child-process-path", () => {
+		const basePath = app.isPackaged ? process.resourcesPath : app.getAppPath();
+		return path.join(basePath, "child-processes");
 	});
 }
 

@@ -7,7 +7,7 @@ const https = require("https");
 const fs = require("fs");
 const Database = require("better-sqlite3");
 
-let taratorFolder; staticPath;
+let taratorFolder;
 let musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, childProcessesFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath;
 let settingsDb = {},
@@ -16,13 +16,12 @@ let settingsDb = {},
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
-	staticPath = await ipcRenderer.invoke("get-static-path");
 
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
 	appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
 	databasesFolder = path.join(taratorFolder, "databases");
-	childProcessesFolder = path.join(staticPath, "child-processes");
+	childProcessesFolder = await ipcRenderer.invoke('get-child-process-path');
 
 	settingsDbPath = path.join(databasesFolder, "settings.db");
 	playlistsDbPath = path.join(databasesFolder, "playlists.db");
