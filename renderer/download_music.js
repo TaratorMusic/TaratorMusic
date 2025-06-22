@@ -679,7 +679,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 			}
 
 			completedDownloads++;
-			document.getElementById("downloadModalText").innerText = `Processed song ${i + 1} of ${totalSongs}. Progress: ${completedDownloads}/${totalSongs}`;
+			document.getElementById("downloadModalText").innerText = `Processed song ${i + 1} of ${totalSongs}.`;
 
 			await sleep(1000);
 		}
