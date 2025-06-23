@@ -487,7 +487,7 @@ async function myMusicOnClick() {
 	[0, 1, 2, 3, 4, 6, 8, 16, "All"].forEach(count => {
 		const option = document.createElement("option");
 		option.value = count;
-		option.innerText = count === "All" ? "Show All" : `Show ${count} Rows`;
+		option.innerText = count === "All" ? "Show All" : `Show ${count} Row${count === 1 ? "" : "s"}`;
 		if (count == displayCount || (displayCount == 9999999 && count === "All")) {
 			option.selected = true;
 		}
