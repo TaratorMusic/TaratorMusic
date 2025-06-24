@@ -27,6 +27,7 @@
 				"releaseType": "draft"
 			}
 		],
+		"publisher": "Victiniiiii",
 		"appId": "com.yourdomain.taratormusic",
 		"productName": "TaratorMusic",
 		"npmRebuild": true,
@@ -49,7 +50,9 @@
 		},
 		"nsis": {
 			"allowToChangeInstallationDirectory": true,
-			"oneClick": false
+			"oneClick": false,
+			"license": "license.txt",
+			"publisher": "Victiniiiii"
 		},
 		"mac": {
 			"target": "dmg",
