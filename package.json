@@ -27,7 +27,6 @@
 				"releaseType": "draft"
 			}
 		],
-		"publisher": "Victiniiiii",
 		"appId": "com.yourdomain.taratormusic",
 		"productName": "TaratorMusic",
 		"npmRebuild": true,
