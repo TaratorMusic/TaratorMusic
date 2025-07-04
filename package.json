@@ -49,8 +49,7 @@
 		},
 		"nsis": {
 			"allowToChangeInstallationDirectory": true,
-			"oneClick": false,
-			"license": "license.txt"
+			"oneClick": false
 		},
 		"mac": {
 			"target": "dmg",
