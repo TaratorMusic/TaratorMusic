@@ -50,8 +50,7 @@
 		"nsis": {
 			"allowToChangeInstallationDirectory": true,
 			"oneClick": false,
-			"license": "license.txt",
-			"publisher": "Victiniiiii"
+			"license": "license.txt"
 		},
 		"mac": {
 			"target": "dmg",
