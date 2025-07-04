@@ -71,8 +71,7 @@ let audioContext;
 let audioSource;
 let latestReleaseNotes = "You are using the latest version of TaratorMusic.";
 const debounceMap = new Map();
-let oldItemsPerRow = null;
-let resizeTimeout;
+const songNameCache = new Map();
 
 let totalTimeSpent;
 let rememberautoplay;
@@ -461,8 +460,6 @@ tabs.forEach(tab => {
 		});
 	});
 });
-
-const songNameCache = new Map();
 
 function getSongNameCached(songId) {
 	if (!songNameCache.has(songId)) songNameCache.set(songId, getSongNameById(songId));
@@ -1206,8 +1203,7 @@ function saveEditedSong() {
 }
 
 async function removeSong() {
-	const confirmed = await showDeleteModal();
-	if (!confirmed) return;
+	if (!(await confirmModal("Delete this song?", "Delete", "Keep"))) return;
 
 	const musicFilePath = path.join(musicFolder, fileToDelete + ".mp3");
 	const thumbnailFilePath = path.join(thumbnailFolder, fileToDelete + ".jpg");
@@ -1230,32 +1226,27 @@ async function removeSong() {
 	if (divToRemove) divToRemove.remove();
 }
 
-function showDeleteModal() {
+function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
 	return new Promise(resolve => {
-		const modal = document.getElementById("deleteModal");
-		const confirmBtn = document.getElementById("deleteModalConfirmBtn");
-		const cancelBtn = document.getElementById("deleteModalCancelBtn");
+		const overlay = document.createElement("div");
+		overlay.className = "confirm-modal-overlay";
+		overlay.innerHTML = `
+            <div class="confirm-modal">
+                <p>${description}</p>
+                <div class="confirm-modal-actions">
+                    <button id="confirmModalPrimary">${button1}</button>
+                    <button id="confirmModalSecondary">${button2}</button>
+                </div>
+            </div>`;
+		document.body.appendChild(overlay);
 
-		modal.classList.remove("hidden");
-
-		function cleanup() {
-			modal.classList.add("hidden");
-			confirmBtn.removeEventListener("click", onConfirm);
-			cancelBtn.removeEventListener("click", onCancel);
+		function cleanup(result) {
+			overlay.remove();
+			resolve(result);
 		}
 
-		function onConfirm() {
-			cleanup();
-			resolve(true);
-		}
-
-		function onCancel() {
-			cleanup();
-			resolve(false);
-		}
-
-		confirmBtn.addEventListener("click", onConfirm);
-		cancelBtn.addEventListener("click", onCancel);
+		overlay.querySelector("#confirmModalPrimary").addEventListener("click", () => cleanup(true));
+		overlay.querySelector("#confirmModalSecondary").addEventListener("click", () => cleanup(false));
 	});
 }
 
