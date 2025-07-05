@@ -1642,4 +1642,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
+
+	ipcRenderer.send("renderer-domready");
 });

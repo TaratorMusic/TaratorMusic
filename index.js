@@ -44,11 +44,6 @@ function createWindow() {
 
 	mainWindow.loadFile("renderer/index.html");
 
-	mainWindow.once("ready-to-show", () => {
-		splash.destroy();
-		mainWindow.show();
-	});
-
 	ipcMain.handle("get-app-version", () => app.getVersion());
 
 	ipcMain.handle("get-app-base-path", () => {
@@ -56,6 +51,12 @@ function createWindow() {
 			return path.dirname(process.env.APPIMAGE);
 		}
 		return app.getAppPath();
+	});
+
+	ipcMain.on("renderer-domready", e => {
+		if (e.sender.id !== mainWindow.webContents.id) return;
+		if (splash && !splash.isDestroyed()) splash.destroy();
+		if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
 	});
 }
 
