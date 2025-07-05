@@ -20,7 +20,7 @@ function createWindow() {
 		width: 1600,
 		height: 850,
 		title: "TaratorMusic",
-		icon: path.join(__dirname, "app_thumbnails/tarator16_icon.png"),
+		icon: path.join(__dirname, "assets/tarator16_icon.png"),
 		frame: false,
 		transparent: true,
 		alwaysOnTop: true,
@@ -33,7 +33,7 @@ function createWindow() {
 		width: 1600,
 		height: 850,
 		title: "TaratorMusic",
-		icon: path.join(__dirname, "app_thumbnails/tarator16_icon.png"),
+		icon: path.join(__dirname, "assets/tarator16_icon.png"),
 		show: false,
 		webPreferences: {
 			contextIsolation: false,

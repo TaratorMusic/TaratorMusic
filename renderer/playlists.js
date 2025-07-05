@@ -39,7 +39,9 @@ function displayPlaylists(playlists) {
 
 		let thumbnailSrc = "";
 
-		if (fs.existsSync(thumbnailPath)) {
+		if (playlist.name == "Favorites") {
+			thumbnailSrc = `file://${path.join(appThumbnailFolder, "star.svg").replace(/\\/g, "/")}?t=${Date.now()}`;
+		} else if (fs.existsSync(thumbnailPath)) {
 			thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
 		} else {
 			thumbnailSrc = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}?t=${Date.now()}`;
@@ -47,6 +49,7 @@ function displayPlaylists(playlists) {
 
 		const thumbnail = document.createElement("img");
 		thumbnail.src = thumbnailSrc;
+		thumbnail.className = "playlistThumbnail";
 		playlistElement.appendChild(thumbnail);
 
 		const playlistInfoandSongs = document.createElement("div");
@@ -58,32 +61,30 @@ function displayPlaylists(playlists) {
 		playlistInfo.className = "playlist-info";
 
 		const playlistName = document.createElement("div");
-		const playlistLength = document.createElement("div");
-		playlistName.textContent = playlist.name;
-		playlistLength.textContent = playlist.songs.length === 1 ? `${playlist.songs.length} song` : `${playlist.songs.length} songs`;
+		playlistName.className = "playlistName";
+		playlistName.innerHTML = `<h2>${playlist.name} -&nbsp;</h2>`;
+		playlistName.innerHTML += `<h3> ${playlist.songs.length === 1 ? `${playlist.songs.length} song` : `${playlist.songs.length} songs`}</h3>`;
 		playlistInfo.appendChild(playlistName);
-		playlistInfo.appendChild(playlistLength);
 
 		const playlistSongs = document.createElement("div");
-		const playlistButtons = document.createElement("div");
 		playlistInfoandSongs.appendChild(playlistSongs);
-		playlistElement.appendChild(playlistButtons);
 		playlistSongs.className = "playlist-songs";
-		playlistButtons.className = "playlist-buttons";
 
-		const playlistCustomiseButton = document.createElement("div");
-		playlistButtons.appendChild(playlistCustomiseButton);
-		playlistCustomiseButton.className = "playlist-buttons-button";
-		playlistCustomiseButton.innerHTML = icon.custom;
+		if (playlist.name != "Favorites") {
+			const playlistCustomiseButton = document.createElement("div");
+			playlistInfo.appendChild(playlistCustomiseButton);
+			playlistCustomiseButton.className = "playlist-button";
+			playlistCustomiseButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
 
-		playlistCustomiseButton.addEventListener("click", () => {
-			let theNameOfThePlaylist = playlist.name;
-			document.getElementById("editPlaylistModal").style.display = "block";
-			document.getElementById("editPlaylistNameInput").value = theNameOfThePlaylist;
-			document.getElementById("editInvisibleName").value = theNameOfThePlaylist;
-			document.getElementById("editPlaylistThumbnail").src = thumbnailSrc;
-			document.getElementById("editInvisiblePhoto").src = thumbnailSrc;
-		});
+			playlistCustomiseButton.addEventListener("click", () => {
+				let theNameOfThePlaylist = playlist.name;
+				document.getElementById("editPlaylistModal").style.display = "block";
+				document.getElementById("editPlaylistNameInput").value = theNameOfThePlaylist;
+				document.getElementById("editInvisibleName").value = theNameOfThePlaylist;
+				document.getElementById("editPlaylistThumbnail").src = thumbnailSrc;
+				document.getElementById("editInvisiblePhoto").src = thumbnailSrc;
+			});
+		}
 
 		for (let i = 0; i < playlist.songs.length; i++) {
 			const playlistSong = document.createElement("div");

@@ -1,7 +1,6 @@
 // renderer.js
 
 const { ipcRenderer } = require("electron");
-const icon = require("./svg.js");
 const path = require("path");
 const https = require("https");
 const fs = require("fs");
@@ -19,7 +18,7 @@ let settingsDb = {},
 
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
-	appThumbnailFolder = path.join(taratorFolder, "app_thumbnails");
+	appThumbnailFolder = path.join(taratorFolder, "assets");
 	databasesFolder = path.join(taratorFolder, "databases");
 
 	settingsDbPath = path.join(databasesFolder, "settings.db");
@@ -315,24 +314,31 @@ function initializePlaylistsDatabase() {
 		playlistsDb
 			.prepare(
 				`
-			CREATE TABLE IF NOT EXISTS playlists (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				name TEXT UNIQUE,
-				songs TEXT,
-				thumbnail TEXT
-			)
-		`
+            CREATE TABLE IF NOT EXISTS playlists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE,
+                songs TEXT,
+                thumbnail TEXT
+            )
+        `
 			)
 			.run();
 
-		const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists").all();
+		const starThumb = path.join(appThumbnailFolder, "star.svg");
 
-		if (allPlaylists.length === 0) {
-			console.log("No playlists found in the database.");
-		} else {
-			console.log(`Loaded ${allPlaylists.length} playlists from the database.`);
-		}
+		playlistsDb.transaction(() => {
+			const fav = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get("Favorites");
+			if (!fav) {
+				const ids = playlistsDb.prepare("SELECT id FROM playlists ORDER BY id DESC").all();
+				for (const { id } of ids) {
+					playlistsDb.prepare("UPDATE playlists SET id = ? WHERE id = ?").run(id + 1, id);
+				}
+				playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail) VALUES (1, ?, ?, ?)").run("Favorites", JSON.stringify([]), starThumb);
+			}
+		})();
 
+		const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists ORDER BY id").all();
+		console.log(`Loaded ${allPlaylists.length} playlist${allPlaylists.length === 1 ? "" : "s"} from the database.`);
 		return allPlaylists;
 	} catch (err) {
 		console.error("Error initializing playlists database:", err);
@@ -409,19 +415,6 @@ function savePlayedTime(songName, timePlayed) {
 	}
 }
 
-document.getElementById("backwardButton").innerHTML = icon.backward;
-document.getElementById("previousSongButton").innerHTML = icon.previous;
-document.getElementById("playButton").innerHTML = icon.play;
-document.getElementById("pauseButton").innerHTML = icon.pause;
-document.getElementById("nextSongButton").innerHTML = icon.next;
-document.getElementById("forwardButton").innerHTML = icon.forward;
-document.getElementById("autoplayButton").innerHTML = icon.redAutoplay;
-document.getElementById("shuffleButton").innerHTML = icon.redShuffle;
-document.getElementById("muteButton").innerHTML = icon.mute;
-document.getElementById("speedButton").innerHTML = icon.speed;
-document.getElementById("loopButton").innerHTML = icon.redLoop;
-document.getElementById("songSettingsButton").innerHTML = icon.adjustments;
-
 function changeThePreviousSongAmount() {
 	if (document.getElementById("arrayLength").value > 9 && document.getElementById("arrayLength").value < 101) {
 		maximumPreviousSongCount = document.getElementById("arrayLength").value;
@@ -472,12 +465,8 @@ async function myMusicOnClick() {
 	myMusicContent.innerHTML = "";
 
 	const controlsBar = document.createElement("div");
-	controlsBar.style.display = "flex";
-	controlsBar.style.justifyContent = "center";
-	controlsBar.style.alignItems = "center";
-	controlsBar.style.gap = "10px";
-	controlsBar.style.marginBottom = "10px";
-
+	controlsBar.id = "controlsBar";
+	
 	const musicSearchInput = document.createElement("input");
 	musicSearchInput.type = "text";
 	musicSearchInput.id = "music-search";
@@ -509,9 +498,6 @@ async function myMusicOnClick() {
 
 	const musicListContainer = document.createElement("div");
 	musicListContainer.id = "music-list-container";
-	musicListContainer.style.display = "grid";
-	musicListContainer.style.gridTemplateColumns = "repeat(auto-fill, minmax(200px, 1fr))";
-	musicListContainer.style.gap = "5px";
 	myMusicContent.appendChild(musicListContainer);
 
 	const musicFiles = songRows
@@ -589,7 +575,8 @@ function createMusicElement(songFile) {
 	songLengthElement.innerText = formatTime(songFile.length);
 
 	const customizeButtonElement = document.createElement("button");
-	customizeButtonElement.innerHTML = icon.customise;
+	customizeButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
+
 	customizeButtonElement.classList.add("customize-button");
 	customizeButtonElement.addEventListener("click", event => {
 		event.stopPropagation();
@@ -597,7 +584,7 @@ function createMusicElement(songFile) {
 	});
 
 	const addToPlaylistButtonElement = document.createElement("button");
-	addToPlaylistButtonElement.innerHTML = icon.addToPlaylist;
+	addToPlaylistButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "addtoplaylist.svg")}" alt="Add To Playlist">`;
 	addToPlaylistButtonElement.classList.add("add-to-playlist-button");
 	addToPlaylistButtonElement.addEventListener("click", event => {
 		event.stopPropagation();
@@ -698,8 +685,9 @@ async function playMusic(file, boop, isPlaylist) {
 		audioElement.volume = volumeControl.value / 100 / dividevolume;
 		audioElement.playbackRate = rememberspeed;
 		audioElement.loop = isLooping === true;
-		document.getElementById("customiseSong").style.color = "white";
-		document.getElementById("addToPlaylist").style.color = "white";
+		document.querySelectorAll(".settingsMenuButtons").forEach(el => {
+			el.style.color = "white";
+		});
 
 		if (!audioContext) {
 			audioContext = new AudioContext();
@@ -1008,48 +996,27 @@ async function randomPlaylistFunctionMainMenu() {
 
 function toggleAutoplay() {
 	isAutoplayActive = !isAutoplayActive;
-	const autoplayButton = document.getElementById("autoplayButton");
-	if (isAutoplayActive) {
-		autoplayButton.classList.add("active");
-		autoplayButton.innerHTML = icon.greenAutoplay;
-		updateDatabase("rememberautoplay", 1, settingsDb);
-	} else {
-		autoplayButton.classList.remove("active");
-		autoplayButton.innerHTML = icon.redAutoplay;
-		updateDatabase("rememberautoplay", 0, settingsDb);
-	}
+	const btn = document.getElementById("autoplayButton");
+	btn.classList.toggle("active", isAutoplayActive);
+	btn.innerHTML = `<img src="${path.join(appThumbnailFolder, isAutoplayActive ? "greenAutoplay.svg" : "redAutoplay.svg")}" alt="autoplay">`;
+	updateDatabase("rememberautoplay", isAutoplayActive ? 1 : 0, settingsDb);
 }
 
 function toggleShuffle() {
 	isShuffleActive = !isShuffleActive;
-	const shuffleButton = document.getElementById("shuffleButton");
-	if (isShuffleActive) {
-		shuffleButton.classList.add("active");
-		shuffleButton.innerHTML = icon.greenShuffle;
-		updateDatabase("remembershuffle", 1, settingsDb);
-	} else {
-		shuffleButton.classList.remove("active");
-		shuffleButton.innerHTML = icon.redShuffle;
-		updateDatabase("remembershuffle", 0, settingsDb);
-	}
+	const btn = document.getElementById("shuffleButton");
+	btn.classList.toggle("active", isShuffleActive);
+	btn.innerHTML = `<img src="${path.join(appThumbnailFolder, isShuffleActive ? "greenShuffle.svg" : "redShuffle.svg")}" alt="shuffle">`;
+	updateDatabase("remembershuffle", isShuffleActive ? 1 : 0, settingsDb);
 }
 
-function loop() {
-	if (isLooping) {
-		isLooping = false;
-		document.getElementById("loopButton").innerHTML = icon.redLoop;
-		updateDatabase("rememberloop", 0, settingsDb);
-		if (audioElement) {
-			audioElement.loop = false;
-		}
-	} else {
-		isLooping = true;
-		document.getElementById("loopButton").innerHTML = icon.greenLoop;
-		updateDatabase("rememberloop", 1, settingsDb);
-		if (audioElement) {
-			audioElement.loop = true;
-		}
-	}
+function toggleLoop() {
+	isLooping = !isLooping;
+	const btn = document.getElementById("loopButton");
+	btn.classList.toggle("active", isLooping);
+	btn.innerHTML = `<img src="${path.join(appThumbnailFolder, isLooping ? "greenLoop.svg" : "redLoop.svg")}" alt="loop">`;
+	updateDatabase("rememberloop", isLooping ? 1 : 0, settingsDb);
+	if (audioElement) audioElement.loop = isLooping;
 }
 
 function mute() {
@@ -1427,45 +1394,64 @@ function getSongNameById(songId) {
 	return row ? row.song_name : null;
 }
 
-function createAppThumbnailsFolder() {
-	fs.mkdirSync(appThumbnailFolder);
-	console.log("App thumbnails folder missing. Downloading thumbnails...");
-	const filesToDownload = ["https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/placeholder.jpg", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator1024_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator16_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator512_icon.png", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.icns", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.ico", "https://raw.githubusercontent.com/Victiniiiii/TaratorMusic/main/app_thumbnails/tarator_icon.png"];
+async function createAppThumbnailsFolder() {
+	if (!fs.existsSync(appThumbnailFolder)) fs.mkdirSync(appThumbnailFolder);
 
-	filesToDownload.forEach(url => {
-		const fileName = path.basename(url);
-		const filePath = path.join(appThumbnailFolder, fileName);
+	const apiUrl = "https://api.github.com/repos/Victiniiiii/TaratorMusic/contents/assets";
+	const options = { headers: { "User-Agent": "Node.js" } };
 
-		if (fs.existsSync(filePath)) {
-			console.log(`${fileName} already exists, skipping download.`);
-			return;
-		}
-
-		const fileStream = fs.createWriteStream(filePath);
-
-		https
-			.get(url, res => {
-				if (res.statusCode !== 200) {
-					console.error(`Failed to download ${fileName}: Status code ${res.statusCode}`);
+	const downloadFile = (url, dest) =>
+		new Promise((resolve, reject) => {
+			if (fs.existsSync(dest)) {
+				console.log(`${path.basename(dest)} already exists, skipping download.`);
+				return resolve();
+			}
+			const fileStream = fs.createWriteStream(dest);
+			https
+				.get(url, res => {
+					if (res.statusCode !== 200) {
+						fileStream.close();
+						fs.unlinkSync(dest);
+						return reject(new Error(`Failed to download ${path.basename(dest)}: Status code ${res.statusCode}`));
+					}
+					res.pipe(fileStream);
+					fileStream.on("finish", () => {
+						fileStream.close();
+						console.log(`Downloaded ${path.basename(dest)}`);
+						resolve();
+					});
+				})
+				.on("error", err => {
 					fileStream.close();
-					fs.unlinkSync(filePath);
-					return;
-				}
-
-				res.pipe(fileStream);
-
-				fileStream.on("finish", () => {
-					fileStream.close();
-					console.log(`Downloaded ${fileName}`);
+					fs.unlinkSync(dest);
+					reject(err);
 				});
-			})
-			.on("error", err => {
-				console.error(`Error downloading ${fileName}:`, err.message);
-				fileStream.close();
-				fs.unlinkSync(filePath);
-			});
-	});
-	alert("App thumbnails installed. App restart required for the effects.");
+		});
+
+	try {
+		const files = await new Promise((resolve, reject) => {
+			https
+				.get(apiUrl, options, res => {
+					if (res.statusCode !== 200) return reject(new Error(`Failed to fetch assets list: Status code ${res.statusCode}`));
+					let data = "";
+					res.on("data", chunk => (data += chunk));
+					res.on("end", () => resolve(JSON.parse(data)));
+				})
+				.on("error", reject);
+		});
+
+		await Promise.all(
+			files
+				.filter(f => f.type === "file")
+				.map(file => {
+					return downloadFile(file.download_url, path.join(appThumbnailFolder, file.name));
+				})
+		);
+
+		alert("App thumbnails installed. App restart required for the effects.");
+	} catch (e) {
+		console.error("Error in createAppThumbnailsFolder:", e);
+	}
 }
 
 function changeBackground(color) {
@@ -1499,6 +1485,26 @@ function customiseSongButtonFromBottomRight() {
 function addToPlaylistButtonFromBottomRight() {
 	if (secondfilename) {
 		openAddToPlaylistModal(secondfilename.replace(".mp3", ""));
+	}
+}
+
+function addToFavorites() {
+	if (secondfilename) {
+		let songs = [];
+		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE name = 'Favorites'").get();
+		if (fav && fav.songs) {
+			try {
+				songs = JSON.parse(fav.songs);
+			} catch (e) {}
+		}
+		if (!songs.includes(secondfilename.replace(".mp3", ""))) {
+			songs.push(secondfilename.replace(".mp3", ""));
+			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = 'Favorites'").run(JSON.stringify(songs));
+
+			if (getComputedStyle(document.getElementById("playlists-content")).display === "grid") {
+				getPlaylists();
+			}
+		}
 	}
 }
 
@@ -1585,4 +1591,26 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
+
+	const icons = {
+		backwardButton: "backward.svg",
+		previousSongButton: "previous.svg",
+		playButton: "play.svg",
+		pauseButton: "pause.svg",
+		nextSongButton: "next.svg",
+		forwardButton: "forward.svg",
+		autoplayButton: "redAutoplay.svg",
+		shuffleButton: "redShuffle.svg",
+		muteButton: "mute.svg",
+		speedButton: "speed.svg",
+		loopButton: "redLoop.svg",
+		songSettingsButton: "adjustments.svg",
+	};
+
+	for (const [id, file] of Object.entries(icons)) {
+		const el = document.getElementById(id);
+		if (el) {
+			el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
+		}
+	}
 });
