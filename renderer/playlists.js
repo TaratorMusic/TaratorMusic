@@ -39,12 +39,17 @@ function displayPlaylists(playlists) {
 
 		let thumbnailSrc = "";
 
-		if (playlist.name == "Favorites") {
-			thumbnailSrc = `file://${path.join(appThumbnailFolder, "star.svg").replace(/\\/g, "/")}?t=${Date.now()}`;
-		} else if (fs.existsSync(thumbnailPath)) {
-			thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
-		} else {
-			thumbnailSrc = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}?t=${Date.now()}`;
+		try {
+			if (playlist.name == "Favorites") {
+				thumbnailSrc = `file://${path.join(appThumbnailFolder, "star.svg").replace(/\\/g, "/")}?t=${Date.now()}`;
+			} else if (fs.existsSync(thumbnailPath)) {
+				thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
+			} else {
+				thumbnailSrc = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}?t=${Date.now()}`;
+			}
+		} catch (error) {
+			console.log(error);
+			createAppThumbnailsFolder();
 		}
 
 		const thumbnail = document.createElement("img");
@@ -74,7 +79,13 @@ function displayPlaylists(playlists) {
 			const playlistCustomiseButton = document.createElement("div");
 			playlistInfo.appendChild(playlistCustomiseButton);
 			playlistCustomiseButton.className = "playlist-button";
-			playlistCustomiseButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
+			
+			try {
+				playlistCustomiseButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
+			} catch (error) {
+				console.log(error);
+				createAppThumbnailsFolder();
+			}
 
 			playlistCustomiseButton.addEventListener("click", () => {
 				let theNameOfThePlaylist = playlist.name;

@@ -270,26 +270,31 @@ function initializeSettingsDatabase() {
 	background = settingsRow.background;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 
-	const icons = {
-		backwardButton: "backward.svg",
-		previousSongButton: "previous.svg",
-		playButton: "play.svg",
-		pauseButton: "pause.svg",
-		nextSongButton: "next.svg",
-		forwardButton: "forward.svg",
-		autoplayButton: "redAutoplay.svg",
-		shuffleButton: "redShuffle.svg",
-		muteButton: "mute.svg",
-		speedButton: "speed.svg",
-		loopButton: "redLoop.svg",
-		songSettingsButton: "adjustments.svg",
-	};
+	try {
+		const icons = {
+			backwardButton: "backward.svg",
+			previousSongButton: "previous.svg",
+			playButton: "play.svg",
+			pauseButton: "pause.svg",
+			nextSongButton: "next.svg",
+			forwardButton: "forward.svg",
+			autoplayButton: "redAutoplay.svg",
+			shuffleButton: "redShuffle.svg",
+			muteButton: "mute.svg",
+			speedButton: "speed.svg",
+			loopButton: "redLoop.svg",
+			songSettingsButton: "adjustments.svg",
+		};
 
-	for (const [id, file] of Object.entries(icons)) {
-		const el = document.getElementById(id);
-		if (el) {
-			el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
+		for (const [id, file] of Object.entries(icons)) {
+			const el = document.getElementById(id);
+			if (el) {
+				el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
+			}
 		}
+	} catch (error) {
+		console.log(error);
+		createAppThumbnailsFolder();
 	}
 
 	updateTimer();
@@ -347,7 +352,13 @@ function initializePlaylistsDatabase() {
 			)
 			.run();
 
-		const starThumb = path.join(appThumbnailFolder, "star.svg");
+		let starThumb;
+		try {
+			starThumb = path.join(appThumbnailFolder, "star.svg");
+		} catch (error) {
+			console.log(error);
+			createAppThumbnailsFolder();
+		}
 
 		playlistsDb.transaction(() => {
 			const fav = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get("Favorites");
@@ -598,7 +609,6 @@ function createMusicElement(songFile) {
 	songLengthElement.innerText = formatTime(songFile.length);
 
 	const customizeButtonElement = document.createElement("button");
-	customizeButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
 
 	customizeButtonElement.classList.add("customize-button");
 	customizeButtonElement.addEventListener("click", event => {
@@ -607,12 +617,19 @@ function createMusicElement(songFile) {
 	});
 
 	const addToPlaylistButtonElement = document.createElement("button");
-	addToPlaylistButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "addtoplaylist.svg")}" alt="Add To Playlist">`;
 	addToPlaylistButtonElement.classList.add("add-to-playlist-button");
 	addToPlaylistButtonElement.addEventListener("click", event => {
 		event.stopPropagation();
 		openAddToPlaylistModal(fileNameWithoutExtension);
 	});
+
+	try {
+		customizeButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
+		addToPlaylistButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "addtoplaylist.svg")}" alt="Add To Playlist">`;
+	} catch (error) {
+		console.log(error);
+		createAppThumbnailsFolder();
+	}
 
 	musicElement.appendChild(songLengthElement);
 	musicElement.appendChild(songNameElement);
@@ -728,7 +745,14 @@ async function playMusic(file, boop, isPlaylist) {
 		const decodedFileName = decodeURIComponent(encodedFileName);
 		const thumbnailFileName = `${decodedFileName}.jpg`;
 		const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
-		let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
+		
+		let thumbnailUrl;
+		try {
+			thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
+		} catch (error) {
+			console.log(error);
+			createAppThumbnailsFolder();
+		}
 
 		if (fs.existsSync(thumbnailPath)) {
 			thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}`;
@@ -1032,7 +1056,12 @@ function toggleAutoplay() {
 	const autoplayButton = document.getElementById("autoplayButton");
 	if (isAutoplayActive) {
 		autoplayButton.classList.add("active");
-		autoplayButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenAutoplay.svg")}" alt="Autoplay Active">`;
+		try {
+			autoplayButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenAutoplay.svg")}" alt="Autoplay Active">`;
+		} catch (error) {
+			console.log(error);
+			createAppThumbnailsFolder();
+		}
 		updateDatabase("rememberautoplay", 1, settingsDb);
 	} else {
 		autoplayButton.classList.remove("active");
@@ -1046,7 +1075,12 @@ function toggleShuffle() {
 	const shuffleButton = document.getElementById("shuffleButton");
 	if (isShuffleActive) {
 		shuffleButton.classList.add("active");
-		shuffleButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenShuffle.svg")}" alt="Shuffle Active">`;
+		try {
+			shuffleButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenShuffle.svg")}" alt="Shuffle Active">`;
+		} catch (error) {
+			console.log(error);
+			createAppThumbnailsFolder();
+		}
 		updateDatabase("remembershuffle", 1, settingsDb);
 	} else {
 		shuffleButton.classList.remove("active");
@@ -1060,7 +1094,12 @@ function toggleLoop() {
 	const loopButton = document.getElementById("loopButton");
 	if (isLooping) {
 		loopButton.classList.add("active");
-		loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenLoop.svg")}" alt="Loop Enabled">`;
+		try {
+			loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenLoop.svg")}" alt="Loop Enabled">`;
+		} catch (error) {
+			console.log(error);
+			createAppThumbnailsFolder();
+		}
 		updateDatabase("rememberloop", 1, settingsDb);
 	} else {
 		loopButton.classList.remove("active");
