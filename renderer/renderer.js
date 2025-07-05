@@ -420,6 +420,7 @@ document.getElementById("shuffleButton").innerHTML = icon.redShuffle;
 document.getElementById("muteButton").innerHTML = icon.mute;
 document.getElementById("speedButton").innerHTML = icon.speed;
 document.getElementById("loopButton").innerHTML = icon.redLoop;
+document.getElementById("songSettingsButton").innerHTML = icon.adjustments;
 
 function changeThePreviousSongAmount() {
 	if (document.getElementById("arrayLength").value > 9 && document.getElementById("arrayLength").value < 101) {

@@ -261,7 +261,7 @@
 				<div class="settingsflexrow">
 					<div>Stabilise Volume while downloading music</div>
 					<label class="switch">
-						<input type="checkbox" id="stabiliseVolumeToggle" onclick="stabiliseVolumeToggleTogglerFunction()"/>
+						<input type="checkbox" id="stabiliseVolumeToggle" onclick="stabiliseVolumeToggleTogglerFunction()" />
 						<span class="slider round"></span>
 					</label>
 				</div>
@@ -318,6 +318,12 @@
 			</div>
 			<span id="video-length">00:00 / 00:00</span>
 			<input type="range" id="volume" min="0" max="100" value="100" />
+			<button id="songSettingsButton" class="audio-button">⚙️</button>
+			<div id="settingsMenu" class="settings-menu">
+				<div style="color: red;">Add to Playlist</div>
+				<div style="color: red;">Add to Favorites</div>
+				<div style="color: red;">Customise Song</div>
+			</div>
 		</div>
 		<script src="discord.js"></script>
 		<script src="renderer.js"></script>

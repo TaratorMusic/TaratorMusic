@@ -244,11 +244,29 @@ audio {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	position: relative;
+	z-index: 2;
 }
 
 .audio-button:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 6px 12px rgba(0, 0, 0, 0.7);
+}
+
+.settings-menu {
+	position: absolute;
+	top: -50px;
+	right: 10px;
+	padding: 5px;
+	display: none;
+	background-color: #333;
+	cursor: pointer;
+	font-size: 1.1em;
+}
+
+#songSettingsButton:hover + .settings-menu,
+.settings-menu:hover {
+	display: block;
 }
 
 #titlerow {
@@ -447,7 +465,7 @@ audio {
 .modal {
 	display: none;
 	position: fixed;
-	z-index: 1;
+	z-index: 100;
 	left: 0;
 	top: 0;
 	width: 100%;
