@@ -50,7 +50,7 @@ function toggleDiscordAPI() {
 	}
 }
 
-function parseTimeToSeconds(timeStr) {
+function parseTimeToSeconds(timeStr) { // TODO: transfer to helpers.js
 	if (typeof timeStr !== "string") return null;
 	const parts = timeStr.split(":").map(Number);
 	if (parts.some(isNaN)) return null;

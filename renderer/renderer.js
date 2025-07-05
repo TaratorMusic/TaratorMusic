@@ -818,14 +818,6 @@ function manageAudioControls(audioElement) {
 	});
 }
 
-function formatTime(seconds) {
-	const minutes = Math.floor(seconds / 60);
-	seconds = Math.floor(seconds % 60);
-	const minutesDisplay = minutes < 10 ? `0${minutes}` : `${minutes}`;
-	const secondsDisplay = seconds < 10 ? `0${seconds}` : `${seconds}`;
-	return `${minutesDisplay}:${secondsDisplay}`;
-}
-
 async function playPlaylist(playlist, startingIndex = 0) {
 	if (!playlist.songs || playlist.songs.length === 0) {
 		console.error(`Playlist ${playlist.name} is empty.`);
@@ -1227,30 +1219,6 @@ async function removeSong() {
 	if (divToRemove) divToRemove.remove();
 }
 
-function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
-	return new Promise(resolve => {
-		const overlay = document.createElement("div");
-		overlay.className = "confirm-modal-overlay";
-		overlay.innerHTML = `
-            <div class="confirm-modal">
-                <p>${description}</p>
-                <div class="confirm-modal-actions">
-                    <button id="confirmModalPrimary">${button1}</button>
-                    <button id="confirmModalSecondary">${button2}</button>
-                </div>
-            </div>`;
-		document.body.appendChild(overlay);
-
-		function cleanup(result) {
-			overlay.remove();
-			resolve(result);
-		}
-
-		overlay.querySelector("#confirmModalPrimary").addEventListener("click", () => cleanup(true));
-		overlay.querySelector("#confirmModalSecondary").addEventListener("click", () => cleanup(false));
-	});
-}
-
 document.querySelectorAll(".settingsKeybindsButton").forEach(button => {
 	button.addEventListener("click", function () {
 		const currentButton = this;
@@ -1323,20 +1291,6 @@ document.addEventListener("keydown", event => {
 		randomPlaylistFunctionMainMenu();
 	}
 });
-
-function findDuplicates(array) {
-	const seen = new Set();
-	const duplicates = new Set();
-
-	for (const item of array) {
-		if (seen.has(item)) {
-			duplicates.add(item);
-		}
-		seen.add(item);
-	}
-
-	return Array.from(duplicates);
-}
 
 function saveKeybinds() {
 	const buttons = Array.from(document.querySelectorAll(".settingsKeybindsButton")).map(button => button.innerText.trim());
@@ -1412,6 +1366,7 @@ function setupLazyBackgrounds() {
 }
 
 function loadJSFile(filename) {
+	// TODO: Move to helpers.js
 	if (filename === "download_music") {
 		document.getElementById("downloadModal").style.display = "block";
 	}

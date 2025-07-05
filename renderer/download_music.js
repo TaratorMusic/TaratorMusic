@@ -2,10 +2,6 @@ const fetch = require("node-fetch");
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
 
-function sleep(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function differentiateYouTubeLinks(url) {
 	const videoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/;
 	const playlistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
