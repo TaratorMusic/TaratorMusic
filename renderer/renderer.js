@@ -270,10 +270,33 @@ function initializeSettingsDatabase() {
 	background = settingsRow.background;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 
+	const icons = {
+		backwardButton: "backward.svg",
+		previousSongButton: "previous.svg",
+		playButton: "play.svg",
+		pauseButton: "pause.svg",
+		nextSongButton: "next.svg",
+		forwardButton: "forward.svg",
+		autoplayButton: "redAutoplay.svg",
+		shuffleButton: "redShuffle.svg",
+		muteButton: "mute.svg",
+		speedButton: "speed.svg",
+		loopButton: "redLoop.svg",
+		songSettingsButton: "adjustments.svg",
+	};
+
+	for (const [id, file] of Object.entries(icons)) {
+		const el = document.getElementById(id);
+		if (el) {
+			el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
+		}
+	}
+
 	updateTimer();
 	rememberautoplay && toggleAutoplay();
 	remembershuffle && toggleShuffle();
-	rememberloop && loop();
+	rememberloop && toggleLoop();
+
 	document.getElementById("arrayLength").value = maximumPreviousSongCount;
 	volumeControl.value = volume;
 	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
@@ -466,7 +489,7 @@ async function myMusicOnClick() {
 
 	const controlsBar = document.createElement("div");
 	controlsBar.id = "controlsBar";
-	
+
 	const musicSearchInput = document.createElement("input");
 	musicSearchInput.type = "text";
 	musicSearchInput.id = "music-search";
@@ -996,26 +1019,45 @@ async function randomPlaylistFunctionMainMenu() {
 
 function toggleAutoplay() {
 	isAutoplayActive = !isAutoplayActive;
-	const btn = document.getElementById("autoplayButton");
-	btn.classList.toggle("active", isAutoplayActive);
-	btn.innerHTML = `<img src="${path.join(appThumbnailFolder, isAutoplayActive ? "greenAutoplay.svg" : "redAutoplay.svg")}" alt="autoplay">`;
-	updateDatabase("rememberautoplay", isAutoplayActive ? 1 : 0, settingsDb);
+	const autoplayButton = document.getElementById("autoplayButton");
+	if (isAutoplayActive) {
+		autoplayButton.classList.add("active");
+		autoplayButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenAutoplay.svg")}" alt="Autoplay Active">`;
+		updateDatabase("rememberautoplay", 1, settingsDb);
+	} else {
+		autoplayButton.classList.remove("active");
+		autoplayButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redAutoplay.svg")}" alt="Autoplay Disabled">`;
+		updateDatabase("rememberautoplay", 0, settingsDb);
+	}
 }
 
 function toggleShuffle() {
 	isShuffleActive = !isShuffleActive;
-	const btn = document.getElementById("shuffleButton");
-	btn.classList.toggle("active", isShuffleActive);
-	btn.innerHTML = `<img src="${path.join(appThumbnailFolder, isShuffleActive ? "greenShuffle.svg" : "redShuffle.svg")}" alt="shuffle">`;
-	updateDatabase("remembershuffle", isShuffleActive ? 1 : 0, settingsDb);
+	const shuffleButton = document.getElementById("shuffleButton");
+	if (isShuffleActive) {
+		shuffleButton.classList.add("active");
+		shuffleButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenShuffle.svg")}" alt="Shuffle Active">`;
+		updateDatabase("remembershuffle", 1, settingsDb);
+	} else {
+		shuffleButton.classList.remove("active");
+		shuffleButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redShuffle.svg")}" alt="Shuffle Disabled">`;
+		updateDatabase("remembershuffle", 0, settingsDb);
+	}
 }
 
 function toggleLoop() {
 	isLooping = !isLooping;
-	const btn = document.getElementById("loopButton");
-	btn.classList.toggle("active", isLooping);
-	btn.innerHTML = `<img src="${path.join(appThumbnailFolder, isLooping ? "greenLoop.svg" : "redLoop.svg")}" alt="loop">`;
-	updateDatabase("rememberloop", isLooping ? 1 : 0, settingsDb);
+	const loopButton = document.getElementById("loopButton");
+	if (isLooping) {
+		loopButton.classList.add("active");
+		loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenLoop.svg")}" alt="Loop Enabled">`;
+		updateDatabase("rememberloop", 1, settingsDb);
+	} else {
+		loopButton.classList.remove("active");
+		loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redLoop.svg")}" alt="Loop Disabled">`;
+		updateDatabase("rememberloop", 0, settingsDb);
+	}
+
 	if (audioElement) audioElement.loop = isLooping;
 }
 
@@ -1253,7 +1295,7 @@ document.addEventListener("keydown", event => {
 	} else if (event.key === key_Speed) {
 		document.getElementById("speedModal").style.display == "none" ? speed() : closeModal();
 	} else if (event.key === key_Loop) {
-		loop();
+		toggleLoop();
 	} else if (event.key === key_randomSong) {
 		randomSongFunctionMainMenu();
 	} else if (event.key === key_randomPlaylist) {
@@ -1493,10 +1535,9 @@ function addToFavorites() {
 		let songs = [];
 		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE name = 'Favorites'").get();
 		if (fav && fav.songs) {
-			try {
-				songs = JSON.parse(fav.songs);
-			} catch (e) {}
+			songs = JSON.parse(fav.songs);
 		}
+
 		if (!songs.includes(secondfilename.replace(".mp3", ""))) {
 			songs.push(secondfilename.replace(".mp3", ""));
 			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = 'Favorites'").run(JSON.stringify(songs));
@@ -1591,26 +1632,4 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
-
-	const icons = {
-		backwardButton: "backward.svg",
-		previousSongButton: "previous.svg",
-		playButton: "play.svg",
-		pauseButton: "pause.svg",
-		nextSongButton: "next.svg",
-		forwardButton: "forward.svg",
-		autoplayButton: "redAutoplay.svg",
-		shuffleButton: "redShuffle.svg",
-		muteButton: "mute.svg",
-		speedButton: "speed.svg",
-		loopButton: "redLoop.svg",
-		songSettingsButton: "adjustments.svg",
-	};
-
-	for (const [id, file] of Object.entries(icons)) {
-		const el = document.getElementById(id);
-		if (el) {
-			el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
-		}
-	}
 });
