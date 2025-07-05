@@ -2,6 +2,8 @@ const fetch = require("node-fetch");
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
 
+let pendingPlaylistAddsWithIds = new Map();
+
 function differentiateYouTubeLinks(url) {
 	const videoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/;
 	const playlistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
@@ -206,6 +208,12 @@ async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadMod
 				deleteThisPlaylistSong.onclick = function () {
 					this.parentNode.remove();
 				};
+
+				const addToPlaylistBtn = document.createElement("button");
+				addToPlaylistBtn.className = "addToPlaylist";
+				addToPlaylistBtn.innerHTML = "Playlists";
+				addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging(playlistTitles[i]);
+				songAndThumbnail.appendChild(addToPlaylistBtn);
 			}
 
 			const theDivsNumber = document.createElement("div");
@@ -533,8 +541,14 @@ async function actuallyDownloadTheSong() {
 }
 
 async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
-	if (songLinks.length !== songTitles.length || songLinks.length !== songIds.length) {
-		throw new Error("Array length mismatch: songLinks, songTitles, and songIds must all be the same length");
+	const titleToIdMap = new Map();
+	for (let i = 0; i < songTitles.length; i++) {
+		titleToIdMap.set(songTitles[i], songIds[i]);
+	}
+
+	for (const [title, playlists] of pendingPlaylistAddsWithIds.entries()) {
+		const id = titleToIdMap.get(title);
+		if (id) pendingPlaylistAddsWithIds.set(id, playlists);
 	}
 
 	const totalSongs = songLinks.length;
@@ -668,7 +682,8 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 		document.getElementById("downloadModalText").innerText = "All songs downloaded and normalized successfully!";
 		document.getElementById("finalDownloadButton").disabled = false;
 
-		cleanDebugFiles();
+		await cleanDebugFiles();
+		await commitStagedPlaylistAdds();
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 		document.getElementById("finalDownloadButton").disabled = false;
@@ -733,4 +748,51 @@ function saveAsPlaylist(songIds, playlistName) {
 	} catch (err) {
 		console.error("Failed to save playlist:", err);
 	}
+}
+
+function openAddToPlaylistModalStaging(songName) {
+	document.getElementById("addToPlaylistModal").style.display = "block";
+	const box = document.getElementById("playlist-checkboxes");
+	box.innerHTML = "";
+	const playlists = playlistsDb.prepare("SELECT * FROM playlists").all() || [];
+	playlists.forEach(p => {
+		const cb = document.createElement("input");
+		cb.type = "checkbox";
+		cb.id = p.name;
+		cb.value = songName;
+		if ((pendingPlaylistAddsWithIds.get(songName) || []).includes(p.name)) cb.checked = true;
+		const lbl = document.createElement("label");
+		lbl.textContent = p.name;
+		lbl.htmlFor = cb.id;
+		box.appendChild(cb);
+		box.appendChild(lbl);
+		box.appendChild(document.createElement("br"));
+	});
+	const done = document.createElement("button");
+	done.id = "addToPlaylistDoneStaging";
+	done.textContent = "Done";
+	done.onclick = () => {
+		const sel = Array.from(document.querySelectorAll('#playlist-checkboxes input[type="checkbox"]:checked')).map(c => c.id);
+		if (sel.length) pendingPlaylistAddsWithIds.set(songName, sel);
+		else pendingPlaylistAddsWithIds.delete(songName);
+		closeModal();
+	};
+	box.appendChild(done);
+}
+
+async function commitStagedPlaylistAdds() {
+	for (const [song, lists] of pendingPlaylistAddsWithIds.entries()) {
+		lists.forEach(listName => {
+			const pl = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(listName) || { songs: "[]" };
+			let songs = [];
+			try {
+				songs = JSON.parse(pl.songs);
+			} catch {}
+			if (!songs.includes(song)) {
+				songs.push(song);
+				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(JSON.stringify(songs), listName);
+			}
+		});
+	}
+	pendingPlaylistAddsWithIds.clear();
 }

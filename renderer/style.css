@@ -490,6 +490,10 @@ audio {
 	background-color: rgba(0, 0, 0, 0.4);
 }
 
+#addToPlaylistModal {
+	z-index: 101;
+}
+
 .modal-content {
 	padding: 1vw;
 	border: 1px solid #888;
