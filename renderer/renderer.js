@@ -824,6 +824,16 @@ function manageAudioControls(audioElement) {
 		}
 	});
 
+	audioElement.addEventListener("play", () => {
+		playButton.style.display = "none";
+		pauseButton.style.display = "inline-block";
+	});
+
+	audioElement.addEventListener("pause", () => {
+		pauseButton.style.display = "none";
+		playButton.style.display = "inline-block";
+	});
+
 	videoProgress.addEventListener("input", () => {
 		const seekTime = (audioElement.duration * videoProgress.value) / 100;
 		audioElement.currentTime = seekTime;
