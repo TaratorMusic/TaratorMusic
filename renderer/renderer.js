@@ -698,6 +698,8 @@ async function playMusic(file, boop, isPlaylist) {
 		audioElement.volume = volumeControl.value / 100 / dividevolume;
 		audioElement.playbackRate = rememberspeed;
 		audioElement.loop = isLooping === true;
+		document.getElementById("customiseSong").style.color = "white";
+		document.getElementById("addToPlaylist").style.color = "white";
 
 		if (!audioContext) {
 			audioContext = new AudioContext();
@@ -1486,6 +1488,18 @@ function stabiliseVolumeToggleTogglerFunction() {
 	stabiliseVolumeToggle = stabiliseVolumeToggle == 1 ? 0 : 1;
 	console.log(stabiliseVolumeToggle);
 	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb);
+}
+
+function customiseSongButtonFromBottomRight() {
+	if (secondfilename) {
+		openCustomizeModal(secondfilename);
+	}
+}
+
+function addToPlaylistButtonFromBottomRight() {
+	if (secondfilename) {
+		openAddToPlaylistModal(secondfilename.replace(".mp3", ""));
+	}
 }
 
 ipcRenderer.on("playlist-created", () => {

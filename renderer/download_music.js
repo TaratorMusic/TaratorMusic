@@ -15,21 +15,6 @@ function differentiateYouTubeLinks(url) {
 	}
 }
 
-function extractVideoId(url) {
-	if (!url) return null;
-
-	const patterns = [/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube-nocookie\.com\/embed\/)([^\/\?&#]+)/, /i\.ytimg\.com\/vi(?:_webp)?\/([^\/]+)\//, /youtube\.com\/attribution_link\?.*v%3D([^%&]+)/];
-
-	for (const pattern of patterns) {
-		const match = url.match(pattern);
-		if (match && match[1]) {
-			return match[1];
-		}
-	}
-
-	return null;
-}
-
 function checkNameThumbnail() {
 	document.getElementById("downloadFirstButton").disabled = true;
 
