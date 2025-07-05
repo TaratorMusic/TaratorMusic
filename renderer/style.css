@@ -333,9 +333,9 @@ audio {
 }
 
 #music-list-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 5px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 5px;
 }
 
 #controlsBar {
@@ -595,17 +595,37 @@ audio {
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
-	padding-left: 2vw;
-	padding-right: 2vw;
-	border: 0.1vw solid white;
+	padding-left: 1vw;
+	border: 1px solid white;
 }
 
 .playlist-songs {
 	width: calc(80vw - 200px);
 	height: 180px;
 	overflow-y: scroll;
-	padding-left: 2vw;
-	border: 0.1vw solid white;
+	padding: 5px 0 0 1vw;
+	border: 1px solid white;
+}
+
+.playlist-songs::-webkit-scrollbar {
+	width: 12px;
+}
+
+.playlist-songs::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.07);
+	border-radius: 10px;
+}
+
+.playlist-songs::-webkit-scrollbar-thumb {
+	background: #ffcc00;
+	border-radius: 10px;
+	border: 3px solid transparent;
+	background-clip: content-box;
+}
+
+.playlist-songs::-webkit-scrollbar-thumb:hover {
+	background: #ffd633;
+	transition: all 400ms ease;
 }
 
 .playlistInfoandSongs {
@@ -625,7 +645,7 @@ audio {
 
 .playlist-button {
 	width: 4vw;
-	height: 4vw;
+	margin-right: -0.7vw;
 	cursor: pointer;
 	display: flex;
 	justify-content: center;
