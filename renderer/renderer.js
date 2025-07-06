@@ -745,7 +745,7 @@ async function playMusic(file, boop, isPlaylist) {
 		const decodedFileName = decodeURIComponent(encodedFileName);
 		const thumbnailFileName = `${decodedFileName}.jpg`;
 		const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
-		
+
 		let thumbnailUrl;
 		try {
 			thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
@@ -1160,9 +1160,10 @@ function skipBackward() {
 }
 
 function closeModal() {
-	document.querySelectorAll(".modal").forEach(modal => {
+	const modal = event.target.closest(".modal");
+	if (modal) {
 		modal.style.display = "none";
-	});
+	}
 }
 
 function updateThumbnailImage(event, mode) {

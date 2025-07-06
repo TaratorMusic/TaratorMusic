@@ -120,6 +120,12 @@ async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBott
 
 		songAndThumbnail.appendChild(thumbnailImage);
 
+		const addToPlaylistBtn = document.createElement("button");
+		addToPlaylistBtn.className = "addToPlaylist";
+		addToPlaylistBtn.innerHTML = "Playlists";
+		addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging("songAndThumbnail");
+		exampleDownloadColumn.appendChild(addToPlaylistBtn);
+
 		downloadModalText.innerHTML = "";
 
 		const finalDownloadButton = document.createElement("button");
@@ -212,7 +218,7 @@ async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadMod
 				const addToPlaylistBtn = document.createElement("button");
 				addToPlaylistBtn.className = "addToPlaylist";
 				addToPlaylistBtn.innerHTML = "Playlists";
-				addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging(playlistTitles[i]);
+				addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging(songAndThumbnail.id);
 				songAndThumbnail.appendChild(addToPlaylistBtn);
 			}
 
@@ -242,6 +248,7 @@ async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadMod
 				thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[i]})`;
 				if (i - 1 < videoLinks.length) {
 					songAndThumbnail.dataset.link = videoLinks[i - 1];
+					songAndThumbnail.dataset.thumbnail = playlistThumbnails[i];
 				}
 			}
 			thumbnailDiv.alt = "";
@@ -406,6 +413,10 @@ async function actuallyDownloadTheSong() {
 		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
 		const img = document.getElementById("thumbnailImage");
 
+		const existingPlaylists = pendingPlaylistAddsWithIds.get("songAndThumbnail") || [];
+		pendingPlaylistAddsWithIds.delete("songAndThumbnail");
+		pendingPlaylistAddsWithIds.set(songID, existingPlaylists);
+
 		if (secondInput.length > 100) {
 			document.getElementById("downloadModalText").innerText = "Invalid filename. The file must be shorter than 100 characters.";
 			document.getElementById("finalDownloadButton").disabled = false;
@@ -465,6 +476,7 @@ async function actuallyDownloadTheSong() {
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
+			commitStagedPlaylistAdds();
 			cleanDebugFiles();
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
@@ -541,14 +553,18 @@ async function actuallyDownloadTheSong() {
 }
 
 async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
-	const titleToIdMap = new Map();
-	for (let i = 0; i < songTitles.length; i++) {
-		titleToIdMap.set(songTitles[i], songIds[i]);
-	}
+	for (const [key, _] of pendingPlaylistAddsWithIds) {
+		const element = document.getElementById(key);
+		if (!element) continue;
 
-	for (const [title, playlists] of pendingPlaylistAddsWithIds.entries()) {
-		const id = titleToIdMap.get(title);
-		if (id) pendingPlaylistAddsWithIds.set(id, playlists);
+		const dataLink = element.getAttribute("data-link");
+		if (!dataLink) continue;
+
+		const index = songLinks.indexOf(dataLink);
+		if (index === -1) continue;
+
+		const songId = songIds[index];
+		pendingPlaylistAddsWithIds.set(songId, _);
 	}
 
 	const totalSongs = songLinks.length;
@@ -637,9 +653,22 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 				duration = Math.round(metadata.format.duration);
 			}
 
-			const thumbnailElement = document.getElementById(`thumbnailImage${i + 1}`);
+			const songElements = document.querySelectorAll(".songAndThumbnail");
 			let thumbnailUrl = null;
-			if (thumbnailElement) {
+			let thumbnailElement = null;
+
+			for (let j = 1; j < songElements.length; j++) {
+				const element = songElements[j];
+				if (element.dataset.link === songLink) {
+					thumbnailElement = element.querySelector(".thumbnailImage");
+					if (element.dataset.thumbnail) {
+						thumbnailUrl = element.dataset.thumbnail;
+					}
+					break;
+				}
+			}
+
+			if (!thumbnailUrl && thumbnailElement) {
 				if (thumbnailElement.style && thumbnailElement.style.backgroundImage) {
 					const bgImage = thumbnailElement.style.backgroundImage;
 					thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
@@ -648,8 +677,8 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 				}
 			}
 
-			await processThumbnail(thumbnailUrl, songId, i + 1);
-
+			await processThumbnail(thumbnailUrl, songId);
+			
 			if (songId != null && songTitle != null && songLink != null && songThumbnail != null && duration != null) {
 				try {
 					musicsDb
@@ -750,44 +779,47 @@ function saveAsPlaylist(songIds, playlistName) {
 	}
 }
 
-function openAddToPlaylistModalStaging(songName) {
+function openAddToPlaylistModalStaging(songId) {
 	document.getElementById("addToPlaylistModal").style.display = "block";
-	const box = document.getElementById("playlist-checkboxes");
-	box.innerHTML = "";
-	const playlists = playlistsDb.prepare("SELECT * FROM playlists").all() || [];
-	playlists.forEach(p => {
-		const cb = document.createElement("input");
-		cb.type = "checkbox";
-		cb.id = p.name;
-		cb.value = songName;
-		if ((pendingPlaylistAddsWithIds.get(songName) || []).includes(p.name)) cb.checked = true;
-		const lbl = document.createElement("label");
-		lbl.textContent = p.name;
-		lbl.htmlFor = cb.id;
-		box.appendChild(cb);
-		box.appendChild(lbl);
-		box.appendChild(document.createElement("br"));
+	const checkboxContainer = document.getElementById("playlist-checkboxes");
+	checkboxContainer.innerHTML = "";
+
+	const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists").all() || [];
+	allPlaylists.forEach(playlist => {
+		const checkbox = document.createElement("input");
+		checkbox.type = "checkbox";
+		checkbox.id = playlist.name;
+		checkbox.value = songId;
+		if ((pendingPlaylistAddsWithIds.get(songId) || []).includes(playlist.name)) checkbox.checked = true;
+		const label = document.createElement("label");
+		label.textContent = playlist.name;
+		label.htmlFor = checkbox.id;
+		checkboxContainer.appendChild(checkbox);
+		checkboxContainer.appendChild(label);
+		checkboxContainer.appendChild(document.createElement("br"));
 	});
-	const done = document.createElement("button");
-	done.id = "addToPlaylistDoneStaging";
-	done.textContent = "Done";
-	done.onclick = () => {
-		const sel = Array.from(document.querySelectorAll('#playlist-checkboxes input[type="checkbox"]:checked')).map(c => c.id);
-		if (sel.length) pendingPlaylistAddsWithIds.set(songName, sel);
-		else pendingPlaylistAddsWithIds.delete(songName);
+
+	const doneButton = document.createElement("button");
+	doneButton.id = "addToPlaylistDoneStaging";
+	doneButton.textContent = "Done";
+	doneButton.onclick = () => {
+		const selectedPlaylists = Array.from(document.querySelectorAll('#playlist-checkboxes input[type="checkbox"]:checked')).map(checkbox => checkbox.id);
+		if (selectedPlaylists.length) {
+			pendingPlaylistAddsWithIds.set(songId, selectedPlaylists);
+		} else {
+			pendingPlaylistAddsWithIds.delete(songId);
+		}
 		closeModal();
 	};
-	box.appendChild(done);
+	checkboxContainer.appendChild(doneButton);
 }
 
 async function commitStagedPlaylistAdds() {
 	for (const [song, lists] of pendingPlaylistAddsWithIds.entries()) {
 		lists.forEach(listName => {
-			const pl = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(listName) || { songs: "[]" };
-			let songs = [];
-			try {
-				songs = JSON.parse(pl.songs);
-			} catch {}
+			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(listName);
+			let songs = JSON.parse(playlist.songs);
+
 			if (!songs.includes(song)) {
 				songs.push(song);
 				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(JSON.stringify(songs), listName);
