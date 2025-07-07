@@ -1161,9 +1161,7 @@ function skipBackward() {
 
 function closeModal() {
 	const modal = event.target.closest(".modal");
-	if (modal) {
-		modal.style.display = "none";
-	}
+	if (modal) modal.style.display = "none";
 }
 
 function updateThumbnailImage(event, mode) {

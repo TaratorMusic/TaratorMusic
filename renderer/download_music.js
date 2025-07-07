@@ -753,27 +753,19 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 }
 
 function saveAsPlaylist(songIds, playlistName) {
-	const trimmedArray = songIds.map(id => id.trim());
-
-	const existing = playlistsDb.prepare(`SELECT 1 FROM playlists WHERE name = ?`).get(playlistName);
-
-	if (existing) {
-		console.error("A playlist with this name already exists.");
-		return;
-	}
-
-	const thumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
-	const songsJson = JSON.stringify(trimmedArray);
+	const playlistID = generateId();
+	const thumbnailPath = path.join(thumbnailFolder, `${playlistID}_playlist.jpg`);
+	const songsJson = JSON.stringify(songIds.map(id => id.trim()));
 
 	try {
 		playlistsDb
 			.prepare(
 				`
-            INSERT INTO playlists (name, songs, thumbnail)
+            INSERT INTO playlists (id, name, songs, thumbnail)
             VALUES (?, ?, ?)
         `
 			)
-			.run(playlistName, songsJson, thumbnailPath);
+			.run(playlistID, playlistName, songsJson, thumbnailPath);
 	} catch (err) {
 		console.error("Failed to save playlist:", err);
 	}
