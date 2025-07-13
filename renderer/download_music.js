@@ -1,20 +1,37 @@
 const fetch = require("node-fetch");
+const cheerio = require("cheerio");
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
+const ytsr = require("@distube/ytsr");
 
 let pendingPlaylistAddsWithIds = new Map();
 
-function differentiateYouTubeLinks(url) {
-	const videoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/;
-	const playlistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
+function differentiateMediaLinks(url) {
+	const trimmedUrl = url.trim();
 
-	if (videoRegex.test(url.trim())) {
-		return "video";
-	} else if (playlistRegex.test(url.trim())) {
-		return "playlist";
+	const ytVideoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/;
+	const ytPlaylistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
+
+	const spotifyTrackRegex = /(?:https?:\/\/)?open\.spotify\.com\/track\/([a-zA-Z0-9]+)/;
+	const spotifyPlaylistRegex = /(?:https?:\/\/)?open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/;
+
+	if (ytVideoRegex.test(trimmedUrl)) {
+		return "youtube_video";
+	} else if (ytPlaylistRegex.test(trimmedUrl)) {
+		return "youtube_playlist";
+	} else if (spotifyTrackRegex.test(trimmedUrl)) {
+		return "spotify_track";
+	} else if (spotifyPlaylistRegex.test(trimmedUrl)) {
+		return "spotify_playlist";
 	} else {
 		return "unknown";
 	}
+}
+
+function searchInYoutube(songName, resultLimit = 1) {
+	ytsr(songName, { safeSearch: false, limit: resultLimit }).then(result => {
+		processVideoLink(result.items[resultLimit - 1].url);
+	});
 }
 
 function checkNameThumbnail() {
@@ -44,20 +61,39 @@ function checkNameThumbnail() {
 		return;
 	}
 
-	const linkType = differentiateYouTubeLinks(userInput);
+	const linkType = differentiateMediaLinks(userInput);
 
-	if (linkType === "video") {
-		processVideoLink(userInput, downloadSecondPhase, downloadModalBottomRow, downloadModalText);
-	} else if (linkType === "playlist") {
-		processPlaylistLink(userInput, downloadSecondPhase, downloadModalBottomRow, downloadModalText);
+	if (linkType === "youtube_video") {
+		processVideoLink(userInput);
+	} else if (linkType === "youtube_playlist") {
+		processPlaylistLink(userInput);
+	} else if (linkType == "spotify_track") {
+		getSpotifySongName(userInput);
+	} else if (linkType == "spotify_playlist") {
+		console.log("TODO");
 	} else {
-		downloadModalText.innerHTML = "Link neither a video or playlist.";
-		document.getElementById("downloadFirstButton").disabled = false;
-		downloadSecondPhase.style.display = "block";
+		searchInYoutube(userInput, 1);
 	}
 }
 
-async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
+async function getSpotifySongName(link) {
+	const response = await fetch(link, {
+		headers: {
+			"User-Agent": "Mozilla/5.0",
+		},
+	});
+
+	if (!response.ok) return;
+
+	const html = await response.text();
+	const $ = cheerio.load(html);
+
+	const title = $("title").text();
+	const name = title.replace(" song and lyrics by", "").replace("| Spotify", "").trim();
+	searchInYoutube(name, 1);
+}
+
+async function processVideoLink(videoUrl) {
 	try {
 		const getYouTubeVideoId = url => {
 			const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
@@ -82,7 +118,7 @@ async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBott
 		const downloadPlaceofSongs = document.createElement("div");
 		downloadPlaceofSongs.className = "flexrow";
 		downloadPlaceofSongs.id = "downloadPlaceofSongs";
-		downloadSecondPhase.appendChild(downloadPlaceofSongs);
+		document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
 
 		const songAndThumbnail = document.createElement("div");
 		songAndThumbnail.className = "songAndThumbnail";
@@ -126,7 +162,7 @@ async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBott
 		addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging("songAndThumbnail");
 		exampleDownloadColumn.appendChild(addToPlaylistBtn);
 
-		downloadModalText.innerHTML = "";
+		document.getElementById("downloadModalText").innerHTML = "";
 
 		const finalDownloadButton = document.createElement("button");
 		finalDownloadButton.id = "finalDownloadButton";
@@ -134,20 +170,20 @@ async function processVideoLink(videoUrl, downloadSecondPhase, downloadModalBott
 			actuallyDownloadTheSong();
 		};
 		finalDownloadButton.textContent = "Download";
-		downloadModalBottomRow.appendChild(finalDownloadButton);
+		document.getElementById("downloadModalBottomRow").appendChild(finalDownloadButton);
 
 		document.getElementById("downloadFirstButton").disabled = false;
-		downloadSecondPhase.style.display = "block";
+		document.getElementById("downloadSecondPhase").style.display = "block";
 	} catch (error) {
 		console.error("Error in processVideoLink:", error);
 		document.getElementById("downloadFirstButton").disabled = false;
 		if (error.message.includes("age")) alert("You can't download this song because it is age restricted.");
 		if (error.message.includes("private")) alert("You can't download this song because it is a private video.");
-		downloadModalText.innerHTML = ``;
+		document.getElementById("downloadModalText").innerHTML = ``;
 	}
 }
 
-async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadModalBottomRow, downloadModalText) {
+async function processPlaylistLink(playlistUrl) {
 	try {
 		async function fetchPlaylistData(url) {
 			const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
@@ -172,7 +208,7 @@ async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadMod
 
 		const downloadPlaceofSongs = document.createElement("div");
 		downloadPlaceofSongs.id = "downloadPlaceofSongs";
-		downloadSecondPhase.appendChild(downloadPlaceofSongs);
+		document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
 
 		window.isSaveAsPlaylistActive = false;
 
@@ -255,7 +291,7 @@ async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadMod
 			songAndThumbnail.appendChild(thumbnailDiv);
 		}
 
-		downloadModalText.innerHTML = "";
+		document.getElementById("downloadModalText").innerHTML = "";
 
 		const finalDownloadButton = document.createElement("button");
 		finalDownloadButton.id = "finalDownloadButton";
@@ -263,13 +299,13 @@ async function processPlaylistLink(playlistUrl, downloadSecondPhase, downloadMod
 			actuallyDownloadTheSong();
 		};
 		finalDownloadButton.textContent = "Download";
-		downloadModalBottomRow.appendChild(finalDownloadButton);
+		document.getElementById("downloadModalBottomRow").appendChild(finalDownloadButton);
 
 		document.getElementById("downloadFirstButton").disabled = false;
-		downloadSecondPhase.style.display = "block";
+		document.getElementById("downloadSecondPhase").style.display = "block";
 	} catch (error) {
 		console.error("Error processing playlist:", error);
-		downloadModalText.innerHTML = `Error: ${error.message}`;
+		document.getElementById("downloadModalText").innerHTML = `Error: ${error.message}`;
 		document.getElementById("downloadFirstButton").disabled = false;
 	}
 }
@@ -405,7 +441,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 async function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
 	const firstInput = document.getElementById("downloadFirstInput").value.trim();
-	const linkType = differentiateYouTubeLinks(firstInput);
+	const linkType = differentiateMediaLinks(firstInput);
 
 	if (linkType === "video") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
@@ -678,7 +714,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 			}
 
 			await processThumbnail(thumbnailUrl, songId);
-			
+
 			if (songId != null && songTitle != null && songLink != null && songThumbnail != null && duration != null) {
 				try {
 					musicsDb

@@ -24,7 +24,7 @@ async function getPlaylistSongsAndArtists(link) {
 	});
 
 	if (!scrollContainer) {
-		console.error("Scroll container not found");
+		console.error("Scroll container not found. The playlist page might have been changed. Wait until the next TaratorMusic update for the fix.");
 		await browser.close();
 		return;
 	}

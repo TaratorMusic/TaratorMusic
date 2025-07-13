@@ -85,6 +85,7 @@
 	"dependencies": {
 		"@distube/ytdl-core": "github:Victiniiiii/ytdl-core",
 		"@distube/ytpl": "github:Victiniiiii/ytpl",
+		"@distube/ytsr": "^2.0.4",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",
 		"better-sqlite3": "^11.9.1",
 		"cheerio": "^1.1.0",
