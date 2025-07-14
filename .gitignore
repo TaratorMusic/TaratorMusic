@@ -18,6 +18,7 @@ config/
 *.mp4
 *.m4a
 *-player-script.js
+download.js
 
 .npmrc
 .prettierrc
