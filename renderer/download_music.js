@@ -1,5 +1,6 @@
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
+const puppeteer = require("puppeteer");
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
 const ytsr = require("@distube/ytsr");
@@ -70,7 +71,7 @@ function checkNameThumbnail() {
 	} else if (linkType == "spotify_track") {
 		getSpotifySongName(userInput);
 	} else if (linkType == "spotify_playlist") {
-		console.log("TODO");
+		getPlaylistSongsAndArtists(userInput);
 	} else {
 		searchInYoutube(userInput, 1);
 	}
@@ -91,6 +92,80 @@ async function getSpotifySongName(link) {
 	const title = $("title").text();
 	const name = title.replace(" song and lyrics by", "").replace("| Spotify", "").trim();
 	searchInYoutube(name, 1);
+}
+
+async function getPlaylistSongsAndArtists(link) {
+	document.getElementById("downloadModalText").innerText = "Launching browser...";
+	const browser = await puppeteer.launch({ headless: true });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1920, height: 1080 });
+	await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
+
+	document.getElementById("downloadModalText").innerText = "Navigating to playlist page...";
+	await page.goto(link, { waitUntil: "networkidle2" });
+
+	document.getElementById("downloadModalText").innerText = "Waiting for tracks to load...";
+	await page.waitForSelector('a[data-testid="internal-track-link"]', { timeout: 30000 });
+
+	const scrollContainer = await page.evaluateHandle(() => {
+		function isScrollable(el) {
+			const style = getComputedStyle(el);
+			return (style.overflowY === "auto" || style.overflowY === "scroll") && el.scrollHeight > el.clientHeight;
+		}
+
+		const allDivs = Array.from(document.querySelectorAll("div"));
+		return allDivs.find(div => isScrollable(div) && div.querySelectorAll('a[data-testid="internal-track-link"]').length > 0);
+	});
+
+	if (!scrollContainer) {
+		document.getElementById("downloadModalText").innerText = "Scroll container not found. The playlist page might have been changed. Wait until the next TaratorMusic update for the fix.";
+		await browser.close();
+		return;
+	}
+
+	const songs = await page.evaluate(async container => {
+		function sleep(ms) {
+			return new Promise(r => setTimeout(r, ms));
+		}
+
+		const seen = new Map();
+		let sameCountTimes = 0;
+
+		while (sameCountTimes < 3) {
+			container.scrollBy(0, 800);
+			await sleep(800);
+
+			const anchors = container.querySelectorAll('a[data-testid="internal-track-link"]');
+			let newFound = 0;
+
+			anchors.forEach(a => {
+				const title = a.querySelector("div[data-encore-id='text']")?.textContent.trim();
+				const artist = a.parentElement?.querySelector("span a[href^='/artist']")?.textContent.trim();
+				if (title && artist) {
+					const key = title + "||" + artist;
+					if (!seen.has(key)) {
+						seen.set(key, { title, artist });
+						newFound++;
+					}
+				}
+			});
+
+			if (newFound === 0) {
+				sameCountTimes++;
+			} else {
+				sameCountTimes = 0;
+			}
+		}
+
+		return Array.from(seen.values());
+	}, scrollContainer);
+
+	document.getElementById("downloadModalText").innerText = `Extracted ${songs.length} tracks. Closing browser...`;
+	songs.forEach(({ title, artist }, i) => {
+		console.log(`${i + 1}. "${title}" by ${artist}`); // TODO
+	});
+
+	await browser.close();
 }
 
 async function processVideoLink(videoUrl) {
