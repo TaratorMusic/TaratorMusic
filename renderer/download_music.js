@@ -67,7 +67,7 @@ function checkNameThumbnail() {
 	if (linkType === "youtube_video") {
 		processVideoLink(userInput);
 	} else if (linkType === "youtube_playlist") {
-		processPlaylistLink(userInput);
+		fetchPlaylistData(userInput);
 	} else if (linkType == "spotify_track") {
 		getSpotifySongName(userInput);
 	} else if (linkType == "spotify_playlist") {
@@ -123,6 +123,9 @@ async function getPlaylistSongsAndArtists(link) {
 		return;
 	}
 
+	const playlistName = console.log("todo");
+	const playlistThumbnail = console.log("todo");
+
 	const songs = await page.evaluate(async container => {
 		function sleep(ms) {
 			return new Promise(r => setTimeout(r, ms));
@@ -166,6 +169,7 @@ async function getPlaylistSongsAndArtists(link) {
 	});
 
 	await browser.close();
+	renderPlaylistUI(playlistName, playlistThumbnail, songs);
 }
 
 async function processVideoLink(videoUrl) {
@@ -258,131 +262,129 @@ async function processVideoLink(videoUrl) {
 	}
 }
 
-async function processPlaylistLink(playlistUrl) {
+async function fetchPlaylistData(url) {
 	try {
-		async function fetchPlaylistData(url) {
-			const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-			if (!match) throw new Error("Invalid playlist URL");
-			const playlistId = match[1];
-			const playlist = await ytpl(playlistId, { pages: Infinity });
-			const playlistTitle = playlist.title;
-			const videoItems = playlist.items.map(video => ({
-				title: video.title || "Unknown Title",
-				url: video.url,
-				thumbnail: video.thumbnail || "",
-			}));
-			const playlistThumbnail = videoItems.length ? videoItems[0].thumbnail : "";
-			return { playlistTitle, playlistThumbnail, videoItems };
-		}
-
-		const { playlistTitle, playlistThumbnail, videoItems } = await fetchPlaylistData(playlistUrl);
-
-		const playlistTitles = [playlistTitle, ...videoItems.map(item => item.title)];
-		const videoLinks = videoItems.map(item => item.url);
-		const playlistThumbnails = [playlistThumbnail, ...videoItems.map(item => item.thumbnail)];
-
-		const downloadPlaceofSongs = document.createElement("div");
-		downloadPlaceofSongs.id = "downloadPlaceofSongs";
-		document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
-
-		window.isSaveAsPlaylistActive = false;
-
-		for (let i = 0; i < playlistTitles.length; i++) {
-			const songAndThumbnail = document.createElement("div");
-			songAndThumbnail.className = "songAndThumbnail";
-			songAndThumbnail.id = "songAndThumbnail" + i;
-			downloadPlaceofSongs.appendChild(songAndThumbnail);
-
-			const exampleDownloadColumn = document.createElement("div");
-			exampleDownloadColumn.className = "exampleDownloadColumn";
-			songAndThumbnail.appendChild(exampleDownloadColumn);
-
-			const downloadSecondInput = document.createElement("input");
-			downloadSecondInput.type = "text";
-			downloadSecondInput.className = "playlistTitle";
-			downloadSecondInput.id = "playlistTitle" + i;
-			downloadSecondInput.value = playlistTitles[i];
-			downloadSecondInput.spellcheck = false;
-			exampleDownloadColumn.appendChild(downloadSecondInput);
-
-			if (i === 0) {
-				const saveAsPlaylist = document.createElement("button");
-				saveAsPlaylist.id = "saveAsPlaylist";
-				saveAsPlaylist.innerHTML = "Save as playlist";
-				songAndThumbnail.appendChild(saveAsPlaylist);
-				saveAsPlaylist.style.backgroundColor = "red";
-
-				saveAsPlaylist.onclick = function () {
-					window.isSaveAsPlaylistActive = !window.isSaveAsPlaylistActive;
-					saveAsPlaylist.style.backgroundColor = window.isSaveAsPlaylistActive ? "green" : "red";
-				};
-			} else {
-				const deleteThisPlaylistSong = document.createElement("button");
-				deleteThisPlaylistSong.id = "deleteThisPlaylistSong" + i;
-				deleteThisPlaylistSong.className = "deleteThisPlaylistSong";
-				deleteThisPlaylistSong.innerHTML = "Delete";
-				songAndThumbnail.appendChild(deleteThisPlaylistSong);
-				deleteThisPlaylistSong.onclick = function () {
-					this.parentNode.remove();
-				};
-
-				const addToPlaylistBtn = document.createElement("button");
-				addToPlaylistBtn.className = "addToPlaylist";
-				addToPlaylistBtn.innerHTML = "Playlists";
-				addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging(songAndThumbnail.id);
-				songAndThumbnail.appendChild(addToPlaylistBtn);
-			}
-
-			const theDivsNumber = document.createElement("div");
-			theDivsNumber.innerHTML = i;
-			theDivsNumber.className = "numberingTheBoxes";
-			exampleDownloadColumn.appendChild(theDivsNumber);
-
-			const thumbnailInput = document.createElement("input");
-			thumbnailInput.type = "file";
-			thumbnailInput.className = "thumbnailInput";
-			thumbnailInput.id = "thumbnailInput" + i;
-			thumbnailInput.accept = "image/*";
-			const currentIndex = i;
-			thumbnailInput.onchange = function (event) {
-				updateThumbnailImage(event, document.getElementById("thumbnailImage" + currentIndex));
-			};
-			exampleDownloadColumn.appendChild(thumbnailInput);
-
-			const thumbnailDiv = document.createElement("div");
-			thumbnailDiv.className = "thumbnailImage";
-			thumbnailDiv.id = "thumbnailImage" + i;
-
-			if (i === 0) {
-				thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[0]})`;
-			} else {
-				thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[i]})`;
-				if (i - 1 < videoLinks.length) {
-					songAndThumbnail.dataset.link = videoLinks[i - 1];
-					songAndThumbnail.dataset.thumbnail = playlistThumbnails[i];
-				}
-			}
-			thumbnailDiv.alt = "";
-			songAndThumbnail.appendChild(thumbnailDiv);
-		}
-
-		document.getElementById("downloadModalText").innerHTML = "";
-
-		const finalDownloadButton = document.createElement("button");
-		finalDownloadButton.id = "finalDownloadButton";
-		finalDownloadButton.onclick = function () {
-			actuallyDownloadTheSong();
-		};
-		finalDownloadButton.textContent = "Download";
-		document.getElementById("downloadModalBottomRow").appendChild(finalDownloadButton);
-
-		document.getElementById("downloadFirstButton").disabled = false;
-		document.getElementById("downloadSecondPhase").style.display = "block";
+		const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+		if (!match) throw new Error("Invalid playlist URL");
+		const playlistId = match[1];
+		const playlist = await ytpl(playlistId, { pages: Infinity });
+		const playlistTitle = playlist.title;
+		const videoItems = playlist.items.map(video => ({
+			title: video.title || "Unknown Title",
+			url: video.url,
+			thumbnail: video.thumbnail || "",
+		}));
+		const playlistThumbnail = videoItems.length ? videoItems[0].thumbnail : "";
+		renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems);
 	} catch (error) {
-		console.error("Error processing playlist:", error);
+		console.error("Error fetching playlist data:", error);
 		document.getElementById("downloadModalText").innerHTML = `Error: ${error.message}`;
 		document.getElementById("downloadFirstButton").disabled = false;
 	}
+}
+
+function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
+	const playlistTitles = [playlistTitle, ...videoItems.map(item => item.title)];
+	const videoLinks = videoItems.map(item => item.url);
+	const playlistThumbnails = [playlistThumbnail, ...videoItems.map(item => item.thumbnail)];
+
+	const downloadPlaceofSongs = document.createElement("div");
+	downloadPlaceofSongs.id = "downloadPlaceofSongs";
+	document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
+
+	window.isSaveAsPlaylistActive = false;
+
+	for (let i = 0; i < playlistTitles.length; i++) {
+		const songAndThumbnail = document.createElement("div");
+		songAndThumbnail.className = "songAndThumbnail";
+		songAndThumbnail.id = "songAndThumbnail" + i;
+		downloadPlaceofSongs.appendChild(songAndThumbnail);
+
+		const exampleDownloadColumn = document.createElement("div");
+		exampleDownloadColumn.className = "exampleDownloadColumn";
+		songAndThumbnail.appendChild(exampleDownloadColumn);
+
+		const downloadSecondInput = document.createElement("input");
+		downloadSecondInput.type = "text";
+		downloadSecondInput.className = "playlistTitle";
+		downloadSecondInput.id = "playlistTitle" + i;
+		downloadSecondInput.value = playlistTitles[i];
+		downloadSecondInput.spellcheck = false;
+		exampleDownloadColumn.appendChild(downloadSecondInput);
+
+		if (i === 0) {
+			const saveAsPlaylist = document.createElement("button");
+			saveAsPlaylist.id = "saveAsPlaylist";
+			saveAsPlaylist.innerHTML = "Save as playlist";
+			songAndThumbnail.appendChild(saveAsPlaylist);
+			saveAsPlaylist.style.backgroundColor = "red";
+
+			saveAsPlaylist.onclick = function () {
+				window.isSaveAsPlaylistActive = !window.isSaveAsPlaylistActive;
+				saveAsPlaylist.style.backgroundColor = window.isSaveAsPlaylistActive ? "green" : "red";
+			};
+		} else {
+			const deleteThisPlaylistSong = document.createElement("button");
+			deleteThisPlaylistSong.id = "deleteThisPlaylistSong" + i;
+			deleteThisPlaylistSong.className = "deleteThisPlaylistSong";
+			deleteThisPlaylistSong.innerHTML = "Delete";
+			songAndThumbnail.appendChild(deleteThisPlaylistSong);
+			deleteThisPlaylistSong.onclick = function () {
+				this.parentNode.remove();
+			};
+
+			const addToPlaylistBtn = document.createElement("button");
+			addToPlaylistBtn.className = "addToPlaylist";
+			addToPlaylistBtn.innerHTML = "Playlists";
+			addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging(songAndThumbnail.id);
+			songAndThumbnail.appendChild(addToPlaylistBtn);
+		}
+
+		const theDivsNumber = document.createElement("div");
+		theDivsNumber.innerHTML = i;
+		theDivsNumber.className = "numberingTheBoxes";
+		exampleDownloadColumn.appendChild(theDivsNumber);
+
+		const thumbnailInput = document.createElement("input");
+		thumbnailInput.type = "file";
+		thumbnailInput.className = "thumbnailInput";
+		thumbnailInput.id = "thumbnailInput" + i;
+		thumbnailInput.accept = "image/*";
+		const currentIndex = i;
+		thumbnailInput.onchange = function (event) {
+			updateThumbnailImage(event, document.getElementById("thumbnailImage" + currentIndex));
+		};
+		exampleDownloadColumn.appendChild(thumbnailInput);
+
+		const thumbnailDiv = document.createElement("div");
+		thumbnailDiv.className = "thumbnailImage";
+		thumbnailDiv.id = "thumbnailImage" + i;
+
+		if (i === 0) {
+			thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[0]})`;
+		} else {
+			thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[i]})`;
+			if (i - 1 < videoLinks.length) {
+				songAndThumbnail.dataset.link = videoLinks[i - 1];
+				songAndThumbnail.dataset.thumbnail = playlistThumbnails[i];
+			}
+		}
+		thumbnailDiv.alt = "";
+		songAndThumbnail.appendChild(thumbnailDiv);
+	}
+
+	document.getElementById("downloadModalText").innerHTML = "";
+
+	const finalDownloadButton = document.createElement("button");
+	finalDownloadButton.id = "finalDownloadButton";
+	finalDownloadButton.onclick = function () {
+		actuallyDownloadTheSong();
+	};
+	finalDownloadButton.textContent = "Download";
+	document.getElementById("downloadModalBottomRow").appendChild(finalDownloadButton);
+
+	document.getElementById("downloadFirstButton").disabled = false;
+	document.getElementById("downloadSecondPhase").style.display = "block";
 }
 
 async function processThumbnail(imageUrl, songId, songIndex = null) {
