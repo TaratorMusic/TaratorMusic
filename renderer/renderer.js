@@ -77,7 +77,6 @@ let rememberautoplay;
 let remembershuffle;
 let rememberloop;
 let rememberspeed;
-let maximumPreviousSongCount;
 let volume;
 let key_Rewind;
 let key_Previous;
@@ -100,7 +99,6 @@ let background;
 
 const defaultSettings = {
 	totalTimeSpent: 0,
-	maximumPreviousSongCount: 50,
 	volume: 50,
 	rememberautoplay: 1,
 	remembershuffle: 1,
@@ -261,7 +259,6 @@ function initializeSettingsDatabase() {
 	remembershuffle = settingsRow.remembershuffle;
 	rememberloop = settingsRow.rememberloop;
 	rememberspeed = settingsRow.rememberspeed;
-	maximumPreviousSongCount = settingsRow.maximumPreviousSongCount;
 	volume = settingsRow.volume;
 	dividevolume = settingsRow.dividevolume;
 	displayCount = settingsRow.displayCount;
@@ -302,7 +299,6 @@ function initializeSettingsDatabase() {
 	remembershuffle && toggleShuffle();
 	rememberloop && toggleLoop();
 
-	document.getElementById("arrayLength").value = maximumPreviousSongCount;
 	volumeControl.value = volume;
 	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
 
@@ -447,16 +443,6 @@ function savePlayedTime(songName, timePlayed) {
 	} else {
 		console.warn(`Tried to update "${songName}", but it doesn't exist in songs.`);
 	}
-}
-
-function changeThePreviousSongAmount() {
-	if (document.getElementById("arrayLength").value > 9 && document.getElementById("arrayLength").value < 101) {
-		maximumPreviousSongCount = document.getElementById("arrayLength").value;
-		updateDatabase("maximumPreviousSongCount", maximumPreviousSongCount, settingsDb);
-	} else {
-		alert("Please set a number between 10 and 100");
-	}
-	document.getElementById("arrayLength").value = maximumPreviousSongCount;
 }
 
 tabs.forEach(tab => {
@@ -777,15 +763,15 @@ async function playMusic(file, boop, isPlaylist) {
 			if (currentPlaylist) {
 				if (newPlaylistName !== currentPlaylist.name) {
 					newPlaylistName = currentPlaylist.name;
-					playlistPlayedSongs.splice(0, maximumPreviousSongCount);
+					playlistPlayedSongs.splice(0, 9999);
 				}
 				playlistPlayedSongs.unshift(secondfilename);
-				if (playlistPlayedSongs.length > maximumPreviousSongCount) {
+				if (playlistPlayedSongs.length > 9999) {
 					playlistPlayedSongs.pop();
 				}
 			} else {
 				playedSongs.unshift(secondfilename);
-				if (playedSongs.length > maximumPreviousSongCount) {
+				if (playedSongs.length > 9999) {
 					playedSongs.pop();
 				}
 			}
