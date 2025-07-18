@@ -613,7 +613,7 @@ async function actuallyDownloadTheSong() {
 	const firstInput = document.getElementById("downloadFirstInput").value.trim();
 	const linkType = differentiateMediaLinks(firstInput);
 
-	if (linkType === "video") {
+	if (linkType == "youtube_video" ||  linkType == "spotify_track" ||  linkType == "unknown") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
 		const songID = generateId();
 		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
@@ -689,7 +689,7 @@ async function actuallyDownloadTheSong() {
 			console.log(error);
 			document.getElementById("finalDownloadButton").disabled = false;
 		}
-	} else if (linkType === "playlist") {
+	} else {
 		const playlistName = document.getElementById("playlistTitle0").value.trim();
 		const songLinks = [];
 		const songTitles = [];
@@ -752,9 +752,6 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("downloadModalText").innerText = "Database error: " + err.message;
 			document.getElementById("finalDownloadButton").disabled = false;
 		}
-	} else {
-		document.getElementById("downloadModalText").innerText = "The URL is neither a valid video nor playlist.";
-		document.getElementById("finalDownloadButton").disabled = false;
 	}
 }
 
