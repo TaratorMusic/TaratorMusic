@@ -123,6 +123,8 @@ function openNewPlaylistModal() {
 async function saveNewPlaylist() {
 	const name = document.getElementById("playlistNameInput").value.trim();
 	if (!name) return alert("Playlist name required.");
+	if (name == "Playlists") return alert("Name of your playlist can't be 'Favorites'.");
+
 	const id = generateId();
 
 	const fileInput = document.getElementById("thumbnailInput").files[0];
@@ -156,6 +158,8 @@ async function saveNewPlaylist() {
 function saveEditedPlaylist() {
 	const oldName = document.getElementById("editInvisibleName").value;
 	const newName = document.getElementById("editPlaylistNameInput").value.trim();
+	if (newName == "Favorites") return alert("Name of your playlist can't be 'Favorites'.");
+
 	const newThumbnail = document.getElementById("editPlaylistThumbnail").src;
 
 	const playlistElement = document.querySelector(`.playlist[data-playlist-name="${oldName}"]`);
