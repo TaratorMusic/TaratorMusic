@@ -35,7 +35,7 @@ function displayPlaylists(playlists) {
 		const playlistElement = document.createElement("div");
 		playlistElement.className = "playlist";
 		playlistElement.setAttribute("data-playlist-name", playlist.name);
-		const thumbnailPath = path.join(thumbnailFolder, playlist.name + "_playlist.jpg");
+		const thumbnailPath = playlist.thumbnail;
 
 		let thumbnailSrc = "";
 
@@ -79,7 +79,7 @@ function displayPlaylists(playlists) {
 			const playlistCustomiseButton = document.createElement("div");
 			playlistInfo.appendChild(playlistCustomiseButton);
 			playlistCustomiseButton.className = "playlist-button";
-			
+
 			try {
 				playlistCustomiseButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
 			} catch (error) {
@@ -120,22 +120,31 @@ function openNewPlaylistModal() {
 	document.getElementById("createPlaylistModal").style.display = "block";
 }
 
-function saveNewPlaylist() {
+async function saveNewPlaylist() {
 	const name = document.getElementById("playlistNameInput").value.trim();
 	if (!name) return alert("Playlist name required.");
+	const id = generateId();
 
-	const thumbFile = document.getElementById("thumbnailInput").files[0];
-	if (!thumbFile) return alert("Please select a thumbnail for the playlist.");
+	const fileInput = document.getElementById("thumbnailInput").files[0];
+	let srcPath, ext;
 
-	const existing = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get(name);
-	if (!existing) {
-		const dest = path.join(thumbnailFolder, `${name}_playlist.jpg`);
-		playlistsDb.prepare("INSERT INTO playlists (name, songs, thumbnail) VALUES (?, ?, ?)").run(name, JSON.stringify([]), dest);
-		fs.copyFileSync(thumbFile.path, dest);
+	if (fileInput) {
+		srcPath = fileInput.path;
+		ext = path.extname(fileInput.name);
 	} else {
-		alert("You can't use a duplicate name for the playlist.");
-		return;
+		srcPath = path.join(appThumbnailFolder, "placeholder.jpg");
+		ext = path.extname(srcPath);
 	}
+
+	const dest = path.join(thumbnailFolder, `${name}_playlist${ext}`);
+	const existing = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get(name);
+
+	if (existing) {
+		if (!(await confirmModal("A playlist with the same name exists, continue?", "Continue", "Return"))) return;
+	}
+
+	playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail) VALUES (?, ?, ?, ?)").run(id, name, JSON.stringify([]), dest);
+	fs.copyFileSync(srcPath, dest);
 
 	closeModal();
 

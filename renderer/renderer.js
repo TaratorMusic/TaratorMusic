@@ -339,14 +339,45 @@ function initializePlaylistsDatabase() {
 			.prepare(
 				`
             CREATE TABLE IF NOT EXISTS playlists (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE,
+                id TEXT PRIMARY KEY,
+                name TEXT,
                 songs TEXT,
                 thumbnail TEXT
             )
         `
 			)
 			.run();
+
+		const pragma = playlistsDb.prepare(`PRAGMA table_info(playlists)`).all();
+		const idColumn = pragma.find(col => col.name === "id");
+
+		if (idColumn && idColumn.type.toUpperCase() === "INTEGER") {
+			playlistsDb
+				.prepare(
+					`
+                CREATE TABLE IF NOT EXISTS playlists_new (
+                    id TEXT PRIMARY KEY,
+                    name TEXT,
+                    songs TEXT,
+                    thumbnail TEXT
+                )
+            `
+				)
+				.run();
+
+			const rows = playlistsDb.prepare(`SELECT * FROM playlists`).all();
+			const insert = playlistsDb.prepare(`
+                INSERT INTO playlists_new (id, name, songs, thumbnail) VALUES (?, ?, ?, ?)
+            `);
+
+			playlistsDb.transaction(() => {
+				for (const row of rows) {
+					insert.run(row.id.toString(), row.name, row.songs, row.thumbnail);
+				}
+				playlistsDb.prepare(`DROP TABLE playlists`).run();
+				playlistsDb.prepare(`ALTER TABLE playlists_new RENAME TO playlists`).run();
+			})();
+		}
 
 		let starThumb;
 		try {
@@ -359,11 +390,7 @@ function initializePlaylistsDatabase() {
 		playlistsDb.transaction(() => {
 			const fav = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get("Favorites");
 			if (!fav) {
-				const ids = playlistsDb.prepare("SELECT id FROM playlists ORDER BY id DESC").all();
-				for (const { id } of ids) {
-					playlistsDb.prepare("UPDATE playlists SET id = ? WHERE id = ?").run(id + 1, id);
-				}
-				playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail) VALUES (1, ?, ?, ?)").run("Favorites", JSON.stringify([]), starThumb);
+				playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail) VALUES (?, ?, ?, ?)").run("1", "Favorites", JSON.stringify([]), starThumb);
 			}
 		})();
 

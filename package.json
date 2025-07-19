@@ -85,7 +85,7 @@
 	"dependencies": {
 		"@distube/ytdl-core": "github:Victiniiiii/ytdl-core",
 		"@distube/ytpl": "github:Victiniiiii/ytpl",
-		"@distube/ytsr": "^2.0.4",
+		"@distube/ytsr": "2.0.4",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",
 		"better-sqlite3": "^11.9.1",
 		"cheerio": "^1.1.0",
@@ -94,8 +94,12 @@
 		"electron-updater": "^6.6.2",
 		"ffprobe-static": "^3.1.0",
 		"fluent-ffmpeg": "^2.1.3",
-		"puppeteer": "^24.12.1",
-		"undici": "latest"
+		"puppeteer": "^24.12.1"
+	},
+	"overrides": {
+		"cheerio": {
+			"undici": "github:Victiniiiii/undici-fix"
+		}
 	},
 	"devDependencies": {
 		"electron": "^31.1.0",
