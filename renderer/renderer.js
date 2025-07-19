@@ -441,35 +441,32 @@ setInterval(() => {
 	updateTimer();
 }, 60000);
 
-function savePlayedTime(songName, timePlayed) {
+function savePlayedTime(timePlayed) {
+	const theId = secondfilename.replace(".mp3", "");
 	const row = musicsDb
 		.prepare(
 			`
 			SELECT seconds_played, times_listened
 			FROM songs
-			WHERE song_name = ?
+			WHERE song_id = ?
 		`
 		)
-		.get(songName);
+		.get(theId);
 
-	if (row) {
-		const updatedTime = row.seconds_played + timePlayed;
-		const updatedCount = row.times_listened + 1;
+	const updatedTime = row.seconds_played + timePlayed;
+	const updatedCount = row.times_listened + 1;
 
-		musicsDb
-			.prepare(
-				`
+	musicsDb
+		.prepare(
+			`
 				UPDATE songs
 				SET seconds_played = ?, times_listened = ?
-				WHERE song_name = ?
+				WHERE song_id = ?
 			`
-			)
-			.run(updatedTime, updatedCount, songName);
+		)
+		.run(updatedTime, updatedCount, theId);
 
-		console.log(`Updated ${songName}: ${updatedTime}s, listened ${updatedCount} times.`);
-	} else {
-		console.warn(`Tried to update "${songName}", but it doesn't exist in songs.`);
-	}
+	console.log(`Updated ${theId}: ${updatedTime}s, listened ${updatedCount} times.`);
 }
 
 tabs.forEach(tab => {
@@ -697,8 +694,7 @@ async function playMusic(file, boop, isPlaylist) {
 	if (songStartTime !== 0) {
 		let timePlayed = (Date.now() - songStartTime) / 1000;
 		if (timePlayed >= 10) {
-			const songFileName = songName.innerHTML;
-			savePlayedTime(songFileName, timePlayed);
+			savePlayedTime(timePlayed);
 		}
 	}
 
