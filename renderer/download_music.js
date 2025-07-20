@@ -31,7 +31,9 @@ function differentiateMediaLinks(url) {
 
 function searchInYoutube(songName, resultLimit = 1) {
 	ytsr(songName, { safeSearch: false, limit: resultLimit }).then(result => {
-		processVideoLink(result.items[resultLimit - 1].url);
+		let theResult = result.items[resultLimit - 1].url;
+		searchedSongsUrl = theResult;
+		processVideoLink(theResult);
 	});
 }
 
@@ -610,10 +612,10 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 
 async function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
-	const firstInput = document.getElementById("downloadFirstInput").value.trim();
-	const linkType = differentiateMediaLinks(firstInput);
+	const linkType = differentiateMediaLinks(document.getElementById("downloadFirstInput").value.trim());
+	const firstInput = linkType == "unknown" ? searchedSongsUrl : document.getElementById("downloadFirstInput").value.trim();
 
-	if (linkType == "youtube_video" ||  linkType == "spotify_track" ||  linkType == "unknown") {
+	if (linkType == "youtube_video" || linkType == "spotify_track" || linkType == "unknown") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
 		const songID = generateId();
 		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
@@ -959,13 +961,14 @@ function saveAsPlaylist(songIds, playlistName) {
 	const playlistID = generateId();
 	const thumbnailPath = path.join(thumbnailFolder, `${playlistID}_playlist.jpg`);
 	const songsJson = JSON.stringify(songIds.map(id => id.trim()));
+    console.log(playlistID, playlistName, songsJson, thumbnailPath);
 
 	try {
 		playlistsDb
 			.prepare(
 				`
             INSERT INTO playlists (id, name, songs, thumbnail)
-            VALUES (?, ?, ?)
+            VALUES (?, ?, ?, ?)
         `
 			)
 			.run(playlistID, playlistName, songsJson, thumbnailPath);

@@ -27,6 +27,8 @@ Discord Rich Presence to momentarily share listened songs in Discord
 -   Go to the <a href="https://github.com/Victiniiiii/TaratorMusic/releases/latest">releases tab</a> and download whichever version suits your computer.
 -   .exe files are meant for Windows, .dmg files are meant for Mac, and AppImage files are meant for linux users. You dont need to download .yml or .blockmap files, they just help updating the app. You just need to run them, they are all included.
 -   Tip for Linux: It will create app folders (musics, playlists, settings etc.) where the AppImage runs, so you can put it in any folder you want and create a .desktop file to run it from the desktop.
+-   Make sure to contain the app files and musics inside an SSD, which will improve app speeds tremendously.
+-   When a new update is available, the version box at the top right of the main menu will start lighting up. You will be able to see the new content before you choose to update the app. When you update the app for Windows and Mac its updated normally, but for Linux it replaces the whole AppImage.
 -   Enjoy!
 
 ## Current Features:

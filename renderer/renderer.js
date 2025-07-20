@@ -68,6 +68,7 @@ let songStartTime = 0;
 let previousVolume = null;
 let audioContext;
 let audioSource;
+let searchedSongsUrl;
 let latestReleaseNotes = "You are using the latest version of TaratorMusic.";
 const debounceMap = new Map();
 const songNameCache = new Map();
