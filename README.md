@@ -99,6 +99,10 @@ You will be able to form playlists automatically, depending on songs' names' lan
 
 In the future, there will be an option to active "Improved Shuffle Customisation", which will learn from how much you listened to each song and by how long, and will weight the shuffle in the advantage of more listened songs. The "weight" will be customisable for each song easily, if you want to take or give weight to certain songs.
 
+### Customise your Discord Rich Presence
+
+The option to fully customise the rich presence will be given to the users in the near future.
+
 ### And more!
 
 You can contact me and suggest more improvements and i will do my best implementing them. Or send a pull request.

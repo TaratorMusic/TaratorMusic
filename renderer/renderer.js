@@ -118,7 +118,7 @@ const defaultSettings = {
 	key_randomSong: "1",
 	key_randomPlaylist: "2",
 	dividevolume: 1,
-	displayCount: 50,
+	displayCount: 4,
 	activateRms: 1,
 	lazyLoadSize: 100,
 	background: "blue",
@@ -1645,6 +1645,7 @@ document.getElementById("version").addEventListener("click", () => {
 
 document.getElementById("installBtn").addEventListener("click", () => {
 	document.getElementById("progressContainer").style.display = "block";
+    document.getElementById("installBtn").disabled = true;
 	ipcRenderer.send("download-update");
 });
 
