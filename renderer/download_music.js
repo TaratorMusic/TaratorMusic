@@ -844,7 +844,10 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 				} catch (error) {
 					console.error(`Audio normalization failed for ${songTitle}:`, error);
 				}
-			}
+			} else {
+                document.getElementById("downloadModalText").innerText = `Volume stabilisation is disabled. Waiting 5 seconds for not overloading the Youtube API...`;
+                await sleep(5000);
+            }
 
 			let duration = 0;
 			const metadata = await new Promise((resolve, reject) => {
