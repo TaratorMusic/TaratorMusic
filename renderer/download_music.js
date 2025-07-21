@@ -642,7 +642,7 @@ async function actuallyDownloadTheSong() {
 
 			document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
 
-			if (stabiliseVolumeToggle) {
+			if (stabiliseVolumeToggle == 1) {
 				try {
 					await normalizeAudio(outputFilePath);
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
@@ -837,7 +837,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 
 			if (!success) continue;
 
-			if (stabiliseVolumeToggle) {
+			if (stabiliseVolumeToggle == 1) {
 				try {
 					document.getElementById("downloadModalText").innerText = `Stabilising volume for song ${i + 1} of ${totalSongs}: ${songTitle}`;
 					await normalizeAudio(outputPath);
@@ -845,9 +845,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					console.error(`Audio normalization failed for ${songTitle}:`, error);
 				}
 			} else {
-                document.getElementById("downloadModalText").innerText = `Volume stabilisation is disabled. Waiting 5 seconds for not overloading the Youtube API...`;
-                await sleep(5000);
-            }
+				document.getElementById("downloadModalText").innerText = `Volume stabilisation is disabled. Waiting 5 seconds for not overloading the Youtube API...`;
+				await sleep(5000);
+			}
 
 			let duration = 0;
 			const metadata = await new Promise((resolve, reject) => {
@@ -964,7 +964,7 @@ function saveAsPlaylist(songIds, playlistName) {
 	const playlistID = generateId();
 	const thumbnailPath = path.join(thumbnailFolder, `${playlistID}_playlist.jpg`);
 	const songsJson = JSON.stringify(songIds.map(id => id.trim()));
-    console.log(playlistID, playlistName, songsJson, thumbnailPath);
+	console.log(playlistID, playlistName, songsJson, thumbnailPath);
 
 	try {
 		playlistsDb
@@ -972,7 +972,7 @@ function saveAsPlaylist(songIds, playlistName) {
 				`
             INSERT INTO playlists (id, name, songs, thumbnail)
             VALUES (?, ?, ?, ?)
-        `
+            `
 			)
 			.run(playlistID, playlistName, songsJson, thumbnailPath);
 	} catch (err) {
@@ -1028,4 +1028,15 @@ async function commitStagedPlaylistAdds() {
 		});
 	}
 	pendingPlaylistAddsWithIds.clear();
+}
+
+function cleanDownloadModal() {
+	document.getElementById("downloadFirstInput").value = "";
+
+	const secondPhase = document.getElementById("downloadSecondPhase");
+	if (secondPhase) {
+		secondPhase.remove();
+	}
+
+	closeModal();
 }

@@ -1288,22 +1288,6 @@ async function removeSong() {
 	if (divToRemove) divToRemove.remove();
 }
 
-document.querySelectorAll(".settingsKeybindsButton").forEach(button => {
-	button.addEventListener("click", function () {
-		const currentButton = this;
-		currentButton.innerText = "Press a key...";
-		disableKeyPresses = 1;
-
-		function handleKeyPress(event) {
-			currentButton.innerText = event.key;
-			document.removeEventListener("keydown", handleKeyPress);
-			disableKeyPresses = 0;
-		}
-
-		document.addEventListener("keydown", handleKeyPress);
-	});
-});
-
 document.querySelectorAll('input[type="range"]').forEach(range => {
 	range.tabIndex = -1;
 	range.addEventListener("focus", () => range.blur());
@@ -1361,38 +1345,6 @@ document.addEventListener("keydown", event => {
 	}
 });
 
-function saveKeybinds() {
-	const buttons = Array.from(document.querySelectorAll(".settingsKeybindsButton")).map(button => button.innerText.trim());
-	const test = findDuplicates(buttons);
-
-	if (test.length > 0) {
-		alert(`This key is a duplicate: ${test[0]}`);
-		return;
-	}
-
-	updateDatabase("key_Rewind", document.getElementById("settingsRewind").innerHTML, settingsDb);
-	updateDatabase("key_Previous", document.getElementById("settingsPrevious").innerHTML, settingsDb);
-	updateDatabase("key_PlayPause", document.getElementById("settingsPlayPause").innerHTML, settingsDb);
-	updateDatabase("key_Next", document.getElementById("settingsNext").innerHTML, settingsDb);
-	updateDatabase("key_Skip", document.getElementById("settingsSkip").innerHTML, settingsDb);
-	updateDatabase("key_Autoplay", document.getElementById("settingsAutoplay").innerHTML, settingsDb);
-	updateDatabase("key_Shuffle", document.getElementById("settingsShuffle").innerHTML, settingsDb);
-	updateDatabase("key_Mute", document.getElementById("settingsMute").innerHTML, settingsDb);
-	updateDatabase("key_Speed", document.getElementById("settingsSpeed").innerHTML, settingsDb);
-	updateDatabase("key_Loop", document.getElementById("settingsLoop").innerHTML, settingsDb);
-
-	key_Rewind = document.getElementById("settingsRewind").innerHTML;
-	key_Previous = document.getElementById("settingsPrevious").innerHTML;
-	key_PlayPause = document.getElementById("settingsPlayPause").innerHTML;
-	key_Next = document.getElementById("settingsNext").innerHTML;
-	key_Skip = document.getElementById("settingsSkip").innerHTML;
-	key_Autoplay = document.getElementById("settingsAutoplay").innerHTML;
-	key_Shuffle = document.getElementById("settingsShuffle").innerHTML;
-	key_Mute = document.getElementById("settingsMute").innerHTML;
-	key_Speed = document.getElementById("settingsSpeed").innerHTML;
-	key_Loop = document.getElementById("settingsLoop").innerHTML;
-}
-
 function setupLazyBackgrounds() {
 	const bgElements = document.querySelectorAll(".background-element[data-bg]");
 	const vh = window.innerHeight;
@@ -1432,35 +1384,6 @@ function setupLazyBackgrounds() {
 			}
 		});
 	}
-}
-
-function loadJSFile(filename) {
-	// TODO: Move to helpers.js
-	if (filename === "download_music") {
-		document.getElementById("downloadModal").style.display = "block";
-	}
-
-	const src = `${filename}.js`;
-	const existingScript = Array.from(document.scripts).find(script => script.src.includes(src));
-
-	if (existingScript) {
-		return;
-	}
-
-	const script = document.createElement("script");
-	script.src = src;
-	document.body.appendChild(script);
-}
-
-function cleanDownloadModal() {
-	document.getElementById("downloadFirstInput").value = "";
-
-	const secondPhase = document.getElementById("downloadSecondPhase");
-	if (secondPhase) {
-		secondPhase.remove();
-	}
-
-	closeModal();
 }
 
 function handleDropdownChange(option, selectElement) {
@@ -1554,28 +1477,6 @@ async function createAppThumbnailsFolder() {
 	}
 }
 
-function changeBackground(color) {
-	background = color;
-	updateDatabase("background", color, settingsDb);
-	if (background === "blue") {
-		document.body.className = "bg-gradient-blue";
-	} else if (background === "red") {
-		document.body.className = "bg-gradient-red";
-	} else if (background === "green") {
-		document.body.className = "bg-gradient-green";
-	} else if (background === "purple") {
-		document.body.className = "bg-gradient-purple";
-	} else if (background === "black") {
-		document.body.className = "bg-gradient-black";
-	}
-}
-
-function stabiliseVolumeToggleTogglerFunction() {
-	stabiliseVolumeToggle = stabiliseVolumeToggle == 1 ? 0 : 1;
-	console.log(stabiliseVolumeToggle);
-	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb);
-}
-
 function customiseSongButtonFromBottomRight() {
 	if (secondfilename) {
 		openCustomizeModal(secondfilename);
@@ -1645,7 +1546,7 @@ document.getElementById("version").addEventListener("click", () => {
 
 document.getElementById("installBtn").addEventListener("click", () => {
 	document.getElementById("progressContainer").style.display = "block";
-    document.getElementById("installBtn").disabled = true;
+	document.getElementById("installBtn").disabled = true;
 	ipcRenderer.send("download-update");
 });
 

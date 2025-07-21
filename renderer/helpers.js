@@ -47,3 +47,19 @@ function findDuplicates(array) {
 function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+function loadJSFile(filename) {
+	if (filename === "download_music") {
+		document.getElementById("downloadModal").style.display = "block";
+	}
+
+	const src = `${filename}.js`;
+
+	if (Array.from(document.scripts).find(script => script.src.includes(src))) {
+		return;
+	}
+
+	const script = document.createElement("script");
+	script.src = src;
+	document.body.appendChild(script);
+}
