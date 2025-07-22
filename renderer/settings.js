@@ -68,7 +68,8 @@ function stabiliseVolumeToggleTogglerFunction() {
 }
 
 async function redownloadAllSongs() {
-    // TODO: Open redownload modal
+	openThisModal("redownload");
+
 	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url, rms FROM songs WHERE song_url IS NOT NULL").all();
 
 	if (rows.length === 0) return; // TODO: Use the new alert() function. No songs to redownload. make sure it had a song_url bla bla bla.
@@ -80,23 +81,23 @@ async function redownloadAllSongs() {
 		songMap.set(row.song_url, {
 			song_id: row.song_id,
 			song_name: row.song_name,
-            rms: row.rms,
+			rms: row.rms,
 		});
 	}
 
 	for (const [song_url, data] of songMap) {
 		// use song_url, data.song_name, data.song_id, data.rms
-        const songName = data.song_name;
-        const songId = data.song_id;
-        // Download the song here
-        // if (song.doesnt.exist) {wanna search for a similar song?} ytsr()
-        if ((!rms || rms == null) && stabiliseVolumeToggle == 1) {
-            // Stabilise song volume
-        }  else {
-            // wait 5 seconds             
-        }
-        // Download the thumbnail here
-        // Success message
+		const songName = data.song_name;
+		const songId = data.song_id;
+		// Download the song here
+		// if (song.doesnt.exist) {wanna search for a similar song?} ytsr()
+		if ((!rms || rms == null) && stabiliseVolumeToggle == 1) {
+			// Stabilise song volume
+		} else {
+			// wait 5 seconds
+		}
+		// Download the thumbnail here
+		// Success message
 	}
 
 	console.log(songMap); // TODO: Remove

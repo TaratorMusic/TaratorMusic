@@ -49,10 +49,6 @@ function sleep(ms) {
 }
 
 function loadJSFile(filename) {
-	if (filename === "download_music") {
-		document.getElementById("downloadModal").style.display = "block";
-	}
-
 	const src = `${filename}.js`;
 
 	if (Array.from(document.scripts).find(script => script.src.includes(src))) {
@@ -62,4 +58,14 @@ function loadJSFile(filename) {
 	const script = document.createElement("script");
 	script.src = src;
 	document.body.appendChild(script);
+}
+
+function openThisModal(modalName) {
+	if (filename == "download") {
+		document.getElementById("downloadModal").style.display = "block";
+		loadJSFile("download_music");
+	} else if (filename == "redownload") {
+		document.getElementById("redownloadModal").style.display = "block";
+		loadJSFile("download_music");
+	}
 }
