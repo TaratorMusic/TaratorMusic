@@ -10,14 +10,28 @@ function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
 	return new Promise(resolve => {
 		const overlay = document.createElement("div");
 		overlay.className = "confirm-modal-overlay";
-		overlay.innerHTML = `
-            <div class="confirm-modal">
-                <p>${description}</p>
-                <div class="confirm-modal-actions">
-                    <button id="confirmModalPrimary">${button1}</button>
-                    <button id="confirmModalSecondary">${button2}</button>
-                </div>
-            </div>`;
+
+		const actions = document.createElement("div");
+		actions.className = "confirm-modal-actions";
+
+		const btn1 = document.createElement("button");
+		btn1.id = "confirmModalPrimary";
+		btn1.textContent = button1;
+		actions.appendChild(btn1);
+
+		if (button2 !== null) {
+			const btn2 = document.createElement("button");
+			btn2.id = "confirmModalSecondary";
+			btn2.textContent = button2;
+			actions.appendChild(btn2);
+		}
+
+		const modal = document.createElement("div");
+		modal.className = "confirm-modal";
+		modal.innerHTML = `<p>${description}</p>`;
+		modal.appendChild(actions);
+
+		overlay.appendChild(modal);
 		document.body.appendChild(overlay);
 
 		function cleanup(result) {
@@ -25,9 +39,15 @@ function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
 			resolve(result);
 		}
 
-		overlay.querySelector("#confirmModalPrimary").addEventListener("click", () => cleanup(true));
-		overlay.querySelector("#confirmModalSecondary").addEventListener("click", () => cleanup(false));
+		btn1.addEventListener("click", () => cleanup(true));
+		if (button2 !== null) {
+			overlay.querySelector("#confirmModalSecondary").addEventListener("click", () => cleanup(false));
+		}
 	});
+}
+
+async function alertModal(message) {
+	return confirmModal(message, "Okay", null).then(() => {});
 }
 
 function findDuplicates(array) {

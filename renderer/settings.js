@@ -1,9 +1,9 @@
-function saveKeybinds() {
+async function saveKeybinds() {
 	const buttons = Array.from(document.querySelectorAll(".settingsKeybindsButton")).map(button => button.innerText.trim());
 	const test = findDuplicates(buttons);
 
 	if (test.length > 0) {
-		alert(`This key is a duplicate: ${test[0]}`);
+		await alertModal(`This key is a duplicate: ${test[0]}`);
 		return;
 	}
 
@@ -72,7 +72,10 @@ async function redownloadAllSongs() {
 
 	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url, rms FROM songs WHERE song_url IS NOT NULL").all();
 
-	if (rows.length === 0) return; // TODO: Use the new alert() function. No songs to redownload. make sure it had a song_url bla bla bla.
+	if (rows.length === 0) {
+		await alertModal("No songs to redownload.");
+		return;
+	}
 
 	const songMap = new Map();
 
@@ -85,20 +88,9 @@ async function redownloadAllSongs() {
 		});
 	}
 
-	for (const [song_url, data] of songMap) {
-		// use song_url, data.song_name, data.song_id, data.rms
-		const songName = data.song_name;
-		const songId = data.song_id;
-		// Download the song here
-		// if (song.doesnt.exist) {wanna search for a similar song?} ytsr()
-		if ((!rms || rms == null) && stabiliseVolumeToggle == 1) {
-			// Stabilise song volume
-		} else {
-			// wait 5 seconds
-		}
-		// Download the thumbnail here
-		// Success message
-	}
+	// if (song.doesnt.exist) {wanna search for a similar song?} ytsr() --> Bunu renderPlaylistUI içine yapsak?
+
+	renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailsFolder, "tarator_icon.png"), songMap); // TODO: Configure songMap to work in this function.
 
 	console.log(songMap); // TODO: Remove
 }

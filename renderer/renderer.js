@@ -1174,7 +1174,7 @@ function closeModal() {
 	if (modal) modal.style.display = "none";
 }
 
-function updateThumbnailImage(event, mode) {
+async function updateThumbnailImage(event, mode) {
 	const file = event.target.files[0];
 	if (file && file.type === "image/jpeg") {
 		const reader = new FileReader();
@@ -1188,7 +1188,7 @@ function updateThumbnailImage(event, mode) {
 		};
 		reader.readAsDataURL(file);
 	} else {
-		alert("Please select a valid JPG image.");
+		await alertModal("Please select a valid JPG image.");
 	}
 }
 
@@ -1209,12 +1209,12 @@ function openCustomizeModal(songName) {
 	customizeDiv.dataset.songID = songName;
 }
 
-function saveEditedSong() {
+async function saveEditedSong() {
 	const customizeDiv = document.getElementById("customizeModal");
 	const newNameInput = document.getElementById("customizeSongName").value.trim();
 
 	if (newNameInput.length < 1) {
-		alert("Please do not set a song name empty.");
+		await alertModal("Please do not set a song name empty.");
 		return;
 	}
 
@@ -1471,7 +1471,7 @@ async function createAppThumbnailsFolder() {
 				})
 		);
 
-		alert("App thumbnails installed. App restart required for the effects.");
+		await alertModal("App thumbnails installed. App restart required for the effects.");
 	} catch (e) {
 		console.error("Error in createAppThumbnailsFolder:", e);
 	}

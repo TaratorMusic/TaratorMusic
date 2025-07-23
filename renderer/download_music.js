@@ -351,8 +351,8 @@ async function processVideoLink(videoUrl) {
 	} catch (error) {
 		console.error("Error in processVideoLink:", error);
 		document.getElementById("downloadFirstButton").disabled = false;
-		if (error.message.includes("age")) alert("You can't download this song because it is age restricted.");
-		if (error.message.includes("private")) alert("You can't download this song because it is a private video.");
+		if (error.message.includes("age")) await alertModal("You can't download this song because it is age restricted.");
+		if (error.message.includes("private")) await alertModal("You can't download this song because it is a private video.");
 		document.getElementById("downloadModalText").innerHTML = ``;
 	}
 }
@@ -825,7 +825,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					success = true;
 				} catch (error) {
 					if (error.message.includes("Age confirmation required")) {
-						alert("This song requires age confirmation. Skipping...");
+						await alertModal("This song requires age confirmation. Skipping...");
 						document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
 						break;
 					}
