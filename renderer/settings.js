@@ -68,7 +68,7 @@ function stabiliseVolumeToggleTogglerFunction() {
 }
 
 async function redownloadAllSongs() {
-	openThisModal("redownload");
+	openThisModal("download");
 
 	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url, rms FROM songs WHERE song_url IS NOT NULL").all();
 
@@ -77,11 +77,11 @@ async function redownloadAllSongs() {
 		return;
 	}
 
-	const songMap = new Map();
+	const songs = [];
 
 	for (const row of rows) {
-		if (!row.song_url) continue;
-		songMap.set(row.song_url, {
+		songs.push({
+			song_url: row.song_url,
 			song_id: row.song_id,
 			song_name: row.song_name,
 			rms: row.rms,

@@ -84,8 +84,5 @@ function openThisModal(modalName) {
 	if (filename == "download") {
 		document.getElementById("downloadModal").style.display = "block";
 		loadJSFile("download_music");
-	} else if (filename == "redownload") {
-		document.getElementById("redownloadModal").style.display = "block";
-		loadJSFile("download_music");
 	}
 }
