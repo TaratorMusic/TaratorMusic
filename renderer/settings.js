@@ -68,7 +68,7 @@ function stabiliseVolumeToggleTogglerFunction() {
 }
 
 async function redownloadAllSongs() {
-	openThisModal("download");
+	await openThisModal("download");
 
 	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url, rms FROM songs WHERE song_url IS NOT NULL").all();
 
@@ -81,16 +81,13 @@ async function redownloadAllSongs() {
 
 	for (const row of rows) {
 		songs.push({
-			song_url: row.song_url,
-			song_id: row.song_id,
-			song_name: row.song_name,
+			url: row.song_url,
+			id: row.song_id,
+			title: row.song_name,
 			rms: row.rms,
 		});
 	}
 
-	// if (song.doesnt.exist) {wanna search for a similar song?} ytsr() --> Bunu renderPlaylistUI içine yapsak?
-
-	renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailsFolder, "tarator_icon.png"), songMap); // TODO: Configure songMap to work in this function.
-
-	console.log(songMap); // TODO: Remove
+	await checkNameThumbnail(true);
+	await renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailFolder, "tarator_icon.png"), songs);
 }

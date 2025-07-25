@@ -30,15 +30,11 @@ function differentiateMediaLinks(url) {
 }
 
 async function searchInYoutube(songName, resultLimit = 1) {
-	let theResult;
-	ytsr(songName, { safeSearch: false, limit: resultLimit }).then(result => {
-		theResult = result.items[resultLimit - 1].url;
-		searchedSongsUrl = theResult;
-	});
-	return theResult;
+	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
+	return result.items[resultLimit - 1].url;
 }
 
-function checkNameThumbnail() {
+function checkNameThumbnail(redownload) {
 	document.getElementById("downloadFirstButton").disabled = true;
 
 	if (document.getElementById("downloadSecondPhase")) {
@@ -57,6 +53,8 @@ function checkNameThumbnail() {
 	downloadModalText.id = "downloadModalText";
 	downloadModalBottomRow.appendChild(downloadModalText);
 	downloadModalText.innerHTML = "Checking...";
+
+	if (redownload) return;
 
 	const userInput = document.getElementById("downloadFirstInput").value.trim();
 	if (userInput === "") {
@@ -269,14 +267,7 @@ async function getPlaylistSongsAndArtists(link) {
 
 async function processVideoLink(videoUrl) {
 	try {
-		const getYouTubeVideoId = url => {
-			const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
-			return match ? match[1] : null;
-		};
-
-		const videoId = getYouTubeVideoId(videoUrl);
-		if (!videoId) throw new Error("Invalid YouTube URL");
-
+		const videoId = await videoUrl;
 		const info = await ytdl.getInfo(videoId);
 		const videoTitle = info.videoDetails.title;
 
@@ -384,7 +375,7 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 	for (const item of videoItems) {
 		if (item.url) {
 			videoLinks.push(item.url);
-		} else {
+		} else if (item.title != undefined) {
 			const confirmed = await confirmModal(`No URL for "${item.title}". Search YouTube?`, "Yes", "No");
 			if (confirmed) {
 				videoLinks.push(searchInYoutube(item.title));
@@ -392,6 +383,7 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 			videoLinks.push(null);
 		}
 	}
+
 	const playlistThumbnails = [playlistThumbnail, ...videoItems.map(item => item.thumbnail)];
 	const videoRMSValues = videoItems.some(item => item.rms !== undefined && item.rms !== null) ? videoItems.map(item => item.rms) : null;
 
@@ -624,7 +616,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 
 async function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
-	const linkType = differentiateMediaLinks(document.getElementById("downloadFirstInput").value.trim()); // TODO: This value is unstable to use
+	const linkType = differentiateMediaLinks(document.getElementById("downloadFirstInput").value.trim()); // TODO: This value is unstable to use, use a variable instead, and include "redownload"
 	const firstInput = linkType == "unknown" ? searchedSongsUrl : document.getElementById("downloadFirstInput").value.trim();
 
 	if (linkType == "youtube_video" || linkType == "spotify_track" || linkType == "unknown") {

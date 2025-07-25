@@ -68,21 +68,26 @@ function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function loadJSFile(filename) {
-	const src = `${filename}.js`;
+async function loadJSFile(filename) {
+	return new Promise((resolve, reject) => {
+		const src = `${filename}.js`;
 
-	if (Array.from(document.scripts).find(script => script.src.includes(src))) {
-		return;
-	}
+		if (Array.from(document.scripts).find(script => script.src.includes(src))) {
+			resolve();
+			return;
+		}
 
-	const script = document.createElement("script");
-	script.src = src;
-	document.body.appendChild(script);
+		const script = document.createElement("script");
+		script.src = src;
+		script.onload = resolve;
+		script.onerror = reject;
+		document.body.appendChild(script);
+	});
 }
 
-function openThisModal(modalName) {
-	if (filename == "download") {
+async function openThisModal(modalName) {
+	if (modalName == "download") {
+		await loadJSFile("download_music");
 		document.getElementById("downloadModal").style.display = "block";
-		loadJSFile("download_music");
 	}
 }
