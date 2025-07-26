@@ -68,7 +68,7 @@ function stabiliseVolumeToggleTogglerFunction() {
 }
 
 async function redownloadAllSongs() {
-	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url, rms FROM songs WHERE song_url IS NOT NULL").all();
+	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url, rms FROM songs").all();
 	const existingFiles = fs.readdirSync(musicFolder);
 	const existingIds = new Set(existingFiles.map(file => path.parse(file).name));
 	const filteredRows = rows.filter(row => !existingIds.has(row.song_id));
@@ -87,7 +87,24 @@ async function redownloadAllSongs() {
 
 	for (let i = 0; i < filteredRows.length; i++) {
 		const row = filteredRows[i];
-		const info = await ytdl.getInfo(row.song_url);
+		let info;
+
+		try {
+			info = await ytdl.getInfo(row.song_url);
+			document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
+		} catch (err) {
+			const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No");
+			if (confirmed) {
+				try {
+					const newUrl = await searchInYoutube(row.song_name);
+					info = await ytdl.getInfo(newUrl);
+				} catch (e) {
+					continue;
+				}
+			} else {
+				continue;
+			}
+		}
 
 		const thumbnails = info.videoDetails.thumbnails || [];
 		const bestThumbnail = thumbnails.reduce((max, thumb) => {
@@ -106,8 +123,7 @@ async function redownloadAllSongs() {
 			thumbnail: thumbnailUrl,
 		});
 
-		document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
-		if (i + 1 != filteredRows.length) await sleep(2000);
+		if (i + 1 != filteredRows.length) await sleep(2000); // For not overloading YTDL
 	}
 
 	await renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailFolder, "tarator_icon.png"), songs);

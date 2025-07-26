@@ -372,20 +372,7 @@ async function fetchPlaylistData(url) {
 
 async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 	const playlistTitles = [playlistTitle, ...videoItems.map(item => item.title)];
-	const videoLinks = [];
-
-	for (const item of videoItems) {
-		if (item.url) {
-			videoLinks.push(item.url);
-		} else if (item.title != undefined) {
-			const confirmed = await confirmModal(`No URL for "${item.title}". Search YouTube?`, "Yes", "No");
-			if (confirmed) {
-				videoLinks.push(searchInYoutube(item.title));
-			}
-			videoLinks.push(null);
-		}
-	}
-
+	const videoLinks = videoItems.map(item => item.url);
 	const playlistThumbnails = [playlistThumbnail, ...videoItems.map(item => item.thumbnail)];
 	const videoRMSValues = videoItems.some(item => item.rms !== undefined && item.rms !== null) ? videoItems.map(item => item.rms) : null;
 

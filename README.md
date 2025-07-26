@@ -65,6 +65,10 @@ TaratorMusic only uses 75MB per second of memory while open, 95MB per second whi
 
 You can enable and disable the volume stabilisation provided by FFmpeg package. It will help all the songs be near the same volume, eliminating the need to change the volume every new song in case they are too quiet or loud.
 
+### Redownload All Your Songs
+
+If you have your old databases intact, you can redownload all your songs back using a button in the settings page!
+
 ## Upcoming Features:
 
 ### Statistics
@@ -82,10 +86,6 @@ Why not pause the long playlist download and continue later? Won't be that hard 
 ### Customise the songs by editing basses, drums, etc.
 
 You will be able to customise every aspect of a song using FFmpeg in the future.
-
-### Redownload All Your Songs
-
-Since all your songs and their URL's are saved in the database, that will open the door for redownloading every song back with one click!
 
 ### Apple Music Support
 
