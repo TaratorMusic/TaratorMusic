@@ -70,6 +70,7 @@ let audioContext;
 let audioSource;
 let searchedSongsUrl;
 let latestReleaseNotes = "You are using the latest version of TaratorMusic.";
+let downloadingStyle;
 const debounceMap = new Map();
 const songNameCache = new Map();
 
@@ -121,7 +122,7 @@ const defaultSettings = {
 	displayCount: 4,
 	activateRms: 1,
 	lazyLoadSize: 100,
-	background: "blue",
+	background: "green",
 	stabiliseVolumeToggle: 1,
 };
 

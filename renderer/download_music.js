@@ -25,13 +25,14 @@ function differentiateMediaLinks(url) {
 	} else if (spotifyPlaylistRegex.test(trimmedUrl)) {
 		return "spotify_playlist";
 	} else {
-		return "unknown";
+		return "search";
 	}
 }
 
 async function searchInYoutube(songName, resultLimit = 1) {
 	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
-	return result.items[resultLimit - 1].url;
+	searchedSongsUrl = result.items[resultLimit - 1].url;
+	return searchedSongsUrl;
 }
 
 function checkNameThumbnail(redownload) {
@@ -63,15 +64,15 @@ function checkNameThumbnail(redownload) {
 		return;
 	}
 
-	const linkType = differentiateMediaLinks(userInput);
+	downloadingStyle = differentiateMediaLinks(userInput);
 
-	if (linkType === "youtube_video") {
+	if (downloadingStyle === "youtube_video") {
 		processVideoLink(userInput);
-	} else if (linkType === "youtube_playlist") {
+	} else if (downloadingStyle === "youtube_playlist") {
 		fetchPlaylistData(userInput);
-	} else if (linkType == "spotify_track") {
+	} else if (downloadingStyle == "spotify_track") {
 		getSpotifySongName(userInput);
-	} else if (linkType == "spotify_playlist") {
+	} else if (downloadingStyle == "spotify_playlist") {
 		getPlaylistSongsAndArtists(userInput);
 	} else {
 		processVideoLink(searchInYoutube(userInput, 1));
@@ -372,6 +373,7 @@ async function fetchPlaylistData(url) {
 async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 	const playlistTitles = [playlistTitle, ...videoItems.map(item => item.title)];
 	const videoLinks = [];
+
 	for (const item of videoItems) {
 		if (item.url) {
 			videoLinks.push(item.url);
@@ -423,6 +425,7 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 				saveAsPlaylist.style.backgroundColor = window.isSaveAsPlaylistActive ? "green" : "red";
 			};
 		} else {
+			if (videoItems[i - 1].id) songAndThumbnail.setAttribute("data-id", videoItems[i - 1].id);
 			const deleteThisPlaylistSong = document.createElement("button");
 			deleteThisPlaylistSong.id = "deleteThisPlaylistSong" + i;
 			deleteThisPlaylistSong.className = "deleteThisPlaylistSong";
@@ -616,10 +619,9 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 
 async function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
-	const linkType = differentiateMediaLinks(document.getElementById("downloadFirstInput").value.trim()); // TODO: This value is unstable to use, use a variable instead, and include "redownload"
-	const firstInput = linkType == "unknown" ? searchedSongsUrl : document.getElementById("downloadFirstInput").value.trim();
+	const firstInput = downloadingStyle === "search" ? searchedSongsUrl : document.getElementById("downloadFirstInput").value.trim();
 
-	if (linkType == "youtube_video" || linkType == "spotify_track" || linkType == "unknown") {
+	if (downloadingStyle == "youtube_video" || downloadingStyle == "spotify_track" || downloadingStyle == "search") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
 		const songID = generateId();
 		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
@@ -644,16 +646,17 @@ async function actuallyDownloadTheSong() {
 				document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB${totalMB}`;
 			});
 
-			document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
-
 			if (stabiliseVolumeToggle == 1) {
 				try {
+					document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
 					await normalizeAudio(outputFilePath);
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
 				} catch (error) {
 					console.error("Audio normalization failed:", error);
 					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
 				}
+			} else {
+				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Processing thumbnail...";
 			}
 
 			let duration = 0;
@@ -697,11 +700,11 @@ async function actuallyDownloadTheSong() {
 		}
 	} else {
 		const playlistName = document.getElementById("playlistTitle0").value.trim();
+		const songElements = document.querySelectorAll(".songAndThumbnail");
+
 		const songLinks = [];
 		const songTitles = [];
 		const songIds = [];
-
-		const songElements = document.querySelectorAll(".songAndThumbnail");
 
 		for (let i = 1; i < songElements.length; i++) {
 			const songElement = songElements[i];
@@ -711,7 +714,7 @@ async function actuallyDownloadTheSong() {
 			if (link && titleInput) {
 				songLinks.push(link);
 				songTitles.push(titleInput.value.trim());
-				songIds.push(generateId());
+				songElement.hasAttribute("data-id") ? songIds.push(songElement.getAttribute("data-id")) : songIds.push(generateId());
 			}
 		}
 
@@ -849,7 +852,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					console.error(`Audio normalization failed for ${songTitle}:`, error);
 				}
 			} else {
-				document.getElementById("downloadModalText").innerText = `Volume stabilisation is disabled. Waiting 5 seconds for not overloading the Youtube API...`;
+				document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled. Waiting 5 seconds for not overloading the Youtube API...`;
 				await sleep(5000);
 			}
 
@@ -968,7 +971,6 @@ function saveAsPlaylist(songIds, playlistName) {
 	const playlistID = generateId();
 	const thumbnailPath = path.join(thumbnailFolder, `${playlistID}_playlist.jpg`);
 	const songsJson = JSON.stringify(songIds.map(id => id.trim()));
-	console.log(playlistID, playlistName, songsJson, thumbnailPath);
 
 	try {
 		playlistsDb

@@ -68,18 +68,25 @@ function stabiliseVolumeToggleTogglerFunction() {
 }
 
 async function redownloadAllSongs() {
-	await openThisModal("download");
-
 	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url, rms FROM songs WHERE song_url IS NOT NULL").all();
+	const existingFiles = fs.readdirSync(musicFolder);
+	const existingIds = new Set(existingFiles.map(file => path.parse(file).name));
+	const filteredRows = rows.filter(row => !existingIds.has(row.song_id));
 
-	if (rows.length === 0) {
+	if (filteredRows.length == 0) {
 		await alertModal("No songs to redownload.");
 		return;
 	}
 
+	await openThisModal("download");
+	await checkNameThumbnail(true);
+
+	downloadingStyle = "redownload";
+
 	const songs = [];
 
-	for (const row of rows) {
+	for (let i = 0; i < filteredRows.length; i++) {
+		const row = filteredRows[i];
 		const info = await ytdl.getInfo(row.song_url);
 
 		const thumbnails = info.videoDetails.thumbnails || [];
@@ -99,11 +106,9 @@ async function redownloadAllSongs() {
 			thumbnail: thumbnailUrl,
 		});
 
-        await sleep(2000); // For not overloading YTDL
-
-        // TODO: Show progress
+		document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
+		if (i + 1 != filteredRows.length) await sleep(2000);
 	}
 
-	await checkNameThumbnail(true);
 	await renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailFolder, "tarator_icon.png"), songs);
 }
