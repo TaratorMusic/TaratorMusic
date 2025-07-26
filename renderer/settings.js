@@ -80,12 +80,28 @@ async function redownloadAllSongs() {
 	const songs = [];
 
 	for (const row of rows) {
+		const info = await ytdl.getInfo(row.song_url);
+
+		const thumbnails = info.videoDetails.thumbnails || [];
+		const bestThumbnail = thumbnails.reduce((max, thumb) => {
+			const size = (thumb.width || 0) * (thumb.height || 0);
+			const maxSize = (max.width || 0) * (max.height || 0);
+			return size > maxSize ? thumb : max;
+		}, thumbnails[0] || {});
+
+		const thumbnailUrl = bestThumbnail.url || "";
+
 		songs.push({
 			url: row.song_url,
 			id: row.song_id,
 			title: row.song_name,
 			rms: row.rms,
+			thumbnail: thumbnailUrl,
 		});
+
+        await sleep(2000); // For not overloading YTDL
+
+        // TODO: Show progress
 	}
 
 	await checkNameThumbnail(true);
