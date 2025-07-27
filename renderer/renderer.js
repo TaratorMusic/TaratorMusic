@@ -1532,6 +1532,9 @@ ipcRenderer.on("update-available", (event, releaseNotes) => {
 	latestReleaseNotes = releaseNotes;
 	document.getElementById("version").classList.add("no-animation");
 	document.getElementById("installBtn").disabled = false;
+	if (platform === "win32" || platform === "darwin") {
+		document.getElementById("installBtn").innerText = "Go to the latest release page";
+	}
 });
 
 ipcRenderer.on("download-progress", (event, percent) => {
@@ -1546,6 +1549,13 @@ document.getElementById("version").addEventListener("click", () => {
 });
 
 document.getElementById("installBtn").addEventListener("click", () => {
+	const platform = process.platform;
+
+	if (platform === "win32" || platform === "darwin") {
+		window.open("https://github.com/Victiniiiii/TaratorMusic/releases/latest", "_blank");
+		return;
+	}
+
 	document.getElementById("progressContainer").style.display = "block";
 	document.getElementById("installBtn").disabled = true;
 	ipcRenderer.send("download-update");
