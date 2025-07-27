@@ -1285,6 +1285,7 @@ async function removeSong() {
 	musicsDb.prepare("DELETE FROM songs WHERE song_id = ?").run(fileToDelete);
 
 	closeModal();
+	document.getElementById("customizeModal").style.display = "none";
 	const divToRemove = document.querySelector(`div[alt="${fileToDelete}.mp3"]`);
 	if (divToRemove) divToRemove.remove();
 }
