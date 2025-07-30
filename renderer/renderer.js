@@ -1194,15 +1194,27 @@ async function updateThumbnailImage(event, mode) {
 }
 
 function openCustomizeModal(songName) {
-	const baseName = getSongNameById(songName.replace(".mp3", ""));
-	const oldThumbnailPath = path.join(thumbnailFolder, songName.replace(".mp3", "") + ".jpg");
-	fileToDelete = songName.replace(".mp3", "");
+	const songNameNoMp3 = songName.replace(".mp3", "");
+	const baseName = getSongNameById(songNameNoMp3);
+	const oldThumbnailPath = path.join(thumbnailFolder, songNameNoMp3 + ".jpg");
+	fileToDelete = songNameNoMp3;
+
+	const stmt = musicsDb.prepare(`
+        SELECT times_listened, seconds_played, rms
+        FROM songs
+        WHERE song_id = ?
+    `);
+
+	const { times_listened, seconds_played, rms } = stmt.get(songNameNoMp3) || {};
 
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + ".jpg");
 	document.getElementById("customizeModal").style.display = "block";
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = oldThumbnailPath;
+	document.getElementById("modalTimePlayed").innerText = `Time Played: ${times_listened}`;
+	document.getElementById("modalSecondsPlayed").innerText = `Seconds Played: ${seconds_played}`;
+    document.getElementById("modalRMS").innerText = `RMS: ${rms}`
 
 	const customizeDiv = document.getElementById("customizeModal");
 	customizeDiv.dataset.oldSongName = baseName;
