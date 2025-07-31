@@ -83,22 +83,40 @@ async function processAllFiles(skip) {
 
 async function cleanDebugFiles() {
 	const regex = /^174655\d+-player-script\.js$/;
+
+	document.getElementById("cleanProgress").innerText = `Cleaning debug files...`;
+	await new Promise(resolve => setTimeout(resolve, 10));
+
 	fs.readdirSync("./").forEach(file => {
 		if (regex.test(file)) {
 			fs.unlinkSync(path.join("./", file));
-			document.getElementById("cleanProgress").innerText = `Cleaning debug files...`;
 		}
 	});
 
+	document.getElementById("cleanProgress").innerText = `Cleaning broken songs...`;
+	await new Promise(resolve => setTimeout(resolve, 10));
+
 	fs.readdirSync("./musics").forEach(file => {
-		if (!file.endsWith(".mp3") || !file.includes("tarator")) {
+		if (!file.endsWith(".mp3") || file.includes("tarator")) {
 			fs.unlinkSync(path.join("./musics", file));
-			document.getElementById("cleanProgress").innerText = `Cleaning broken songs...`;
 		}
 	});
 
 	try {
 		document.getElementById("cleanProgress").innerText = `Cleaning the database...`;
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		const musicFiles = fs.readdirSync("./musics");
+		const allSongs = musicsDb.prepare(`SELECT song_id FROM songs`).all();
+		const deleteSong = musicsDb.prepare(`DELETE FROM songs WHERE song_id = ?`);
+
+		allSongs.forEach(song => {
+			const fileName = song.song_id + ".mp3";
+			if (!musicFiles.includes(fileName)) {
+				deleteSong.run(song.song_id);
+			}
+		});
+
 		musicsDb.prepare(`DELETE FROM songs WHERE song_id LIKE '%.mp3%'`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
@@ -110,7 +128,7 @@ async function cleanDebugFiles() {
 		selectPlaylists.forEach(row => {
 			let songArray;
 			try {
-				songArray = JSON.parse(row.songs);
+				songArray = JSON.parse(row.songs || "[]");
 			} catch {
 				songArray = [];
 			}
@@ -128,6 +146,7 @@ async function cleanDebugFiles() {
 	} catch (err) {
 		console.error("Error during database cleanup:", err.message);
 	}
+
 	document.getElementById("cleanProgress").innerText = `Cleaning complete!`;
 }
 

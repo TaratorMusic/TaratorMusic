@@ -13,6 +13,7 @@ config/
 
 *.log
 *.db
+*.db-journal
 *.spec
 *.mp3
 *.mp4
