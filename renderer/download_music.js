@@ -374,7 +374,6 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 	const playlistTitles = [playlistTitle, ...videoItems.map(item => item.title)];
 	const videoLinks = videoItems.map(item => item.url);
 	const playlistThumbnails = [playlistThumbnail, ...videoItems.map(item => item.thumbnail)];
-	const videoRMSValues = videoItems.some(item => item.rms !== undefined && item.rms !== null) ? videoItems.map(item => item.rms) : null;
 
 	const downloadPlaceofSongs = document.createElement("div");
 	downloadPlaceofSongs.id = "downloadPlaceofSongs";
@@ -670,11 +669,11 @@ async function actuallyDownloadTheSong() {
 					.prepare(
 						`INSERT INTO songs (
                             song_id, song_name, song_url, song_thumbnail,
-                            song_length, seconds_played, times_listened, rms,
+                            song_length, seconds_played, times_listened, stabilised,
                             size, speed, bass, treble, midrange, volume
-                        ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL, ?, 1, 0, 0, 0, 100)`
+                        ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100)`
 					)
-					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration, fileSize);
+					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration, stabiliseVolumeToggle, fileSize);
 			} catch (err) {
 				console.error("Failed to insert song into DB:", err);
 			}
@@ -891,11 +890,11 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 						.prepare(
 							`INSERT INTO songs (
                                 song_id, song_name, song_url, song_thumbnail,
-                                song_length, seconds_played, times_listened, rms,
+                                song_length, seconds_played, times_listened, stabilised,
                                 size, speed, bass, treble, midrange, volume
-                            ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL, ?, 1, 0, 0, 0, 100)`
+                            ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100)`
 						)
-						.run(songId, songTitle, songLink, songThumbnail, duration, fileSize);
+						.run(songId, songTitle, songLink, songThumbnail, duration, stabiliseVolumeToggle, fileSize);
 				} catch (err) {
 					console.error(`DB insert failed for ${songTitle}: ${err.message}`);
 				}

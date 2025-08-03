@@ -25,7 +25,7 @@ function normalizeAudio(filePath) {
 	});
 }
 
-async function processAllFiles(skip) {
+async function processAllFiles() {
 	const allFiles = fs.readdirSync(musicFolder);
 	const tempFiles = allFiles.filter(f => f.startsWith(".normalized_") || f.startsWith("normalized_") || f.includes("temp_normalized"));
 	if (tempFiles.length > 0) {
@@ -54,9 +54,9 @@ async function processAllFiles(skip) {
 		if (!fs.statSync(fullPath).isFile()) continue;
 
 		const name = path.basename(file, path.extname(file));
-		const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_id = ?").get(name);
+		const row = musicsDb.prepare("SELECT stabilised FROM songs WHERE song_id = ?").get(name);
 
-		if (row && row.rms !== null && row.rms !== undefined && skip == 1) {
+		if (row && row.stabilised == 1) {
 			processedCount++;
 			document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalFiles}] Skipping ${name}, already processed.`;
 			continue;
@@ -65,7 +65,7 @@ async function processAllFiles(skip) {
 		document.getElementById("stabiliseProgress").innerText = `[${processedCount + 1}/${totalFiles}] Normalizing ${getSongNameById(name)}...`;
 		try {
 			await normalizeAudio(fullPath);
-			const updateResult = musicsDb.prepare("UPDATE songs SET rms = ? WHERE song_id = ?").run(1, name);
+			const updateResult = musicsDb.prepare("UPDATE songs SET stabilised = ? WHERE song_id = ?").run(1, name);
 			processedCount++;
 			if (updateResult.changes > 0) {
 				document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalFiles}] Successfully normalized and marked ${getSongNameById(name)}`;
@@ -97,7 +97,7 @@ async function cleanDebugFiles() {
 	await new Promise(resolve => setTimeout(resolve, 10));
 
 	fs.readdirSync("./musics").forEach(file => {
-		if (!file.endsWith(".mp3") || file.includes("tarator")) {
+		if (!file.endsWith(".mp3")) {
 			fs.unlinkSync(path.join("./musics", file));
 		}
 	});
@@ -199,12 +199,12 @@ async function processNewSongs() {
 					`
                     INSERT INTO songs (
                         song_id, song_name, song_url, song_thumbnail,
-                        song_length, seconds_played, times_listened, rms,
+                        song_length, seconds_played, times_listened, stabilised,
                         size, speed, bass, treble, midrange, volume
-                    ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL, ?, 1, 0, 0, 0, 100)
+                    ) VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, 1, 0, 0, 0, 100)
                 `
 				)
-				.run(songId, songName, null, newThumbnailName, duration, fileSize);
+				.run(songId, songName, newThumbnailName, duration, fileSize);
 
 			document.getElementById("folderProgress").innerText = `Added ${songName} to database`;
 		} catch (error) {

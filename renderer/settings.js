@@ -62,13 +62,8 @@ function changeBackground(color) {
 	}
 }
 
-function stabiliseVolumeToggleTogglerFunction() {
-	stabiliseVolumeToggle = stabiliseVolumeToggle == 1 ? 0 : 1;
-	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb);
-}
-
 async function redownloadAllSongs() {
-	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url, rms FROM songs").all();
+	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url FROM songs").all();
 	const existingFiles = fs.readdirSync(musicFolder);
 	const existingIds = new Set(existingFiles.map(file => path.parse(file).name));
 	const filteredRows = rows.filter(row => !existingIds.has(row.song_id));
@@ -119,7 +114,6 @@ async function redownloadAllSongs() {
 			url: row.song_url,
 			id: row.song_id,
 			title: row.song_name,
-			rms: row.rms,
 			thumbnail: thumbnailUrl,
 		});
 

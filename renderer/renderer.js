@@ -94,9 +94,7 @@ let key_randomSong;
 let key_randomPlaylist;
 let dividevolume;
 let displayCount;
-let activateRms;
 let stabiliseVolumeToggle;
-let lazyLoadSize;
 let background;
 
 const defaultSettings = {
@@ -120,8 +118,6 @@ const defaultSettings = {
 	key_randomPlaylist: "2",
 	dividevolume: 1,
 	displayCount: 4,
-	activateRms: 1,
-	lazyLoadSize: 100,
 	background: "green",
 	stabiliseVolumeToggle: 1,
 };
@@ -264,8 +260,6 @@ function initializeSettingsDatabase() {
 	volume = settingsRow.volume;
 	dividevolume = settingsRow.dividevolume;
 	displayCount = settingsRow.displayCount;
-	activateRms = settingsRow.activateRms;
-	lazyLoadSize = settingsRow.lazyLoadSize;
 	background = settingsRow.background;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 
@@ -316,7 +310,7 @@ function initializeMusicsDatabase() {
 		{ name: "song_thumbnail", type: "TEXT" },
 		{ name: "seconds_played", type: "INTEGER" },
 		{ name: "times_listened", type: "INTEGER" },
-		{ name: "rms", type: "REAL" },
+		{ name: "stabilised", type: "INTEGER" },
 		{ name: "size", type: "INTEGER" },
 		{ name: "speed", type: "REAL" },
 		{ name: "bass", type: "REAL" },
@@ -661,46 +655,6 @@ function createMusicElement(songFile) {
 	return musicElement;
 }
 
-function applyRmsEffect() {
-	if (!audioContext || !audioSource) return;
-
-	try {
-		audioSource.disconnect();
-	} catch (err) {
-		console.warn("Audio source disconnect error:", err);
-	}
-
-	if (activateRms === 1) {
-		let newGain;
-		try {
-			const row = musicsDb.prepare("SELECT rms FROM songs WHERE song_name = ?").get(secondfilename);
-			const measuredRms = row ? row.rms : 0.07;
-			const targetRms = 0.07;
-			newGain = targetRms / measuredRms;
-			newGain = Math.min(Math.max(newGain, 0.5), 1.5);
-		} catch (err) {
-			console.warn("Could not load RMS from database:", err);
-			newGain = 1;
-		}
-
-		const compressorNode = audioContext.createDynamicsCompressor();
-		compressorNode.threshold.value = -50;
-		compressorNode.knee.value = 40;
-		compressorNode.ratio.value = 12;
-		compressorNode.attack.value = 0;
-		compressorNode.release.value = 0.25;
-
-		const gainNode = audioContext.createGain();
-		gainNode.gain.value = newGain;
-
-		audioSource.connect(compressorNode);
-		compressorNode.connect(gainNode);
-		gainNode.connect(audioContext.destination);
-	} else {
-		audioSource.connect(audioContext.destination);
-	}
-}
-
 async function playMusic(file, boop, isPlaylist) {
 	const songName = document.getElementById("song-name");
 
@@ -756,7 +710,7 @@ async function playMusic(file, boop, isPlaylist) {
 		}
 
 		audioSource = audioContext.createMediaElementSource(audioElement);
-		applyRmsEffect();
+		audioSource.connect(audioContext.destination);
 
 		await audioElement.play();
 		playButton.style.display = "none";
@@ -1211,12 +1165,12 @@ function openCustomizeModal(songName) {
 	fileToDelete = songNameNoMp3;
 
 	const stmt = musicsDb.prepare(`
-        SELECT times_listened, seconds_played, rms, size, speed, bass, treble, midrange, volume
+        SELECT times_listened, seconds_played, stabilised, size, speed, bass, treble, midrange, volume
         FROM songs
         WHERE song_id = ?
     `);
 
-	const { times_listened, seconds_played, rms, size, speed, bass, treble, midrange, volume } = stmt.get(songNameNoMp3) || {};
+	const { times_listened, seconds_played, stabilised, size, speed, bass, treble, midrange, volume } = stmt.get(songNameNoMp3) || {};
 
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + ".jpg");
@@ -1225,7 +1179,7 @@ function openCustomizeModal(songName) {
 	document.getElementById("customiseImage").src = oldThumbnailPath;
 	document.getElementById("modalTimePlayed").innerText = `Time Played: ${times_listened}`;
 	document.getElementById("modalSecondsPlayed").innerText = `Seconds Played: ${seconds_played}`;
-	document.getElementById("modalRMS").innerText = `RMS: ${rms}`;
+	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised == 1}`;
 
 	const customizeDiv = document.getElementById("customizeModal");
 	customizeDiv.dataset.oldSongName = baseName;
@@ -1373,7 +1327,7 @@ document.addEventListener("keydown", event => {
 function setupLazyBackgrounds() {
 	const bgElements = document.querySelectorAll(".background-element[data-bg]");
 	const vh = window.innerHeight;
-	const margin = `${(lazyLoadSize / 100) * vh}px 0px`;
+	const margin = `${2 * vh}px 0px`;
 
 	if ("IntersectionObserver" in window) {
 		const observer = new IntersectionObserver(
@@ -1422,11 +1376,6 @@ function handleDropdownChange(option, selectElement) {
 		}
 	} else if (option == "displayCount") {
 		displayCount = selectedValue;
-	} else if (option == "activateRms") {
-		activateRms = selectedValue;
-		if (audioElement && audioContext && audioSource) {
-			applyRmsEffect();
-		}
 	}
 }
 
@@ -1606,22 +1555,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
 		if (divideVolumeSelect.options[i].value == dividevolume) {
 			divideVolumeSelect.selectedIndex = i;
-			break;
-		}
-	}
-
-	const activateRmsSelect = document.getElementById("activateRms");
-	for (let i = 0; i < activateRmsSelect.options.length; i++) {
-		if (activateRmsSelect.options[i].value == activateRms) {
-			activateRmsSelect.selectedIndex = i;
-			break;
-		}
-	}
-
-	const lazyLoadSizeSelect = document.getElementById("lazyLoadSize");
-	for (let i = 0; i < lazyLoadSizeSelect.options.length; i++) {
-		if (lazyLoadSizeSelect.options[i].value == lazyLoadSize) {
-			lazyLoadSizeSelect.selectedIndex = i;
 			break;
 		}
 	}
