@@ -309,29 +309,40 @@ function initializeSettingsDatabase() {
 }
 
 function initializeMusicsDatabase() {
+	const requiredColumns = [
+		{ name: "song_id", type: "TEXT PRIMARY KEY" },
+		{ name: "song_name", type: "TEXT" },
+		{ name: "song_url", type: "TEXT" },
+		{ name: "song_thumbnail", type: "TEXT" },
+		{ name: "seconds_played", type: "INTEGER" },
+		{ name: "times_listened", type: "INTEGER" },
+		{ name: "rms", type: "REAL" },
+		{ name: "size", type: "INTEGER" },
+		{ name: "speed", type: "REAL" },
+		{ name: "bass", type: "REAL" },
+		{ name: "treble", type: "REAL" },
+		{ name: "midrange", type: "REAL" },
+		{ name: "volume", type: "INTEGER" },
+		{ name: "song_length", type: "INTEGER" },
+	];
+
 	musicsDb
 		.prepare(
-			`
-            CREATE TABLE IF NOT EXISTS songs (
-                song_id TEXT PRIMARY KEY,
-                song_name TEXT,
-                song_url TEXT,
-                song_thumbnail TEXT,
-                seconds_played INTEGER,
-                times_listened INTEGER,
-                rms REAL
-            )
-        `
+			`CREATE TABLE IF NOT EXISTS songs (
+                ${requiredColumns.map(c => `${c.name} ${c.type}`).join(", ")}
+            )`
 		)
 		.run();
 
-	const columns = musicsDb
+	const existingColumns = musicsDb
 		.prepare(`PRAGMA table_info(songs)`)
 		.all()
 		.map(col => col.name);
 
-	if (!columns.includes("song_length")) {
-		musicsDb.prepare(`ALTER TABLE songs ADD COLUMN song_length INTEGER`).run();
+	for (const col of requiredColumns) {
+		if (!existingColumns.includes(col.name)) {
+			musicsDb.prepare(`ALTER TABLE songs ADD COLUMN ${col.name} ${col.type}`).run();
+		}
 	}
 }
 
@@ -1200,12 +1211,12 @@ function openCustomizeModal(songName) {
 	fileToDelete = songNameNoMp3;
 
 	const stmt = musicsDb.prepare(`
-        SELECT times_listened, seconds_played, rms
+        SELECT times_listened, seconds_played, rms, size, speed, bass, treble, midrange, volume
         FROM songs
         WHERE song_id = ?
     `);
 
-	const { times_listened, seconds_played, rms } = stmt.get(songNameNoMp3) || {};
+	const { times_listened, seconds_played, rms, size, speed, bass, treble, midrange, volume } = stmt.get(songNameNoMp3) || {};
 
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + ".jpg");
@@ -1214,7 +1225,7 @@ function openCustomizeModal(songName) {
 	document.getElementById("customiseImage").src = oldThumbnailPath;
 	document.getElementById("modalTimePlayed").innerText = `Time Played: ${times_listened}`;
 	document.getElementById("modalSecondsPlayed").innerText = `Seconds Played: ${seconds_played}`;
-    document.getElementById("modalRMS").innerText = `RMS: ${rms}`
+	document.getElementById("modalRMS").innerText = `RMS: ${rms}`;
 
 	const customizeDiv = document.getElementById("customizeModal");
 	customizeDiv.dataset.oldSongName = baseName;

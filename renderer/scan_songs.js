@@ -162,7 +162,6 @@ async function processNewSongs() {
 		document.getElementById("folderProgress").innerText = `Found new song: ${songName}`;
 
 		const songId = generateId();
-
 		let duration = null;
 		try {
 			const metadata = await new Promise((resolve, reject) => {
@@ -175,34 +174,41 @@ async function processNewSongs() {
 			if (metadata.format && metadata.format.duration) {
 				duration = Math.round(metadata.format.duration);
 			}
-			document.getElementById("folderProgress").innerText += `Song length: ${duration} seconds`;
+			document.getElementById("folderProgress").innerText += ` Song length: ${duration} seconds`;
 		} catch (error) {
-			document.getElementById("folderProgress").innerText = (`Failed to get duration for ${songName}:`, error.message);
+			document.getElementById("folderProgress").innerText = `Failed to get duration for ${songName}: ${error.message}`;
 		}
 
-		fs.renameSync(fullPath, path.join(musicFolder, songId));
+		const newSongPath = path.join(musicFolder, `${songId}.mp3`);
+		fs.renameSync(fullPath, newSongPath);
 
+		let newThumbnailName = `${songId}.jpg`;
 		const oldThumbnailPath = path.join(thumbnailFolder, `${name}.jpg`);
 		if (fs.existsSync(oldThumbnailPath)) {
-			const newThumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
+			const newThumbnailPath = path.join(thumbnailFolder, newThumbnailName);
 			fs.renameSync(oldThumbnailPath, newThumbnailPath);
+		} else {
+			newThumbnailName = null;
 		}
+
+		const fileSize = fs.statSync(newSongPath).size;
 
 		try {
 			musicsDb
 				.prepare(
 					`
-					INSERT INTO songs (
-						song_id, song_name, song_url, song_thumbnail,
-						song_length, seconds_played, times_listened, rms
-					) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)
-				`
+                    INSERT INTO songs (
+                        song_id, song_name, song_url, song_thumbnail,
+                        song_length, seconds_played, times_listened, rms,
+                        size, speed, bass, treble, midrange, volume
+                    ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL, ?, 1, 0, 0, 0, 100)
+                `
 				)
-				.run(songId, songName, null, newThumbnailName, duration);
+				.run(songId, songName, null, newThumbnailName, duration, fileSize);
 
 			document.getElementById("folderProgress").innerText = `Added ${songName} to database`;
 		} catch (error) {
-			document.getElementById("folderProgress").innerText = (`Failed to add ${songName} to database:`, error.message);
+			document.getElementById("folderProgress").innerText = `Failed to add ${songName} to database: ${error.message}`;
 		}
 	}
 

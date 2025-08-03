@@ -661,25 +661,27 @@ async function actuallyDownloadTheSong() {
 				console.error("Failed to retrieve metadata:", error);
 			}
 
+			const fileSize = fs.statSync(outputFilePath).size;
+
 			await processThumbnail(img.src, songID);
 
 			try {
 				musicsDb
 					.prepare(
 						`INSERT INTO songs (
-                song_id, song_name, song_url, song_thumbnail,
-                song_length, seconds_played, times_listened, rms
-            ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
+                            song_id, song_name, song_url, song_thumbnail,
+                            song_length, seconds_played, times_listened, rms,
+                            size, speed, bass, treble, midrange, volume
+                        ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL, ?, 1, 0, 0, 0, 100)`
 					)
-					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration);
+					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration, fileSize);
 			} catch (err) {
 				console.error("Failed to insert song into DB:", err);
 			}
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
-			commitStagedPlaylistAdds();
-			cleanDebugFiles();
+			await commitStagedPlaylistAdds();
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
@@ -855,6 +857,8 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 				duration = Math.round(metadata.format.duration);
 			}
 
+			const fileSize = fs.statSync(outputPath).size;
+
 			const songElements = document.querySelectorAll(".songAndThumbnail");
 			let thumbnailUrl = null;
 			let thumbnailElement = null;
@@ -881,16 +885,17 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 
 			await processThumbnail(thumbnailUrl, songId);
 
-			if (songId != null && songTitle != null && songLink != null && songThumbnail != null && duration != null) {
+			if (songId && songTitle && songLink && songThumbnail && duration != null) {
 				try {
 					musicsDb
 						.prepare(
 							`INSERT INTO songs (
-                                    song_id, song_name, song_url, song_thumbnail,
-                                    song_length, seconds_played, times_listened, rms
-                                ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL)`
+                                song_id, song_name, song_url, song_thumbnail,
+                                song_length, seconds_played, times_listened, rms,
+                                size, speed, bass, treble, midrange, volume
+                            ) VALUES (?, ?, ?, ?, ?, 0, 0, NULL, ?, 1, 0, 0, 0, 100)`
 						)
-						.run(songId, songTitle, songLink, songThumbnail, duration);
+						.run(songId, songTitle, songLink, songThumbnail, duration, fileSize);
 				} catch (err) {
 					console.error(`DB insert failed for ${songTitle}: ${err.message}`);
 				}
@@ -913,7 +918,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 		document.getElementById("downloadModalText").innerText = "All songs downloaded and normalized successfully!";
 		document.getElementById("finalDownloadButton").disabled = false;
 
-		await cleanDebugFiles();
 		await commitStagedPlaylistAdds();
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
