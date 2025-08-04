@@ -79,6 +79,7 @@ async function redownloadAllSongs() {
 	downloadingStyle = "redownload";
 
 	const songs = [];
+	let checkAllSongs = null;
 
 	for (let i = 0; i < filteredRows.length; i++) {
 		const row = filteredRows[i];
@@ -88,8 +89,13 @@ async function redownloadAllSongs() {
 			info = await ytdl.getInfo(row.song_url);
 			document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
 		} catch (err) {
-			const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No");
-			if (confirmed) {
+			if (checkAllSongs == false) {
+				continue;
+			} else if (checkAllSongs == null) {
+				const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No"); // TODO: Skip all / Search all / Ask diye EN BAŞTA SORSUN
+			}
+
+			if (checkAllSongs == true || confirmed) {
 				try {
 					const newUrl = await searchInYoutube(row.song_name);
 					info = await ytdl.getInfo(newUrl);
