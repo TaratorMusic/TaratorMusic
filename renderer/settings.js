@@ -93,6 +93,8 @@ async function redownloadAllSongs() {
 				continue;
 			} else if (checkAllSongs == null) {
 				const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No"); // TODO: Skip all / Search all / Ask diye EN BAŞTA SORSUN
+                // Return true, return false, or close the modal
+                // YA da iki kere sor ardarda
 			}
 
 			if (checkAllSongs == true || confirmed) {

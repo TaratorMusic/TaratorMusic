@@ -571,7 +571,7 @@ async function myMusicOnClick() {
 		filteredSongs.slice(0, maxVisible).forEach(songFile => {
 			const musicElement = createMusicElement(songFile);
 			if (songFile.id === secondfilename.replace(".mp3", "")) musicElement.classList.add("playing");
-			musicElement.addEventListener("click", () => playMusic(songFile, musicElement, false));
+			musicElement.addEventListener("click", () => playMusic(songFile, false));
 			musicListContainer.appendChild(musicElement);
 		});
 		setupLazyBackgrounds();
@@ -655,7 +655,7 @@ function createMusicElement(songFile) {
 	return musicElement;
 }
 
-async function playMusic(file, boop, isPlaylist) {
+async function playMusic(file, isPlaylist) {
 	const songName = document.getElementById("song-name");
 
 	if (songStartTime !== 0) {
@@ -854,7 +854,7 @@ async function playPlaylist(playlist, startingIndex = 0) {
 		const file = { name: songName };
 		currentPlaylistElement = i;
 		const clickedElement = document.querySelector(`.music-item[data-file-name="${songName}.mp3"]`);
-		await playMusic(file, clickedElement, true);
+		await playMusic(file, true);
 		if (!isAutoplayActive) {
 			break;
 		}
@@ -884,14 +884,14 @@ async function playPreviousSong() {
 			if (playlistPlayedSongs.length > 1) {
 				const previousSongName = playlistPlayedSongs[1];
 				const file = { name: previousSongName };
-				playMusic(file, null, true);
+				playMusic(file, true);
 				playlistPlayedSongs.splice(0, 2);
 			}
 		} else {
 			if (playedSongs.length > 1) {
 				const previousSongName = playedSongs[1];
 				const file = { name: previousSongName };
-				playMusic(file, null, false);
+				playMusic(file, false);
 				playedSongs.splice(0, 2);
 			}
 		}
@@ -900,7 +900,7 @@ async function playPreviousSong() {
 			if (currentPlaylistElement > 0) {
 				const previousSongName = currentPlaylist.songs[currentPlaylistElement - 1];
 				const file = { name: previousSongName + ".mp3" };
-				playMusic(file, null, true);
+				playMusic(file, true);
 				currentPlaylistElement--;
 			}
 		} else {
@@ -916,7 +916,7 @@ async function playPreviousSong() {
 			const previousSongId = sortedSongIds[previousIndex];
 
 			const file = { name: previousSongId + ".mp3" };
-			playMusic(file, null, false);
+			playMusic(file, false);
 		}
 	}
 }
@@ -979,7 +979,7 @@ async function playNextSong() {
 
 	if (nextSongId) {
 		const file = { name: nextSongId + ".mp3" };
-		playMusic(file, null, !!currentPlaylist);
+		playMusic(file, !!currentPlaylist);
 	}
 }
 
@@ -996,7 +996,7 @@ async function randomSongFunctionMainMenu() {
 
 	const nextSongName = musicItems[randomIndex].song_id;
 	const file = { name: nextSongName + ".mp3" };
-	playMusic(file, null, false);
+	playMusic(file, false);
 }
 
 async function randomPlaylistFunctionMainMenu() {
