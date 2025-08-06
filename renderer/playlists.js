@@ -39,17 +39,12 @@ function displayPlaylists(playlists) {
 
 		let thumbnailSrc = "";
 
-		try {
-			if (playlist.name == "Favorites") {
-				thumbnailSrc = `file://${path.join(appThumbnailFolder, "star.svg").replace(/\\/g, "/")}?t=${Date.now()}`;
-			} else if (fs.existsSync(thumbnailPath)) {
-				thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
-			} else {
-				thumbnailSrc = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}?t=${Date.now()}`;
-			}
-		} catch (error) {
-			console.log(error);
-			createAppThumbnailsFolder();
+		if (playlist.name == "Favorites") {
+			thumbnailSrc = `file://${path.join(appThumbnailFolder, "star.svg").replace(/\\/g, "/")}?t=${Date.now()}`;
+		} else if (fs.existsSync(thumbnailPath)) {
+			thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
+		} else {
+			thumbnailSrc = `file://${path.join(appThumbnailFolder, "placeholder.jpg").replace(/\\/g, "/")}?t=${Date.now()}`;
 		}
 
 		const thumbnail = document.createElement("img");
@@ -79,13 +74,7 @@ function displayPlaylists(playlists) {
 			const playlistCustomiseButton = document.createElement("div");
 			playlistInfo.appendChild(playlistCustomiseButton);
 			playlistCustomiseButton.className = "playlist-button";
-
-			try {
-				playlistCustomiseButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
-			} catch (error) {
-				console.log(error);
-				createAppThumbnailsFolder();
-			}
+			playlistCustomiseButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
 
 			playlistCustomiseButton.addEventListener("click", () => {
 				let theNameOfThePlaylist = playlist.name;
@@ -126,7 +115,7 @@ async function saveNewPlaylist() {
 	if (!name) await alertModal("Playlist name required.");
 	if (name == "Playlists") {
 		await alertModal("Name of your playlist can't be 'Favorites'.");
-        return;
+		return;
 	}
 
 	const id = generateId();
