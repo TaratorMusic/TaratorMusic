@@ -3,7 +3,7 @@ function getPlaylists() {
 		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
 
 		if (!playlists || playlists.length === 0) {
-			console.warn("No playlists found in the database.");
+			console.log("No playlists found in the database.");
 			displayPlaylists([]);
 			return;
 		}
@@ -11,18 +11,14 @@ function getPlaylists() {
 		const playlistsWithParsedSongs = playlists.map(playlist => {
 			let parsedSongs = [];
 			if (playlist.songs) {
-				try {
-					parsedSongs = JSON.parse(playlist.songs);
-				} catch (e) {
-					console.warn(`Error parsing songs for playlist '${playlist.name}': ${e.message}`);
-				}
+				parsedSongs = JSON.parse(playlist.songs);
 			}
 			return { ...playlist, songs: parsedSongs };
 		});
 
 		displayPlaylists(playlistsWithParsedSongs);
 	} catch (err) {
-		console.error("Error fetching playlists from the database:", err);
+		console.log("Error fetching playlists from the database:", err);
 		displayPlaylists([]);
 	}
 }
@@ -166,7 +162,7 @@ async function saveEditedPlaylist() {
 	const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(oldName);
 
 	if (!playlist) {
-		console.error("Playlist not found:", oldName);
+		console.log("Playlist not found:", oldName);
 		return;
 	}
 
@@ -217,7 +213,7 @@ async function saveEditedPlaylist() {
 			closeModal();
 		})
 		.catch(err => {
-			console.error("Error saving or renaming thumbnail:", err);
+			console.log("Error saving or renaming thumbnail:", err);
 		});
 }
 
@@ -230,7 +226,7 @@ function openAddToPlaylistModal(songName) {
 		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
 
 		if (!playlists || playlists.length === 0) {
-			console.warn("No playlists found.");
+			console.log("No playlists found.");
 			displayPlaylists([]);
 			return;
 		}
@@ -243,11 +239,7 @@ function openAddToPlaylistModal(songName) {
 
 			let songsInPlaylist = [];
 			if (playlist.songs) {
-				try {
-					songsInPlaylist = JSON.parse(playlist.songs);
-				} catch (e) {
-					console.error("Error parsing songs from playlist:", e);
-				}
+				songsInPlaylist = JSON.parse(playlist.songs);
 			}
 
 			const isSongInPlaylist = songsInPlaylist.includes(songName);
@@ -273,7 +265,7 @@ function openAddToPlaylistModal(songName) {
 		};
 		playlistsContainer.appendChild(button);
 	} catch (err) {
-		console.error("Error fetching playlists from the database:", err);
+		console.log("Error fetching playlists from the database:", err);
 		displayPlaylists([]);
 	}
 }
@@ -290,11 +282,7 @@ function addToSelectedPlaylists(songName) {
 
 			let songsInPlaylist = [];
 			if (playlist.songs) {
-				try {
-					songsInPlaylist = JSON.parse(playlist.songs);
-				} catch (e) {
-					console.error("Error parsing songs from playlist:", e);
-				}
+				songsInPlaylist = JSON.parse(playlist.songs);
 			}
 
 			const songExists = songsInPlaylist.includes(songName);
@@ -314,11 +302,7 @@ function addToSelectedPlaylists(songName) {
 			if (!selectedPlaylists.includes(playlist.name)) {
 				let songsInPlaylist = [];
 				if (playlist.songs) {
-					try {
-						songsInPlaylist = JSON.parse(playlist.songs);
-					} catch (e) {
-						console.error("Error parsing songs from playlist:", e);
-					}
+					songsInPlaylist = JSON.parse(playlist.songs);
 				}
 
 				const songExistsInPlaylist = songsInPlaylist.includes(songName);
@@ -331,7 +315,7 @@ function addToSelectedPlaylists(songName) {
 			}
 		});
 	} catch (err) {
-		console.error("Error updating playlists in the database:", err);
+		console.log("Error updating playlists in the database:", err);
 	}
 
 	closeModal();
@@ -345,13 +329,13 @@ function deletePlaylist() {
 
 	const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistName);
 	if (!playlist) {
-		console.error("Playlist not found:", playlistName);
+		console.log("Playlist not found:", playlistName);
 		return;
 	}
 
 	fs.unlink(thumbnailPath, err => {
 		if (err) {
-			console.error(`Failed to delete file: ${err.message}`);
+			console.log(`Failed to delete file: ${err.message}`);
 			return;
 		}
 		console.log("File deleted successfully!");

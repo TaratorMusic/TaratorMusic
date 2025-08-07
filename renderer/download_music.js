@@ -225,13 +225,11 @@ async function getPlaylistSongsAndArtists(link) {
 	async function fetchWithRetry(video, retries = 5) {
 		const query = `${video.title} ${video.artist}`;
 		for (let i = 0; i < retries; i++) {
-			try {
 				const result = await ytsr(query, { limit: 1, type: "video" });
 				if (result.items.length) {
 					const yt = result.items[0];
 					return { title: query, url: yt.url, thumbnail: yt.thumbnail };
 				}
-			} catch {}
 			await new Promise(r => setTimeout(r, 1000 * (i + 1)));
 		}
 		throw new Error(`Failed to fetch video for: ${query}`);
@@ -317,7 +315,7 @@ async function processVideoLink(videoUrl) {
 		thumbnailImage.alt = "";
 
 		thumbnailImage.onerror = function () {
-			console.error("Error loading thumbnail image:", thumbnailUrl);
+			console.log("Error loading thumbnail image:", thumbnailUrl);
 		};
 
 		songAndThumbnail.appendChild(thumbnailImage);
@@ -341,7 +339,7 @@ async function processVideoLink(videoUrl) {
 		document.getElementById("downloadFirstButton").disabled = false;
 		document.getElementById("downloadSecondPhase").style.display = "block";
 	} catch (error) {
-		console.error("Error in processVideoLink:", error);
+		console.log("Error in processVideoLink:", error);
 		document.getElementById("downloadFirstButton").disabled = false;
 		if (error.message.includes("age")) await alertModal("You can't download this song because it is age restricted.");
 		if (error.message.includes("private")) await alertModal("You can't download this song because it is a private video.");
@@ -364,7 +362,7 @@ async function fetchPlaylistData(url) {
 		const playlistThumbnail = videoItems.length ? videoItems[0].thumbnail : "";
 		renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems);
 	} catch (error) {
-		console.error("Error fetching playlist data:", error);
+		console.log("Error fetching playlist data:", error);
 		document.getElementById("downloadModalText").innerHTML = `Error: ${error.message}`;
 		document.getElementById("downloadFirstButton").disabled = false;
 	}
@@ -521,7 +519,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 						console.log(`Saved thumbnail from DOM img src for ${songId}`);
 						return true;
 					} catch (e) {
-						console.error(`Error fetching thumbnail from DOM img: ${e.message}`);
+						console.log(`Error fetching thumbnail from DOM img: ${e.message}`);
 					}
 				}
 			} else if (imgElement.style && imgElement.style.backgroundImage) {
@@ -541,7 +539,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 							console.log(`Saved thumbnail from DOM background image URL for ${songId}`);
 							return true;
 						} catch (e) {
-							console.error(`Error fetching background image: ${e.message}`);
+							console.log(`Error fetching background image: ${e.message}`);
 						}
 					}
 				}
@@ -561,7 +559,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 					console.log(`Saved thumbnail from passed imageUrl for ${songId}`);
 					return true;
 				} catch (e) {
-					console.error(`Error fetching thumbnail from imageUrl: ${e.message}`);
+					console.log(`Error fetching thumbnail from imageUrl: ${e.message}`);
 				}
 			}
 		}
@@ -584,7 +582,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 				console.log("Thumbnail fetch succeeded");
 				return true;
 			} catch (err) {
-				console.error("YouTube thumbnail fetch failed:", err.message);
+				console.log("YouTube thumbnail fetch failed:", err.message);
 			}
 		}
 
@@ -594,11 +592,11 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 			console.log(`Created placeholder thumbnail for ${songId}`);
 			return true;
 		} catch (placeholderError) {
-			console.error(`Failed to create placeholder for ${songId}: ${placeholderError.message}`);
+			console.log(`Failed to create placeholder for ${songId}: ${placeholderError.message}`);
 			return false;
 		}
 	} catch (error) {
-		console.error(`Error in processThumbnail for ${songId}:`, error);
+		console.log(`Error in processThumbnail for ${songId}:`, error);
 		return false;
 	}
 }
@@ -638,7 +636,7 @@ async function actuallyDownloadTheSong() {
 					await normalizeAudio(outputFilePath);
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
 				} catch (error) {
-					console.error("Audio normalization failed:", error);
+					console.log("Audio normalization failed:", error);
 					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
 				}
 			} else {
@@ -657,7 +655,7 @@ async function actuallyDownloadTheSong() {
 					duration = Math.round(metadata.format.duration);
 				}
 			} catch (error) {
-				console.error("Failed to retrieve metadata:", error);
+				console.log("Failed to retrieve metadata:", error);
 			}
 
 			const fileSize = fs.statSync(outputFilePath).size;
@@ -675,7 +673,7 @@ async function actuallyDownloadTheSong() {
 					)
 					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration, stabiliseVolumeToggle, fileSize);
 			} catch (err) {
-				console.error("Failed to insert song into DB:", err);
+				console.log("Failed to insert song into DB:", err);
 			}
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
@@ -798,7 +796,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 			const songId = songIds[i];
 
 			if (!songTitle || !songLink || !songId) {
-				console.error(`Skipping index ${i}: missing title/link/id`);
+				console.log(`Skipping index ${i}: missing title/link/id`);
 				continue;
 			}
 
@@ -837,7 +835,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					document.getElementById("downloadModalText").innerText = `Stabilising volume for song ${i + 1} of ${totalSongs}: ${songTitle}`;
 					await normalizeAudio(outputPath);
 				} catch (error) {
-					console.error(`Audio normalization failed for ${songTitle}:`, error);
+					console.log(`Audio normalization failed for ${songTitle}:`, error);
 				}
 			} else {
 				document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled. Waiting 5 seconds for not overloading the Youtube API...`;
@@ -896,10 +894,10 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 						)
 						.run(songId, songTitle, songLink, songThumbnail, duration, stabiliseVolumeToggle, fileSize);
 				} catch (err) {
-					console.error(`DB insert failed for ${songTitle}: ${err.message}`);
+					console.log(`DB insert failed for ${songTitle}: ${err.message}`);
 				}
 			} else {
-				console.error(`Data undefined at index ${i}:`, {
+				console.log(`Data undefined at index ${i}:`, {
 					songId,
 					songTitle,
 					songLink,
@@ -972,7 +970,7 @@ function saveAsPlaylist(songIds, playlistName) {
 			)
 			.run(playlistID, playlistName, songsJson, thumbnailPath);
 	} catch (err) {
-		console.error("Failed to save playlist:", err);
+		console.log("Failed to save playlist:", err);
 	}
 }
 

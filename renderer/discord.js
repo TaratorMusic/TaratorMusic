@@ -14,7 +14,7 @@ function createRPC() {
 	});
 
 	RPC.login({ clientId }).catch(err => {
-		console.error("Discord RPC Login Failed:", err);
+		console.log("Discord RPC Login Failed:", err);
 		document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Error";
 		document.getElementById("mainmenudiscordapi").style.color = "red";
 	});
@@ -26,7 +26,7 @@ function destroyRPC() {
 			RPC.clearActivity();
 			RPC.destroy();
 		} catch (err) {
-			console.error("Error while destroying RPC:", err);
+			console.log("Error while destroying RPC:", err);
 		}
 		RPC = null;
 	}

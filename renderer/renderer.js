@@ -123,106 +123,59 @@ const defaultSettings = {
 };
 
 function initializeSettingsDatabase() {
-	let tableExists = false;
+	let settingsRow;
 
 	try {
 		const row = settingsDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
-		tableExists = !!row;
-	} catch (err) {
-		console.error("Error checking for settings table:", err.message);
-		return;
-	}
+		const tableExists = !!row;
 
-	if (!tableExists) {
-		console.log("Settings table not found. Creating...");
-		const keys = Object.keys(defaultSettings);
-		let createTableSQL = `CREATE TABLE settings (`;
+		if (!tableExists) {
+			const keys = Object.keys(defaultSettings);
+			let createTableSQL = `CREATE TABLE settings (`;
 
-		keys.forEach((key, index) => {
-			const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
-			createTableSQL += `${key} ${columnType} DEFAULT '${defaultSettings[key]}'`;
-			if (index < keys.length - 1) {
-				createTableSQL += ",\n";
-			}
-		});
-		createTableSQL += ")";
+			keys.forEach((key, index) => {
+				const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
+				createTableSQL += `${key} ${columnType} DEFAULT '${defaultSettings[key]}'`;
+				if (index < keys.length - 1) createTableSQL += ",\n";
+			});
+			createTableSQL += ")";
 
-		try {
 			settingsDb.prepare(createTableSQL).run();
-			console.log("Settings table created successfully.");
-		} catch (err) {
-			console.error("Error creating settings table:", err.message);
-			return;
-		}
-	} else {
-		console.log("Settings table exists. Checking columns...");
-
-		try {
+		} else {
 			const columns = settingsDb.prepare("PRAGMA table_info(settings)").all();
 			const existingColumns = columns.map(col => col.name);
 			const missingColumns = Object.keys(defaultSettings).filter(key => !existingColumns.includes(key));
 
-			if (missingColumns.length > 0) {
-				console.log("Adding missing columns...");
-				missingColumns.forEach(key => {
-					const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
-					try {
-						settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
-						console.log(`Added missing column: ${key}`);
-					} catch (err) {
-						console.error(`Error adding column ${key}:`, err.message);
-					}
-				});
-			}
-		} catch (err) {
-			console.error("Error fetching table info:", err.message);
-			return;
+			missingColumns.forEach(key => {
+				const columnType = typeof defaultSettings[key] === "number" ? "INTEGER" : "TEXT";
+				settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
+			});
 		}
-	}
 
-	let settingsRow;
-	try {
 		settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
-	} catch (err) {
-		console.error("Error retrieving settings:", err.message);
-		return;
-	}
 
-	if (!settingsRow) {
-		console.log("No settings found, inserting defaults.");
-		const columns = Object.keys(defaultSettings).join(", ");
-		const placeholders = Object.keys(defaultSettings)
-			.map(() => "?")
-			.join(", ");
-		const values = Object.values(defaultSettings);
-		const insertSQL = `INSERT INTO settings (${columns}) VALUES (${placeholders})`;
-
-		try {
+		if (!settingsRow) {
+			const columns = Object.keys(defaultSettings).join(", ");
+			const placeholders = Object.keys(defaultSettings)
+				.map(() => "?")
+				.join(", ");
+			const values = Object.values(defaultSettings);
+			const insertSQL = `INSERT INTO settings (${columns}) VALUES (${placeholders})`;
 			settingsDb.prepare(insertSQL).run(values);
-			console.log("Default settings inserted.");
 			settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
-		} catch (err) {
-			console.error("Error inserting default settings:", err.message);
-			return;
-		}
-	} else {
-		let needsUpdate = false;
-		Object.keys(defaultSettings).forEach(key => {
-			if (settingsRow[key] === null || settingsRow[key] === undefined) {
-				console.log(`Setting ${key} is null, reverting to default: ${defaultSettings[key]}`);
-				try {
+		} else {
+			let needsUpdate = false;
+			Object.keys(defaultSettings).forEach(key => {
+				if (settingsRow[key] === null || settingsRow[key] === undefined) {
 					settingsDb.prepare(`UPDATE settings SET ${key} = ?`).run(defaultSettings[key]);
 					settingsRow[key] = defaultSettings[key];
 					needsUpdate = true;
-				} catch (err) {
-					console.error(`Error setting default for ${key}:`, err.message);
 				}
-			}
-		});
-
-		if (needsUpdate) {
-			console.log("Updated missing default values.");
+			});
 		}
+	} catch (err) {
+		console.log("Database error:", err.message);
+		return;
 	}
 
 	console.log("Settings loaded:", settingsRow);
@@ -394,7 +347,7 @@ function initializePlaylistsDatabase() {
 		console.log(`Loaded ${allPlaylists.length} playlist${allPlaylists.length === 1 ? "" : "s"} from the database.`);
 		return allPlaylists;
 	} catch (err) {
-		console.error("Error initializing playlists database:", err);
+		console.log("Error initializing playlists database:", err);
 		return [];
 	}
 }
@@ -409,7 +362,7 @@ function updateDatabase(name, option, db) {
 			db.prepare(`UPDATE settings SET ${name} = ?`).run(option);
 			console.log(`${name} updated to ${option}.`);
 		} catch (err) {
-			console.error(`Error updating ${name}:`, err.message);
+			console.log(`Error updating ${name}:`, err.message);
 		}
 		debounceMap.delete(key);
 	}, 300);
@@ -655,11 +608,7 @@ async function playMusic(file, isPlaylist) {
 		audioElement.pause();
 		audioElement.src = "";
 		if (audioSource) {
-			try {
-				audioSource.disconnect();
-			} catch (err) {
-				console.warn("Audio source disconnect error:", err);
-			}
+			audioSource.disconnect();
 		}
 	}
 
@@ -756,7 +705,7 @@ async function playMusic(file, isPlaylist) {
 			);
 		});
 	} catch (error) {
-		console.error("Error:", error);
+		console.log("Error:", error);
 	}
 }
 
@@ -821,7 +770,7 @@ function manageAudioControls(audioElement) {
 
 async function playPlaylist(playlist, startingIndex = 0) {
 	if (!playlist.songs || playlist.songs.length === 0) {
-		console.error(`Playlist ${playlist.name} is empty.`);
+		console.log(`Playlist ${playlist.name} is empty.`);
 		return;
 	}
 
@@ -988,14 +937,14 @@ async function randomPlaylistFunctionMainMenu() {
 		.filter(pl => Array.isArray(pl.songs) && pl.songs.length > 0);
 
 	if (nonEmptyPlaylists.length === 0) {
-		console.error("No playlists with songs found.");
+		console.log("No playlists with songs found.");
 		return;
 	}
 
 	const availablePlaylists = currentPlaylist ? nonEmptyPlaylists.filter(pl => pl.name !== currentPlaylist.name) : nonEmptyPlaylists;
 
 	if (availablePlaylists.length === 0) {
-		console.error("No other playlists available to play.");
+		console.log("No other playlists available to play.");
 		return;
 	}
 
@@ -1206,7 +1155,7 @@ async function saveEditedSong() {
 			el.querySelector(".song-name").textContent = newNameInput;
 			el.querySelector(".background-element").style.backgroundImage = `url("${reloadSrc}")`;
 		})
-		.catch(console.error);
+		.catch(console.log);
 }
 
 async function removeSong() {
@@ -1414,7 +1363,7 @@ async function createAppThumbnailsFolder() {
 
 		await alertModal("App thumbnails installed. App restart required for the effects.");
 	} catch (e) {
-		console.error("Error in createAppThumbnailsFolder:", e);
+		console.log("Error in createAppThumbnailsFolder:", e);
 	}
 }
 

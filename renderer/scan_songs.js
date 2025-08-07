@@ -35,7 +35,7 @@ async function processAllFiles() {
 				fs.unlinkSync(path.join(musicFolder, tempFile));
 				console.log(`Deleted: ${tempFile}`);
 			} catch (err) {
-				console.warn(`Could not delete ${tempFile}:`, err.message);
+				console.log(`Could not delete ${tempFile}:`, err.message);
 			}
 		});
 	}
@@ -126,12 +126,7 @@ async function cleanDebugFiles() {
 		const updatePlaylist = playlistsDb.prepare(`UPDATE playlists SET songs = ? WHERE id = ?`);
 
 		selectPlaylists.forEach(row => {
-			let songArray;
-			try {
-				songArray = JSON.parse(row.songs || "[]");
-			} catch {
-				songArray = [];
-			}
+			let songArray = JSON.parse(row.songs || "[]");
 
 			const filtered = songArray.filter(id => {
 				const exists = checkSongExists.get(id);
@@ -144,7 +139,7 @@ async function cleanDebugFiles() {
 			}
 		});
 	} catch (err) {
-		console.error("Error during database cleanup:", err.message);
+		console.log("Error during database cleanup:", err.message);
 	}
 
 	document.getElementById("cleanProgress").innerText = `Cleaning complete!`;
