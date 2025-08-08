@@ -1097,7 +1097,7 @@ function openCustomizeModal(songName) {
 	document.getElementById("modalTimePlayed").innerText = `Time Played: ${times_listened}`;
 	document.getElementById("modalSecondsPlayed").innerText = `Seconds Played: ${seconds_played}`;
 	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised == 1}`;
-	document.getElementById("modalFileSize").innerText = `File Size: ${(size/1048576).toFixed(2)} MBs`;
+	document.getElementById("modalFileSize").innerText = `File Size: ${(size / 1048576).toFixed(2)} MBs`;
 	document.getElementById("modalPlaySpeed").innerText = `Play Speed: Coming Soon!`;
 	document.getElementById("modalBass").innerText = `Bass: Coming Soon!`;
 	document.getElementById("modalTreble").innerText = `Treble: Coming Soon!`;
@@ -1188,6 +1188,7 @@ async function removeSong() {
 	document.getElementById("customizeModal").style.display = "none";
 	const divToRemove = document.querySelector(`div[alt="${fileToDelete}.mp3"]`);
 	if (divToRemove) divToRemove.remove();
+	if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 }
 
 document.querySelectorAll('input[type="range"]').forEach(range => {

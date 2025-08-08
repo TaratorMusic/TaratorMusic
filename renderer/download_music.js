@@ -225,11 +225,11 @@ async function getPlaylistSongsAndArtists(link) {
 	async function fetchWithRetry(video, retries = 5) {
 		const query = `${video.title} ${video.artist}`;
 		for (let i = 0; i < retries; i++) {
-				const result = await ytsr(query, { limit: 1, type: "video" });
-				if (result.items.length) {
-					const yt = result.items[0];
-					return { title: query, url: yt.url, thumbnail: yt.thumbnail };
-				}
+			const result = await ytsr(query, { limit: 1, type: "video" });
+			if (result.items.length) {
+				const yt = result.items[0];
+				return { title: query, url: yt.url, thumbnail: yt.thumbnail };
+			}
 			await new Promise(r => setTimeout(r, 1000 * (i + 1)));
 		}
 		throw new Error(`Failed to fetch video for: ${query}`);
@@ -678,11 +678,13 @@ async function actuallyDownloadTheSong() {
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
+			if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 			await commitStagedPlaylistAdds();
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
 			document.getElementById("finalDownloadButton").disabled = false;
+			if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 		}
 	} else {
 		const playlistName = document.getElementById("playlistTitle0").value.trim();
@@ -914,11 +916,12 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 
 		document.getElementById("downloadModalText").innerText = "All songs downloaded and normalized successfully!";
 		document.getElementById("finalDownloadButton").disabled = false;
-
+		if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 		await commitStagedPlaylistAdds();
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 		document.getElementById("finalDownloadButton").disabled = false;
+		if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 	}
 }
 
