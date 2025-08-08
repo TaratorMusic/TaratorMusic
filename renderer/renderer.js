@@ -1093,9 +1093,16 @@ function openCustomizeModal(songName) {
 	document.getElementById("customizeModal").style.display = "block";
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = oldThumbnailPath;
+
 	document.getElementById("modalTimePlayed").innerText = `Time Played: ${times_listened}`;
 	document.getElementById("modalSecondsPlayed").innerText = `Seconds Played: ${seconds_played}`;
 	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised == 1}`;
+	document.getElementById("modalFileSize").innerText = `File Size: ${(size/1048576).toFixed(2)} MBs`;
+	document.getElementById("modalPlaySpeed").innerText = `Play Speed: Coming Soon!`;
+	document.getElementById("modalBass").innerText = `Bass: Coming Soon!`;
+	document.getElementById("modalTreble").innerText = `Treble: Coming Soon!`;
+	document.getElementById("modalMidrange").innerText = `Midrange: Coming Soon!`;
+	document.getElementById("modalVolume").innerText = `Volume: Coming Soon!`;
 
 	const customizeDiv = document.getElementById("customizeModal");
 	customizeDiv.dataset.oldSongName = baseName;
