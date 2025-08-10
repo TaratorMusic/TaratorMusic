@@ -82,7 +82,7 @@
 						<div>
 							<div id="modalTimePlayed"></div>
 							<div id="modalSecondsPlayed"></div>
-                            <div id="modalStabilised"></div>
+							<div id="modalStabilised"></div>
 							<div id="modalFileSize"></div>
 							<div id="modalPlaySpeed"></div>
 							<div id="modalBass"></div>
@@ -143,10 +143,10 @@
 					<div id="mainmenulogo"></div>
 					<div id="mainmenuapptext">TaratorMusic</div>
 					<div class="flexrowbutspacearound">
-						<div id="mainmenurandomsong" class="mainmenusquares" onclick="randomSongFunctionMainMenu()">Random Song</div>
-						<div id="mainmenurandomplaylist" class="mainmenusquares" onclick="randomPlaylistFunctionMainMenu()">Random Playlist</div>
-						<div id="mainmenudiscordapi" class="mainmenusquares">Discord API Status: Loading...</div>
-						<div id="mainmenutimespent" class="mainmenusquares">Time Spent: Loading...</div>
+						<div id="mainmenurandomsong" class="mainmenusquares tooltip-target" data-tooltip="Play a Random Song" onclick="randomSongFunctionMainMenu()">Random Song</div>
+						<div id="mainmenurandomplaylist" class="mainmenusquares tooltip-target" data-tooltip="Play a Random Playlist" onclick="randomPlaylistFunctionMainMenu()">Random Playlist</div>
+						<div id="mainmenudiscordapi" class="mainmenusquares tooltip-target" data-tooltip="Status of your Discord connection">Discord API Status: Loading...</div>
+						<div id="mainmenutimespent" class="mainmenusquares tooltip-target" data-tooltip="Total Time Spent in TaratorMusic">Time Spent: Loading...</div>
 					</div>
 				</div>
 			</div>
@@ -286,17 +286,17 @@
 		<div id="videothumbnailbox"></div>
 		<div id="video-controls" class="flexrow">
 			<div id="allbuttons">
-				<button id="backwardButton" class="audio-button" onclick="skipBackward()"></button>
-				<button id="previousSongButton" class="audio-button" onclick="playPreviousSong()"></button>
-				<button id="playButton" class="audio-button"></button>
-				<button id="pauseButton" class="audio-button" style="display: none"></button>
-				<button id="nextSongButton" class="audio-button" onclick="playNextSong()"></button>
-				<button id="forwardButton" class="audio-button" onclick="skipForward()"></button>
-				<button id="autoplayButton" class="audio-button" onclick="toggleAutoplay()"></button>
-				<button id="shuffleButton" class="audio-button" onclick="toggleShuffle()"></button>
-				<button id="muteButton" class="audio-button" onclick="mute()"></button>
-				<button id="speedButton" class="audio-button" onclick="speed()"></button>
-				<button id="loopButton" class="audio-button" onclick="toggleLoop()"></button>
+				<button id="backwardButton" class="audio-button tooltip-target" data-tooltip="Back 5 Seconds" onclick="skipBackward()"></button>
+				<button id="previousSongButton" class="audio-button tooltip-target" data-tooltip="Play Previous Song" onclick="playPreviousSong()"></button>
+				<button id="playButton" class="audio-button tooltip-target" data-tooltip="Play Song"></button>
+				<button id="pauseButton" class="audio-button tooltip-target" data-tooltip="Pause Song" style="display: none"></button>
+				<button id="nextSongButton" class="audio-button tooltip-target" data-tooltip="Play Next Song" onclick="playNextSong()"></button>
+				<button id="forwardButton" class="audio-button tooltip-target" data-tooltip="Forward 5 Seconds" onclick="skipForward()"></button>
+				<button id="autoplayButton" class="audio-button tooltip-target" data-tooltip="Toggle Autoplay" onclick="toggleAutoplay()"></button>
+				<button id="shuffleButton" class="audio-button tooltip-target" data-tooltip="Toggle Shuffle" onclick="toggleShuffle()"></button>
+				<button id="muteButton" class="audio-button tooltip-target" data-tooltip="Toggle Mute" onclick="mute()"></button>
+				<button id="speedButton" class="audio-button tooltip-target" data-tooltip="Speed Settings" onclick="speed()"></button>
+				<button id="loopButton" class="audio-button tooltip-target" data-tooltip="Toggle Loop" onclick="toggleLoop()"></button>
 			</div>
 			<div id="musicstuff" class="flexcolumn">
 				<div id="music-info">
@@ -315,6 +315,7 @@
 				<div class="settingsMenuButtons" onclick="customiseSongButtonFromBottomRight()">Customise Song</div>
 			</div>
 		</div>
+		<div id="tooltip"></div>
 		<script src="helpers.js"></script>
 		<script src="discord.js"></script>
 		<script src="playlists.js"></script>

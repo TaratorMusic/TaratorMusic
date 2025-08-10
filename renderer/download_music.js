@@ -672,6 +672,7 @@ async function actuallyDownloadTheSong() {
                         ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100)`
 					)
 					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration, stabiliseVolumeToggle, fileSize);
+                await commitStagedPlaylistAdds();
 			} catch (err) {
 				console.log("Failed to insert song into DB:", err);
 			}
@@ -679,7 +680,7 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
-			await commitStagedPlaylistAdds();
+			
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);

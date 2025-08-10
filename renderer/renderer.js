@@ -73,6 +73,8 @@ let latestReleaseNotes = "You are using the latest version of TaratorMusic.";
 let downloadingStyle;
 const debounceMap = new Map();
 const songNameCache = new Map();
+const tooltip = document.getElementById("tooltip");
+let timeoutId = null;
 
 let totalTimeSpent;
 let rememberautoplay;
@@ -1405,6 +1407,25 @@ function addToFavorites() {
 		}
 	}
 }
+
+document.querySelectorAll(".tooltip-target").forEach(el => {
+	el.addEventListener("mouseenter", e => {
+		timeoutId = setTimeout(() => {
+			tooltip.textContent = el.dataset.tooltip;
+			tooltip.style.display = "block";
+			tooltip.style.left = e.pageX + "px";
+			tooltip.style.top = e.pageY + "px";
+		}, 1000);
+	});
+	el.addEventListener("mousemove", e => {
+		tooltip.style.left = e.pageX + 5 + "px";
+		tooltip.style.top = e.pageY + 5 + "px";
+	});
+	el.addEventListener("mouseleave", () => {
+		clearTimeout(timeoutId);
+		tooltip.style.display = "none";
+	});
+});
 
 ipcRenderer.on("playlist-created", () => {
 	closeModal();
