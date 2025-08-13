@@ -116,7 +116,7 @@
 						<div class="modalTitle">Update TaratorMusic</div>
 						<span class="close" onclick="closeModal()">&times;</span>
 					</div>
-					<div id="patchNotes"></div>
+					<div id="patchNotes">You are using the latest version of TaratorMusic.</div>
 					<div style="color: yellow">Please don't close the app while updating, as it can break. If the update breaks, you can install the latest version from Github Releases.</div>
 					<div id="progressContainer" style="width: 100%; background: #ccc; display: none">
 						<div id="downloadProgress" style="width: 0%; background: #4caf50; color: white; text-align: center"></div>
@@ -131,11 +131,10 @@
 			<div id="my-music" class="sidebarButtons" onclick="myMusicOnClick()">My Music</div>
 			<div id="playlists" class="sidebarButtons" onclick="getPlaylists()">Playlists</div>
 			<div id="settings" class="sidebarButtons" onclick="loadJSFile('settings')">Settings</div>
-		</div>
-		<div id="playlistsidebar">
+			<div id="statistics" class="sidebarButtons" onclick="alertModal('Coming Soon!')">Statistics</div>
 			<div id="downloadNewFunction" class="sidebarButtons" onclick="openThisModal('download')">Download</div>
-			<div id="create-playlist" class="sidebarButtons" onclick="openNewPlaylistModal()">Create New Playlist</div>
 		</div>
+		<div id="playlistsidebar"></div>
 		<div id="content" class="content">
 			<div id="main-menu-content" class="tab-content">
 				<div id="version"></div>
@@ -143,10 +142,16 @@
 					<div id="mainmenulogo"></div>
 					<div id="mainmenuapptext">TaratorMusic</div>
 					<div class="flexrowbutspacearound">
-						<div id="mainmenurandomsong" class="mainmenusquares tooltip-target" data-tooltip="Play a Random Song" onclick="randomSongFunctionMainMenu()">Random Song</div>
-						<div id="mainmenurandomplaylist" class="mainmenusquares tooltip-target" data-tooltip="Play a Random Playlist" onclick="randomPlaylistFunctionMainMenu()">Random Playlist</div>
-						<div id="mainmenudiscordapi" class="mainmenusquares tooltip-target" data-tooltip="Status of your Discord connection">Discord API Status: Loading...</div>
-						<div id="mainmenutimespent" class="mainmenusquares tooltip-target" data-tooltip="Total Time Spent in TaratorMusic">Time Spent: Loading...</div>
+						<div id="mainmenurandomsong" class="mainmenusquares" data-tooltip="Play a Random Song" onclick="randomSongFunctionMainMenu()">Random Song</div>
+						<div id="mainmenurandomplaylist" class="mainmenusquares" data-tooltip="Play a Random Playlist" onclick="randomPlaylistFunctionMainMenu()">Random Playlist</div>
+						<div class="mainmenusquares" style="flex-direction: column">
+							<div id="mainmenudiscordapi" style="height: 50%; margin-top: 10%" data-tooltip="Status of your Discord connection">Discord RPC Status: Loading...</div>
+							<div id="mainmenubotapi" style="color: yellow; height: 50%; margin-bottom: 5%" data-tooltip="Status of your bot which shares your songs on Discord voice chat">Discord Bot Status: Coming Soon</div>
+						</div>
+						<div class="mainmenusquares" style="flex-direction: column">
+							<div id="mainmenutimespent" style="height: 50%; margin-top: 10%" data-tooltip="Total Time Spent in TaratorMusic">Time Spent: Loading...</div>
+							<div id="mainmenusessiontimespent" style="color: yellow; height: 50%; margin-bottom: 5%" data-tooltip="Total Time Spent this Session">Time Spent this Session: Coming Soon</div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -277,26 +282,29 @@
 				<div class="settingsflexrow">You can use your old database to redownload all the songs back.</div>
 				<div class="settingsflexrow">Move App Folders: Coming Soon</div>
 				<div>You can move your app to different folders using this setting.</div>
+				<div class="settingsflexrow">Debug Mode <button id="debugButton">Toggle</button></div>
+				<div>Enter debug mode to see the errors and the logs.</div>
 				<div class="settingsflexrow">Package Data: Coming Soon</div>
 				<div>Package your data to use it on different computers.</div>
 				<div class="settingsflexrow">Factory Reset: Coming Soon</div>
 				<div>Reset every configuration you have made on the app.</div>
 			</div>
+			<div id="statistics-content" class="tab-content hidden"></div>
 		</div>
 		<div id="videothumbnailbox"></div>
 		<div id="video-controls" class="flexrow">
 			<div id="allbuttons">
-				<button id="backwardButton" class="audio-button tooltip-target" data-tooltip="Back 5 Seconds" onclick="skipBackward()"></button>
-				<button id="previousSongButton" class="audio-button tooltip-target" data-tooltip="Play Previous Song" onclick="playPreviousSong()"></button>
-				<button id="playButton" class="audio-button tooltip-target" data-tooltip="Play Song"></button>
-				<button id="pauseButton" class="audio-button tooltip-target" data-tooltip="Pause Song" style="display: none"></button>
-				<button id="nextSongButton" class="audio-button tooltip-target" data-tooltip="Play Next Song" onclick="playNextSong()"></button>
-				<button id="forwardButton" class="audio-button tooltip-target" data-tooltip="Forward 5 Seconds" onclick="skipForward()"></button>
-				<button id="autoplayButton" class="audio-button tooltip-target" data-tooltip="Toggle Autoplay" onclick="toggleAutoplay()"></button>
-				<button id="shuffleButton" class="audio-button tooltip-target" data-tooltip="Toggle Shuffle" onclick="toggleShuffle()"></button>
-				<button id="muteButton" class="audio-button tooltip-target" data-tooltip="Toggle Mute" onclick="mute()"></button>
-				<button id="speedButton" class="audio-button tooltip-target" data-tooltip="Speed Settings" onclick="speed()"></button>
-				<button id="loopButton" class="audio-button tooltip-target" data-tooltip="Toggle Loop" onclick="toggleLoop()"></button>
+				<button id="backwardButton" class="audio-button" data-tooltip="Back 5 Seconds" onclick="skipBackward()"></button>
+				<button id="previousSongButton" class="audio-button" data-tooltip="Play Previous Song" onclick="playPreviousSong()"></button>
+				<button id="playButton" class="audio-button" data-tooltip="Play Song"></button>
+				<button id="pauseButton" class="audio-button" data-tooltip="Pause Song" style="display: none"></button>
+				<button id="nextSongButton" class="audio-button" data-tooltip="Play Next Song" onclick="playNextSong()"></button>
+				<button id="forwardButton" class="audio-button" data-tooltip="Forward 5 Seconds" onclick="skipForward()"></button>
+				<button id="autoplayButton" class="audio-button" data-tooltip="Toggle Autoplay" onclick="toggleAutoplay()"></button>
+				<button id="shuffleButton" class="audio-button" data-tooltip="Toggle Shuffle" onclick="toggleShuffle()"></button>
+				<button id="muteButton" class="audio-button" data-tooltip="Toggle Mute" onclick="mute()"></button>
+				<button id="speedButton" class="audio-button" data-tooltip="Speed Settings" onclick="speed()"></button>
+				<button id="loopButton" class="audio-button" data-tooltip="Toggle Loop" onclick="toggleLoop()"></button>
 			</div>
 			<div id="musicstuff" class="flexcolumn">
 				<div id="music-info">

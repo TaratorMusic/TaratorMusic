@@ -157,15 +157,6 @@ body::-webkit-scrollbar {
 	flex-direction: column;
 }
 
-#playlistsidebar {
-	position: fixed;
-	left: 0;
-	margin-top: 23vh;
-	margin-left: 3vh;
-	display: flex;
-	flex-direction: column;
-}
-
 .sidebar {
 	position: fixed;
 	left: 0;
@@ -559,6 +550,7 @@ audio {
 
 #playlists-content {
 	display: none;
+	grid-template-rows: 50px;
 	grid-auto-rows: 200px;
 	gap: 10px;
 	align-content: end;
@@ -1011,9 +1003,9 @@ input:checked + .slider:before {
 	color: #fff;
 	padding: 6px 10px;
 	border-radius: 4px;
-    margin-left: 5px;
+	margin-left: 5px;
 	font-size: 14px;
 	display: none;
 	pointer-events: none;
-    border: 1px solid white;
+	border: 1px solid white;
 }

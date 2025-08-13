@@ -58,7 +58,7 @@ function checkNameThumbnail(redownload) {
 	if (redownload) return;
 
 	const userInput = document.getElementById("downloadFirstInput").value.trim();
-	if (userInput === "") {
+	if (userInput == "") {
 		downloadModalText.innerHTML = "The input can not be empty.";
 		document.getElementById("downloadFirstButton").disabled = false;
 		return;
@@ -66,9 +66,9 @@ function checkNameThumbnail(redownload) {
 
 	downloadingStyle = differentiateMediaLinks(userInput);
 
-	if (downloadingStyle === "youtube_video") {
+	if (downloadingStyle == "youtube_video") {
 		processVideoLink(userInput);
-	} else if (downloadingStyle === "youtube_playlist") {
+	} else if (downloadingStyle == "youtube_playlist") {
 		fetchPlaylistData(userInput);
 	} else if (downloadingStyle == "spotify_track") {
 		getSpotifySongName(userInput);
@@ -112,7 +112,7 @@ async function getPlaylistSongsAndArtists(link) {
 	const scrollContainer = await page.evaluateHandle(() => {
 		function isScrollable(el) {
 			const style = getComputedStyle(el);
-			return (style.overflowY === "auto" || style.overflowY === "scroll") && el.scrollHeight > el.clientHeight;
+			return (style.overflowY == "auto" || style.overflowY == "scroll") && el.scrollHeight > el.clientHeight;
 		}
 		const allDivs = Array.from(document.querySelectorAll("div"));
 		return allDivs.find(div => isScrollable(div) && div.querySelectorAll('a[data-testid="internal-track-link"]').length > 0);
@@ -210,7 +210,7 @@ async function getPlaylistSongsAndArtists(link) {
 
 			console.log(`Scroll iteration complete. New found: ${newFound}, Same count: ${sameCount}`);
 
-			if (newFound === 0) {
+			if (newFound == 0) {
 				sameCount++;
 			} else {
 				sameCount = 0;
@@ -397,7 +397,7 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 		downloadSecondInput.spellcheck = false;
 		exampleDownloadColumn.appendChild(downloadSecondInput);
 
-		if (i === 0) {
+		if (i == 0) {
 			const saveAsPlaylist = document.createElement("button");
 			saveAsPlaylist.id = "saveAsPlaylist";
 			saveAsPlaylist.innerHTML = "Save as playlist";
@@ -446,7 +446,7 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 		thumbnailDiv.className = "thumbnailImage";
 		thumbnailDiv.id = "thumbnailImage" + i;
 
-		if (i === 0) {
+		if (i == 0) {
 			thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[0]})`;
 		} else {
 			thumbnailDiv.style.backgroundImage = `url(${playlistThumbnails[i]})`;
@@ -506,7 +506,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		}
 
 		if (imgElement) {
-			if (imgElement.tagName === "IMG" && imgElement.src) {
+			if (imgElement.tagName == "IMG" && imgElement.src) {
 				if (imgElement.src.startsWith("data:image")) {
 					const base64data = imgElement.src;
 					const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
@@ -575,7 +575,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 			try {
 				const info = await ytdl.getInfo(videoId);
 				const thumbnails = info.videoDetails.thumbnails;
-				if (!thumbnails || thumbnails.length === 0) throw new Error("No thumbnails found");
+				if (!thumbnails || thumbnails.length == 0) throw new Error("No thumbnails found");
 
 				const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
 				await saveBufferFromUrl(thumbnailUrl);
@@ -603,7 +603,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 
 async function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
-	const firstInput = downloadingStyle === "search" ? searchedSongsUrl : document.getElementById("downloadFirstInput").value.trim();
+	const firstInput = downloadingStyle == "search" ? searchedSongsUrl : document.getElementById("downloadFirstInput").value.trim();
 
 	if (downloadingStyle == "youtube_video" || downloadingStyle == "spotify_track" || downloadingStyle == "search") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
@@ -709,7 +709,7 @@ async function actuallyDownloadTheSong() {
 
 		const totalSongs = songLinks.length;
 
-		if (songTitles.length === 0) {
+		if (songTitles.length == 0) {
 			document.getElementById("downloadModalText").innerText = "No valid songs found in playlist.";
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
@@ -762,7 +762,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 		if (!dataLink) continue;
 
 		const index = songLinks.indexOf(dataLink);
-		if (index === -1) continue;
+		if (index == -1) continue;
 
 		const songId = songIds[index];
 		pendingPlaylistAddsWithIds.set(songId, _);
@@ -865,7 +865,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 
 			for (let j = 1; j < songElements.length; j++) {
 				const element = songElements[j];
-				if (element.dataset.link === songLink) {
+				if (element.dataset.link == songLink) {
 					thumbnailElement = element.querySelector(".thumbnailImage");
 					if (element.dataset.thumbnail) {
 						thumbnailUrl = element.dataset.thumbnail;

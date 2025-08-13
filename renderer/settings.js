@@ -49,17 +49,7 @@ document.querySelectorAll(".settingsKeybindsButton").forEach(button => {
 function changeBackground(color) {
 	background = color;
 	updateDatabase("background", color, settingsDb);
-	if (background === "blue") {
-		document.body.className = "bg-gradient-blue";
-	} else if (background === "red") {
-		document.body.className = "bg-gradient-red";
-	} else if (background === "green") {
-		document.body.className = "bg-gradient-green";
-	} else if (background === "purple") {
-		document.body.className = "bg-gradient-purple";
-	} else if (background === "black") {
-		document.body.className = "bg-gradient-black";
-	}
+	document.body.className = `bg-gradient-${background}`;
 }
 
 async function redownloadAllSongs() {
@@ -93,8 +83,8 @@ async function redownloadAllSongs() {
 				continue;
 			} else if (checkAllSongs == null) {
 				const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No"); // TODO: Skip all / Search all / Ask diye EN BAŞTA SORSUN
-                // Return true, return false, or close the modal
-                // YA da iki kere sor ardarda
+				// Return true, return false, or close the modal
+				// YA da iki kere sor ardarda
 			}
 
 			if (checkAllSongs == true || confirmed) {

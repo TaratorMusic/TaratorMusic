@@ -2,7 +2,7 @@ function getPlaylists() {
 	try {
 		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
 
-		if (!playlists || playlists.length === 0) {
+		if (!playlists || playlists.length == 0) {
 			console.log("No playlists found in the database.");
 			displayPlaylists([]);
 			return;
@@ -26,6 +26,14 @@ function getPlaylists() {
 function displayPlaylists(playlists) {
 	const playlistsContent = document.getElementById("playlists-content");
 	playlistsContent.innerHTML = "";
+
+	const createPlaylistButton = document.createElement("button");
+	createPlaylistButton.addEventListener("click", () => {
+		document.getElementById("createPlaylistModal").style.display = "block";
+	});
+    createPlaylistButton.innerHTML = "Create New Playlist";
+    createPlaylistButton.style = "width: 15vw; height: 5vh; margin-left: 0.5vw"
+	playlistsContent.appendChild(createPlaylistButton);
 
 	playlists.forEach(playlist => {
 		const playlistElement = document.createElement("div");
@@ -59,7 +67,7 @@ function displayPlaylists(playlists) {
 		const playlistName = document.createElement("div");
 		playlistName.className = "playlistName";
 		playlistName.innerHTML = `<h2>${playlist.name} -&nbsp;</h2>`;
-		playlistName.innerHTML += `<h3> ${playlist.songs.length === 1 ? `${playlist.songs.length} song` : `${playlist.songs.length} songs`}</h3>`;
+		playlistName.innerHTML += `<h3> ${playlist.songs.length == 1 ? `${playlist.songs.length} song` : `${playlist.songs.length} songs`}</h3>`;
 		playlistInfo.appendChild(playlistName);
 
 		const playlistSongs = document.createElement("div");
@@ -101,10 +109,6 @@ function displayPlaylists(playlists) {
 	});
 }
 
-function openNewPlaylistModal() {
-	document.getElementById("createPlaylistModal").style.display = "block";
-}
-
 async function saveNewPlaylist() {
 	const name = document.getElementById("playlistNameInput").value.trim();
 
@@ -139,7 +143,7 @@ async function saveNewPlaylist() {
 
 	closeModal();
 
-	if (document.getElementById("playlists-content").style.display === "grid") {
+	if (document.getElementById("playlists-content").style.display == "grid") {
 		document.getElementById("playlists").click();
 	}
 }
@@ -225,7 +229,7 @@ function openAddToPlaylistModal(songName) {
 	try {
 		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
 
-		if (!playlists || playlists.length === 0) {
+		if (!playlists || playlists.length == 0) {
 			console.log("No playlists found.");
 			displayPlaylists([]);
 			return;

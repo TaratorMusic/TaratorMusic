@@ -2,8 +2,8 @@ const clientId = "1258898699816275969";
 const DiscordRPC = require("discord-rpc");
 
 let RPC = null;
-let discordApi = localStorage.getItem("discordApi") === "true";
-document.getElementById("toggleSwitchDiscord").checked = discordApi;
+let discordApi = localStorage.getItem("discordApi") == "true"; // TODO: DONT USE LOCALSTORAGE, USE DB
+document.getElementById("toggleSwitchDiscord").checked = discordApi; // MOVE TO DOMCONTENTLOADED
 
 function createRPC() {
 	RPC = new DiscordRPC.Client({ transport: "ipc" });
@@ -15,7 +15,7 @@ function createRPC() {
 
 	RPC.login({ clientId }).catch(err => {
 		console.log("Discord RPC Login Failed:", err);
-		document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Error";
+		document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Error";
 		document.getElementById("mainmenudiscordapi").style.color = "red";
 	});
 }
@@ -32,11 +32,7 @@ function destroyRPC() {
 	}
 }
 
-if (discordApi) {
-	createRPC();
-} else {
-	updateDiscordPresence();
-}
+discordApi ? createRPC() : updateDiscordPresence();
 
 function toggleDiscordAPI() {
 	discordApi = !discordApi;
@@ -50,14 +46,15 @@ function toggleDiscordAPI() {
 	}
 }
 
-function parseTimeToSeconds(timeStr) { // TODO: transfer to helpers.js
+function parseTimeToSeconds(timeStr) {
+	// TODO: transfer to helpers.js
 	if (typeof timeStr !== "string") return null;
 	const parts = timeStr.split(":").map(Number);
 	if (parts.some(isNaN)) return null;
 
-	if (parts.length === 2) {
+	if (parts.length == 2) {
 		return parts[0] * 60 + parts[1];
-	} else if (parts.length === 3) {
+	} else if (parts.length == 3) {
 		return parts[0] * 3600 + parts[1] * 60 + parts[2];
 	}
 	return null;
@@ -66,17 +63,17 @@ function parseTimeToSeconds(timeStr) { // TODO: transfer to helpers.js
 async function updateDiscordPresence() {
 	if (discordApi && RPC) {
 		if (!RPC.transport || RPC.transport.socket?.destroyed) {
-			document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Down";
+			document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Down";
 			document.getElementById("mainmenudiscordapi").style.color = "red";
 			return;
 		}
 
-		document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Online";
+		document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Online";
 		document.getElementById("mainmenudiscordapi").style.color = "green";
 
 		const songName = document.getElementById("song-name").textContent;
 
-		if (songName === "No song is being played.") {
+		if (songName == "No song is being played.") {
 			RPC.setActivity({
 				type: "2",
 				details: "Browsing Music",
@@ -118,7 +115,7 @@ async function updateDiscordPresence() {
 			RPC.setActivity(activityPayload);
 		}
 	} else {
-		document.getElementById("mainmenudiscordapi").innerHTML = "Discord API Status: Disabled";
+		document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Disabled";
 		document.getElementById("mainmenudiscordapi").style.color = "yellow";
 	}
 }

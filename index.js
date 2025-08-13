@@ -62,7 +62,14 @@ function createWindow() {
 
 app.whenReady().then(() => {
 	app.setName("TaratorMusic");
-	if (app.isPackaged) Menu.setApplicationMenu(null);
+
+	let menuShown = true;
+	const originalMenu = Menu.getApplicationMenu();
+	if (app.isPackaged) {
+		Menu.setApplicationMenu(null);
+		menuShown = false;
+	}
+
 	createWindow();
 
 	autoUpdater.on("update-available", info => {
@@ -71,6 +78,16 @@ app.whenReady().then(() => {
 
 	ipcMain.on("download-update", () => {
 		autoUpdater.downloadUpdate();
+	});
+
+	ipcMain.on("debug-mode", () => {
+		if (menuShown) {
+			Menu.setApplicationMenu(null);
+			menuShown = false;
+		} else {
+			Menu.setApplicationMenu(originalMenu);
+			menuShown = true;
+		}
 	});
 
 	autoUpdater.on("update-downloaded", () => {
@@ -84,7 +101,7 @@ app.whenReady().then(() => {
 	autoUpdater.checkForUpdates();
 
 	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+		if (BrowserWindow.getAllWindows().length == 0) createWindow();
 	});
 });
 

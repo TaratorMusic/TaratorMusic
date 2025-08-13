@@ -4,7 +4,13 @@
 
 ## Why TaratorMusic?
 
-Aren't you tired of listening to same ten songs in your youtube or spotify playlist ? Too many ads ? What if you want to listen to music offline? This app runs to your aid...
+- Free and open source
+- No ads
+- Usable offline
+- Download your Youtube and Spotify songs and playlists
+- Real song shuffling
+- Quick launch time
+- Many features while keeping the app light
 
 ## Technologies Used
 
@@ -28,7 +34,7 @@ Discord Rich Presence to momentarily share listened songs in Discord
 -   .exe files are meant for Windows, .dmg files are meant for Mac, and AppImage files are meant for linux users. You dont need to download .yml or .blockmap files, they just help updating the app. You just need to run them, they are all included.
 -   Tip for Linux: It will create app folders (musics, playlists, settings etc.) where the AppImage runs, so you can put it in any folder you want and create a .desktop file to run it from the desktop.
 -   Make sure to contain the app files and musics inside an SSD, which will improve app speeds tremendously.
--   When a new update is available, the version box at the top right of the main menu will start lighting up. You will be able to see the new content before you choose to update the app. When you update the app for Windows and Mac its updated normally, but for Linux it replaces the whole AppImage.
+-   When a new update is available, the version box at the top right of the main menu will start lighting up. You will be able to see the new content before you choose to update the app. When you update the app for Windows and Mac needs to be reinstalled from the github page, but for Linux you can update in-app.
 -   Enjoy!
 
 ## Current Features:
@@ -40,26 +46,22 @@ The launch of this app just takes 2.2 seconds! This number was taken from a comp
 ### Actual Random
 
 The randomness of the next song in TaratorMusic has been statistically proven by Chi Square Test. In the test, 10.000 random songs have played after each other, and the test was successful even at 0.01 significance level.  
-![chisquare](https://github.com/user-attachments/assets/42e0b42a-8c44-4605-8701-db20e302aff8)
 
 ### Download Your Own
 
 In this app, you can easily paste a link in the download section, change its name or thumbnail, and press download to make the music and its thumbnail appear in your folders. Works for playlists too! Or you can just carry your own mp3 files to the musics folder, and their thumbnails to the thumbnails folder.  
-![image](https://github.com/user-attachments/assets/eb5f1695-66aa-4cf3-b8f4-2533443963b1)
 
 ### Customisation
 
 You can customise everything starting from the app itself, the musics and the playlists. The music files and the playlists can be renamed, and get their thumbnails changed inside the app. The settings tab has a high variety of options on how to change user experience.  
-![image](https://github.com/user-attachments/assets/5a6a5c07-9e2d-413e-865b-1d1d48692f75)
 
 ### Discord
 
 This app is connected to Discord via Rich Presence. Thus everyone can know you are using TaratorMusic, and what song you are listening to. Although its easily toggleable inside the settings tab if you don't want it.  
-![image](https://github.com/user-attachments/assets/cf20e597-1ed8-4283-b052-6e030364f7cc)
 
 ### Memory Efficiency
 
-TaratorMusic only uses 75MB per second of memory while open, 95MB per second while listening to a song, and 125 MB per second while downloading a song. The lightweightness of the app makes it suitable for computers with very low specs. ![image](https://github.com/user-attachments/assets/20c7afed-efbf-4643-8fa9-282a2c4c960e)
+TaratorMusic only uses 75MB per second of memory while open, 95MB per second while listening to a song, and 125 MB per second while downloading a song. The lightweightness of the app makes it suitable for computers with very low specs.
 
 ### Volume Stabilisation
 
@@ -106,3 +108,5 @@ The option to fully customise the rich presence will be given to the users in th
 ### And more!
 
 You can contact me and suggest more improvements and i will do my best implementing them. Or send a pull request.
+
+## Screenshots:
