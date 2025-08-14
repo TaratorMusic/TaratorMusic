@@ -22,6 +22,7 @@ function createWindow() {
 		title: "TaratorMusic",
 		icon: path.join(__dirname, "assets/tarator16_icon.png"),
 		frame: false,
+		closable: true,
 		transparent: true,
 		alwaysOnTop: true,
 		resizable: false,

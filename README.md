@@ -105,8 +105,16 @@ In the future, there will be an option to active "Improved Shuffle Customisation
 
 The option to fully customise the rich presence will be given to the users in the near future.
 
+### Stream songs directly to Discord voice chat via a bot
+
+You will be able to stream your songs directly to voice chats only using in-app features.
+
 ### And more!
 
 You can contact me and suggest more improvements and i will do my best implementing them. Or send a pull request.
 
 ## Screenshots:
+
+### YES, the UI doesn't look that good yet.
+I will focus on the designs after implementing the features planned, since they can change anytime, it would take too much time redesigning.   
+Currently just focusing on adding as much features as possible.

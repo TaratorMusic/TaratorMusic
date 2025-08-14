@@ -91,3 +91,7 @@ async function openThisModal(modalName) {
 		document.getElementById("downloadModal").style.display = "block";
 	}
 }
+
+function removeExtensions(input) {
+	return input.replace(/\.[^/.]+$/, "");
+}

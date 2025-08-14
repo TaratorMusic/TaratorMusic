@@ -1,25 +1,17 @@
 node_modules/
 musics/
 thumbnails/
-native-libs/
-playlists.json
+databases/
 
 dist/
-out/
 build/
-userData/
 cache/
 config/
 
-*.log
 *.db
 *.db-journal
-*.spec
+
 *.mp3
 *.mp4
 *.m4a
 *-player-script.js
-download.js
-
-.npmrc
-.prettierrc

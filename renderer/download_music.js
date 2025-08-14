@@ -153,6 +153,7 @@ async function getPlaylistSongsAndArtists(link) {
 		}
 		return { imageUrl };
 	});
+    
 	const playlistThumbnail = imageUrl || path.join(appThumbnailFolder, "placeholder.jpg");
 
 	const songs = await page.evaluate(async container => {
@@ -668,11 +669,11 @@ async function actuallyDownloadTheSong() {
 						`INSERT INTO songs (
                             song_id, song_name, song_url, song_thumbnail,
                             song_length, seconds_played, times_listened, stabilised,
-                            size, speed, bass, treble, midrange, volume
-                        ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100)`
+                            size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
+                        ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100, ?, ?)`
 					)
-					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration, stabiliseVolumeToggle, fileSize);
-                await commitStagedPlaylistAdds();
+					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration, stabiliseVolumeToggle, fileSize, ".mp3", ".jpg");
+				await commitStagedPlaylistAdds();
 			} catch (err) {
 				console.log("Failed to insert song into DB:", err);
 			}
@@ -680,7 +681,6 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
-			
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
@@ -890,10 +890,10 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					musicsDb
 						.prepare(
 							`INSERT INTO songs (
-                                song_id, song_name, song_url, song_thumbnail,
-                                song_length, seconds_played, times_listened, stabilised,
-                                size, speed, bass, treble, midrange, volume
-                            ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100)`
+                            song_id, song_name, song_url, song_thumbnail,
+                            song_length, seconds_played, times_listened, stabilised,
+                            size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
+                        ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100, ?, ?)`
 						)
 						.run(songId, songTitle, songLink, songThumbnail, duration, stabiliseVolumeToggle, fileSize);
 				} catch (err) {

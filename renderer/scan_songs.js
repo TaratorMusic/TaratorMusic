@@ -5,23 +5,36 @@ const ffprobePath = require("ffprobe-static").path;
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 
-function normalizeAudio(filePath) {
-	return new Promise((resolve, reject) => {
-		const tempPath = path.join(path.dirname(filePath), `normalized_${Date.now()}.mp3`);
+const CODEC_MAP = new Map([
+	["mp3", "libmp3lame"],
+	["wav", "pcm_s16le"],
+	["flac", "flac"],
+	["ogg", "libvorbis"],
+	["aac", "aac"],
+	["m4a", "aac"],
+	["opus", "libopus"],
+]);
 
-		ffmpeg(filePath)
-			.audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11:linear=true:print_format=none")
-			.audioCodec("libmp3lame")
-			.outputOptions("-b:a", "192k")
+async function normalizeAudioSimple(inputPath, outputPath) {
+	const ext = path.extname(inputPath).toLowerCase().slice(1);
+	const codec = CODEC_MAP.get(ext);
+
+	if (!codec) {
+		console.log(`Unsupported file extension: .${ext}`);
+		return;
+	}
+
+	return new Promise((resolve, reject) => {
+		ffmpeg(inputPath)
+			.audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11")
+			.audioCodec(codec)
 			.on("error", err => {
-				if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-				reject(err);
+				reject(console.log(`FFmpeg error: ${err.message}`));
 			})
 			.on("end", () => {
-				fs.renameSync(tempPath, filePath);
-				resolve(true);
+				resolve(outputPath);
 			})
-			.save(tempPath);
+			.save(outputPath);
 	});
 }
 
@@ -41,7 +54,7 @@ async function processAllFiles() {
 	}
 
 	const files = fs.readdirSync(musicFolder).filter(f => {
-		return f.endsWith(".mp3") && !f.startsWith(".") && !f.startsWith("normalized_") && !f.includes("temp_normalized");
+		return !f.startsWith(".") && !f.startsWith("normalized_") && !f.includes("temp_normalized");
 	});
 
 	document.getElementById("stabiliseProgress").innerText = `Found ${files.length} files to process`;
@@ -87,37 +100,30 @@ async function cleanDebugFiles() {
 	document.getElementById("cleanProgress").innerText = `Cleaning debug files...`;
 	await new Promise(resolve => setTimeout(resolve, 10));
 
-	fs.readdirSync("./").forEach(file => {
+	fs.readdirSync(taratorFolder).forEach(file => {
 		if (regex.test(file)) {
-			fs.unlinkSync(path.join("./", file));
+			fs.unlinkSync(path.join(taratorFolder, file));
 		}
 	});
 
 	document.getElementById("cleanProgress").innerText = `Cleaning broken songs...`;
 	await new Promise(resolve => setTimeout(resolve, 10));
 
-	fs.readdirSync("./musics").forEach(file => {
-		if (!file.endsWith(".mp3")) {
-			fs.unlinkSync(path.join("./musics", file));
-		}
-	});
-
 	try {
 		document.getElementById("cleanProgress").innerText = `Cleaning the database...`;
 		await new Promise(resolve => setTimeout(resolve, 10));
 
-		const musicFiles = fs.readdirSync("./musics");
+		const musicFiles = fs.readdirSync(musicFolder);
 		const allSongs = musicsDb.prepare(`SELECT song_id FROM songs`).all();
 		const deleteSong = musicsDb.prepare(`DELETE FROM songs WHERE song_id = ?`);
 
 		allSongs.forEach(song => {
-			const fileName = song.song_id + ".mp3";
-			if (!musicFiles.includes(fileName)) {
+			const exists = musicFiles.some(f => f.startsWith(song.song_id + "."));
+			if (!exists) {
 				deleteSong.run(song.song_id);
 			}
 		});
 
-		musicsDb.prepare(`DELETE FROM songs WHERE song_id LIKE '%.mp3%'`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
 
@@ -153,7 +159,7 @@ async function processNewSongs() {
 		const fullPath = path.join(musicFolder, name);
 		if (!fs.statSync(fullPath).isFile()) continue;
 
-		const songName = name.replace(".mp3", "");
+		const songName = removeExtensions(name);
 		document.getElementById("folderProgress").innerText = `Found new song: ${songName}`;
 
 		const songId = generateId();
@@ -174,16 +180,19 @@ async function processNewSongs() {
 			document.getElementById("folderProgress").innerText = `Failed to get duration for ${songName}: ${error.message}`;
 		}
 
-		const newSongPath = path.join(musicFolder, `${songId}.mp3`);
+		const songExt = path.extname(name).slice(1).toLowerCase();
+		const newSongPath = path.join(musicFolder, `${songId}.${songExt}`);
 		fs.renameSync(fullPath, newSongPath);
 
-		let newThumbnailName = `${songId}.jpg`;
-		const oldThumbnailPath = path.join(thumbnailFolder, `${name}.jpg`);
-		if (fs.existsSync(oldThumbnailPath)) {
-			const newThumbnailPath = path.join(thumbnailFolder, newThumbnailName);
-			fs.renameSync(oldThumbnailPath, newThumbnailPath);
-		} else {
-			newThumbnailName = null;
+		let thumbnailExt = null;
+		let newThumbnailName = null;
+		const oldThumbnailBase = path.parse(name).name;
+		const thumbFiles = fs.readdirSync(thumbnailFolder);
+		const thumbFile = thumbFiles.find(f => path.parse(f).name === oldThumbnailBase);
+		if (thumbFile) {
+			thumbnailExt = path.extname(thumbFile).slice(1).toLowerCase();
+			newThumbnailName = `${songId}.${thumbnailExt}`;
+			fs.renameSync(path.join(thumbnailFolder, thumbFile), path.join(thumbnailFolder, newThumbnailName));
 		}
 
 		const fileSize = fs.statSync(newSongPath).size;
@@ -191,15 +200,13 @@ async function processNewSongs() {
 		try {
 			musicsDb
 				.prepare(
-					`
-                    INSERT INTO songs (
+					`INSERT INTO songs (
                         song_id, song_name, song_url, song_thumbnail,
                         song_length, seconds_played, times_listened, stabilised,
-                        size, speed, bass, treble, midrange, volume
-                    ) VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, 1, 0, 0, 0, 100)
-                `
+                        size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
+                    ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100, ?, ?)`
 				)
-				.run(songId, songName, newThumbnailName, duration, fileSize);
+				.run(songId, songName, newSongPath, newThumbnailName, duration, 1, songExt, thumbnailExt);
 
 			document.getElementById("folderProgress").innerText = `Added ${songName} to database`;
 		} catch (error) {
