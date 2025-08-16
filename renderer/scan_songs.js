@@ -15,27 +15,26 @@ const CODEC_MAP = new Map([
 	["opus", "libopus"],
 ]);
 
-async function normalizeAudioSimple(inputPath, outputPath) {
-	const ext = path.extname(inputPath).toLowerCase().slice(1);
+async function normalizeAudio(filePath) {
+	const ext = path.extname(filePath).toLowerCase().slice(1);
 	const codec = CODEC_MAP.get(ext);
+	if (!codec) throw new Error(`Unsupported file extension: .${ext}`);
 
-	if (!codec) {
-		console.log(`Unsupported file extension: .${ext}`);
-		return;
-	}
+	const dir = path.dirname(filePath);
+	const base = path.basename(filePath, "." + ext);
+	const tmpPath = path.join(dir, `${base}.${Date.now()}.${ext}`);
 
-	return new Promise((resolve, reject) => {
-		ffmpeg(inputPath)
+	await new Promise((resolve, reject) => {
+		ffmpeg(filePath)
 			.audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11")
 			.audioCodec(codec)
-			.on("error", err => {
-				reject(console.log(`FFmpeg error: ${err.message}`));
-			})
-			.on("end", () => {
-				resolve(outputPath);
-			})
-			.save(outputPath);
+			.on("error", err => reject(err))
+			.on("end", resolve)
+			.save(tmpPath);
 	});
+
+	await fs.rename(tmpPath, filePath);
+	return filePath;
 }
 
 async function processAllFiles() {
