@@ -963,7 +963,7 @@ function saveAsPlaylist(songIds, playlistName, playlistID) {
             VALUES (?, ?, ?, ?)
             `
 			)
-			.run(playlistID, playlistName, songsJson, ".jpg");
+			.run(playlistID, playlistName, songsJson, "jpg");
 	} catch (err) {
 		console.log("Failed to save playlist:", err);
 	}
