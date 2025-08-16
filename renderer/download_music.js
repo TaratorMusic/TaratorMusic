@@ -670,7 +670,7 @@ async function actuallyDownloadTheSong() {
                             song_id, song_name, song_url,
                             song_length, seconds_played, times_listened, stabilised,
                             size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 					)
 					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, ".mp3", ".jpg");
 				await commitStagedPlaylistAdds();
@@ -884,7 +884,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
                             song_id, song_name, song_url,
                             song_length, seconds_played, times_listened, stabilised,
                             size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 						)
 						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, ".mp3", ".jpg");
 				} catch (err) {
