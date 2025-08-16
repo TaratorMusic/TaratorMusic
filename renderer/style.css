@@ -827,8 +827,10 @@ input:checked + .slider:before {
 	height: 30px;
 }
 
-#mainmenutimespent {
+#mainmenutimespent,
+#mainmenusessiontimespent {
 	color: orange;
+	height: 50%;
 }
 
 #saveAsPlaylist {

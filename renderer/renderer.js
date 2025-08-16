@@ -76,6 +76,7 @@ const debounceMap = new Map();
 const songNameCache = new Map();
 
 let totalTimeSpent;
+let sessionTimeSpent = 0;
 let rememberautoplay;
 let remembershuffle;
 let rememberloop;
@@ -384,17 +385,26 @@ function updateDatabase(name, option, db) {
 }
 
 function updateTimer() {
-	let value, unit;
+	let totalvalue, totalunit, sessionvalue, sessionunit;
 
 	if (totalTimeSpent >= 3600) {
-		value = (totalTimeSpent / 3600).toFixed(0);
-		unit = value == 1 ? "hour" : "hours";
+		totalvalue = (totalTimeSpent / 3600).toFixed(0);
+		totalunit = totalvalue == 1 ? "hour" : "hours";
 	} else {
-		value = (totalTimeSpent / 60).toFixed(0);
-		unit = value == 1 ? "minute" : "minutes";
+		totalvalue = (totalTimeSpent / 60).toFixed(0);
+		totalunit = totalvalue == 1 ? "minute" : "minutes";
 	}
 
-	document.getElementById("mainmenutimespent").innerHTML = `Total Time Spent: ${value} ${unit}`;
+	if (sessionTimeSpent >= 3600) {
+		sessionvalue = (sessionTimeSpent / 3600).toFixed(0);
+		sessionunit = sessionvalue == 1 ? "hour" : "hours";
+	} else {
+		sessionvalue = (sessionTimeSpent / 60).toFixed(0);
+		sessionunit = sessionvalue == 1 ? "minute" : "minutes";
+	}
+
+	document.getElementById("mainmenutimespent").innerHTML = `Total Time Spent: ${totalvalue} ${totalunit}`;
+	document.getElementById("mainmenusessiontimespent").innerHTML = `Session Time Spent: ${sessionvalue} ${sessionunit}`;
 }
 
 setInterval(() => {
