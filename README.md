@@ -28,6 +28,8 @@ FFmpeg and FFprobe to automatically stabilise audio levels,
 
 Discord Rich Presence to momentarily share listened songs in Discord
 
+Jest and Github Actions to protect code quality and automatically roll out builds
+
 ## How to download:
 
 -   Go to the <a href="https://github.com/Victiniiiii/TaratorMusic/releases/latest">releases tab</a> and download whichever version suits your computer.
@@ -115,6 +117,8 @@ You can contact me and suggest more improvements and i will do my best implement
 
 ## Screenshots:
 
-### YES, the UI doesn't look that good yet.
+### Yes, the UI doesn't look that good yet.
 I will focus on the designs after implementing the features planned, since they can change anytime, it would take too much time redesigning.   
 Currently just focusing on adding as much features as possible.
+
+## [LICENSE](LICENSE)

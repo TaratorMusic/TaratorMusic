@@ -153,7 +153,7 @@ async function getPlaylistSongsAndArtists(link) {
 		}
 		return { imageUrl };
 	});
-    
+
 	const playlistThumbnail = imageUrl || path.join(appThumbnailFolder, "placeholder.jpg");
 
 	const songs = await page.evaluate(async container => {
@@ -352,8 +352,8 @@ async function fetchPlaylistData(url) {
 	try {
 		const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
 		if (!match) throw new Error("Invalid playlist URL");
-		const playlistId = match[1];
-		const playlist = await ytpl(playlistId, { pages: Infinity });
+		const playlistID = match[1];
+		const playlist = await ytpl(playlistID, { pages: Infinity });
 		const playlistTitle = playlist.title;
 		const videoItems = playlist.items.map(video => ({
 			title: video.title || "Unknown Title",
@@ -667,12 +667,12 @@ async function actuallyDownloadTheSong() {
 				musicsDb
 					.prepare(
 						`INSERT INTO songs (
-                            song_id, song_name, song_url, song_thumbnail,
+                            song_id, song_name, song_url,
                             song_length, seconds_played, times_listened, stabilised,
                             size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-                        ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100, ?, ?)`
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 					)
-					.run(songID, secondInput, firstInput, `${songID}.jpg`, duration, stabiliseVolumeToggle, fileSize, ".mp3", ".jpg");
+					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, ".mp3", ".jpg");
 				await commitStagedPlaylistAdds();
 			} catch (err) {
 				console.log("Failed to insert song into DB:", err);
@@ -728,24 +728,16 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
 		}
+		const playlistID = generateId();
 
 		try {
-			const stmt = playlistsDb.prepare("SELECT name FROM playlists WHERE name = ?");
-			const existing = stmt.get(playlistName);
-
-			if (window.isSaveAsPlaylistActive && existing) {
-				document.getElementById("downloadModalText").innerText = "A playlist with this name already exists.";
-				document.getElementById("finalDownloadButton").disabled = false;
-				return;
-			}
-
 			if (window.isSaveAsPlaylistActive) {
-				saveAsPlaylist(songIds, playlistName);
+				saveAsPlaylist(songIds, playlistName, playlistID);
 			}
 
 			document.getElementById("downloadModalText").innerText = totalSongs > 50 ? "Downloading... This might take some time..." : "Downloading...";
 
-			downloadPlaylist(songLinks, songTitles, songIds, playlistName);
+			downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID);
 		} catch (err) {
 			document.getElementById("downloadModalText").innerText = "Database error: " + err.message;
 			document.getElementById("finalDownloadButton").disabled = false;
@@ -753,7 +745,7 @@ async function actuallyDownloadTheSong() {
 	}
 }
 
-async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
+async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID) {
 	for (const [key, _] of pendingPlaylistAddsWithIds) {
 		const element = document.getElementById(key);
 		if (!element) continue;
@@ -775,7 +767,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 		if (window.isSaveAsPlaylistActive) {
 			const playlistThumbnailElement = document.getElementById("thumbnailImage0");
 			if (playlistThumbnailElement && playlistThumbnailElement.style && playlistThumbnailElement.style.backgroundImage) {
-				const thumbnailPath = path.join(thumbnailFolder, `${playlistName}_playlist.jpg`);
+				const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
 				const bgImage = playlistThumbnailElement.style.backgroundImage;
 				const thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
 				if (thumbnailUrl.startsWith("data:image")) {
@@ -803,7 +795,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 				continue;
 			}
 
-			const songThumbnail = `${songId}.jpg`;
 			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
 			let success = false;
@@ -885,17 +876,17 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 
 			await processThumbnail(thumbnailUrl, songId);
 
-			if (songId && songTitle && songLink && songThumbnail && duration != null) {
+			if (songId && songTitle && songLink && duration != null) {
 				try {
 					musicsDb
 						.prepare(
 							`INSERT INTO songs (
-                            song_id, song_name, song_url, song_thumbnail,
+                            song_id, song_name, song_url,
                             song_length, seconds_played, times_listened, stabilised,
                             size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-                        ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100, ?, ?)`
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 						)
-						.run(songId, songTitle, songLink, songThumbnail, duration, stabiliseVolumeToggle, fileSize);
+						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, ".mp3", ".jpg");
 				} catch (err) {
 					console.log(`DB insert failed for ${songTitle}: ${err.message}`);
 				}
@@ -904,7 +895,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName) {
 					songId,
 					songTitle,
 					songLink,
-					songThumbnail,
 					duration,
 				});
 			}
@@ -959,20 +949,19 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 	});
 }
 
-function saveAsPlaylist(songIds, playlistName) {
-	const playlistID = generateId();
-	const thumbnailPath = path.join(thumbnailFolder, `${playlistID}_playlist.jpg`);
+function saveAsPlaylist(songIds, playlistName, playlistID) {
+	const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
 	const songsJson = JSON.stringify(songIds.map(id => id.trim()));
 
 	try {
 		playlistsDb
 			.prepare(
 				`
-            INSERT INTO playlists (id, name, songs, thumbnail)
+            INSERT INTO playlists (id, name, songs, thumbnail_extension)
             VALUES (?, ?, ?, ?)
             `
 			)
-			.run(playlistID, playlistName, songsJson, thumbnailPath);
+			.run(playlistID, playlistName, songsJson, ".jpg");
 	} catch (err) {
 		console.log("Failed to save playlist:", err);
 	}
@@ -987,7 +976,7 @@ function openAddToPlaylistModalStaging(songId) {
 	allPlaylists.forEach(playlist => {
 		const checkbox = document.createElement("input");
 		checkbox.type = "checkbox";
-		checkbox.id = playlist.name;
+		checkbox.id = playlist.id;
 		checkbox.value = songId;
 		if ((pendingPlaylistAddsWithIds.get(songId) || []).includes(playlist.name)) checkbox.checked = true;
 		const label = document.createElement("label");
@@ -1015,13 +1004,13 @@ function openAddToPlaylistModalStaging(songId) {
 
 async function commitStagedPlaylistAdds() {
 	for (const [song, lists] of pendingPlaylistAddsWithIds.entries()) {
-		lists.forEach(listName => {
-			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(listName);
+		lists.forEach(listID => {
+			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE id = ?").get(listID);
 			let songs = JSON.parse(playlist.songs);
 
 			if (!songs.includes(song)) {
 				songs.push(song);
-				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(JSON.stringify(songs), listName);
+				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(JSON.stringify(songs), listID);
 			}
 		});
 	}

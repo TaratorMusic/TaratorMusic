@@ -6,6 +6,48 @@ function formatTime(seconds) {
 	return `${minutesDisplay}:${secondsDisplay}`;
 }
 
+function threeWayModal(description, button1 = "Option 1", button2 = "Option 2", button3 = "Option 3", value1 = "option1", value2 = "option2", value3 = "option3") {
+	return new Promise(resolve => {
+		const overlay = document.createElement("div");
+		overlay.className = "confirm-modal-overlay";
+
+		const actions = document.createElement("div");
+		actions.className = "confirm-modal-actions";
+
+		const btn1 = document.createElement("button");
+		btn1.id = "threeWayModalBtn1";
+		btn1.textContent = button1;
+		actions.appendChild(btn1);
+
+		const btn2 = document.createElement("button");
+		btn2.id = "threeWayModalBtn2";
+		btn2.textContent = button2;
+		actions.appendChild(btn2);
+
+		const btn3 = document.createElement("button");
+		btn3.id = "threeWayModalBtn3";
+		btn3.textContent = button3;
+		actions.appendChild(btn3);
+
+		const modal = document.createElement("div");
+		modal.className = "confirm-modal";
+		modal.innerHTML = `<p>${description}</p>`;
+		modal.appendChild(actions);
+
+		overlay.appendChild(modal);
+		document.body.appendChild(overlay);
+
+		function cleanup(result) {
+			overlay.remove();
+			resolve(result);
+		}
+
+		btn1.addEventListener("click", () => cleanup(value1));
+		btn2.addEventListener("click", () => cleanup(value2));
+		btn3.addEventListener("click", () => cleanup(value3));
+	});
+}
+
 function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
 	return new Promise(resolve => {
 		const overlay = document.createElement("div");
@@ -94,4 +136,17 @@ async function openThisModal(modalName) {
 
 function removeExtensions(input) {
 	return input.replace(/\.[^/.]+$/, "");
+}
+
+function parseTimeToSeconds(timeStr) {
+	if (typeof timeStr !== "string") return null;
+	const parts = timeStr.split(":").map(Number);
+	if (parts.some(isNaN)) return null;
+
+	if (parts.length == 2) {
+		return parts[0] * 60 + parts[1];
+	} else if (parts.length == 3) {
+		return parts[0] * 3600 + parts[1] * 60 + parts[2];
+	}
+	return null;
 }

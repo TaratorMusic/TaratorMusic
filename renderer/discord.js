@@ -2,8 +2,9 @@ const clientId = "1258898699816275969";
 const DiscordRPC = require("discord-rpc");
 
 let RPC = null;
-let discordApi = localStorage.getItem("discordApi") == "true"; // TODO: DONT USE LOCALSTORAGE, USE DB
-document.getElementById("toggleSwitchDiscord").checked = discordApi; // MOVE TO DOMCONTENTLOADED
+let settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
+let discordApi = settingsRow.dc_rpc == "1";
+document.getElementById("toggleSwitchDiscord").checked = discordApi;
 
 function createRPC() {
 	RPC = new DiscordRPC.Client({ transport: "ipc" });
@@ -44,20 +45,6 @@ function toggleDiscordAPI() {
 		destroyRPC();
 		updateDiscordPresence();
 	}
-}
-
-function parseTimeToSeconds(timeStr) {
-	// TODO: transfer to helpers.js
-	if (typeof timeStr !== "string") return null;
-	const parts = timeStr.split(":").map(Number);
-	if (parts.some(isNaN)) return null;
-
-	if (parts.length == 2) {
-		return parts[0] * 60 + parts[1];
-	} else if (parts.length == 3) {
-		return parts[0] * 3600 + parts[1] * 60 + parts[2];
-	}
-	return null;
 }
 
 async function updateDiscordPresence() {

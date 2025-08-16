@@ -65,37 +65,34 @@ async function redownloadAllSongs() {
 
 	await openThisModal("download");
 	await checkNameThumbnail(true);
-
 	downloadingStyle = "redownload";
-
 	const songs = [];
-	let checkAllSongs = null;
+
+	let checkAllSongs = await threeWayModal("How would you like to handle songs with missing URLs?", "Search for All", "Ask for Each", "Skip All", "SearchForAll", "AskForAll", "SkipAll");
 
 	for (let i = 0; i < filteredRows.length; i++) {
 		const row = filteredRows[i];
 		let info;
-
 		try {
 			info = await ytdl.getInfo(row.song_url);
 			document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
 		} catch (err) {
-			if (checkAllSongs == false) {
+			if (checkAllSongs == "SkipAll") {
 				continue;
-			} else if (checkAllSongs == null) {
-				const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No"); // TODO: Skip all / Search all / Ask diye EN BAŞTA SORSUN
-				// Return true, return false, or close the modal
-				// YA da iki kere sor ardarda
+			} else if (checkAllSongs == "AskForAll") {
+				const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No");
+				if (!confirmed) {
+					continue;
+				}
 			}
 
-			if (checkAllSongs == true || confirmed) {
+			if (checkAllSongs == "SearchForAll" || (checkAllSongs == "AskForAll" && confirmed)) {
 				try {
 					const newUrl = await searchInYoutube(row.song_name);
 					info = await ytdl.getInfo(newUrl);
 				} catch (e) {
 					continue;
 				}
-			} else {
-				continue;
 			}
 		}
 
@@ -107,7 +104,6 @@ async function redownloadAllSongs() {
 		}, thumbnails[0] || {});
 
 		const thumbnailUrl = bestThumbnail.url || "";
-
 		songs.push({
 			url: row.song_url,
 			id: row.song_id,

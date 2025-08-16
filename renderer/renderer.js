@@ -63,7 +63,7 @@ let isAutoplayActive = false;
 let isLooping = false;
 let fileToDelete = null;
 let playedSongs = [];
-let newPlaylistName = null;
+let newPlaylistID = null;
 let disableKeyPresses = 0;
 let songStartTime = 0;
 let previousVolume = null;
@@ -121,7 +121,7 @@ const defaultSettings = {
 	displayCount: 4,
 	background: "green",
 	stabiliseVolumeToggle: 1,
-	dc_rpc: 0, // TODO
+	dc_rpc: 0,
 	dc_bot: 0,
 	dc_bot_token: null,
 	dc_channel_id: null,
@@ -261,7 +261,6 @@ function initializeMusicsDatabase() {
 		{ name: "song_id", type: "TEXT PRIMARY KEY" },
 		{ name: "song_name", type: "TEXT" },
 		{ name: "song_url", type: "TEXT" },
-		{ name: "song_thumbnail", type: "TEXT" },
 		{ name: "song_extension", type: "TEXT" },
 		{ name: "thumbnail_extension", type: "TEXT" },
 		{ name: "seconds_played", type: "INTEGER" },
@@ -305,7 +304,7 @@ function initializePlaylistsDatabase() {
                 id TEXT PRIMARY KEY,
                 name TEXT,
                 songs TEXT,
-                thumbnail TEXT
+                thumbnail_extension TEXT
             )
         `
 			)
@@ -313,8 +312,9 @@ function initializePlaylistsDatabase() {
 
 		const pragma = playlistsDb.prepare(`PRAGMA table_info(playlists)`).all();
 		const idColumn = pragma.find(col => col.name == "id");
+		const hasThumbnail = pragma.some(col => col.name == "thumbnail");
 
-		if (idColumn && idColumn.type.toUpperCase() == "INTEGER") {
+		if ((idColumn && idColumn.type.toUpperCase() == "INTEGER") || hasThumbnail) {
 			playlistsDb
 				.prepare(
 					`
@@ -322,7 +322,7 @@ function initializePlaylistsDatabase() {
                     id TEXT PRIMARY KEY,
                     name TEXT,
                     songs TEXT,
-                    thumbnail TEXT
+                    thumbnail_extension TEXT
                 )
             `
 				)
@@ -330,24 +330,29 @@ function initializePlaylistsDatabase() {
 
 			const rows = playlistsDb.prepare(`SELECT * FROM playlists`).all();
 			const insert = playlistsDb.prepare(`
-                INSERT INTO playlists_new (id, name, songs, thumbnail) VALUES (?, ?, ?, ?)
+                INSERT INTO playlists_new (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)
             `);
 
 			playlistsDb.transaction(() => {
 				for (const row of rows) {
-					insert.run(row.id.toString(), row.name, row.songs, row.thumbnail);
+					let ext = null;
+					if (row.thumbnail) {
+						const match = row.thumbnail.match(/\.([a-zA-Z0-9]+)$/);
+						ext = match ? match[1].toLowerCase() : null;
+					} else if (row.thumbnail_extension) {
+						ext = row.thumbnail_extension;
+					}
+					insert.run(row.id.toString(), row.name, row.songs, ext);
 				}
 				playlistsDb.prepare(`DROP TABLE playlists`).run();
 				playlistsDb.prepare(`ALTER TABLE playlists_new RENAME TO playlists`).run();
 			})();
 		}
 
-		let starThumb = path.join(appThumbnailFolder, "star.svg");
-
 		playlistsDb.transaction(() => {
 			const fav = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get("Favorites");
 			if (!fav) {
-				playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail) VALUES (?, ?, ?, ?)").run("1", "Favorites", JSON.stringify([]), starThumb);
+				playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run("1", "Favorites", JSON.stringify([]), "svg");
 			}
 		})();
 
@@ -490,7 +495,7 @@ async function myMusicOnClick() {
 
 	displayCountSelect.onchange = () => handleDropdownChange("displayCount", displayCountSelect);
 
-	const songRows = musicsDb.prepare("SELECT song_id, song_thumbnail, song_length, song_extension FROM songs").all();
+	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension FROM songs").all();
 	const songCountElement = document.createElement("div");
 	songCountElement.innerText = `${songRows.length} songs.`;
 
@@ -507,12 +512,10 @@ async function myMusicOnClick() {
 		.map(databaseRow => ({
 			id: databaseRow.song_id,
 			name: `${databaseRow.song_id}.${databaseRow.song_extension}`,
-			thumbnail: databaseRow.song_thumbnail ? `file://${databaseRow.song_thumbnail}` : null,
+			thumbnail: `file://${databaseRow.id + databaseRow.thumbnail_extension}`,
 			length: databaseRow.song_length || 0,
 		}))
 		.sort((songA, songB) => getSongNameCached(songA.id).toLowerCase().localeCompare(getSongNameCached(songB.id).toLowerCase()));
-
-    console.log(musicFiles);
 
 	let filteredSongs = [...musicFiles];
 	let previousItemsPerRow = null;
@@ -525,7 +528,7 @@ async function myMusicOnClick() {
 		filteredSongs.slice(0, maxVisible).forEach(songFile => {
 			const musicElement = createMusicElement(songFile);
 			if (songFile.id == removeExtensions(secondfilename)) musicElement.classList.add("playing");
-			musicElement.addEventListener("click", () => playMusic(songFile, false));
+			musicElement.addEventListener("click", () => playMusic(songFile.id, false));
 			musicListContainer.appendChild(musicElement);
 		});
 		setupLazyBackgrounds();
@@ -633,6 +636,7 @@ async function playMusic(file, isPlaylist) {
 
 		audioElement = new Audio();
 		manageAudioControls(audioElement);
+		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(file);
 
 		audioElement.addEventListener("loadedmetadata", () => {
 			songDuration = audioElement.duration;
@@ -640,11 +644,12 @@ async function playMusic(file, isPlaylist) {
 
 		audioElement.controls = true;
 		audioElement.autoplay = true;
-		secondfilename = file.name;
 
-		songName.textContent = getSongNameById(removeExtensions(file.name));
+		secondfilename = file;
 
-		audioElement.src = `file://${path.join(musicFolder, secondfilename)}`;
+		songName.textContent = getSongNameById(file);
+
+		audioElement.src = `file://${path.join(musicFolder, secondfilename + "." + row.song_extension)}`;
 		audioElement.volume = volumeControl.value / 100 / dividevolume;
 		audioElement.playbackRate = rememberspeed;
 		audioElement.loop = isLooping == true;
@@ -663,13 +668,7 @@ async function playMusic(file, isPlaylist) {
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
 
-		const fileNameWithoutExtension = path.parse(file.name).name;
-		const encodedFileName = encodeURIComponent(fileNameWithoutExtension);
-		const decodedFileName = decodeURIComponent(encodedFileName);
-		const row = musicsDb.prepare("SELECT thumbnail_extension FROM songs WHERE song_id = ?").get(decodedFileName);
-		const thumbnailFileName = `${decodedFileName}.${row.thumbnail_extension}`;
-		const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
-
+		const thumbnailPath = path.join(thumbnailFolder, `${file}.${row.thumbnail_extension}`.replace(/%20/g, " "));
 		let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
 
 		if (fs.existsSync(thumbnailPath)) {
@@ -693,8 +692,8 @@ async function playMusic(file, isPlaylist) {
 
 		if (isShuffleActive) {
 			if (currentPlaylist) {
-				if (newPlaylistName !== currentPlaylist.name) {
-					newPlaylistName = currentPlaylist.name;
+				if (newPlaylistID !== currentPlaylist.id) {
+					newPlaylistID = currentPlaylist.id;
 					playlistPlayedSongs.splice(0, 9999);
 				}
 				playlistPlayedSongs.unshift(secondfilename);
@@ -792,10 +791,9 @@ async function playPlaylist(playlist, startingIndex = 0) {
 	currentPlaylist = playlist;
 
 	for (let i = startingIndex; i < playlist.songs.length; i++) {
-		let songName = playlist.songs[i] + ".mp3";
-		const file = { name: songName };
+		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(playlist.songs[i]);
 		currentPlaylistElement = i;
-		await playMusic(file, true);
+		await playMusic(playlist.songs[i] + "." + row.song_extension, true);
 		if (!isAutoplayActive) {
 			break;
 		}
@@ -823,25 +821,19 @@ async function playPreviousSong() {
 	if (isShuffleActive) {
 		if (currentPlaylist) {
 			if (playlistPlayedSongs.length > 1) {
-				const previousSongName = playlistPlayedSongs[1];
-				const file = { name: previousSongName };
-				playMusic(file, true);
+				playMusic(playlistPlayedSongs[1], true);
 				playlistPlayedSongs.splice(0, 2);
 			}
 		} else {
 			if (playedSongs.length > 1) {
-				const previousSongName = playedSongs[1];
-				const file = { name: previousSongName };
-				playMusic(file, false);
+				playMusic(playedSongs[1], false);
 				playedSongs.splice(0, 2);
 			}
 		}
 	} else {
 		if (currentPlaylist) {
 			if (currentPlaylistElement > 0) {
-				const previousSongName = currentPlaylist.songs[currentPlaylistElement - 1];
-				const file = { name: previousSongName + ".mp3" };
-				playMusic(file, true);
+				playMusic(currentPlaylist.songs[currentPlaylistElement - 1], true);
 				currentPlaylistElement--;
 			}
 		} else {
@@ -854,10 +846,8 @@ async function playPreviousSong() {
 			}
 
 			const previousIndex = currentIndex > 0 ? currentIndex - 1 : sortedSongIds.length - 1;
-			const previousSongId = sortedSongIds[previousIndex];
 
-			const file = { name: previousSongId + ".mp3" };
-			playMusic(file, false);
+			playMusic(sortedSongIds[previousIndex], false);
 		}
 	}
 }
@@ -919,8 +909,7 @@ async function playNextSong() {
 	}
 
 	if (nextSongId) {
-		const file = { name: nextSongId + ".mp3" };
-		playMusic(file, !!currentPlaylist);
+		playMusic(nextSongId, !!currentPlaylist);
 	}
 }
 
@@ -934,9 +923,7 @@ async function randomSongFunctionMainMenu() {
 		}
 	}
 
-	const nextSongName = musicItems[randomIndex].song_id;
-	const file = { name: nextSongName + ".mp3" };
-	playMusic(file, false);
+	playMusic(musicItems[randomIndex].song_id, false);
 }
 
 async function randomPlaylistFunctionMainMenu() {
@@ -954,7 +941,7 @@ async function randomPlaylistFunctionMainMenu() {
 		return;
 	}
 
-	const availablePlaylists = currentPlaylist ? nonEmptyPlaylists.filter(pl => pl.name !== currentPlaylist.name) : nonEmptyPlaylists;
+	const availablePlaylists = currentPlaylist ? nonEmptyPlaylists.filter(pl => pl.id !== currentPlaylist.id) : nonEmptyPlaylists;
 
 	if (availablePlaylists.length == 0) {
 		console.log("No other playlists available to play.");
@@ -1141,10 +1128,9 @@ async function saveEditedSong() {
 	if (newThumbFile) {
 		const data = fs.readFileSync(newThumbFile.path);
 		fs.writeFileSync(thumbnailPath, data);
-		if (thumbnailPath !== thumbnailPath && fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
 	}
 
-	musicsDb.prepare("UPDATE songs SET song_name = ?, song_thumbnail = ? WHERE song_id = ?").run(newNameInput, thumbnailPath, songID);
+	musicsDb.prepare("UPDATE songs SET song_name = ?, WHERE song_id = ?").run(newNameInput, songID);
 
 	document.getElementById("customizeModal").style.display = "none";
 	document.getElementById("my-music").click();
@@ -1180,7 +1166,7 @@ async function saveEditedSong() {
 async function removeSong() {
 	if (!(await confirmModal("Delete this song?", "Delete", "Keep"))) return;
 
-	const row = musicsDb.prepare("SELECT song_extension,thumbnail_extension FROM songs WHERE song_id = ?").get(fileToDelete);
+	const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(fileToDelete);
 
 	const musicFilePath = path.join(musicFolder, fileToDelete + "." + row.song_extension);
 	const thumbnailFilePath = path.join(thumbnailFolder, fileToDelete + "." + row.thumbnailExtension);
@@ -1404,14 +1390,14 @@ function addToPlaylistButtonFromBottomRight() {
 function addToFavorites() {
 	if (secondfilename) {
 		let songs = [];
-		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE name = 'Favorites'").get();
+		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE id = 1").get();
 		if (fav && fav.songs) {
 			songs = JSON.parse(fav.songs);
 		}
 
 		if (!songs.includes(removeExtensions(secondfilename))) {
 			songs.push(removeExtensions(secondfilename));
-			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = 'Favorites'").run(JSON.stringify(songs));
+			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = 1").run(JSON.stringify(songs));
 
 			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") {
 				getPlaylists();

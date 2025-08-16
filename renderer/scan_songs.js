@@ -98,29 +98,26 @@ async function cleanDebugFiles() {
 	const regex = /^174655\d+-player-script\.js$/;
 
 	document.getElementById("cleanProgress").innerText = `Cleaning debug files...`;
-	await new Promise(resolve => setTimeout(resolve, 10));
-
+	await sleep(10);
 	fs.readdirSync(taratorFolder).forEach(file => {
 		if (regex.test(file)) {
 			fs.unlinkSync(path.join(taratorFolder, file));
 		}
 	});
 
-	document.getElementById("cleanProgress").innerText = `Cleaning broken songs...`;
-	await new Promise(resolve => setTimeout(resolve, 10));
-
 	try {
 		document.getElementById("cleanProgress").innerText = `Cleaning the database...`;
-		await new Promise(resolve => setTimeout(resolve, 10));
+		await sleep(10);
 
 		const musicFiles = fs.readdirSync(musicFolder);
 		const allSongs = musicsDb.prepare(`SELECT song_id FROM songs`).all();
 		const deleteSong = musicsDb.prepare(`DELETE FROM songs WHERE song_id = ?`);
 
 		allSongs.forEach(song => {
-			const exists = musicFiles.some(f => f.startsWith(song.song_id + "."));
+			const exists = musicFiles.some(f => f.startsWith(song.song_id));
 			if (!exists) {
 				deleteSong.run(song.song_id);
+				console.log("Deleted", song.song_id);
 			}
 		});
 
@@ -152,67 +149,110 @@ async function cleanDebugFiles() {
 }
 
 async function processNewSongs() {
-	const files = fs.readdirSync(musicFolder);
-	for (const name of files) {
-		if (name.includes("tarator")) continue;
+	try {
+		const files = await fs.promises.readdir(musicFolder);
+		const audioExtensions = new Set([".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"]);
+		const audioFiles = [];
 
-		const fullPath = path.join(musicFolder, name);
-		if (!fs.statSync(fullPath).isFile()) continue;
+		for (const fileName of files) {
+			if (fileName.includes("tarator")) continue;
 
-		const songName = removeExtensions(name);
-		document.getElementById("folderProgress").innerText = `Found new song: ${songName}`;
+			const fullPath = path.join(musicFolder, fileName);
 
-		const songId = generateId();
-		let duration = null;
-		try {
-			const metadata = await new Promise((resolve, reject) => {
-				ffmpeg.ffprobe(fullPath, (err, meta) => {
-					if (err) return reject(err);
-					resolve(meta);
-				});
-			});
+			try {
+				const stats = await fs.promises.stat(fullPath);
+				if (!stats.isFile()) continue;
 
-			if (metadata.format && metadata.format.duration) {
-				duration = Math.round(metadata.format.duration);
+				const ext = path.extname(fileName).toLowerCase();
+				if (audioExtensions.has(ext)) {
+					audioFiles.push(fileName);
+				}
+			} catch (error) {
+				console.log(`Cannot access file ${fileName}:`, error.message);
 			}
-			document.getElementById("folderProgress").innerText += ` Song length: ${duration} seconds`;
-		} catch (error) {
-			document.getElementById("folderProgress").innerText = `Failed to get duration for ${songName}: ${error.message}`;
 		}
 
-		const songExt = path.extname(name).slice(1).toLowerCase();
-		const newSongPath = path.join(musicFolder, `${songId}.${songExt}`);
-		fs.renameSync(fullPath, newSongPath);
-
-		let thumbnailExt = null;
-		let newThumbnailName = null;
-		const oldThumbnailBase = path.parse(name).name;
-		const thumbFiles = fs.readdirSync(thumbnailFolder);
-		const thumbFile = thumbFiles.find(f => path.parse(f).name === oldThumbnailBase);
-		if (thumbFile) {
-			thumbnailExt = path.extname(thumbFile).slice(1).toLowerCase();
-			newThumbnailName = `${songId}.${thumbnailExt}`;
-			fs.renameSync(path.join(thumbnailFolder, thumbFile), path.join(thumbnailFolder, newThumbnailName));
+		if (audioFiles.length === 0) {
+			document.getElementById("folderProgress").innerText = "No new audio files found.";
+			return;
 		}
 
-		const fileSize = fs.statSync(newSongPath).size;
+		document.getElementById("folderProgress").innerText = `Found ${audioFiles.length} audio file(s) to process...`;
 
-		try {
-			musicsDb
-				.prepare(
-					`INSERT INTO songs (
-                        song_id, song_name, song_url, song_thumbnail,
-                        song_length, seconds_played, times_listened, stabilised,
-                        size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-                    ) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?, 1, 0, 0, 0, 100, ?, ?)`
-				)
-				.run(songId, songName, newSongPath, newThumbnailName, duration, 1, songExt, thumbnailExt);
+		for (let i = 0; i < audioFiles.length; i++) {
+			const fileName = audioFiles[i];
+			const currentProgress = `(${i + 1}/${audioFiles.length})`;
 
-			document.getElementById("folderProgress").innerText = `Added ${songName} to database`;
-		} catch (error) {
-			document.getElementById("folderProgress").innerText = `Failed to add ${songName} to database: ${error.message}`;
+			try {
+				const fullPath = path.join(musicFolder, fileName);
+				const songName = removeExtensions(fileName);
+				const songId = generateId();
+
+				document.getElementById("folderProgress").innerText = `${currentProgress} Processing: ${songName}...`;
+
+				let duration = null;
+				try {
+					document.getElementById("folderProgress").innerText = `${currentProgress} Getting duration for: ${songName}...`;
+
+					const metadata = await new Promise((resolve, reject) => {
+						ffmpeg.ffprobe(fullPath, (err, meta) => {
+							if (err) return reject(err);
+							resolve(meta);
+						});
+					});
+
+					duration = metadata.format?.duration ? Math.round(metadata.format.duration) : null;
+
+					document.getElementById("folderProgress").innerText = `${currentProgress} Duration: ${duration ? `${duration}s` : "unknown"}`;
+				} catch (error) {
+					console.log(`Failed to get duration for ${songName}:`, error.message);
+					document.getElementById("folderProgress").innerText = `${currentProgress} Duration: unknown (${error.message})`;
+				}
+
+				const songExt = path.extname(fileName).slice(1).toLowerCase();
+				const newSongPath = path.join(musicFolder, `${songId}.${songExt}`);
+				await fs.promises.rename(fullPath, newSongPath);
+
+				let thumbnailExt = null;
+				try {
+					const oldThumbnailBase = path.parse(fileName).name;
+					const thumbFiles = await fs.promises.readdir(thumbnailFolder);
+					const thumbFile = thumbFiles.find(f => path.parse(f).name === oldThumbnailBase);
+
+					if (thumbFile) {
+						thumbnailExt = path.extname(thumbFile).slice(1).toLowerCase();
+						const oldThumbPath = path.join(thumbnailFolder, thumbFile);
+						const newThumbPath = path.join(thumbnailFolder, `${songId}.${thumbnailExt}`);
+
+						await fs.promises.rename(oldThumbPath, newThumbPath);
+					}
+				} catch (error) {
+					console.log(`Failed to process thumbnail for ${fileName}:`, error.message);
+				}
+
+				const stats = await fs.promises.stat(newSongPath);
+				const fileSize = stats.size;
+
+				const insertQuery = `
+                    INSERT INTO songs (
+                        song_id, song_name, song_url, song_length, seconds_played, 
+                        times_listened, stabilised, size, speed, bass, treble, 
+                        midrange, volume, song_extension, thumbnail_extension
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+
+				musicsDb.prepare(insertQuery).run(songId, songName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, songExt, thumbnailExt);
+
+				document.getElementById("folderProgress").innerText = `${currentProgress} Successfully added: ${songName}`;
+			} catch (error) {
+				console.error(`Failed to process ${fileName}:`, error);
+				document.getElementById("folderProgress").innerText = `${currentProgress} Failed to process ${fileName}: ${error.message}`;
+			}
 		}
+
+		document.getElementById("folderProgress").innerText = "Folder check complete!";
+	} catch (error) {
+		console.error("Error in processNewSongs:", error);
+		document.getElementById("folderProgress").innerText = `Error reading music folder: ${error.message}`;
 	}
-
-	document.getElementById("folderProgress").innerText = "Folder check complete!";
 }

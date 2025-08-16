@@ -31,19 +31,19 @@ function displayPlaylists(playlists) {
 	createPlaylistButton.addEventListener("click", () => {
 		document.getElementById("createPlaylistModal").style.display = "block";
 	});
-    createPlaylistButton.innerHTML = "Create New Playlist";
-    createPlaylistButton.style = "width: 15vw; height: 5vh; margin-left: 0.5vw"
+	createPlaylistButton.innerHTML = "Create New Playlist";
+	createPlaylistButton.style = "width: 15vw; height: 5vh; margin-left: 0.5vw";
 	playlistsContent.appendChild(createPlaylistButton);
 
 	playlists.forEach(playlist => {
 		const playlistElement = document.createElement("div");
 		playlistElement.className = "playlist";
-		playlistElement.setAttribute("data-playlist-name", playlist.name);
-		const thumbnailPath = playlist.thumbnail;
+		playlistElement.setAttribute("data-playlist-id", playlist.id);
+		const thumbnailPath = path.join(thumbnailFolder, `${playlist.id}.${playlist.thumbnail_extension}`);
 
 		let thumbnailSrc = "";
 
-		if (playlist.name == "Favorites") {
+		if (playlist.id == 1) {
 			thumbnailSrc = `file://${path.join(appThumbnailFolder, "star.svg").replace(/\\/g, "/")}?t=${Date.now()}`;
 		} else if (fs.existsSync(thumbnailPath)) {
 			thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
@@ -74,19 +74,19 @@ function displayPlaylists(playlists) {
 		playlistInfoandSongs.appendChild(playlistSongs);
 		playlistSongs.className = "playlist-songs";
 
-		if (playlist.name != "Favorites") {
+		if (playlist.id != "1") {
 			const playlistCustomiseButton = document.createElement("div");
 			playlistInfo.appendChild(playlistCustomiseButton);
 			playlistCustomiseButton.className = "playlist-button";
 			playlistCustomiseButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
 
 			playlistCustomiseButton.addEventListener("click", () => {
-				let theNameOfThePlaylist = playlist.name;
 				document.getElementById("editPlaylistModal").style.display = "block";
-				document.getElementById("editPlaylistNameInput").value = theNameOfThePlaylist;
-				document.getElementById("editInvisibleName").value = theNameOfThePlaylist;
+				document.getElementById("editPlaylistNameInput").value = playlist.name;
+				document.getElementById("editInvisibleId").value = playlist.id;
 				document.getElementById("editPlaylistThumbnail").src = thumbnailSrc;
 				document.getElementById("editInvisiblePhoto").src = thumbnailSrc;
+				document.getElementById("editInvisibleExtension").src = playlist.thumbnail_extension;
 			});
 		}
 
@@ -125,20 +125,20 @@ async function saveNewPlaylist() {
 
 	if (fileInput) {
 		srcPath = fileInput.path;
-		ext = path.extname(fileInput.name);
+		ext = path.extname(fileInput.name).slice(1);
 	} else {
 		srcPath = path.join(appThumbnailFolder, "placeholder.jpg");
-		ext = path.extname(srcPath);
+		ext = path.extname(srcPath).slice(1);
 	}
 
-	const dest = path.join(thumbnailFolder, `${name}_playlist${ext}`);
+	const dest = path.join(thumbnailFolder, `${id}.${ext}`);
 	const existing = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get(name);
 
 	if (existing) {
 		if (!(await confirmModal("A playlist with the same name exists, continue?", "Continue", "Return"))) return;
 	}
 
-	playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail) VALUES (?, ?, ?, ?)").run(id, name, JSON.stringify([]), dest);
+	playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run(id, name, JSON.stringify([]), ext);
 	fs.copyFileSync(srcPath, dest);
 
 	closeModal();
@@ -149,36 +149,29 @@ async function saveNewPlaylist() {
 }
 
 async function saveEditedPlaylist() {
-	const oldName = document.getElementById("editInvisibleName").value;
 	const newName = document.getElementById("editPlaylistNameInput").value.trim();
-
-	if (newName == "Favorites") {
-		await alertModal("Name of your playlist can't be 'Favorites'.");
-		return;
-	}
-
+	const playlistID = document.getElementById("editInvisibleId").value;
+	const playlistThumbnailExtension = document.getElementById("editInvisibleExtension").value;
 	const newThumbnail = document.getElementById("editPlaylistThumbnail").src;
-
-	const playlistElement = document.querySelector(`.playlist[data-playlist-name="${oldName}"]`);
-	playlistElement.setAttribute("data-playlist-name", newName);
+	const playlistElement = document.querySelector(`.playlist[data-playlist-id="${playlistID}"]`);
 	playlistElement.querySelector(".playlist-info div:first-child").textContent = newName;
 
-	const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(oldName);
-
-	if (!playlist) {
-		console.log("Playlist not found:", oldName);
-		return;
+	let newThumbnailExtension = null;
+	if (newThumbnail.startsWith("data:image")) {
+		const mimeMatch = newThumbnail.match(/^data:image\/(\w+);base64,/);
+		if (mimeMatch) {
+			newThumbnailExtension = mimeMatch[1];
+			if (newThumbnailExtension === "jpeg") {
+				newThumbnailExtension = "jpg";
+			}
+		}
 	}
 
-	const playlistId = playlist.id;
-	let thumbnailPath = playlist.thumbnail;
-
+	let thumbnailPath = path.join(thumbnailFolder, `${playlist.id}.${playlistThumbnailExtension}`);
 	const writeOrRenameThumbnailPromise = new Promise((resolve, reject) => {
 		if (newThumbnail.startsWith("data:image")) {
 			const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
 			const buffer = Buffer.from(base64Data, "base64");
-			thumbnailPath = path.join(thumbnailFolder, `${newName}_playlist.jpg`);
-
 			fs.writeFile(thumbnailPath, buffer, err => {
 				if (err) {
 					reject(err);
@@ -186,34 +179,16 @@ async function saveEditedPlaylist() {
 					resolve(`${thumbnailPath}?timestamp=${Date.now()}`);
 				}
 			});
-		} else if (oldName !== newName) {
-			const oldThumbPath = path.join(thumbnailFolder, `${oldName}_playlist.jpg`);
-			const newThumbPath = path.join(thumbnailFolder, `${newName}_playlist.jpg`);
-
-			if (fs.existsSync(oldThumbPath)) {
-				fs.rename(oldThumbPath, newThumbPath, err => {
-					if (err) {
-						reject(err);
-					} else {
-						thumbnailPath = newThumbPath;
-						resolve(`${newThumbPath}?timestamp=${Date.now()}`);
-					}
-				});
-			} else {
-				resolve(thumbnailPath);
-			}
 		} else {
 			resolve(thumbnailPath);
 		}
 	});
-
 	writeOrRenameThumbnailPromise
 		.then(resolvedPath => {
 			const imgElement = playlistElement.querySelector("img");
 			imgElement.src = "";
 			imgElement.src = resolvedPath;
-
-			playlistsDb.prepare("UPDATE playlists SET name = ?, thumbnail = ? WHERE id = ?").run(newName, resolvedPath.split("?")[0], playlistId);
+			playlistsDb.prepare("UPDATE playlists SET name = ?, thumbnail_extension = ? WHERE id = ?").run(newName, newThumbnailExtension, playlistID);
 			closeModal();
 		})
 		.catch(err => {
@@ -238,7 +213,7 @@ function openAddToPlaylistModal(songName) {
 		playlists.forEach(playlist => {
 			const checkbox = document.createElement("input");
 			checkbox.type = "checkbox";
-			checkbox.id = playlist.name;
+			checkbox.id = playlist.id;
 			checkbox.value = songName;
 
 			let songsInPlaylist = [];
@@ -281,8 +256,8 @@ function addToSelectedPlaylists(songName) {
 		.map(checkbox => checkbox.id);
 
 	try {
-		selectedPlaylists.forEach(playlistName => {
-			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistName);
+		selectedPlaylists.forEach(playlistId => {
+			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistId);
 
 			let songsInPlaylist = [];
 			if (playlist.songs) {
@@ -292,18 +267,18 @@ function addToSelectedPlaylists(songName) {
 			const songExists = songsInPlaylist.includes(songName);
 
 			if (songExists) {
-				console.log(`Song '${songName}' already exists in playlist '${playlistName}'.`);
+				console.log(`Song '${songName}' already exists in playlist '${playlistId}'.`);
 			} else {
 				songsInPlaylist.push(songName);
 				const updatedSongs = JSON.stringify(songsInPlaylist);
-				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(updatedSongs, playlistName);
-				console.log(`Song '${songName}' added to playlist '${playlistName}'.`);
+				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(updatedSongs, playlistId);
+				console.log(`Song '${songName}' added to playlist '${playlistId}'.`);
 			}
 		});
 
 		const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists").all();
 		allPlaylists.forEach(playlist => {
-			if (!selectedPlaylists.includes(playlist.name)) {
+			if (!selectedPlaylists.includes(playlist.id)) {
 				let songsInPlaylist = [];
 				if (playlist.songs) {
 					songsInPlaylist = JSON.parse(playlist.songs);
@@ -313,8 +288,8 @@ function addToSelectedPlaylists(songName) {
 				if (songExistsInPlaylist) {
 					const updatedSongs = songsInPlaylist.filter(song => song !== songName);
 					const newSongs = JSON.stringify(updatedSongs);
-					playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(newSongs, playlist.name);
-					console.log(`Song '${songName}' removed from playlist '${playlist.name}'.`);
+					playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(newSongs, playlist.id);
+					console.log(`Song '${songName}' removed from playlist '${playlist.id}'.`);
 				}
 			}
 		});
@@ -325,17 +300,13 @@ function addToSelectedPlaylists(songName) {
 	closeModal();
 }
 
-function deletePlaylist() {
-	if (!confirm("Are you sure you want to remove this playlist?")) return;
+async function deletePlaylist() {
+	if (!(await confirmModal("Are you sure you want to remove this playlist?"))) return;
 
 	const playlistName = document.getElementById("editInvisibleName").value;
-	const thumbnailPath = path.join(thumbnailFolder, playlistName + "_playlist.jpg");
-
-	const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistName);
-	if (!playlist) {
-		console.log("Playlist not found:", playlistName);
-		return;
-	}
+	const playlistID = document.getElementById("editInvisibleId").value;
+	const playlistThumbnailExtension = document.getElementById("editInvisibleExtension").value;
+	const thumbnailPath = path.join(thumbnailFolder, playlistID + "." + playlistThumbnailExtension);
 
 	fs.unlink(thumbnailPath, err => {
 		if (err) {
@@ -345,7 +316,7 @@ function deletePlaylist() {
 		console.log("File deleted successfully!");
 	});
 
-	playlistsDb.prepare("DELETE FROM playlists WHERE id = ?").run(playlist.id);
+	playlistsDb.prepare("DELETE FROM playlists WHERE id = ?").run(playlistID);
 
 	console.log(`Deleted playlist "${playlistName}" and its song links.`);
 
