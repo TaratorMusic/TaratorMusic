@@ -129,9 +129,13 @@ async function loadJSFile(filename) {
 
 async function openThisModal(modalName) {
 	if (modalName == "download") {
-		await loadJSFile("download_music");
 		document.getElementById("downloadModal").style.display = "block";
 	}
+}
+
+async function loadDownloadStuff() {
+	await loadJSFile("download_music");
+	checkNameThumbnail(false);
 }
 
 function removeExtensions(input) {
