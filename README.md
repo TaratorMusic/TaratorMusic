@@ -121,4 +121,11 @@ You can contact me and suggest more improvements and i will do my best implement
 I will focus on the designs after implementing the features planned, since they can change anytime, it would take too much time redesigning.   
 Currently just focusing on adding as much features as possible.
 
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/6ceb7ca6-1d86-43db-a7c2-d710cf1b943b" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/e478dcf1-1c98-43f6-99ea-19b664eefb5c" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/9d080d17-e830-476d-887f-e74a9f2f7c1a" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/0af91765-0663-421e-b253-3b3577aa1cf3" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/271b74a4-19e9-43a5-8802-5f5da965f1e3" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/3a48bc2e-0382-4ebe-aac6-feb28615a9aa" />
+
 ## [LICENSE](LICENSE)
