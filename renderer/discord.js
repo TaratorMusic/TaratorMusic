@@ -2,9 +2,16 @@ const clientId = "1258898699816275969";
 const DiscordRPC = require("discord-rpc");
 
 let RPC = null;
-let settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
-let discordApi = settingsRow.dc_rpc == "1";
-document.getElementById("toggleSwitchDiscord").checked = discordApi;
+
+let discordRPCstatus = false;
+try {
+	let settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
+	discordRPCstatus = settingsRow ? settingsRow.dc_rpc == "1" : false;
+} catch {
+	discordRPCstatus = false;
+}
+
+document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
 
 function createRPC() {
 	RPC = new DiscordRPC.Client({ transport: "ipc" });
@@ -33,13 +40,13 @@ function destroyRPC() {
 	}
 }
 
-discordApi ? createRPC() : updateDiscordPresence();
+discordRPCstatus ? createRPC() : updateDiscordPresence();
 
 function toggleDiscordAPI() {
-	discordApi = !discordApi;
-	localStorage.setItem("discordApi", discordApi.toString());
+	discordRPCstatus = !discordRPCstatus;
+	updateDatabase("dc_rpc", discordRPCstatus, settingsDb);
 
-	if (discordApi) {
+	if (discordRPCstatus) {
 		createRPC();
 	} else {
 		destroyRPC();
@@ -48,7 +55,7 @@ function toggleDiscordAPI() {
 }
 
 async function updateDiscordPresence() {
-	if (discordApi && RPC) {
+	if (discordRPCstatus && RPC) {
 		if (!RPC.transport || RPC.transport.socket?.destroyed) {
 			document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Down";
 			document.getElementById("mainmenudiscordapi").style.color = "red";
