@@ -409,6 +409,7 @@ function updateTimer() {
 
 setInterval(() => {
 	totalTimeSpent += 60;
+    sessionTimeSpent += 60;
 	updateDatabase("totalTimeSpent", totalTimeSpent, settingsDb);
 	updateTimer();
 }, 60000);

@@ -638,7 +638,7 @@ async function actuallyDownloadTheSong() {
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
 				} catch (error) {
 					console.log("Audio normalization failed:", error);
-                    stabiliseVolumeToggle = 0;
+					stabiliseVolumeToggle = 0;
 					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
 				}
 			} else {
@@ -830,7 +830,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					document.getElementById("downloadModalText").innerText = `Stabilising volume for song ${i + 1} of ${totalSongs}: ${songTitle}`;
 					await normalizeAudio(outputPath);
 				} catch (error) {
-                    stabiliseVolumeToggle = 0;
+					stabiliseVolumeToggle = 0;
 					console.log(`Audio normalization failed for ${songTitle}:`, error);
 				}
 			} else {
@@ -1017,15 +1017,4 @@ async function commitStagedPlaylistAdds() {
 		});
 	}
 	pendingPlaylistAddsWithIds.clear();
-}
-
-function cleanDownloadModal() {
-	document.getElementById("downloadFirstInput").value = "";
-
-	const secondPhase = document.getElementById("downloadSecondPhase");
-	if (secondPhase) {
-		secondPhase.remove();
-	}
-
-	closeModal();
 }

@@ -138,6 +138,17 @@ async function loadDownloadStuff() {
 	checkNameThumbnail(false);
 }
 
+function cleanDownloadModal() {
+	document.getElementById("downloadFirstInput").value = "";
+
+	const secondPhase = document.getElementById("downloadSecondPhase");
+	if (secondPhase) {
+		secondPhase.remove();
+	}
+
+	closeModal();
+}
+
 function removeExtensions(input) {
 	return input.replace(/\.[^/.]+$/, "");
 }
