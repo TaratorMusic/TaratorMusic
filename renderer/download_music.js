@@ -638,6 +638,7 @@ async function actuallyDownloadTheSong() {
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
 				} catch (error) {
 					console.log("Audio normalization failed:", error);
+                    stabiliseVolumeToggle = 0;
 					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
 				}
 			} else {
@@ -672,7 +673,7 @@ async function actuallyDownloadTheSong() {
                             size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 					)
-					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, ".mp3", ".jpg");
+					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg");
 				await commitStagedPlaylistAdds();
 			} catch (err) {
 				console.log("Failed to insert song into DB:", err);
@@ -829,6 +830,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					document.getElementById("downloadModalText").innerText = `Stabilising volume for song ${i + 1} of ${totalSongs}: ${songTitle}`;
 					await normalizeAudio(outputPath);
 				} catch (error) {
+                    stabiliseVolumeToggle = 0;
 					console.log(`Audio normalization failed for ${songTitle}:`, error);
 				}
 			} else {
@@ -886,7 +888,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
                             size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 						)
-						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, ".mp3", ".jpg");
+						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg");
 				} catch (err) {
 					console.log(`DB insert failed for ${songTitle}: ${err.message}`);
 				}

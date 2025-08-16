@@ -1,6 +1,6 @@
 More jest tests
 Make three-way & two-way & one-way modal functions into one
-This session time spent
+Improve download modal opening speeds
 Instead of favorites being id=1 make it id=favorites but change to favorites if already 1
 Save each songs listen data as timestamps and length in a new database table for statistics. (SAVE AS UNIX!)
 Customise RPC section in the settings

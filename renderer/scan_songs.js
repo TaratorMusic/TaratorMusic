@@ -22,24 +22,25 @@ async function normalizeAudio(filePath) {
 
 	const dir = path.dirname(filePath);
 	const base = path.basename(filePath, "." + ext);
-	const tmpPath = path.join(dir, `${base}.${Date.now()}.${ext}`);
+	const tmpPath = path.join(dir, `${base}.!${Date.now()}.${ext}`);
 
 	await new Promise((resolve, reject) => {
-		ffmpeg(filePath)
-			.audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11")
-			.audioCodec(codec)
-			.on("error", err => reject(err))
-			.on("end", resolve)
-			.save(tmpPath);
+		ffmpeg(filePath).audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11").audioCodec(codec).on("error", reject).on("end", resolve).save(tmpPath);
 	});
 
-	await fs.rename(tmpPath, filePath);
+	await new Promise((resolve, reject) => {
+		fs.rename(tmpPath, filePath, err => {
+			if (err) reject(err);
+			else resolve();
+		});
+	});
+
 	return filePath;
 }
 
 async function processAllFiles() {
 	const allFiles = fs.readdirSync(musicFolder);
-	const tempFiles = allFiles.filter(f => f.startsWith(".normalized_") || f.startsWith("normalized_") || f.includes("temp_normalized"));
+	const tempFiles = allFiles.filter(f => f.includes("!"));
 	if (tempFiles.length > 0) {
 		console.log(`Cleaning up ${tempFiles.length} temporary files...`);
 		tempFiles.forEach(tempFile => {
