@@ -320,9 +320,9 @@
 			<input type="range" id="volume" min="0" max="100" value="100" />
 			<button id="songSettingsButton" class="audio-button"></button>
 			<div id="settingsMenu" class="settings-menu">
-				<div class="settingsMenuButtons" onclick="addToPlaylistButtonFromBottomRight()">Add to Playlist</div>
-				<div class="settingsMenuButtons" onclick="addToFavorites()">Add to Favorites</div>
-				<div class="settingsMenuButtons" onclick="customiseSongButtonFromBottomRight()">Customise Song</div>
+				<div class="settingsMenuButtons" onclick="bottomRightFunctions('addToPlaylist')">Add to Playlist</div>
+				<div class="settingsMenuButtons" onclick="bottomRightFunctions('addToFavorites')">Add to Favorites</div>
+				<div class="settingsMenuButtons" onclick="bottomRightFunctions('customise')">Customise Song</div>
 			</div>
 		</div>
 		<div id="tooltip"></div>

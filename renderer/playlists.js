@@ -43,7 +43,7 @@ function displayPlaylists(playlists) {
 
 		let thumbnailSrc = "";
 
-		if (playlist.id == 1) {
+		if (playlist.id == "Favorites") {
 			thumbnailSrc = `file://${path.join(appThumbnailFolder, "star.svg").replace(/\\/g, "/")}?t=${Date.now()}`;
 		} else if (fs.existsSync(thumbnailPath)) {
 			thumbnailSrc = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
@@ -74,7 +74,7 @@ function displayPlaylists(playlists) {
 		playlistInfoandSongs.appendChild(playlistSongs);
 		playlistSongs.className = "playlist-songs";
 
-		if (playlist.id != "1") {
+		if (playlist.id != "Favorites") {
 			const playlistCustomiseButton = document.createElement("div");
 			playlistInfo.appendChild(playlistCustomiseButton);
 			playlistCustomiseButton.className = "playlist-button";
@@ -113,10 +113,6 @@ async function saveNewPlaylist() {
 	const name = document.getElementById("playlistNameInput").value.trim();
 
 	if (!name) await alertModal("Playlist name required.");
-	if (name == "Playlists") {
-		await alertModal("Name of your playlist can't be 'Favorites'.");
-		return;
-	}
 
 	const id = generateId();
 

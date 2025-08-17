@@ -353,7 +353,7 @@ function initializePlaylistsDatabase() {
 		playlistsDb.transaction(() => {
 			const fav = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get("Favorites");
 			if (!fav) {
-				playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run("1", "Favorites", JSON.stringify([]), "svg");
+				playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run("Favorites", "Favorites", JSON.stringify([]), "svg");
 			}
 		})();
 
@@ -409,7 +409,7 @@ function updateTimer() {
 
 setInterval(() => {
 	totalTimeSpent += 60;
-    sessionTimeSpent += 60;
+	sessionTimeSpent += 60;
 	updateDatabase("totalTimeSpent", totalTimeSpent, settingsDb);
 	updateTimer();
 }, 60000);
@@ -1386,34 +1386,27 @@ async function createAppThumbnailsFolder() {
 	}
 }
 
-function customiseSongButtonFromBottomRight() {
-	if (secondfilename) {
-		openCustomizeModal(secondfilename);
-	}
-}
-
-function addToPlaylistButtonFromBottomRight() {
-	if (secondfilename) {
+function bottomRightFunctions(input) {
+	if (!secondfilename) return;
+	if (input == "addToPlaylist") {
 		openAddToPlaylistModal(removeExtensions(secondfilename));
-	}
-}
-
-function addToFavorites() {
-	if (secondfilename) {
+	} else if (input == "addToFavorites") {
 		let songs = [];
-		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE id = 1").get();
+		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE id = ?").get("Favorites");
 		if (fav && fav.songs) {
 			songs = JSON.parse(fav.songs);
 		}
 
 		if (!songs.includes(removeExtensions(secondfilename))) {
 			songs.push(removeExtensions(secondfilename));
-			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = 1").run(JSON.stringify(songs));
+			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(songs), "Favorites");
 
 			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") {
 				getPlaylists();
 			}
 		}
+	} else if (input == "customise") {
+		openCustomizeModal(secondfilename);
 	}
 }
 
@@ -1525,6 +1518,13 @@ document.addEventListener("DOMContentLoaded", function () {
 				const ext = path.extname(file).slice(1);
 				musicsDb.prepare("UPDATE songs SET thumbnail_extension = ? WHERE song_id = ?").run(ext, song_id);
 			}
+		}
+	}
+
+	const rows = playlistsDb.prepare("SELECT id FROM playlists").all();
+	for (const row of rows) {
+		if (row.id === "1") {
+			playlistsDb.prepare("UPDATE playlists SET id = ? WHERE id = ?").run("Favorites", "1");
 		}
 	}
 });
