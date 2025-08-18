@@ -692,7 +692,7 @@ async function playMusic(file, isPlaylist) {
 
 		document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
 		document.querySelectorAll(".music-item").forEach(musicElement => {
-			if (musicElement.getAttribute("data-file-name") == secondfilename) {
+			if (removeExtensions(musicElement.getAttribute("data-file-name")) == secondfilename) {
 				musicElement.classList.add("playing");
 			}
 		});
