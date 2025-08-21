@@ -1060,7 +1060,7 @@ function skipBackward() {
 
 function closeModal() {
 	const modal = event.target.closest(".modal");
-	if (modal) modal.style.display = "none";
+	modal ? (modal.style.display = "none") : (document.getElementById("speedModal").style.display = "none");
 }
 
 async function updateThumbnailImage(event, mode) {
@@ -1249,7 +1249,7 @@ document.addEventListener("keydown", event => {
 	} else if (event.key == key_Mute) {
 		mute();
 	} else if (event.key == key_Speed) {
-		document.getElementById("speedModal").style.display == "none" ? speed() : closeModal();
+		document.getElementById("speedModal").style.display == "block" ? closeModal() : speed();
 	} else if (event.key == key_Loop) {
 		toggleLoop();
 	} else if (event.key == key_randomSong) {
