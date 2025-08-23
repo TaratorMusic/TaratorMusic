@@ -44,6 +44,8 @@ const playButton = document.getElementById("playButton");
 const pauseButton = document.getElementById("pauseButton");
 const tooltip = document.getElementById("tooltip");
 const volumeControl = document.getElementById("volume");
+const videoLength = document.getElementById("video-length");
+const videoProgress = document.getElementById("video-progress");
 
 volumeControl.addEventListener("change", () => {
 	updateDatabase("volume", volumeControl.value, settingsDb);
@@ -638,7 +640,9 @@ async function playMusic(file, isPlaylist) {
 		if (audioSource) {
 			audioSource.disconnect();
 		}
-	}
+	} else {
+        initStaticControls();
+    }
 
 	try {
 		if (!isPlaylist) {
@@ -734,14 +738,28 @@ async function playMusic(file, isPlaylist) {
 	}
 }
 
-function manageAudioControls(audioElement) {
-	const videoLength = document.getElementById("video-length");
-	const videoProgress = document.getElementById("video-progress");
-
+function initStaticControls() {
 	volumeControl.addEventListener("input", () => {
 		audioElement.volume = volumeControl.value / 100 / dividevolume;
 	});
 
+	playButton.addEventListener("click", () => {
+		audioElement.play();
+	});
+
+	pauseButton.addEventListener("click", () => {
+		audioElement.pause();
+	});
+
+	videoProgress.addEventListener("input", () => {
+		const seekTime = (audioElement.duration * parseFloat(videoProgress.value)) / 100;
+		if (Number.isFinite(seekTime)) {
+			audioElement.currentTime = seekTime;
+		}
+	});
+}
+
+function manageAudioControls(audioElement) {
 	audioElement.addEventListener("loadedmetadata", () => {
 		videoProgress.value = 0;
 		const duration = formatTime(audioElement.duration);
@@ -756,40 +774,12 @@ function manageAudioControls(audioElement) {
 		updateDiscordPresence();
 	});
 
-	playButton.addEventListener("click", () => {
-		audioElement.play();
-		playButton.style.display = "none";
-		pauseButton.style.display = "inline-block";
-	});
-
-	pauseButton.addEventListener("click", () => {
-		audioElement.pause();
-		pauseButton.style.display = "none";
-		playButton.style.display = "inline-block";
-	});
-
 	audioElement.addEventListener("ended", () => {
 		pauseButton.style.display = "none";
 		playButton.style.display = "inline-block";
 		if (isAutoplayActive) {
 			playNextSong();
 		}
-	});
-
-	audioElement.addEventListener("play", () => {
-		playButton.style.display = "none";
-		pauseButton.style.display = "inline-block";
-	});
-
-	audioElement.addEventListener("pause", () => {
-		pauseButton.style.display = "none";
-		playButton.style.display = "inline-block";
-	});
-
-	videoProgress.addEventListener("input", () => {
-		const seekTime = (audioElement.duration * videoProgress.value) / 100;
-		audioElement.currentTime = seekTime;
-		updateDiscordPresence();
 	});
 }
 
