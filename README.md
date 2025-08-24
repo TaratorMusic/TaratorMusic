@@ -16,9 +16,9 @@
 
 ## Technologies Used
 
-Vanilla HTML-CSS-JS for the code,
+HTML & CSS & JavaScript for the Front-End, Node.js and Go for the Back-end.
 
-Electron to make it a desktop app, electron-updater to detect new versions and give the user the option to update,
+Electron to make it a cross platform desktop app, electron-updater to detect new versions and give the user the option to update,
 
 @distube/ytdl-core and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists. @distube/ytsr for searching videos in youtube.
 
