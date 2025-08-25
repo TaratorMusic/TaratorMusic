@@ -641,8 +641,8 @@ async function playMusic(file, isPlaylist) {
 			audioSource.disconnect();
 		}
 	} else {
-        initStaticControls();
-    }
+		initStaticControls();
+	}
 
 	try {
 		if (!isPlaylist) {
@@ -792,9 +792,8 @@ async function playPlaylist(playlist, startingIndex = 0) {
 	currentPlaylist = playlist;
 
 	for (let i = startingIndex; i < playlist.songs.length; i++) {
-		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(playlist.songs[i]);
 		currentPlaylistElement = i;
-		await playMusic(playlist.songs[i] + "." + row.song_extension, true);
+		await playMusic(playlist.songs[i], true);
 		if (!isAutoplayActive) {
 			break;
 		}

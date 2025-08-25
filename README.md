@@ -16,7 +16,7 @@
 
 ## Technologies Used
 
-HTML & CSS & JavaScript for the Front-End, Node.js and Go for the Back-end.
+HTML & CSS & JavaScript for the Front-end, Node.js and Go for the Back-end.
 
 Electron to make it a cross platform desktop app, electron-updater to detect new versions and give the user the option to update,
 
