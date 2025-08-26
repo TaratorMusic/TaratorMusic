@@ -13,13 +13,13 @@ var stopwords = []string{
 	"live", "remaster", "version", "session", "karaoke", "music",
 }
 
-var stopwordSet = make(map[string]struct{})
-
-func init() {
+var stopwordSet = func() map[string]struct{} {
+	m := make(map[string]struct{})
 	for _, w := range stopwords {
-		stopwordSet[w] = struct{}{}
+		m[w] = struct{}{}
 	}
-}
+	return m
+}()
 
 func normalize(s string) []string {
 	s = strings.ToLower(s)
