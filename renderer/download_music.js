@@ -798,32 +798,18 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
-			let success = false;
-			let attempt = 0;
-
-			while (!success && attempt < 3) {
-				attempt++;
-
-				try {
-					await downloadAudio(songLink, outputPath, (downloaded, total) => {
-						const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-						document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}. Progress: ${downloadedMB} MB`;
-					});
-
-					success = true;
-				} catch (error) {
-					if (error.message.includes("Age confirmation required")) {
-						await alertModal("This song requires age confirmation. Skipping...");
-						document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
-						break;
-					}
-
-					if (attempt < 3) await new Promise(r => setTimeout(r, 5000));
-					else throw error;
+			try {
+				await downloadAudio(songLink, outputPath, (downloaded, total) => {
+					const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
+					document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}. Progress: ${downloadedMB} MB`;
+				});
+			} catch (error) {
+				if (error.message.includes("Age confirmation required") || error.message.includes("confirm your age")) {
+					await alertModal("This song requires age confirmation. Skipping...");
+					document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
+					break;
 				}
 			}
-
-			if (!success) continue;
 
 			if (stabiliseVolumeToggle == 1) {
 				try {

@@ -14,11 +14,11 @@ var stopwords = []string{
 }
 
 var stopwordSet = func() map[string]struct{} {
-	m := make(map[string]struct{})
-	for _, w := range stopwords {
-		m[w] = struct{}{}
+	wordmap := make(map[string]struct{})
+	for _, word := range stopwords {
+		wordmap[word] = struct{}{}
 	}
-	return m
+	return wordmap
 }()
 
 func normalize(s string) []string {
