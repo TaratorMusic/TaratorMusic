@@ -286,6 +286,16 @@ function initializeMusicsDatabase() {
 		)
 		.run();
 
+	musicsDb
+		.prepare(
+			`CREATE TABLE IF NOT EXISTS timers (
+            song_id TEXT,
+            start_time INTEGER,
+            end_time INTEGER
+        )`
+		)
+		.run();
+
 	const existingColumns = musicsDb
 		.prepare(`PRAGMA table_info(songs)`)
 		.all()
