@@ -426,32 +426,21 @@ setInterval(() => {
 	updateTimer();
 }, 60000);
 
-function savePlayedTime(timePlayed) {
+function savePlayedTime(songStartTime, timePlayed) { // Just have songStartTime as global variable, and update it like line 431 every time a song starts.
 	const theId = removeExtensions(secondfilename);
-	const row = musicsDb
-		.prepare(
-			`
-			SELECT seconds_played, times_listened
-			FROM songs
-			WHERE song_id = ?
-		`
-		)
-		.get(theId);
+    const currentTimeUnix = Math.floor(Date.now() / 1000);
 
-	const updatedTime = row.seconds_played + timePlayed;
-	const updatedCount = row.times_listened + 1;
+    // Make sure to fix the "timer bugs" in the issues section first
+    // TODO: Remove "tarator" from the id for smaller db size
+    // TODO: Save songStartTime to use here
+    // TODO: While initialising musicsDb, check if songs table has song listen amount and length columns.
+    // If they do, get the data to the timers table as 1970's data
+    // Initialising "timers" table might be safer
+    // Research: What length does the ID's need to be minimum?
+    // Clean up todo.md and update readme.md at the end.
 
-	musicsDb
-		.prepare(
-			`
-				UPDATE songs
-				SET seconds_played = ?, times_listened = ?
-				WHERE song_id = ?
-			`
-		)
-		.run(updatedTime, updatedCount, theId);
-
-	console.log(`Updated ${theId}: ${updatedTime}s, listened ${updatedCount} times.`);
+	musicsDb.run("INSERT INTO timers (song_id, start_time, end_time) VALUES (?, ?, ?)", [currentTimeUnix, songStartTime, currentTimeUnix]);
+	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}`);
 }
 
 tabs.forEach(tab => {
