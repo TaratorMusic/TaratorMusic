@@ -68,7 +68,7 @@ async function redownloadAllSongs() {
 	downloadingStyle = "redownload";
 	const songs = [];
 
-	let checkAllSongs = await threeWayModal("How would you like to handle songs with missing URLs?", "Search for All", "Ask for Each", "Skip All", "SearchForAll", "AskForAll", "SkipAll");
+	let checkAllSongs = await threeWayModal("How would you like to handle songs with missing URLs?", "Search All", "Ask for Each", "Skip All", "SearchAll", "AskEach", "SkipAll");
 
 	for (let i = 0; i < filteredRows.length; i++) {
 		const row = filteredRows[i];
@@ -79,14 +79,14 @@ async function redownloadAllSongs() {
 		} catch (err) {
 			if (checkAllSongs == "SkipAll") {
 				continue;
-			} else if (checkAllSongs == "AskForAll") {
+			} else if (checkAllSongs == "AskEach") {
 				const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No");
 				if (!confirmed) {
 					continue;
 				}
 			}
 
-			if (checkAllSongs == "SearchForAll" || (checkAllSongs == "AskForAll" && confirmed)) {
+			if (checkAllSongs == "SearchAll" || (checkAllSongs == "AskEach" && confirmed)) {
 				try {
 					const newUrl = await searchInYoutube(row.song_name);
 					info = await ytdl.getInfo(newUrl);
