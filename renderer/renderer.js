@@ -68,6 +68,8 @@ let playedSongs = [];
 let newPlaylistID = null;
 let disableKeyPresses = 0;
 let songStartTime = null;
+let songPauseStartTime = null;
+let totalPausedTime = 0;
 let previousVolume = null;
 let timeoutId = null;
 let audioContext;
@@ -427,12 +429,12 @@ setInterval(() => {
 }, 60000);
 
 function savePlayedTime() {
-	const theId = removeExtensions(secondfilename).replace("tarator", "").replace("-","");
+	const theId = removeExtensions(secondfilename).replace("tarator", "").replace("-", "");
 	const currentTimeUnix = Math.floor(Date.now() / 1000);
 
 	// Make sure to fix the "timer bugs" in the issues section first
 	// TODO: While initialising musicsDb, check if songs table has song listen amount and length columns. If they do, get the data to the timers table as 1970's data
-    // Do legacy code files, will check previous version and this version, and will make changes accordingly
+	// Do legacy code files, will check previous version and this version, and will make changes accordingly
 	// Clean up todo.md and update readme.md at the end.
 
 	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time) VALUES (?, ?, ?)").run(theId, songStartTime, currentTimeUnix);
@@ -620,11 +622,14 @@ function createMusicElement(songFile) {
 async function playMusic(file, isPlaylist) {
 	const songName = document.getElementById("song-name");
 
-	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime >= 10) {
+    if (songPauseStartTime) totalPausedTime += songPauseStartTime - Date.now() / 1000;
+	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 10) {
 		savePlayedTime();
 	}
 
 	songStartTime = Math.floor(Date.now() / 1000);
+	songPauseStartTime = songStartTime;
+    totalPausedTime = 0;
 
 	if (audioElement) {
 		audioElement.pause();
@@ -737,10 +742,12 @@ function initStaticControls() {
 
 	playButton.addEventListener("click", () => {
 		audioElement.play();
+		totalPausedTime += songPauseStartTime - Date.now() / 1000;
 	});
 
 	pauseButton.addEventListener("click", () => {
 		audioElement.pause();
+		songPauseStartTime = Math.floor(Date.now() / 1000);
 	});
 
 	videoProgress.addEventListener("input", () => {
