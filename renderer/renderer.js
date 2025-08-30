@@ -67,7 +67,7 @@ let fileToDelete = null;
 let playedSongs = [];
 let newPlaylistID = null;
 let disableKeyPresses = 0;
-let songStartTime = 0;
+let songStartTime = null;
 let previousVolume = null;
 let timeoutId = null;
 let audioContext;
@@ -280,19 +280,19 @@ function initializeMusicsDatabase() {
 
 	musicsDb
 		.prepare(
-			`CREATE TABLE IF NOT EXISTS songs (
-                ${requiredColumns.map(c => `${c.name} ${c.type}`).join(", ")}
-            )`
-		)
-		.run();
-
-	musicsDb
-		.prepare(
 			`CREATE TABLE IF NOT EXISTS timers (
             song_id TEXT,
             start_time INTEGER,
             end_time INTEGER
         )`
+		)
+		.run();
+
+	musicsDb
+		.prepare(
+			`CREATE TABLE IF NOT EXISTS songs (
+                ${requiredColumns.map(c => `${c.name} ${c.type}`).join(", ")}
+            )`
 		)
 		.run();
 
@@ -426,21 +426,18 @@ setInterval(() => {
 	updateTimer();
 }, 60000);
 
-function savePlayedTime(songStartTime, timePlayed) { // Just have songStartTime as global variable, and update it like line 431 every time a song starts.
+function savePlayedTime() {
 	const theId = removeExtensions(secondfilename);
-    const currentTimeUnix = Math.floor(Date.now() / 1000);
+	const currentTimeUnix = Math.floor(Date.now() / 1000);
 
-    // Make sure to fix the "timer bugs" in the issues section first
-    // TODO: Remove "tarator" from the id for smaller db size
-    // TODO: Save songStartTime to use here
-    // TODO: While initialising musicsDb, check if songs table has song listen amount and length columns.
-    // If they do, get the data to the timers table as 1970's data
-    // Initialising "timers" table might be safer
-    // Research: What length does the ID's need to be minimum?
-    // Clean up todo.md and update readme.md at the end.
+	// Make sure to fix the "timer bugs" in the issues section first
+	// TODO: Remove "tarator" from the id for smaller db size
+	// TODO: While initialising musicsDb, check if songs table has song listen amount and length columns. If they do, get the data to the timers table as 1970's data
+	// Research: What length does the ID's need to be minimum?
+	// Clean up todo.md and update readme.md at the end.
 
-	musicsDb.run("INSERT INTO timers (song_id, start_time, end_time) VALUES (?, ?, ?)", [currentTimeUnix, songStartTime, currentTimeUnix]);
-	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}`);
+	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time) VALUES (?, ?, ?)").run(currentTimeUnix, songStartTime, currentTimeUnix);
+	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds.`);
 }
 
 tabs.forEach(tab => {
@@ -624,14 +621,11 @@ function createMusicElement(songFile) {
 async function playMusic(file, isPlaylist) {
 	const songName = document.getElementById("song-name");
 
-	if (songStartTime !== 0) {
-		let timePlayed = (Date.now() - songStartTime) / 1000;
-		if (timePlayed >= 10) {
-			savePlayedTime(timePlayed);
-		}
+	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime >= 10) {
+		savePlayedTime();
 	}
 
-	songStartTime = Date.now();
+	songStartTime = Math.floor(Date.now() / 1000);
 
 	if (audioElement) {
 		audioElement.pause();
