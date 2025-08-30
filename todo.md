@@ -1,16 +1,4 @@
-More jest tests
-Make three-way & two-way & one-way modal functions into one
-Customise RPC section in the settings
-Integrate DC bot that plays the music
-Pause downloads, continue anytime: use localstorage
-Use main speed - Use custom speed for this song (in customisation modal)
-Instead of fileToDelete, make a button inside openCustomiseModal and add addEventListener to remove the song using the song ID
-Changing backgrounds: Make a preview mode so it doesn't instantly change it
-Add "Stabilise All" and "Categorise All" at the top of My Music tab
-Add approximate time remaining for volume stabilisation and downloads.
-Intelligent shuffle: All the songs will get pointed depending on how long you listened to them (Percentages), songs with higher points will play more, there will be a toggle for this setting, and a button to reset all the points, but fix the "Issues" before doing this.
-Add link customisation to the customisation modal
-Clean up the database functions
+Statistics!
 
 // TODO: While initialising musicsDb, check if songs table has song listen amount and length columns. If they do, get the data to the timers table as 1970's data
 // Do legacy code files, will check previous version and this version, and will make changes accordingly
@@ -34,6 +22,23 @@ Total Amounts:
 - x songs downloaded from youtube
 - x songs downloaded from spotify
 - x songs downloaded total
+- x hours spent in-app and x hours this session
+
+More jest tests and go tests and electron tests more test
+Make three-way & two-way & one-way modal functions into one
+Customise RPC section in the settings
+Integrate DC bot that plays the music
+Pause downloads, continue anytime: use localstorage
+Use main speed - Use custom speed for this song (in customisation modal)
+Instead of fileToDelete, make a button inside openCustomiseModal and add addEventListener to remove the song using the song ID
+Changing backgrounds: Make a preview mode so it doesn't instantly change it
+Add "Stabilise All" and "Categorise All" at the top of My Music tab
+Add approximate time remaining for volume stabilisation and downloads.
+Intelligent shuffle: All the songs will get pointed depending on how long you listened to them (Percentages), songs with higher points will play more, there will be a toggle for this setting, and a button to reset all the points, but fix the "Issues" before doing this.
+Add link customisation to the customisation modal
+Clean up the database functions
+
+
 
 TODO Settings:
 
