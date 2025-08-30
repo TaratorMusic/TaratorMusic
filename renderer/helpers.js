@@ -165,3 +165,11 @@ function parseTimeToSeconds(timeStr) {
 	}
 	return null;
 }
+
+function generateId() {
+	let id;
+	do {
+		id = `tarator-${Math.random().toString(36).slice(2, 6)}`;
+	} while (musicsDb.prepare("SELECT 1 FROM songs WHERE song_id = ?").get(id));
+	return id;
+}

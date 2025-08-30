@@ -1,6 +1,5 @@
 More jest tests
 Make three-way & two-way & one-way modal functions into one
-Save each songs listen data as timestamps and length in a new database table for statistics. (SAVE AS UNIX!)
 Customise RPC section in the settings
 Integrate DC bot that plays the music
 Pause downloads, continue anytime: use localstorage
@@ -32,3 +31,14 @@ Total Amounts:
 - x songs downloaded from youtube
 - x songs downloaded from spotify
 - x songs downloaded total
+
+TODO Settings:
+
+- App language
+- Edit app font
+- Edit My Music grid
+- Disable thumbnails
+- Change placeholder thumbnail --> if (userPlaceholderThumbnail) else (placeholderThumbnail)
+- Move app folders
+- Package Data to Desktop
+- Factory Reset (With options like: only settings, remove all songs/playlists etc.)

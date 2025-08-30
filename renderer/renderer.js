@@ -427,16 +427,15 @@ setInterval(() => {
 }, 60000);
 
 function savePlayedTime() {
-	const theId = removeExtensions(secondfilename);
+	const theId = removeExtensions(secondfilename).replace("tarator", "").replace("-","");
 	const currentTimeUnix = Math.floor(Date.now() / 1000);
 
 	// Make sure to fix the "timer bugs" in the issues section first
-	// TODO: Remove "tarator" from the id for smaller db size
 	// TODO: While initialising musicsDb, check if songs table has song listen amount and length columns. If they do, get the data to the timers table as 1970's data
-	// Research: What length does the ID's need to be minimum?
+    // Do legacy code files, will check previous version and this version, and will make changes accordingly
 	// Clean up todo.md and update readme.md at the end.
 
-	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time) VALUES (?, ?, ?)").run(currentTimeUnix, songStartTime, currentTimeUnix);
+	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time) VALUES (?, ?, ?)").run(theId, songStartTime, currentTimeUnix);
 	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds.`);
 }
 
@@ -1294,14 +1293,6 @@ function handleDropdownChange(option, selectElement) {
 	} else if (option == "displayCount") {
 		displayCount = selectedValue;
 	}
-}
-
-function generateId() {
-	let id;
-	do {
-		id = `tarator-${Math.random().toString(36).slice(2, 6)}`;
-	} while (musicsDb.prepare("SELECT 1 FROM songs WHERE song_id = ?").get(id));
-	return id;
 }
 
 function getSongNameById(songId) {
