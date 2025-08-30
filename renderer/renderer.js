@@ -1297,9 +1297,11 @@ function handleDropdownChange(option, selectElement) {
 }
 
 function generateId() {
-	const timestamp = Date.now().toString(36);
-	const randomPart = Math.floor(Math.random() * 1e6).toString(36);
-	return `tarator${timestamp}-${randomPart}`;
+	let id;
+	do {
+		id = `tarator-${Math.random().toString(36).slice(2, 6)}`;
+	} while (musicsDb.prepare("SELECT 1 FROM songs WHERE song_id = ?").get(id));
+	return id;
 }
 
 function getSongNameById(songId) {
