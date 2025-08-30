@@ -12,6 +12,9 @@ Intelligent shuffle: All the songs will get pointed depending on how long you li
 Add link customisation to the customisation modal
 Clean up the database functions
 
+// TODO: While initialising musicsDb, check if songs table has song listen amount and length columns. If they do, get the data to the timers table as 1970's data
+// Do legacy code files, will check previous version and this version, and will make changes accordingly
+
 Statistics tab:
 - Favorite Song
 - Favorite Genre (TODO)

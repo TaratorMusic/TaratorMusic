@@ -227,7 +227,7 @@ function initializeSettingsDatabase() {
 	displayCount = settingsRow.displayCount;
 	background = settingsRow.background;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
-    discordRPCstatus = settingsRow.dc_rpc;
+	discordRPCstatus = settingsRow.dc_rpc;
 
 	const icons = {
 		backwardButton: "backward.svg",
@@ -432,12 +432,7 @@ setInterval(() => {
 
 function savePlayedTime() {
 	const theId = removeExtensions(secondfilename).replace("tarator", "").replace("-", "");
-	const currentTimeUnix = Math.floor(Date.now() / 1000);
-
-	// Make sure to fix the "timer bugs" in the issues section first
-	// TODO: While initialising musicsDb, check if songs table has song listen amount and length columns. If they do, get the data to the timers table as 1970's data
-	// Do legacy code files, will check previous version and this version, and will make changes accordingly
-	// Clean up todo.md and update readme.md at the end.
+	const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
 
 	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time) VALUES (?, ?, ?)").run(theId, songStartTime, currentTimeUnix);
 	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds.`);
@@ -624,14 +619,12 @@ function createMusicElement(songFile) {
 async function playMusic(file, isPlaylist) {
 	const songName = document.getElementById("song-name");
 
-    if (songPauseStartTime) totalPausedTime += songPauseStartTime - Date.now() / 1000;
-	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 10) {
-		savePlayedTime();
-	}
+	if (songPauseStartTime) totalPausedTime += Math.floor(Date.now() / 1000 - songPauseStartTime);
+	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 10) savePlayedTime();
 
 	songStartTime = Math.floor(Date.now() / 1000);
-	songPauseStartTime = songStartTime;
-    totalPausedTime = 0;
+	songPauseStartTime = null;
+	totalPausedTime = 0;
 
 	if (audioElement) {
 		audioElement.pause();
@@ -743,15 +736,11 @@ function initStaticControls() {
 	});
 
 	playButton.addEventListener("click", () => {
-		audioElement.play();
-		totalPausedTime += songPauseStartTime - Date.now() / 1000;
-        updateDiscordPresence();
+		playPause("play");
 	});
 
 	pauseButton.addEventListener("click", () => {
-		audioElement.pause();
-		songPauseStartTime = Math.floor(Date.now() / 1000);
-        updateDiscordPresence();
+		playPause("pause");
 	});
 
 	videoProgress.addEventListener("input", () => {
@@ -955,6 +944,22 @@ async function randomPlaylistFunctionMainMenu() {
 	const selectedPlaylist = availablePlaylists[randomIndex];
 
 	await playPlaylist(selectedPlaylist, 0);
+}
+
+function playPause(status) {
+	if (status == "play") {
+		audioElement.play();
+		totalPausedTime += songPauseStartTime - Math.floor(Date.now() / 1000);
+		playButton.style.display = "none";
+		pauseButton.style.display = "inline-block";
+	} else {
+		audioElement.pause();
+		songPauseStartTime = Math.floor(Date.now() / 1000);
+		pauseButton.style.display = "none";
+		playButton.style.display = "inline-block";
+	}
+
+	updateDiscordPresence();
 }
 
 function toggleAutoplay() {
@@ -1222,13 +1227,9 @@ document.addEventListener("keydown", event => {
 		playPreviousSong();
 	} else if (event.key == key_PlayPause) {
 		if (audioElement.paused) {
-			audioElement.play();
-			playButton.style.display = "none";
-			pauseButton.style.display = "inline-block";
+			playPause("play");
 		} else {
-			audioElement.pause();
-			pauseButton.style.display = "none";
-			playButton.style.display = "inline-block";
+			playPause("pause");
 		}
 	} else if (event.key == key_Next) {
 		playNextSong();
