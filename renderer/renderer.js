@@ -76,6 +76,7 @@ let audioContext;
 let audioSource;
 let searchedSongsUrl;
 let downloadingStyle;
+let discordRPCstatus;
 const debounceMap = new Map();
 const songNameCache = new Map();
 
@@ -226,6 +227,7 @@ function initializeSettingsDatabase() {
 	displayCount = settingsRow.displayCount;
 	background = settingsRow.background;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
+    discordRPCstatus = settingsRow.dc_rpc;
 
 	const icons = {
 		backwardButton: "backward.svg",
@@ -743,11 +745,13 @@ function initStaticControls() {
 	playButton.addEventListener("click", () => {
 		audioElement.play();
 		totalPausedTime += songPauseStartTime - Date.now() / 1000;
+        updateDiscordPresence();
 	});
 
 	pauseButton.addEventListener("click", () => {
 		audioElement.pause();
 		songPauseStartTime = Math.floor(Date.now() / 1000);
+        updateDiscordPresence();
 	});
 
 	videoProgress.addEventListener("input", () => {

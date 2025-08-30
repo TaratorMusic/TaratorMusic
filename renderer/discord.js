@@ -2,14 +2,7 @@ const clientId = "1258898699816275969";
 const DiscordRPC = require("discord-rpc");
 
 let RPC = null;
-
-let discordRPCstatus = false;
-try {
-	let settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
-	discordRPCstatus = settingsRow ? settingsRow.dc_rpc == "1" : false;
-} catch {
-	discordRPCstatus = false;
-}
+discordRPCstatus ? createRPC() : updateDiscordPresence();
 
 document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
 
@@ -40,11 +33,9 @@ function destroyRPC() {
 	}
 }
 
-discordRPCstatus ? createRPC() : updateDiscordPresence();
-
 function toggleDiscordAPI() {
 	discordRPCstatus = !discordRPCstatus;
-	updateDatabase("dc_rpc", discordRPCstatus, settingsDb);
+	updateDatabase("dc_rpc", discordRPCstatus ? 1 : 0, settingsDb);
 
 	if (discordRPCstatus) {
 		createRPC();
@@ -83,27 +74,23 @@ async function updateDiscordPresence() {
 				largeImageKey: "tarator1024_icon",
 			};
 
-			if (timeDisplayString && timeDisplayString.includes("/")) {
-				const timeParts = timeDisplayString.split("/");
-				const currentTimeString = timeParts[0].trim();
-				const totalTimeString = timeParts[1].trim();
+			const timeParts = timeDisplayString.split("/");
+			const currentTimeString = timeParts[0].trim();
+			const totalTimeString = timeParts[1].trim();
 
-				const currentSeconds = parseTimeToSeconds(currentTimeString);
-				const totalSeconds = parseTimeToSeconds(totalTimeString);
+			const currentSeconds = parseTimeToSeconds(currentTimeString);
+			const totalSeconds = parseTimeToSeconds(totalTimeString);
 
-				if (currentSeconds !== null && totalSeconds !== null && totalSeconds > 0) {
-					const nowMs = Date.now();
+			if (audioElement && audioElement.paused) {
+				activityPayload.state = "⏸ Paused";
+			} else if (currentSeconds !== null && totalSeconds !== null && totalSeconds > 0) {
+				const nowMs = Date.now();
 
-					const validatedCurrentSeconds = Math.min(currentSeconds, totalSeconds);
+				const validatedCurrentSeconds = Math.min(currentSeconds, totalSeconds);
 
-					activityPayload.state = "──────────────────────────​";
-					activityPayload.startTimestamp = Math.floor(nowMs / 1000 - validatedCurrentSeconds);
-					activityPayload.endTimestamp = activityPayload.startTimestamp + totalSeconds;
-				} else {
-					activityPayload.state = timeDisplayString || "Playing music";
-				}
-			} else {
-				activityPayload.state = timeDisplayString || "Playing music";
+				activityPayload.state = "──────────────────────────​";
+				activityPayload.startTimestamp = Math.floor(nowMs / 1000 - validatedCurrentSeconds);
+				activityPayload.endTimestamp = activityPayload.startTimestamp + totalSeconds;
 			}
 
 			RPC.setActivity(activityPayload);
