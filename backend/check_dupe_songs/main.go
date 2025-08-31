@@ -39,7 +39,7 @@ func normalize(s string) []string {
 	return res
 }
 
-func jaccard(a, b string) float64 {
+func Jaccard(a, b string) float64 {
 	wa := normalize(a)
 	wb := normalize(b)
 	setA := make(map[string]struct{})
@@ -63,7 +63,7 @@ func jaccard(a, b string) float64 {
 	return float64(intersection) / float64(union)
 }
 
-func cosine(a, b string) float64 {
+func Cosine(a, b string) float64 {
 	wa := normalize(a)
 	wb := normalize(b)
 	freqA := make(map[string]int)
@@ -99,8 +99,8 @@ func main() {
 
 	for i := 0; i < len(titles); i++ {
 		for j := i + 1; j < len(titles); j++ {
-			jac := jaccard(titles[i], titles[j])
-			cos := cosine(titles[i], titles[j])
+			jac := Jaccard(titles[i], titles[j])
+			cos := Cosine(titles[i], titles[j])
 			if jac >= jaccThreshold || cos >= cosThreshold {
 				fmt.Printf("Similar: %q and %q | Jaccard=%.2f, Cosine=%.2f\n",
 					titles[i], titles[j], jac, cos)

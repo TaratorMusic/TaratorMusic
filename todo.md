@@ -1,7 +1,20 @@
-Statistics!
+## Needed UI Redesigns
 
-// TODO: While initialising musicsDb, check if songs table has song listen amount and length columns. If they do, get the data to the timers table as 1970's data
-// Do legacy code files, will check previous version and this version, and will make changes accordingly
+### Settings tab
+Settings tab desperately needs some design changes, because i never designed it to begin with. It should have the categories quickly accessible (Keybinds, Customisation, Settings, and maybe more later like Discord) and smaller gaps between the setting and its description. Finally the buttons should at least be styled with CSS.
+
+### Downloads tab
+The div's arent even aligned, and its just pure HTML
+
+### Main Menu
+Not exactly sure what to do yet, but the main will definitely be reworked
+
+### Three way modal
+It looks terrible :/
+
+## TODO App Features
+
+### Statistics!
 
 Statistics tab:
 - Favorite Song
@@ -24,23 +37,34 @@ Total Amounts:
 - x songs downloaded total
 - x hours spent in-app and x hours this session
 
-More jest tests and go tests and electron tests more test
-Make three-way & two-way & one-way modal functions into one
-Customise RPC section in the settings
-Integrate DC bot that plays the music
-Pause downloads, continue anytime: use localstorage
-Use main speed - Use custom speed for this song (in customisation modal)
-Instead of fileToDelete, make a button inside openCustomiseModal and add addEventListener to remove the song using the song ID
-Changing backgrounds: Make a preview mode so it doesn't instantly change it
-Add "Stabilise All" and "Categorise All" at the top of My Music tab
-Add approximate time remaining for volume stabilisation and downloads.
-Intelligent shuffle: All the songs will get pointed depending on how long you listened to them (Percentages), songs with higher points will play more, there will be a toggle for this setting, and a button to reset all the points, but fix the "Issues" before doing this.
-Add link customisation to the customisation modal
-Clean up the database functions
+### New Features
+- Customise Discord Rich Presence box in the settings
+- Integrate Discord bot that plays the music
+- Pause downloads, continue anytime: use localstorage
+- Use main speed - Use custom speed for this song (in customisation modal)
+- Changing backgrounds: Make a preview mode so it doesn't instantly change it
+- Intelligent shuffle: All the songs will get pointed depending on how long you listened to them (Percentages), songs with higher points will play more, there will be a toggle - for this setting, and a button to reset all the points, but fix the "Issues" before doing this.
 
+### Legacy Code Changes:
+- "favorites" playlist id changed from 1 to "Favorites".
+- Song listen timers moved from songs table to listens table. If a person has the old data, don't show it in first song play time or most active times chart.
 
+### Tests
+- Need to setup electron tests via playwright
+- jest tests to test the usual stuff
+- go tests to test the backend
 
-TODO Settings:
+### Code Cleanup
+- Make three-way & two-way & one-way modal functions into one, because it wastes so much space
+- Clean up the database functions
+- Instead of fileToDelete, make a button inside openCustomiseModal and add addEventListener to remove the song using the song ID
+
+### Quality of Life
+- Add "Stabilise All" and "Categorise All" at the top of My Music tab
+- Add approximate time remaining for volume stabilisation and downloads.
+- Add link customisation to the customisation modal
+
+### New Settings
 
 - App language
 - Edit app font
