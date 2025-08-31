@@ -32,10 +32,17 @@ Discord Rich Presence to momentarily share listened songs in Discord
 
 Jest and Github Actions to protect code quality and automatically roll out builds
 
+## How to develop:
+
+- Firstly, you need NPM, Node.js and Go installed on your computer.
+- Secondly, you can clone the git repository to a folder of your choice.
+- Thirdly, use "npm install" to download all the node modules.
+- Lastly, use "npm start" to run the app.
+
 ## How to download:
 
 -   Go to the <a href="https://github.com/Victiniiiii/TaratorMusic/releases/latest">releases tab</a> and download whichever version suits your computer.
--   .exe files are meant for Windows, .dmg files are meant for Mac, and AppImage files are meant for linux users. You dont need to download .yml or .blockmap files, they just help updating the app. You just need to run them, they are all included.
+-   .exe files are meant for Windows, .dmg files are meant for Mac, and AppImage files are meant for linux users. You just need to run them, they are all included. You dont need to download .yml or .blockmap files. 
 -   Tip for Linux: It will create app folders (musics, playlists, settings etc.) where the AppImage runs, so you can put it in any folder you want and create a .desktop file to run it from the desktop.
 -   Make sure to contain the app files and musics inside an SSD, which will improve app speeds tremendously.
 -   When a new update is available, the version box at the top right of the main menu will start lighting up. You will be able to see the new content before you choose to update the app. When you update the app for Windows and Mac needs to be reinstalled from the github page, but for Linux you can update in-app.
@@ -112,6 +119,10 @@ The option to fully customise the rich presence will be given to the users in th
 ### Stream songs directly to Discord voice chat via a bot
 
 You will be able to stream your songs directly to voice chats only using in-app features.
+
+### Instant Song Search
+
+Thought of a song, but too bothered to go to the musics tab, search and play it? With this feature, you can use a keyboard shortcut of your choice to search for your song, and it will play the song whose name is closest to your query!
 
 ### And more!
 
