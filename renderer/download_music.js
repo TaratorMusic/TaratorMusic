@@ -486,9 +486,9 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 			imgElement = document.getElementById("thumbnailImage");
 		}
 
-		async function saveBufferFromUrl(url) {
+		async function saveBufferFromUrl(url, thumbnailPath) {
 			return new Promise((resolve, reject) => {
-				https
+				require("https")
 					.get(url, res => {
 						if (res.statusCode !== 200) {
 							reject(new Error(`Failed to fetch thumbnail: ${res.statusCode}`));

@@ -2,13 +2,12 @@
 
 const { ipcRenderer } = require("electron");
 const path = require("path");
-const https = require("https");
 const fs = require("fs");
 const Database = require("better-sqlite3");
 
 let taratorFolder;
 let musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder;
-let settingsDbPath, playlistsDbPath, musicsDbPath;
+let settingsDbPath, playlistsDbPath, musicsDbPath, backendFolder;
 let settingsDb = {},
 	playlistsDb = {},
 	musicsDb = {};
@@ -20,6 +19,7 @@ let settingsDb = {},
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
 	appThumbnailFolder = path.join(taratorFolder, "assets");
 	databasesFolder = path.join(taratorFolder, "databases");
+	backendFolder = path.join(taratorFolder, "backend");
 
 	settingsDbPath = path.join(databasesFolder, "settings.db");
 	playlistsDbPath = path.join(databasesFolder, "playlists.db");
@@ -28,7 +28,6 @@ let settingsDb = {},
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
-	if (!fs.existsSync(appThumbnailFolder)) createAppThumbnailsFolder();
 
 	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
 	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
@@ -1313,66 +1312,6 @@ function getSongNameById(songId) {
 	return row ? row.song_name : null;
 }
 
-async function createAppThumbnailsFolder() {
-	if (!fs.existsSync(appThumbnailFolder)) fs.mkdirSync(appThumbnailFolder);
-
-	const apiUrl = "https://api.github.com/repos/Victiniiiii/TaratorMusic/contents/assets";
-	const options = { headers: { "User-Agent": "Node.js" } };
-
-	const downloadFile = (url, dest) =>
-		new Promise((resolve, reject) => {
-			if (fs.existsSync(dest)) {
-				console.log(`${path.basename(dest)} already exists, skipping download.`);
-				return resolve();
-			}
-			const fileStream = fs.createWriteStream(dest);
-			https
-				.get(url, res => {
-					if (res.statusCode !== 200) {
-						fileStream.close();
-						fs.unlinkSync(dest);
-						return reject(new Error(`Failed to download ${path.basename(dest)}: Status code ${res.statusCode}`));
-					}
-					res.pipe(fileStream);
-					fileStream.on("finish", () => {
-						fileStream.close();
-						console.log(`Downloaded ${path.basename(dest)}`);
-						resolve();
-					});
-				})
-				.on("error", err => {
-					fileStream.close();
-					fs.unlinkSync(dest);
-					reject(err);
-				});
-		});
-
-	try {
-		const files = await new Promise((resolve, reject) => {
-			https
-				.get(apiUrl, options, res => {
-					if (res.statusCode !== 200) return reject(new Error(`Failed to fetch assets list: Status code ${res.statusCode}`));
-					let data = "";
-					res.on("data", chunk => (data += chunk));
-					res.on("end", () => resolve(JSON.parse(data)));
-				})
-				.on("error", reject);
-		});
-
-		await Promise.all(
-			files
-				.filter(f => f.type == "file")
-				.map(file => {
-					return downloadFile(file.download_url, path.join(appThumbnailFolder, file.name));
-				})
-		);
-
-		await alertModal("App thumbnails installed. App restart required for the effects.");
-	} catch (e) {
-		console.log("Error in createAppThumbnailsFolder:", e);
-	}
-}
-
 function bottomRightFunctions(input) {
 	if (!secondfilename) return;
 	if (input == "addToPlaylist") {
@@ -1475,12 +1414,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
 
-	const files = ["addtoplaylist.svg", "adjustments.svg", "backward.svg", "custom.svg", "customise.svg", "forward.svg", "greenAutoplay.svg", "greenLoop.svg", "greenShuffle.svg", "mute.svg", "next.svg", "pause.svg", "placeholder.jpg", "play.svg", "previous.svg", "redAutoplay.svg", "redLoop.svg", "redShuffle.svg", "speed.svg", "star.svg", "tarator_icon.icns", "tarator_icon.ico", "tarator_icon.png", "tarator16_icon.png", "tarator512_icon.png", "tarator1024_icon.png", "trash.svg"];
-
-	for (const file of files) {
-		if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
-			createAppThumbnailsFolder();
-			return;
+	if (!fs.existsSync(appThumbnailFolder)) {
+		ranSpawnProcess("createAppThumbnailsFolder");
+	} else {
+		const files = ["addtoplaylist.svg", "adjustments.svg", "backward.svg", "custom.svg", "customise.svg", "forward.svg", "greenAutoplay.svg", "greenLoop.svg", "greenShuffle.svg", "mute.svg", "next.svg", "pause.svg", "placeholder.jpg", "play.svg", "previous.svg", "redAutoplay.svg", "redLoop.svg", "redShuffle.svg", "speed.svg", "star.svg", "tarator_icon.icns", "tarator_icon.ico", "tarator_icon.png", "tarator16_icon.png", "tarator512_icon.png", "tarator1024_icon.png", "trash.svg"];
+		for (const file of files) {
+			if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
+				ranSpawnProcess("createAppThumbnailsFolder");
+				return;
+			}
 		}
 	}
 

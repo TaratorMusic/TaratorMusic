@@ -138,6 +138,11 @@ async function loadDownloadStuff() {
 	checkNameThumbnail(false);
 }
 
+async function ranSpawnProcess(functionName) {
+	await loadJSFile("run_spawn_processes");
+    if (functionName == "createAppThumbnailsFolder") createAppThumbnailsFolder();
+}
+
 function cleanDownloadModal() {
 	document.getElementById("downloadFirstInput").value = "";
 
