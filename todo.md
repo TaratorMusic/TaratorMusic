@@ -12,6 +12,14 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 ### Three way modal
 It looks terrible :/
 
+## Bugs
+
+- the seconds number is updating inconsistently, rather than updating every second.
+- When you delete the song you are currently listening to, the whole app breaks
+- App playlist created before the download fully finished
+- Age restricted songs still break the downloads
+- Renaming songs currently dont work
+
 ## TODO App Features
 
 ### Statistics!
@@ -43,7 +51,11 @@ Total Amounts:
 - Pause downloads, continue anytime: use localstorage
 - Use main speed - Use custom speed for this song (in customisation modal)
 - Changing backgrounds: Make a preview mode so it doesn't instantly change it
-- Intelligent shuffle: All the songs will get pointed depending on how long you listened to them (Percentages), songs with higher points will play more, there will be a toggle - for this setting, and a button to reset all the points, but fix the "Issues" before doing this.
+- Intelligent shuffle: All the songs will get pointed depending on how long you listened to them (Percentages), songs with higher points will play more, there will be a toggle - for this setting, and a button to reset all the points.
+- Use last.fm API to find similar songs and artists. 
+- Directly stream songs without downloading.
+- Configure how the songs are played: True Random - Weight to most played songs - Weight to least played songs
+- Quick song search shortcut and modal
 
 ### Legacy Code Changes:
 - "favorites" playlist id changed from 1 to "Favorites".
