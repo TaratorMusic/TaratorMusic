@@ -5,12 +5,9 @@ const path = require("path");
 const fs = require("fs");
 const Database = require("better-sqlite3");
 
-let taratorFolder;
-let musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder;
-let settingsDbPath, playlistsDbPath, musicsDbPath, backendFolder;
-let settingsDb = {},
-	playlistsDb = {},
-	musicsDb = {};
+let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
+let settingsDbPath, playlistsDbPath, musicsDbPath;
+let settingsDb, playlistsDb, musicsDb;
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
@@ -48,9 +45,7 @@ const videoProgress = document.getElementById("video-progress");
 
 volumeControl.addEventListener("change", () => {
 	updateDatabase("volume", volumeControl.value, settingsDb);
-	if (audioElement) {
-		audioElement.volume = volumeControl.value / 100 / dividevolume;
-	}
+	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
 });
 
 let currentPlayingElement = null;
@@ -1054,11 +1049,6 @@ function skipBackward() {
 	}
 }
 
-function closeModal() {
-	const modal = event.target.closest(".modal");
-	modal ? (modal.style.display = "none") : (document.getElementById("speedModal").style.display = "none");
-}
-
 async function updateThumbnailImage(event, mode) {
 	const file = event.target.files[0];
 	if (file && file.type == "image/jpeg") {
@@ -1219,8 +1209,11 @@ document.addEventListener("keydown", event => {
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
 		return;
 	}
-
-	if (event.key == key_Rewind) {
+    // TODO: Make this work
+	// if (event.key === "Escape") {
+	// 	closeModal();
+	// } else
+    if (event.key == key_Rewind) {
 		skipBackward();
 	} else if (event.key == key_Previous) {
 		playPreviousSong();

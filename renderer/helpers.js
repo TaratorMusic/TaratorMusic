@@ -140,7 +140,7 @@ async function loadDownloadStuff() {
 
 async function ranSpawnProcess(functionName) {
 	await loadJSFile("run_spawn_processes");
-    if (functionName == "createAppThumbnailsFolder") createAppThumbnailsFolder();
+	if (functionName == "createAppThumbnailsFolder") createAppThumbnailsFolder();
 }
 
 function cleanDownloadModal() {
@@ -177,4 +177,9 @@ function generateId() {
 		id = `tarator-${Math.random().toString(36).slice(2, 6)}`;
 	} while (musicsDb.prepare("SELECT 1 FROM songs WHERE song_id = ?").get(id));
 	return id;
+}
+
+function closeModal() {
+	const modal = event.target.closest(".modal");
+	modal ? (modal.style.display = "none") : (document.getElementById("speedModal").style.display = "none");
 }
