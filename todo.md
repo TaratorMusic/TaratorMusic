@@ -14,11 +14,11 @@ It looks terrible :/
 
 ## Bugs
 
-- the seconds number is updating inconsistently, rather than updating every second.
 - When you delete the song you are currently listening to, the whole app breaks
 - App playlist created before the download fully finished
 - Age restricted songs still break the downloads
 - Renaming songs currently dont work
+- the seconds number is updating inconsistently, rather than updating every second. --> Switch to Go package "beep"
 
 ## TODO App Features
 
@@ -72,6 +72,7 @@ Total Amounts:
 - Instead of fileToDelete, make a button inside openCustomiseModal and add addEventListener to remove the song using the song ID
 
 ### Quality of Life
+- Add pages to the music tab and a way to navigate between them if using "show x rows".
 - Add "Stabilise All" and "Categorise All" at the top of My Music tab
 - Add approximate time remaining for volume stabilisation and downloads.
 - Add link customisation to the customisation modal

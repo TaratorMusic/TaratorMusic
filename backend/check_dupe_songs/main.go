@@ -1,3 +1,5 @@
+// This file will output the names of the duplicate songs after recieving an array of songs as an input
+
 package main
 
 import (
