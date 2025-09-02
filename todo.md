@@ -12,7 +12,6 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
-- closeModal doesnt work properly (Search for TODO)
 - App playlist created before the download fully finished
 - Age restricted songs still break the downloads
 - the seconds number is updating inconsistently, rather than updating every second. --> Switch to Go package "beep"

@@ -180,6 +180,7 @@ function generateId() {
 }
 
 function closeModal() {
-	const modal = event.target.closest(".modal");
-	modal ? (modal.style.display = "none") : (document.getElementById("speedModal").style.display = "none");
+	document.querySelectorAll(".modal, .confirm-modal-overlay").forEach(el => {
+		el.style.display = "none";
+	});
 }

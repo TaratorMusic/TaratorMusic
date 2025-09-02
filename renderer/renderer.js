@@ -1209,11 +1209,10 @@ document.addEventListener("keydown", event => {
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
 		return;
 	}
-	// TODO: Make this work
-	// if (event.key === "Escape") {
-	// 	closeModal();
-	// } else
-	if (event.key == key_Rewind) {
+    
+	if (event.key === "Escape") {
+		closeModal();
+	} else if (event.key == key_Rewind) {
 		skipBackward();
 	} else if (event.key == key_Previous) {
 		playPreviousSong();
