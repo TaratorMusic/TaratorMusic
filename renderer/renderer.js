@@ -1105,6 +1105,8 @@ function openCustomizeModal(songName) {
 
 async function saveEditedSong() {
 	const customizeDiv = document.getElementById("customizeModal");
+	const songID = removeExtensions(customizeDiv.dataset.songID);
+
 	const newNameInput = document.getElementById("customizeSongName").value.trim();
 
 	if (newNameInput.length < 1) {
@@ -1114,7 +1116,6 @@ async function saveEditedSong() {
 
 	const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(songID);
 
-	const songID = removeExtensions(customizeDiv.dataset.songID);
 	const thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
 	const oldName = customizeDiv.dataset.oldSongName;
 
@@ -1126,7 +1127,7 @@ async function saveEditedSong() {
 		fs.writeFileSync(thumbnailPath, data);
 	}
 
-	musicsDb.prepare("UPDATE songs SET song_name = ?, WHERE song_id = ?").run(newNameInput, songID);
+	musicsDb.prepare("UPDATE songs SET song_name = ? WHERE song_id = ?").run(newNameInput, songID);
 
 	document.getElementById("customizeModal").style.display = "none";
 	document.getElementById("my-music").click();
