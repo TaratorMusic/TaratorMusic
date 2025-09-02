@@ -1,5 +1,4 @@
 ## Needed UI Redesigns
-
 ### Settings tab
 Settings tab desperately needs some design changes, because i never designed it to begin with. It should have the categories quickly accessible (Keybinds, Customisation, Settings, and maybe more later like Discord) and smaller gaps between the setting and its description. Finally the buttons should at least be styled with CSS.
 
@@ -13,17 +12,15 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
-
 - When you delete the song you are currently listening to, the whole app breaks
+- closeModal doesnt work properly (Search for TODO)
 - App playlist created before the download fully finished
 - Age restricted songs still break the downloads
 - Renaming songs currently dont work
 - the seconds number is updating inconsistently, rather than updating every second. --> Switch to Go package "beep"
 
 ## TODO App Features
-
 ### Statistics!
-
 Statistics tab:
 - Favorite Song
 - Favorite Genre (TODO)

@@ -57,7 +57,6 @@ let playlistPlayedSongs = [];
 let isShuffleActive = false;
 let isAutoplayActive = false;
 let isLooping = false;
-let fileToDelete = null;
 let playedSongs = [];
 let newPlaylistID = null;
 let disableKeyPresses = 0;
@@ -1069,7 +1068,7 @@ async function updateThumbnailImage(event, mode) {
 
 function openCustomizeModal(songName) {
 	const songNameNoMp3 = removeExtensions(songName);
-	fileToDelete = songNameNoMp3;
+	document.getElementById("removeSongButton").dataset.songId = songNameNoMp3;
 
 	const stmt = musicsDb.prepare(`
         SELECT times_listened, seconds_played, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
@@ -1160,7 +1159,7 @@ async function saveEditedSong() {
 		.catch(console.log);
 }
 
-async function removeSong() {
+async function removeSong(fileToDelete) {
 	if (!(await confirmModal("Delete this song?", "Delete", "Keep"))) return;
 
 	const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(fileToDelete);
@@ -1209,11 +1208,11 @@ document.addEventListener("keydown", event => {
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
 		return;
 	}
-    // TODO: Make this work
+	// TODO: Make this work
 	// if (event.key === "Escape") {
 	// 	closeModal();
 	// } else
-    if (event.key == key_Rewind) {
+	if (event.key == key_Rewind) {
 		skipBackward();
 	} else if (event.key == key_Previous) {
 		playPreviousSong();
@@ -1406,6 +1405,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	}
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
+	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
 
 	if (!fs.existsSync(appThumbnailFolder)) {
 		ranSpawnProcess("createAppThumbnailsFolder");
