@@ -477,6 +477,7 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 async function processThumbnail(imageUrl, songId, songIndex = null) {
 	try {
 		console.log(`Processing thumbnail for ${songId}`);
+
 		const thumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
 
 		let imgElement = null;
@@ -486,9 +487,9 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 			imgElement = document.getElementById("thumbnailImage");
 		}
 
-		async function saveBufferFromUrl(url, thumbnailPath) {
+		async function saveBufferFromUrl(url, pathToSave) {
 			return new Promise((resolve, reject) => {
-				require("https")
+				https
 					.get(url, res => {
 						if (res.statusCode !== 200) {
 							reject(new Error(`Failed to fetch thumbnail: ${res.statusCode}`));
@@ -498,7 +499,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 						res.on("data", chunk => data.push(chunk));
 						res.on("end", () => {
 							const buffer = Buffer.concat(data);
-							fs.writeFileSync(thumbnailPath, buffer);
+							fs.writeFileSync(pathToSave, buffer);
 							resolve(true);
 						});
 					})
@@ -507,36 +508,32 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		}
 
 		if (imgElement) {
-			if (imgElement.tagName == "IMG" && imgElement.src) {
+			if (imgElement.tagName === "IMG" && imgElement.src) {
 				if (imgElement.src.startsWith("data:image")) {
-					const base64data = imgElement.src;
-					const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
-					fs.writeFileSync(thumbnailPath, thumbnailBuffer);
+					const base64data = imgElement.src.split(",")[1];
+					fs.writeFileSync(thumbnailPath, Buffer.from(base64data, "base64"));
 					console.log(`Saved thumbnail from DOM img element for ${songId}`);
 					return true;
 				} else if (imgElement.src.startsWith("http")) {
 					try {
-						await saveBufferFromUrl(imgElement.src);
+						await saveBufferFromUrl(imgElement.src, thumbnailPath);
 						console.log(`Saved thumbnail from DOM img src for ${songId}`);
 						return true;
 					} catch (e) {
 						console.log(`Error fetching thumbnail from DOM img: ${e.message}`);
 					}
 				}
-			} else if (imgElement.style && imgElement.style.backgroundImage) {
-				const bgImage = imgElement.style.backgroundImage;
-				const bgUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
-
+			} else if (imgElement.style?.backgroundImage) {
+				const bgUrl = imgElement.style.backgroundImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
 				if (bgUrl && bgUrl !== "none") {
 					if (bgUrl.startsWith("data:image")) {
-						const base64data = bgUrl;
-						const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
-						fs.writeFileSync(thumbnailPath, thumbnailBuffer);
+						const base64data = bgUrl.split(",")[1];
+						fs.writeFileSync(thumbnailPath, Buffer.from(base64data, "base64"));
 						console.log(`Saved thumbnail from DOM background image base64 for ${songId}`);
 						return true;
 					} else if (bgUrl.startsWith("http")) {
 						try {
-							await saveBufferFromUrl(bgUrl);
+							await saveBufferFromUrl(bgUrl, thumbnailPath);
 							console.log(`Saved thumbnail from DOM background image URL for ${songId}`);
 							return true;
 						} catch (e) {
@@ -549,14 +546,13 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 
 		if (imageUrl) {
 			if (imageUrl.startsWith("data:image")) {
-				const base64data = imageUrl;
-				const thumbnailBuffer = Buffer.from(base64data.split(",")[1], "base64");
-				fs.writeFileSync(thumbnailPath, thumbnailBuffer);
+				const base64data = imageUrl.split(",")[1];
+				fs.writeFileSync(thumbnailPath, Buffer.from(base64data, "base64"));
 				console.log(`Saved thumbnail from passed imageUrl base64 for ${songId}`);
 				return true;
 			} else if (imageUrl.startsWith("http")) {
 				try {
-					await saveBufferFromUrl(imageUrl);
+					await saveBufferFromUrl(imageUrl, thumbnailPath);
 					console.log(`Saved thumbnail from passed imageUrl for ${songId}`);
 					return true;
 				} catch (e) {
@@ -566,20 +562,18 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		}
 
 		function extractVideoId(url) {
-			const match = url && url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+			const match = url?.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
 			return match ? match[1] : null;
 		}
 
 		const videoId = extractVideoId(imageUrl);
-
 		if (videoId) {
 			try {
 				const info = await ytdl.getInfo(videoId);
 				const thumbnails = info.videoDetails.thumbnails;
-				if (!thumbnails || thumbnails.length == 0) throw new Error("No thumbnails found");
-
+				if (!thumbnails?.length) throw new Error("No thumbnails found");
 				const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
-				await saveBufferFromUrl(thumbnailUrl);
+				await saveBufferFromUrl(thumbnailUrl, thumbnailPath);
 				console.log("Thumbnail fetch succeeded");
 				return true;
 			} catch (err) {
@@ -587,15 +581,10 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 			}
 		}
 
-		try {
-			const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
-			fs.writeFileSync(thumbnailPath, placeholderData);
-			console.log(`Created placeholder thumbnail for ${songId}`);
-			return true;
-		} catch (placeholderError) {
-			console.log(`Failed to create placeholder for ${songId}: ${placeholderError.message}`);
-			return false;
-		}
+		const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
+		fs.writeFileSync(thumbnailPath, placeholderData);
+		console.log(`Created placeholder thumbnail for ${songId}`);
+		return true;
 	} catch (error) {
 		console.log(`Error in processThumbnail for ${songId}:`, error);
 		return false;
@@ -807,7 +796,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 				if (error.message.includes("Age confirmation required") || error.message.includes("confirm your age")) {
 					await alertModal("This song requires age confirmation. Skipping...");
 					document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
-					break;
+					continue;
+				} else {
+					throw error;
 				}
 			}
 
