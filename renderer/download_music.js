@@ -38,9 +38,7 @@ async function searchInYoutube(songName, resultLimit = 1) {
 function checkNameThumbnail(redownload) {
 	document.getElementById("downloadFirstButton").disabled = true;
 
-	if (document.getElementById("downloadSecondPhase")) {
-		document.getElementById("downloadSecondPhase").remove();
-	}
+	if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
 
 	const downloadSecondPhase = document.createElement("div");
 	downloadSecondPhase.id = "downloadSecondPhase";
@@ -344,7 +342,7 @@ async function processVideoLink(videoUrl) {
 		document.getElementById("downloadFirstButton").disabled = false;
 		if (error.message.includes("age")) await alertModal("You can't download this song because it is age restricted.");
 		if (error.message.includes("private")) await alertModal("You can't download this song because it is a private video.");
-		document.getElementById("downloadModalText").innerHTML = ``;
+		if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
 	}
 }
 
@@ -898,15 +896,26 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 	return new Promise(async (resolve, reject) => {
 		const videoId = (videoUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/) || [])[1] || null;
-
 		if (!videoId) return reject(new Error("Invalid YouTube URL"));
 
 		try {
 			const stream = ytdl(videoId, { quality: "highestaudio" });
 			const writeStream = fs.createWriteStream(outputFilePath);
-
 			let downloaded = 0;
 			let total = 0;
+
+			stream.on("error", error => {
+				console.log("Stream error:", error.message);
+				writeStream.destroy();
+				if (fs.existsSync(outputFilePath)) {
+					try {
+						fs.unlinkSync(outputFilePath);
+					} catch (unlinkError) {
+						console.log("Failed to remove partial file:", unlinkError.message);
+					}
+				}
+				reject(error);
+			});
 
 			stream.on("response", response => {
 				total = parseInt(response.headers["content-length"], 10);
@@ -919,10 +928,22 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 			});
 
 			writeStream.on("finish", () => resolve());
-			writeStream.on("error", reject);
+
+			writeStream.on("error", error => {
+				console.log("Write stream error:", error.message);
+				if (fs.existsSync(outputFilePath)) {
+					try {
+						fs.unlinkSync(outputFilePath);
+					} catch (unlinkError) {
+						console.log("Failed to remove partial file:", unlinkError.message);
+					}
+				}
+				reject(error);
+			});
 
 			stream.pipe(writeStream);
 		} catch (err) {
+			console.log("Synchronous error in downloadAudio:", err.message);
 			reject(err);
 		}
 	});
