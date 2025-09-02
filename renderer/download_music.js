@@ -719,12 +719,7 @@ async function actuallyDownloadTheSong() {
 		const playlistID = generateId();
 
 		try {
-			if (window.isSaveAsPlaylistActive) {
-				saveAsPlaylist(songIds, playlistName, playlistID);
-			}
-
 			document.getElementById("downloadModalText").innerText = totalSongs > 50 ? "Downloading... This might take some time..." : "Downloading...";
-
 			downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID);
 		} catch (err) {
 			document.getElementById("downloadModalText").innerText = "Database error: " + err.message;
@@ -882,6 +877,24 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			await sleep(1000);
 		}
 
+		if (window.isSaveAsPlaylistActive) {
+			const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
+			const songsJson = JSON.stringify(songIds.map(id => id.trim()));
+
+			try {
+				playlistsDb
+					.prepare(
+                    `
+                        INSERT INTO playlists (id, name, songs, thumbnail_extension)
+                        VALUES (?, ?, ?, ?)
+                    `   
+					)
+					.run(playlistID, playlistName, songsJson, "jpg");
+			} catch (err) {
+				console.log("Failed to save playlist:", err);
+			}
+		}
+
 		document.getElementById("downloadModalText").innerText = "All songs downloaded and normalized successfully!";
 		document.getElementById("finalDownloadButton").disabled = false;
 		if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
@@ -947,24 +960,6 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 			reject(err);
 		}
 	});
-}
-
-function saveAsPlaylist(songIds, playlistName, playlistID) {
-	const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
-	const songsJson = JSON.stringify(songIds.map(id => id.trim()));
-
-	try {
-		playlistsDb
-			.prepare(
-				`
-            INSERT INTO playlists (id, name, songs, thumbnail_extension)
-            VALUES (?, ?, ?, ?)
-            `
-			)
-			.run(playlistID, playlistName, songsJson, "jpg");
-	} catch (err) {
-		console.log("Failed to save playlist:", err);
-	}
 }
 
 function openAddToPlaylistModalStaging(songId) {
