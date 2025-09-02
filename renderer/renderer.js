@@ -439,12 +439,14 @@ tabs.forEach(tab => {
 		const tabContentId = `${tab.id}-content`;
 		document.querySelectorAll(".tab-content").forEach(content => {
 			content.classList.add("hidden");
-			if (content.id == tabContentId && content.id != "statistics-content") {
+			if (content.id == tabContentId) {
 				content.classList.remove("hidden");
 				document.getElementById("main-menu-content").style.display = "none";
 				document.getElementById("my-music-content").style.display = "none";
 				document.getElementById("playlists-content").style.display = "none";
 				document.getElementById("settings-content").style.display = "none";
+				document.getElementById("statistics-content").style.display = "none";
+
 				window.scrollTo(0, 0);
 				if (content.id == "main-menu-content") {
 					document.getElementById("main-menu-content").style.display = "flex";
@@ -1209,7 +1211,7 @@ document.addEventListener("keydown", event => {
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
 		return;
 	}
-    
+
 	if (event.key === "Escape") {
 		closeModal();
 	} else if (event.key == key_Rewind) {

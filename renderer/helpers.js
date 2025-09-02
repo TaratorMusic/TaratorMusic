@@ -133,9 +133,14 @@ async function openThisModal(modalName) {
 	}
 }
 
-async function loadDownloadStuff() {
-	await loadJSFile("download_music");
-	checkNameThumbnail(false);
+async function loadNewPage(query) {
+	if (query == "download") {
+		await loadJSFile("download_music");
+		checkNameThumbnail(false);
+	} else if (query == "statistics") {
+		await loadJSFile("statistics");
+		renderStatistics();
+	}
 }
 
 async function ranSpawnProcess(functionName) {

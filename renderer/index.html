@@ -108,7 +108,7 @@
 					</div>
 					<div class="flexrow">
 						<input type="text" id="downloadFirstInput" placeholder="Paste Youtube or Spotify, song or playlists, or search here..." />
-						<button id="downloadFirstButton" onclick="loadDownloadStuff()">Check</button>
+						<button id="downloadFirstButton" onclick="loadNewPage('download')">Check</button>
 					</div>
 				</div>
 			</div>
@@ -133,7 +133,7 @@
 			<div id="my-music" class="sidebarButtons" onclick="myMusicOnClick()">My Music</div>
 			<div id="playlists" class="sidebarButtons" onclick="getPlaylists()">Playlists</div>
 			<div id="settings" class="sidebarButtons" onclick="loadJSFile('settings')">Settings</div>
-			<div id="statistics" class="sidebarButtons" onclick="alertModal('Coming Soon!')">Statistics</div>
+			<div id="statistics" class="sidebarButtons" onclick="loadNewPage('statistics')">Statistics</div>
 			<div id="downloadNewFunction" class="sidebarButtons" onclick="openThisModal('download')">Download</div>
 		</div>
 		<div id="playlistsidebar"></div>
