@@ -2,7 +2,7 @@ const { spawn } = require("child_process");
 
 function createAppThumbnailsFolder() {
 	return new Promise((resolve, reject) => {
-		const goFile = path.join(backendFolder, "create_app_thumbnails_folder", "main.go");
+		const goFile = path.join(backendFolder, "create_app_thumbnails_folder");
 		const proc = spawn("go", ["run", goFile, appThumbnailFolder], { stdio: "inherit" });
 
 		proc.on("error", reject);

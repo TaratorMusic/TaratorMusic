@@ -16,7 +16,7 @@ let settingsDb, playlistsDb, musicsDb;
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
 	appThumbnailFolder = path.join(taratorFolder, "assets");
 	databasesFolder = path.join(taratorFolder, "databases");
-	backendFolder = path.join(taratorFolder, "backend");
+	backendFolder = path.join(taratorFolder, "bin");
 
 	settingsDbPath = path.join(databasesFolder, "settings.db");
 	playlistsDbPath = path.join(databasesFolder, "playlists.db");
