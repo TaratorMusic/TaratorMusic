@@ -32,6 +32,7 @@ Statistics tab:
 Pie chart here
 
 First ever song play time
+Perhaps a pie chart here? Or something github-like
 
 most active day-hours with heatmaps
 
@@ -62,6 +63,7 @@ Total Amounts:
 ### Legacy Code Changes:
 - "favorites" playlist id changed from 1 to "Favorites".
 - Song listen timers moved from songs table to listens table. If a person has the old data, don't show it in first song play time or most active times chart.
+- Song id's have been changed to be shorter, find if any exists
 
 ### Tests
 - Need to setup electron tests via playwright
