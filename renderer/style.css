@@ -1036,14 +1036,13 @@ input:checked + .slider:before {
 }
 
 .hourChart {
-	margin: auto;
+	margin: 0 5vw;
 }
 
 .activityBox {
     width: 80vw;
     display: flex;
     flex-direction: row;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
-    padding: auto;
 }

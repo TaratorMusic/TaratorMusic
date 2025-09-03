@@ -172,7 +172,7 @@ async function daysHeatMap() {
 		counts[day][hour] += 1;
 	}
 
-	const averages = days.map((day, d) => day.map((total, h) => (counts[d][h] ? total / counts[d][h] : 0)));
+	const averages = days.map((day, d) => day.map((total, h) => (counts[d][h] ? Math.round(total / counts[d][h]) : 0)));
 
 	const options = Intl.DateTimeFormat().resolvedOptions();
 	const hourFormat = options.hour12 ? UShours : EUhours;
@@ -199,13 +199,14 @@ async function daysHeatMap() {
 
 		const canvasLabel = document.createElement("div");
 		canvasLabel.innerHTML = daysoftheweek[i];
+		canvasLabel.style.minWidth = "5vw";
 		activityBox.appendChild(canvasLabel);
 
 		const activityChart = document.createElement("canvas");
 		activityChart.className = "hourChart";
 		activityBox.appendChild(activityChart);
-		activityChart.width = window.innerWidth * 0.6;
-		activityChart.height = window.innerHeight * 0.0876;
+		activityChart.width = window.innerWidth * 0.7;
+		activityChart.height = window.innerWidth * 0.0525;
 
 		const config = structuredClone(baseConfig);
 
