@@ -1,5 +1,5 @@
-const { Chart, LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend } = require("chart.js");
-Chart.register(LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
+const { Chart, LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler } = require("chart.js");
+Chart.register(LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler);
 
 const statisticsWindow = document.getElementById("statistics-content");
 
@@ -8,8 +8,6 @@ async function renderStatistics() {
 
 	if (!row) {
 		alertModal("You haven't listened to any songs yet.");
-		document.getElementById("main-menu-content").style.display = "flex"; // TODO: It will return to your initial page instead of the main menu
-		document.getElementById("statistics-content").style.display = "none";
 		return;
 	}
 
@@ -160,6 +158,22 @@ async function createPieCharts() {
 }
 
 async function daysHeatMap() {
+	const rows = musicsDb.prepare("SELECT start_time, end_time FROM timers").all();
+
+	const days = Array.from({ length: 7 }, () => Array(24).fill(0));
+	const counts = Array.from({ length: 7 }, () => Array(24).fill(0));
+
+	for (const row of rows) {
+		const duration = row.end_time - row.start_time;
+		const date = new Date(row.start_time * 1000);
+		const day = date.getDay();
+		const hour = date.getHours();
+		days[day][hour] += duration;
+		counts[day][hour] += 1;
+	}
+
+	const averages = days.map((day, d) => day.map((total, h) => (counts[d][h] ? total / counts[d][h] : 0)));
+
 	const options = Intl.DateTimeFormat().resolvedOptions();
 	const hourFormat = options.hour12 ? UShours : EUhours;
 
@@ -172,25 +186,45 @@ async function daysHeatMap() {
 			interaction: { mode: "index", intersect: false },
 			stacked: false,
 			scales: {
-				x: { ticks: { color: "white" } },
-				y: { beginAtZero: true, ticks: { color: "white" } },
+				x: { ticks: { color: "white" }, grid: { display: false } },
+				y: { display: false, grid: { display: false } },
 			},
 		},
 	};
 
 	for (let i = 0; i < 7; i++) {
+		const activityBox = document.createElement("div");
+		activityBox.className = "activityBox";
+		statisticsWindow.appendChild(activityBox);
+
+		const canvasLabel = document.createElement("div");
+		canvasLabel.innerHTML = daysoftheweek[i];
+		activityBox.appendChild(canvasLabel);
+
 		const activityChart = document.createElement("canvas");
 		activityChart.className = "hourChart";
-		statisticsWindow.appendChild(activityChart);
-		activityChart.width = window.innerWidth * 0.75;
-		activityChart.height = window.innerHeight * 0.1095;
+		activityBox.appendChild(activityChart);
+		activityChart.width = window.innerWidth * 0.6;
+		activityChart.height = window.innerHeight * 0.0876;
 
 		const config = structuredClone(baseConfig);
+
+		const dayMax = Math.max(...averages[i]);
+		const yMax = dayMax > 0 ? dayMax * 1.1 : 1;
+
+		config.options.scales.y = {
+			min: 0,
+			max: yMax,
+			display: false,
+			grid: { display: false },
+		};
+
 		config.data.datasets.push({
 			label: daysoftheweek[i],
-			data: [0, 0, 1, 2, 0, 3, 1, 0, 0, 2, 1, 0, 0, 0, 1, 4, 3, 0, 0, 1, 0, 0, 0, 0],
+			data: averages[i],
 			borderColor: "red",
-			fill: false,
+			backgroundColor: "rgba(255,0,0,0.3)",
+			fill: "origin",
 		});
 
 		new Chart(activityChart, config);

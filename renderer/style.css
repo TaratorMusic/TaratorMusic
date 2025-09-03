@@ -1038,3 +1038,12 @@ input:checked + .slider:before {
 .hourChart {
 	margin: auto;
 }
+
+.activityBox {
+    width: 80vw;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    padding: auto;
+}
