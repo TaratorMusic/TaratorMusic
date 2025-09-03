@@ -1,5 +1,5 @@
-const {Chart, PieController, ArcElement, Tooltip, Legend} = require("chart.js");
-Chart.register(PieController, ArcElement, Tooltip, Legend);
+const {Chart, LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend} = require("chart.js");
+Chart.register(LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 const statisticsWindow = document.getElementById("statistics-content");
 
@@ -17,6 +17,7 @@ function renderStatistics() {
 
     createMostListenedSongBox();
     createPieCharts();
+    daysHeatMap();
 }
 
 function createMostListenedSongBox() {
@@ -52,11 +53,11 @@ function createPieCharts() {
     const canvasBox2 = document.createElement("div");
     canvasBox2.className = "canvasBox";
     pieChartPart.appendChild(canvasBox2);
-	const canvasBox3 = document.createElement("div");
+    const canvasBox3 = document.createElement("div");
     canvasBox3.className = "canvasBox";
     pieChartPart.appendChild(canvasBox3);
 
-	const canvas1 = document.createElement("canvas");
+    const canvas1 = document.createElement("canvas");
     canvas1.id = "bestGenrePieChart";
     canvas1.className = "pieChart";
     canvasBox1.appendChild(canvas1);
@@ -123,4 +124,55 @@ function createPieCharts() {
     });
 }
 
-function daysHeatMap() {}
+function daysHeatMap() {
+    const activityChart = document.createElement("canvas");
+    statisticsWindow.appendChild(activityChart);
+
+    new Chart(activityChart, {
+        type: "line",
+        data: {
+            labels: UShours,
+            datasets: [
+                {
+                    label: "Mon",
+                    data: [0, 0, 1, 2, 0, 3, 1, 0, 0, 2, 1, 0, 0, 0, 1, 4, 3, 0, 0, 1, 0, 0, 0, 0],
+                    borderColor: "red",
+                    fill: false,
+                },
+                {
+                    label: "Tue",
+                    data: [0, 1, 0, 0, 2, 1, 3, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                    borderColor: "blue",
+                    fill: false,
+                },
+            ],
+        },
+        options: {
+            plugins: {
+                legend: {
+                    labels: {
+                        color: "white",
+                    },
+                },
+            },
+            responsive: true,
+            interaction: {mode: "index", intersect: false},
+            stacked: false,
+            scales: {
+                x: {
+                    title: {display: false, text: "Hour of Day"},
+                    ticks: {
+                        color: "white",
+                    },
+                },
+                y: {
+                    title: {display: false, text: "Activity"},
+                    beginAtZero: true,
+                    ticks: {
+                        color: "white",
+                    },
+                },
+            },
+        },
+    });
+}
