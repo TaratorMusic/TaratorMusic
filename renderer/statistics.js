@@ -39,7 +39,30 @@ function createMostListenedSongBox() {
     mostListenedSongText.id = "mostListenedSongText";
     statisticsWindow.appendChild(mostListenedSongText);
 
-    mostListenedSongText.innerHTML = `Most Listened Song: ${mostListenedSongName}. Listened for: ${most_listened_song.total_time} seconds.`; // TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness.
+    const firstAndLastListenOfTheBestSong = musicsDb
+        .prepare(
+            `
+    SELECT *
+    FROM timers
+    WHERE song_id = ?
+    ORDER BY start_time ASC
+    LIMIT 1
+`
+        )
+        .get(most_listened_song.song_id);
+
+    const formatTime = timestamp => // TODO: Get this to helpers.js
+        new Date(timestamp * 1000).toLocaleString(undefined, {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        });
+
+    mostListenedSongText.innerHTML = `Most Listened Song: ${mostListenedSongName}. Listened for: ${most_listened_song.total_time} seconds. `; // TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness.
+    mostListenedSongText.innerHTML += `First listened at: ${formatTime(firstAndLastListenOfTheBestSong.start_time)} and last listened at ${formatTime(firstAndLastListenOfTheBestSong.end_time)}`;
 }
 
 function createPieCharts() {
