@@ -656,10 +656,10 @@ async function actuallyDownloadTheSong() {
 				musicsDb
 					.prepare(
 						`INSERT INTO songs (
-                            song_id, song_name, song_url,
-                            song_length, seconds_played, times_listened, stabilised,
-                            size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+							song_id, song_name, song_url,
+							song_length, seconds_played, times_listened, stabilised,
+							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
+						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 					)
 					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg");
 				await commitStagedPlaylistAdds();
@@ -854,10 +854,10 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					musicsDb
 						.prepare(
 							`INSERT INTO songs (
-                            song_id, song_name, song_url,
-                            song_length, seconds_played, times_listened, stabilised,
-                            size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+							song_id, song_name, song_url,
+							song_length, seconds_played, times_listened, stabilised,
+							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
+						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 						)
 						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg");
 				} catch (err) {
@@ -885,10 +885,10 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			try {
 				playlistsDb
 					.prepare(
-                    `
-                        INSERT INTO playlists (id, name, songs, thumbnail_extension)
-                        VALUES (?, ?, ?, ?)
-                    `   
+					`
+						INSERT INTO playlists (id, name, songs, thumbnail_extension)
+						VALUES (?, ?, ?, ?)
+					`
 					)
 					.run(playlistID, playlistName, songsJson, "jpg");
 			} catch (err) {

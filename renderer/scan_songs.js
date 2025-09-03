@@ -234,12 +234,12 @@ async function processNewSongs() {
 				const fileSize = stats.size;
 
 				const insertQuery = `
-                    INSERT INTO songs (
-                        song_id, song_name, song_url, song_length, seconds_played, 
-                        times_listened, stabilised, size, speed, bass, treble, 
-                        midrange, volume, song_extension, thumbnail_extension
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `;
+					INSERT INTO songs (
+						song_id, song_name, song_url, song_length, seconds_played, 
+						times_listened, stabilised, size, speed, bass, treble, 
+						midrange, volume, song_extension, thumbnail_extension
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				`;
 
 				musicsDb.prepare(insertQuery).run(songId, songName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, songExt, thumbnailExt);
 
