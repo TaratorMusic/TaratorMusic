@@ -1,4 +1,4 @@
-const {Chart, LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend} = require("chart.js");
+const { Chart, LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend } = require("chart.js");
 Chart.register(LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 const statisticsWindow = document.getElementById("statistics-content");
@@ -156,17 +156,17 @@ function daysHeatMap() {
                 },
             },
             responsive: true,
-            interaction: {mode: "index", intersect: false},
+            interaction: { mode: "index", intersect: false },
             stacked: false,
             scales: {
                 x: {
-                    title: {display: false, text: "Hour of Day"},
+                    title: { display: false, text: "Hour of Day" },
                     ticks: {
                         color: "white",
                     },
                 },
                 y: {
-                    title: {display: false, text: "Activity"},
+                    title: { display: false, text: "Activity" },
                     beginAtZero: true,
                     ticks: {
                         color: "white",

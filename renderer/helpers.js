@@ -140,6 +140,9 @@ async function loadNewPage(query) {
     } else if (query == "statistics") {
         await loadJSFile("statistics");
         renderStatistics();
+    } else if (query.includes("legacy")) {
+        await loadJSFile("update_legacy_codes");
+        updateFunctions(query.replace("legacy",""));
     }
 }
 
