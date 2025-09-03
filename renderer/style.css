@@ -1034,3 +1034,7 @@ input:checked + .slider:before {
 .canvasBox p {
 	margin-top: 1vh;
 }
+
+.hourChart {
+	margin: auto;
+}

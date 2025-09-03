@@ -3,7 +3,7 @@ Chart.register(LineController, LineElement, PointElement, PieController, ArcElem
 
 const statisticsWindow = document.getElementById("statistics-content");
 
-function renderStatistics() {
+async function renderStatistics() {
 	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)
 
 	if (!row) {
@@ -13,14 +13,15 @@ function renderStatistics() {
 		return;
 	}
 
+	document.getElementById("statistics-content").style.display = "flex";
 	statisticsWindow.innerHTML = "";
 
-	createMostListenedSongBox();
-	createPieCharts();
-	daysHeatMap();
+	await createMostListenedSongBox();
+	await createPieCharts();
+	await daysHeatMap();
 }
 
-function createMostListenedSongBox() {
+async function createMostListenedSongBox() {
 	const most_listened_song = musicsDb
 		.prepare(
 			`
@@ -67,7 +68,7 @@ function createMostListenedSongBox() {
 	mostListenedSongText.innerHTML += `First listened at: ${formatTime(firstAndLastListenOfTheBestSong.start_time)} and last listened at ${formatTime(firstAndLastListenOfTheBestSong.end_time)}`;
 }
 
-function createPieCharts() {
+async function createPieCharts() {
 	const pieChartPart = document.createElement("div");
 	pieChartPart.id = "pieChartPart";
 	statisticsWindow.appendChild(pieChartPart);
@@ -102,6 +103,9 @@ function createPieCharts() {
 				},
 			],
 		},
+		options: {
+			plugins: { legend: { display: false } },
+		},
 	});
 
 	const canvas2 = document.createElement("canvas");
@@ -123,6 +127,9 @@ function createPieCharts() {
 					backgroundColor: ["pink"],
 				},
 			],
+		},
+		options: {
+			plugins: { legend: { display: false } },
 		},
 	});
 
@@ -146,57 +153,46 @@ function createPieCharts() {
 				},
 			],
 		},
+		options: {
+			plugins: { legend: { display: false } },
+		},
 	});
 }
 
-function daysHeatMap() {
+async function daysHeatMap() {
 	const options = Intl.DateTimeFormat().resolvedOptions();
 	const hourFormat = options.hour12 ? UShours : EUhours;
+
+	const baseConfig = {
+		type: "line",
+		data: { labels: hourFormat, datasets: [] },
+		options: {
+			plugins: { legend: { display: false } },
+			responsive: true,
+			interaction: { mode: "index", intersect: false },
+			stacked: false,
+			scales: {
+				x: { ticks: { color: "white" } },
+				y: { beginAtZero: true, ticks: { color: "white" } },
+			},
+		},
+	};
+
 	for (let i = 0; i < 7; i++) {
 		const activityChart = document.createElement("canvas");
-		// TODO: activityChart.className = ...
+		activityChart.className = "hourChart";
 		statisticsWindow.appendChild(activityChart);
+		activityChart.width = window.innerWidth * 0.75;
+		activityChart.height = window.innerHeight * 0.1095;
 
-		new Chart(activityChart, {
-			type: "line",
-			data: {
-				labels: hourFormat,
-				datasets: [
-					{
-						label: daysoftheweek[i],
-						data: [0, 0, 1, 2, 0, 3, 1, 0, 0, 2, 1, 0, 0, 0, 1, 4, 3, 0, 0, 1, 0, 0, 0, 0],
-						borderColor: "red",
-						fill: false,
-					},
-				],
-			},
-			options: {
-				plugins: {
-					legend: {
-						labels: {
-							color: "white",
-						},
-					},
-				},
-				responsive: true,
-				interaction: { mode: "index", intersect: false },
-				stacked: false,
-				scales: {
-					x: {
-						title: { display: false, text: "Hour of Day" },
-						ticks: {
-							color: "white",
-						},
-					},
-					y: {
-						title: { display: false, text: "Activity" },
-						beginAtZero: true,
-						ticks: {
-							color: "white",
-						},
-					},
-				},
-			},
+		const config = structuredClone(baseConfig);
+		config.data.datasets.push({
+			label: daysoftheweek[i],
+			data: [0, 0, 1, 2, 0, 3, 1, 0, 0, 2, 1, 0, 0, 0, 1, 4, 3, 0, 0, 1, 0, 0, 0, 0],
+			borderColor: "red",
+			fill: false,
 		});
+
+		new Chart(activityChart, config);
 	}
 }

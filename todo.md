@@ -12,6 +12,7 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
+- IN THE LEGACY CODE FUNCTION, FORGOT TO UPDATE THE PLAYLISTS
 - the seconds number is updating inconsistently, rather than updating every second. --> Switch to Go package "beep" for playing audio
 - Mysterious error in the console: Cannot read properties of undefined (reading 'thumbnail_extension') (Happens after deleting songs) (Not dangerous)
 

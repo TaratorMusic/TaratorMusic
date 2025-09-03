@@ -461,7 +461,7 @@ tabs.forEach(tab => {
 				} else if (content.id == "settings-content") {
 					document.getElementById("settings-content").style.display = "flex";
 				} else if (content.id == "statistics-content") {
-					document.getElementById("statistics-content").style.display = "flex";
+					loadNewPage("statistics");
 				}
 				setupLazyBackgrounds();
 			}
