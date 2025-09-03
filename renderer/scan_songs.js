@@ -91,7 +91,7 @@ async function processAllFiles() {
 		}
 	}
 
-	document.getElementById("stabiliseProgress").innerText = "Audio normalization complete.";
+	document.getElementById("stabiliseProgress").innerText = "Song stabilisation complete.";
 }
 
 async function cleanDebugFiles() {

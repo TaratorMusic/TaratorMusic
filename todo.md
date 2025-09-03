@@ -12,17 +12,16 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
-- YouTube thumbnail fetch failed: https is not defined
-- Error fetching thumbnail from DOM img: https is not defined
-- download_music.js:557 Error fetching thumbnail from imageUrl: https is not defined
-- Lines 521, 557, 578
 - the seconds number is updating inconsistently, rather than updating every second. --> Switch to Go package "beep" for playing audio
 - Mysterious error in the console: Cannot read properties of undefined (reading 'thumbnail_extension') (Happens after deleting songs) (Not dangerous)
 
 ## TODO App Features
 ### Statistics!
 Statistics tab:
-- Favorite Song
+- Favorite Song --> FAVORITE SONG:
+- Thumbnail - Name by Artist
+- Language - Genre
+- Listen Amount - Listen Count - First Listen - Last Listen
 
 First song play time
 
