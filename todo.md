@@ -23,12 +23,12 @@ Statistics tab:
 - Language - Genre
 - Listen Amount - Listen Count - First Listen - Last Listen
 
-First song play time
-
 - Favorite Genre (TODO)
 - Favorite Language (TODO)
 - Favorite Artist (TODO)
 Pie chart here
+
+First ever song play time
 
 most active day-hours with heatmaps
 

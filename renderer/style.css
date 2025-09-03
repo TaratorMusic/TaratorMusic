@@ -1021,12 +1021,16 @@ input:checked + .slider:before {
 }
 
 .canvasBox {
-	width: 25vw;
-	height: 30vw;
+	width: 20vw;
+	height: 25vw;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
 	color: white;
 	margin-top: 3vh;
+}
+
+.canvasBox p {
+	margin-top: 1vh;
 }
