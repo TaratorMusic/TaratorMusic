@@ -12,6 +12,10 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
+- YouTube thumbnail fetch failed: https is not defined
+- Error fetching thumbnail from DOM img: https is not defined
+- download_music.js:557 Error fetching thumbnail from imageUrl: https is not defined
+- Lines 521, 557, 578
 - the seconds number is updating inconsistently, rather than updating every second. --> Switch to Go package "beep" for playing audio
 - Mysterious error in the console: Cannot read properties of undefined (reading 'thumbnail_extension') (Happens after deleting songs) (Not dangerous)
 
@@ -19,14 +23,15 @@ It looks terrible :/
 ### Statistics!
 Statistics tab:
 - Favorite Song
-- Favorite Genre (TODO)
-- Favorite Language (TODO)
-Perhaps a pie chart here?
 
-most active day-hours with heatmaps
 First song play time
 
-- Sortable menu with all songs and their stats (Listen count, length, percentage listened)
+- Favorite Genre (TODO)
+- Favorite Language (TODO)
+- Favorite Artist (TODO)
+Pie chart here
+
+most active day-hours with heatmaps
 
 Total Amounts:
 - x playlists formed
@@ -37,6 +42,8 @@ Total Amounts:
 - x songs downloaded from spotify
 - x songs downloaded total
 - x hours spent in-app and x hours this session
+
+- HTML TABLE Sortable menu with all songs and their stats (Listen count, length, percentage listened)
 
 ### New Features
 - Customise Discord Rich Presence box in the settings
@@ -64,7 +71,8 @@ Total Amounts:
 - Clean up the database functions
 - Instead of fileToDelete, make a button inside openCustomiseModal and add addEventListener to remove the song using the song ID
 
-### Quality of Life
+### Quality of 
+- Pressing enter in the download modal should press the button
 - Add pages to the music tab and a way to navigate between them if using "show x rows".
 - Add "Stabilise All" and "Categorise All" at the top of My Music tab
 - Add approximate time remaining for volume stabilisation and downloads.

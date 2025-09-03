@@ -87,6 +87,7 @@
 		"@distube/ytsr": "2.0.4",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",
 		"better-sqlite3": "^11.9.1",
+		"chart.js": "^4.5.0",
 		"cheerio": "^1.1.0",
 		"discord-rpc": "github:Victiniiiii/RPC-Listening",
 		"electron-is-dev": "^3.0.1",

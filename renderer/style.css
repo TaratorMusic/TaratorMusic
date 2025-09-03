@@ -1011,3 +1011,22 @@ input:checked + .slider:before {
 	pointer-events: none;
 	border: 1px solid white;
 }
+
+#pieChartPart {
+	width: 75vw;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-around;
+	align-items: center;
+}
+
+.canvasBox {
+	width: 25vw;
+	height: 30vw;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	color: white;
+	margin-top: 3vh;
+}
