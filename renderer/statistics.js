@@ -150,23 +150,24 @@ function createPieCharts() {
 }
 
 function daysHeatMap() {
-	// TODO: Users time zone: const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const options = Intl.DateTimeFormat().resolvedOptions();
+    const hourFormat = options.hour12 ? UShours : EUhours;
     for (let i = 0; i < 7; i++) {
         const activityChart = document.createElement("canvas");
-		// TODO: activityChart.className = ...
+        // TODO: activityChart.className = ...
         statisticsWindow.appendChild(activityChart);
 
         new Chart(activityChart, {
             type: "line",
             data: {
-                labels: UShours,
+                labels: hourFormat,
                 datasets: [
                     {
                         label: daysoftheweek[i],
                         data: [0, 0, 1, 2, 0, 3, 1, 0, 0, 2, 1, 0, 0, 0, 1, 4, 3, 0, 0, 1, 0, 0, 0, 0],
                         borderColor: "red",
                         fill: false,
-                    }
+                    },
                 ],
             },
             options: {
