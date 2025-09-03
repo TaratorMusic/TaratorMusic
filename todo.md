@@ -16,6 +16,9 @@ It looks terrible :/
 - Mysterious error in the console: Cannot read properties of undefined (reading 'thumbnail_extension') (Happens after deleting songs) (Not dangerous)
 
 ## TODO App Features
+
+### Add a scroll bar but styled (Chrome only)
+
 ### Statistics!
 Statistics tab:
 - Favorite Song --> FAVORITE SONG:

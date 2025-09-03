@@ -51,7 +51,9 @@ function createMostListenedSongBox() {
         )
         .get(most_listened_song.song_id);
 
-    const formatTime = timestamp => // TODO: Get this to helpers.js
+    const formatTime = (
+        timestamp // TODO: Get this to helpers.js
+    ) =>
         new Date(timestamp * 1000).toLocaleString(undefined, {
             hour: "2-digit",
             minute: "2-digit",
@@ -61,7 +63,7 @@ function createMostListenedSongBox() {
             year: "numeric",
         });
 
-    mostListenedSongText.innerHTML = `Most Listened Song: ${mostListenedSongName}. Listened for: ${most_listened_song.total_time} seconds. `; // TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness.
+    mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongName}. Listened for: ${most_listened_song.total_time} seconds. `; // TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness.
     mostListenedSongText.innerHTML += `First listened at: ${formatTime(firstAndLastListenOfTheBestSong.start_time)} and last listened at ${formatTime(firstAndLastListenOfTheBestSong.end_time)}`;
 }
 
@@ -148,54 +150,52 @@ function createPieCharts() {
 }
 
 function daysHeatMap() {
-    const activityChart = document.createElement("canvas");
-    statisticsWindow.appendChild(activityChart);
+	// TODO: Users time zone: const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    for (let i = 0; i < 7; i++) {
+        const activityChart = document.createElement("canvas");
+		// TODO: activityChart.className = ...
+        statisticsWindow.appendChild(activityChart);
 
-    new Chart(activityChart, {
-        type: "line",
-        data: {
-            labels: UShours,
-            datasets: [
-                {
-                    label: "Mon",
-                    data: [0, 0, 1, 2, 0, 3, 1, 0, 0, 2, 1, 0, 0, 0, 1, 4, 3, 0, 0, 1, 0, 0, 0, 0],
-                    borderColor: "red",
-                    fill: false,
+        new Chart(activityChart, {
+            type: "line",
+            data: {
+                labels: UShours,
+                datasets: [
+                    {
+                        label: daysoftheweek[i],
+                        data: [0, 0, 1, 2, 0, 3, 1, 0, 0, 2, 1, 0, 0, 0, 1, 4, 3, 0, 0, 1, 0, 0, 0, 0],
+                        borderColor: "red",
+                        fill: false,
+                    }
+                ],
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "white",
+                        },
+                    },
                 },
-                {
-                    label: "Tue",
-                    data: [0, 1, 0, 0, 2, 1, 3, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-                    borderColor: "blue",
-                    fill: false,
-                },
-            ],
-        },
-        options: {
-            plugins: {
-                legend: {
-                    labels: {
-                        color: "white",
+                responsive: true,
+                interaction: { mode: "index", intersect: false },
+                stacked: false,
+                scales: {
+                    x: {
+                        title: { display: false, text: "Hour of Day" },
+                        ticks: {
+                            color: "white",
+                        },
+                    },
+                    y: {
+                        title: { display: false, text: "Activity" },
+                        beginAtZero: true,
+                        ticks: {
+                            color: "white",
+                        },
                     },
                 },
             },
-            responsive: true,
-            interaction: { mode: "index", intersect: false },
-            stacked: false,
-            scales: {
-                x: {
-                    title: { display: false, text: "Hour of Day" },
-                    ticks: {
-                        color: "white",
-                    },
-                },
-                y: {
-                    title: { display: false, text: "Activity" },
-                    beginAtZero: true,
-                    ticks: {
-                        color: "white",
-                    },
-                },
-            },
-        },
-    });
+        });
+    }
 }

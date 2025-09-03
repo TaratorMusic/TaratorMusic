@@ -7,7 +7,7 @@ function formatTime(seconds) {
 }
 
 function threeWayModal(description, button1 = "Option 1", button2 = "Option 2", button3 = "Option 3", value1 = "option1", value2 = "option2", value3 = "option3") {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
         const overlay = document.createElement("div");
         overlay.className = "confirm-modal-overlay";
 
@@ -49,7 +49,7 @@ function threeWayModal(description, button1 = "Option 1", button2 = "Option 2", 
 }
 
 function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
         const overlay = document.createElement("div");
         overlay.className = "confirm-modal-overlay";
 
@@ -107,14 +107,14 @@ function findDuplicates(array) {
 }
 
 function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function loadJSFile(filename) {
     return new Promise((resolve, reject) => {
         const src = `${filename}.js`;
 
-        if (Array.from(document.scripts).find((script) => script.src.includes(src))) {
+        if (Array.from(document.scripts).find(script => script.src.includes(src))) {
             resolve();
             return;
         }
@@ -142,7 +142,7 @@ async function loadNewPage(query) {
         renderStatistics();
     } else if (query.includes("legacy")) {
         await loadJSFile("update_legacy_codes");
-        updateFunctions(query.replace("legacy",""));
+        updateFunctions(query.replace("legacy", ""));
     }
 }
 
@@ -188,7 +188,7 @@ function generateId() {
 }
 
 function closeModal() {
-    document.querySelectorAll(".modal, .confirm-modal-overlay").forEach((el) => {
+    document.querySelectorAll(".modal, .confirm-modal-overlay").forEach(el => {
         el.style.display = "none";
     });
 }
@@ -220,3 +220,5 @@ const UShours = [
     "10:00 PM",
     "11:00 PM",
 ];
+
+const daysoftheweek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
