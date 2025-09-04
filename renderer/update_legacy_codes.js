@@ -28,13 +28,15 @@ async function shortenSongIds() {
 			for (const playlist of playlists) {
 				let songsArr = JSON.parse(playlist.songs);
 				let changed = false;
+
 				songsArr = songsArr.map(s => {
-					if (s === strippedOldId) {
+					if (s === oldId || s === strippedOldId) {
 						changed = true;
-						return strippedNewId;
+						return newId;
 					}
 					return s;
 				});
+
 				if (changed) playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(songsArr), playlist.id);
 			}
 
@@ -48,10 +50,8 @@ async function shortenSongIds() {
 	}
 
 	let queryArray = [renameMapping, musicFolder, thumbnailFolder];
-
 	if (renameMapping.length > 0) {
 		await loadNewPage("shortenSongIdsGoPart", queryArray);
 	}
-
 	await alertModal("Task complete.");
 }
