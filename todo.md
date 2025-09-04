@@ -12,6 +12,8 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
+- Using up and down arrow keys while scrolling is very glitchy on the statistics page
+- The settings page currently does not have the scroll bar
 - After resizing the window the graphs look messed up add eventlistener to window to rearrange width & height
 - Closing a modal closes all modals
 - IN THE LEGACY CODE FUNCTION, FORGOT TO UPDATE THE PLAYLISTS
@@ -26,7 +28,7 @@ Fully complete the statistics page.
 Need scrollbars in my music and playlists tab
 Make settings menu look a bit better
 remove song stats from the customisation menu
-Add search bar in the playlists tab
+Add search bar in the playlists tab and style the create new playlist button
 Customisable scrollbars maybe
 Redesign main menu cuz we will be moving the time spent in app to the statistics page
 
