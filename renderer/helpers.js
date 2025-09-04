@@ -139,7 +139,7 @@ async function loadNewPage(query) {
 		checkNameThumbnail(false);
 	} else if (query == "statistics") {
 		await loadJSFile("statistics");
-		renderStatistics();
+		if (typeof renderStatistics === "function") renderStatistics(); // "typeof" fixes a console error
 	} else if (query.includes("legacy")) {
 		await loadJSFile("update_legacy_codes");
 		updateFunctions(query.replace("legacy", ""));
