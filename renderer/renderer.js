@@ -95,7 +95,6 @@ let key_randomPlaylist;
 let dividevolume;
 let displayCount;
 let stabiliseVolumeToggle;
-let background;
 let current_version;
 
 const defaultSettings = {
@@ -218,10 +217,10 @@ function initializeSettingsDatabase() {
 	volume = settingsRow.volume;
 	dividevolume = settingsRow.dividevolume;
 	displayCount = settingsRow.displayCount;
-	background = settingsRow.background;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 	discordRPCstatus = settingsRow.dc_rpc;
 	current_version = settingsRow.current_version;
+	document.body.className = `bg-gradient-${settingsRow.background}`;
 
 	const icons = {
 		backwardButton: "backward.svg",
@@ -1353,8 +1352,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	initializeSettingsDatabase();
 	initializeMusicsDatabase();
 	initializePlaylistsDatabase();
-
-	document.body.className = `bg-gradient-${background}`;
 
 	ipcRenderer.send("renderer-domready");
 
