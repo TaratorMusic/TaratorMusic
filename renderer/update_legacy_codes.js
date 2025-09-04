@@ -1,5 +1,5 @@
 async function updateFunctions(version) {
-	if (version == "1.7.3") {
+	if (version == "null") { // Has to be between brackets
 		await shortenSongIds();
 	}
 }
