@@ -1,7 +1,7 @@
 const { Chart, LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler } = require("chart.js");
 Chart.register(LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler);
 
-const scrollableArea = document.getElementById("statistics-scroll");
+const scrollableArea = document.getElementById("statistics-content");
 
 async function renderStatistics() {
 	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)

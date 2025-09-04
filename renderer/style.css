@@ -187,7 +187,6 @@ body::-webkit-scrollbar {
 }
 
 .content {
-	flex: 1;
 	padding: 20px;
 	margin-left: calc(13.5vw + 3vh);
 }
@@ -560,11 +559,16 @@ audio {
 	display: none;
 	text-align: left;
 	align-items: flex-start;
-	padding-left: 5vw;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 #settings-content div {
-	height: 10vh;
+	height: 4vh;
+}
+
+#settings-content h1 {
+    margin: 5vh 0;
 }
 
 .playlist {
@@ -839,7 +843,7 @@ input:checked + .slider:before {
 .settingsKeybinds {
 	display: flex;
 	align-items: flex-start;
-	height: 7vh !important;
+	height: 4vh !important;
 }
 
 .settingsKeybindsButton {
@@ -1053,11 +1057,12 @@ input:checked + .slider:before {
 }
 
 .scrollArea {
-	width: 83vw !important;
-	height: 93vh !important;
-	padding-top: 4vw !important;
-	padding-bottom: 4vw !important;
-	margin-top: -2vw !important;
-	margin-right: -5vw !important;
+	width: 83.75vw !important;
+	height: 92vh !important;
+    min-height: 92vh !important;
+    max-height: 92vh !important;
+    margin: -20px -20px 0 0 !important;
+	padding-top: 45vh !important;
+    padding-bottom: 5vh !important;
 	overflow-y: scroll !important;
 }
