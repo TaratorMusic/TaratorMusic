@@ -127,12 +127,6 @@ async function loadJSFile(filename) {
 	});
 }
 
-async function openThisModal(modalName) {
-	if (modalName == "download") {
-		document.getElementById("downloadModal").style.display = "block";
-	}
-}
-
 async function loadNewPage(query) {
 	if (query == "download") {
 		await loadJSFile("download_music");
@@ -143,12 +137,12 @@ async function loadNewPage(query) {
 	} else if (query.includes("legacy")) {
 		await loadJSFile("update_legacy_codes");
 		updateFunctions(query.replace("legacy", ""));
+	} else if (query == "download") {
+		document.getElementById("downloadModal").style.display = "block";
+	} else if (query == "createAppThumbnailsFolder") {
+		await loadJSFile("run_spawn_processes");
+		if (functionName == "createAppThumbnailsFolder") createAppThumbnailsFolder();
 	}
-}
-
-async function ranSpawnProcess(functionName) {
-	await loadJSFile("run_spawn_processes");
-	if (functionName == "createAppThumbnailsFolder") createAppThumbnailsFolder();
 }
 
 function cleanDownloadModal() {

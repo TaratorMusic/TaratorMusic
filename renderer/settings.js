@@ -62,7 +62,7 @@ async function redownloadAllSongs() {
 		return;
 	}
 
-	await openThisModal("download");
+	await loadNewPage("download");
 	await checkNameThumbnail(true);
 	downloadingStyle = "redownload";
 	const songs = [];
