@@ -196,6 +196,7 @@ async function daysHeatMap() {
 		const activityChart = document.createElement("canvas");
 		activityChart.className = "hourChart";
 		activityBox.appendChild(activityChart);
+        
 		activityChart.width = window.innerWidth * 0.7;
 		activityChart.height = window.innerWidth * 0.0525;
 

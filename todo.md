@@ -1,6 +1,4 @@
 ## Needed UI Redesigns
-### Settings tab
-Settings tab desperately needs some design changes, because i never designed it to begin with. It should have the categories quickly accessible (Keybinds, Customisation, Settings, and maybe more later like Discord) and smaller gaps between the setting and its description. Finally the buttons should at least be styled with CSS.
 
 ### Downloads tab
 The div's arent even aligned, and its just pure HTML
@@ -12,25 +10,20 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
-- Does playlist modals close after deleting them? Test
-- Using up and down arrow keys while scrolling is very glitchy on the statistics page
-- The settings page currently does not have the scroll bar
-- After resizing the window the graphs look messed up add eventlistener to window to rearrange width & height
 - Closing a modal closes all modals
-- the seconds number is updating inconsistently, rather than updating every second. --> Switch to Go package "beep" for playing audio
 - Mysterious error in the console: Cannot read properties of undefined (reading 'thumbnail_extension') (Happens after deleting songs) (Not dangerous)
 
 ## TODO App Features
 
-NEED ASAP:
 Fix bugs
+Use beep in Go
+Style settings page buttons
 Fully complete the statistics page.
 Need scrollbars in my music and playlists tab
-Make settings menu look a bit better
 remove song stats from the customisation menu
 Add search bar in the playlists tab and style the create new playlist button
-Customisable scrollbars maybe
 Redesign main menu cuz we will be moving the time spent in app to the statistics page
+Quick song search shortcut and modal
 
 ### Statistics!
 Statistics tab:
@@ -71,12 +64,6 @@ Total Amounts:
 - Use last.fm API to find similar songs and artists. 
 - Directly stream songs without downloading.
 - Configure how the songs are played: True Random - Weight to most played songs - Weight to least played songs
-- Quick song search shortcut and modal
-
-### Legacy Code Changes:
-- "favorites" playlist id changed from 1 to "Favorites".
-- Song listen timers moved from songs table to listens table. If a person has the old data, don't show it in first song play time or most active times chart.
-- Song id's have been changed to be shorter, find if any exists
 
 ### Tests
 - Need to setup electron tests via playwright
@@ -88,12 +75,13 @@ Total Amounts:
 - Clean up the database functions
 - Instead of fileToDelete, make a button inside openCustomiseModal and add addEventListener to remove the song using the song ID
 
-### Quality of 
+### Quality of Life
 - Pressing enter in the download modal should press the button
 - Add pages to the music tab and a way to navigate between them if using "show x rows".
 - Add "Stabilise All" and "Categorise All" at the top of My Music tab
 - Add approximate time remaining for volume stabilisation and downloads.
 - Add link customisation to the customisation modal
+- Customisable scrollbars maybe
 
 ### New Settings
 

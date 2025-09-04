@@ -1448,4 +1448,11 @@ document.addEventListener("DOMContentLoaded", function () {
 		document.getElementById("installBtn").disabled = true;
 		ipcRenderer.send("download-update");
 	});
+
+	window.addEventListener("resize", () => {
+		document.querySelectorAll(".hourChart").forEach(chart => {
+			chart.width = window.innerWidth * 0.7;
+			chart.height = window.innerWidth * 0.0525;
+		});
+	});
 });
