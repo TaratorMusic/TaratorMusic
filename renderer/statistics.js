@@ -49,7 +49,7 @@ async function createMostListenedSongBox() {
 		`
 		)
 		.get(most_listened_song.song_id);
-	
+
 	// TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness.
 	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow != undefined ? mostListenedSongsRow.song_name : "A deleted song"}. `;
 	// mostListenedSongText.innerHTML += `by ${mostListenedSongsRow.artist}`;
@@ -157,7 +157,7 @@ async function daysHeatMap() {
 	for (const row of rows) {
 		const duration = row.end_time - row.start_time;
 		const date = new Date(row.start_time * 1000);
-		const day = date.getDay();
+		const day = (date.getDay() + 6) % 7;
 		const hour = date.getHours();
 		days[day][hour] += duration;
 		counts[day][hour] += 1;
