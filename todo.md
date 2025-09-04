@@ -12,14 +12,21 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
+- After resizing the window the graphs look messed up add eventlistener to window to rearrange width & height
+- Closing a modal closes all modals
 - IN THE LEGACY CODE FUNCTION, FORGOT TO UPDATE THE PLAYLISTS
 - the seconds number is updating inconsistently, rather than updating every second. --> Switch to Go package "beep" for playing audio
 - Mysterious error in the console: Cannot read properties of undefined (reading 'thumbnail_extension') (Happens after deleting songs) (Not dangerous)
 
 ## TODO App Features
 
-### Add a scroll bar but styled (Chrome only)
-### Add search bar in the playlists tab
+NEED ASAP:
+Fix bugs
+Fully complete the statistics page.
+Need scrollbars in my music and playlists tab
+Make settings menu look a bit better
+remove song stats from the customisation menu
+Add search bar in the playlists tab
 
 ### Statistics!
 Statistics tab:

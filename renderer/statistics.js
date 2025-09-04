@@ -1,7 +1,7 @@
 const { Chart, LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler } = require("chart.js");
 Chart.register(LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler);
 
-const statisticsWindow = document.getElementById("statistics-content");
+const scrollableArea = document.getElementById("statistics-scroll");
 
 async function renderStatistics() {
 	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)
@@ -12,7 +12,7 @@ async function renderStatistics() {
 	}
 
 	document.getElementById("statistics-content").style.display = "flex";
-	statisticsWindow.innerHTML = "";
+	scrollableArea.innerHTML = "";
 
 	await createMostListenedSongBox();
 	await createPieCharts();
@@ -36,7 +36,7 @@ async function createMostListenedSongBox() {
 
 	const mostListenedSongText = document.createElement("div");
 	mostListenedSongText.id = "mostListenedSongText";
-	statisticsWindow.appendChild(mostListenedSongText);
+	scrollableArea.appendChild(mostListenedSongText);
 
 	const firstAndLastListenOfTheBestSong = musicsDb
 		.prepare(
@@ -60,7 +60,7 @@ async function createMostListenedSongBox() {
 async function createPieCharts() {
 	const pieChartPart = document.createElement("div");
 	pieChartPart.id = "pieChartPart";
-	statisticsWindow.appendChild(pieChartPart);
+	scrollableArea.appendChild(pieChartPart);
 
 	const canvasBox1 = document.createElement("div");
 	canvasBox1.className = "canvasBox";
@@ -186,7 +186,7 @@ async function daysHeatMap() {
 	for (let i = 0; i < 7; i++) {
 		const activityBox = document.createElement("div");
 		activityBox.className = "activityBox";
-		statisticsWindow.appendChild(activityBox);
+		scrollableArea.appendChild(activityBox);
 
 		const canvasLabel = document.createElement("div");
 		canvasLabel.innerHTML = daysoftheweek[i];

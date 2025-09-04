@@ -603,27 +603,6 @@ audio {
 	border: 1px solid white;
 }
 
-.playlist-songs::-webkit-scrollbar {
-	width: 12px;
-}
-
-.playlist-songs::-webkit-scrollbar-track {
-	background: rgba(255, 255, 255, 0.07);
-	border-radius: 10px;
-}
-
-.playlist-songs::-webkit-scrollbar-thumb {
-	background: #ffcc00;
-	border-radius: 10px;
-	border: 3px solid transparent;
-	background-clip: content-box;
-}
-
-.playlist-songs::-webkit-scrollbar-thumb:hover {
-	background: #ffd633;
-	transition: all 400ms ease;
-}
-
 .playlistInfoandSongs {
 	display: flex;
 	flex-direction: column;
@@ -1040,9 +1019,45 @@ input:checked + .slider:before {
 }
 
 .activityBox {
-    width: 80vw;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
+	width: 80vw;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.scrollArea::-webkit-scrollbar,
+.playlist-songs::-webkit-scrollbar {
+	display: block;
+	width: 12px;
+}
+
+.scrollArea::-webkit-scrollbar-track,
+.playlist-songs::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.07);
+	border-radius: 10px;
+}
+
+.scrollArea::-webkit-scrollbar-thumb,
+.playlist-songs::-webkit-scrollbar-thumb {
+	background: #ffcc00;
+	border-radius: 10px;
+	border: 3px solid transparent;
+	background-clip: content-box;
+}
+
+.scrollArea::-webkit-scrollbar-thumb:hover,
+.playlist-songs::-webkit-scrollbar-thumb:hover {
+	background: #ffd633;
+	transition: all 400ms ease;
+}
+
+.scrollArea {
+	width: 83vw !important;
+	height: 93vh !important;
+	padding-top: 4vw !important;
+	padding-bottom: 4vw !important;
+	margin-top: -2vw !important;
+	margin-right: -5vw !important;
+	overflow-y: scroll !important;
 }

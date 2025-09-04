@@ -134,7 +134,7 @@
 			<div id="playlists" class="sidebarButtons" onclick="getPlaylists()">Playlists</div>
 			<div id="settings" class="sidebarButtons" onclick="loadJSFile('settings')">Settings</div>
 			<div id="statistics" class="sidebarButtons" onclick="loadNewPage('statistics')">Statistics</div>
-			<div id="downloadNewFunction" class="sidebarButtons" onclick="loadNewPage('download')">Download</div>
+			<div id="downloadNewFunction" class="sidebarButtons" onclick="loadNewPage('downloadModal')">Download</div>
 		</div>
 		<div id="playlistsidebar"></div>
 		<div id="content" class="content">
@@ -159,123 +159,127 @@
 			</div>
 			<div id="my-music-content" class="tab-content hidden"></div>
 			<div id="playlists-content" class="tab-content hidden"></div>
-			<div id="settings-content" class="tab-content hidden">
-				<h1 class="underline-text">Keybinds</h1>
-				<div>You can choose which keys will activate which actions here.</div>
-				<div class="settingsKeybinds">
-					<div>Back 5 Seconds:</div>
-					<button id="settingsRewind" class="settingsKeybindsButton" required></button>
+			<div id="settings-content" style="height: 93vh;" class="tab-content hidden">
+				<div class="scrollArea">
+					<h1 class="underline-text">Keybinds</h1>
+					<div>You can choose which keys will activate which actions here.</div>
+					<div class="settingsKeybinds">
+						<div>Back 5 Seconds:</div>
+						<button id="settingsRewind" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Previous Song:</div>
+						<button id="settingsPrevious" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Play/Pause:</div>
+						<button id="settingsPlayPause" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Next Song:</div>
+						<button id="settingsNext" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Skip 5 Seconds:</div>
+						<button id="settingsSkip" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Autoplay:</div>
+						<button id="settingsAutoplay" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Shuffle:</div>
+						<button id="settingsShuffle" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Mute:</div>
+						<button id="settingsMute" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Speed:</div>
+						<button id="settingsSpeed" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Loop:</div>
+						<button id="settingsLoop" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Random Song:</div>
+						<button id="settingsRandomSong" class="settingsKeybindsButton" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Random Playlist:</div>
+						<button id="settingsRandomPlaylist" class="settingsKeybindsButton" required></button>
+					</div>
+					<button onclick="saveKeybinds()">Save Keybinds</button>
+					<h1 class="underline-text">Customisation</h1>
+					<div class="settingsflexrow">
+						Divide the Volume
+						<select name="dividevolume" id="dividevolume" onchange="handleDropdownChange('dividevolume', this)">
+							<option value="1">Don't divide the volume</option>
+							<option value="10">Divide by 10</option>
+							<option value="20">Divide by 20</option>
+							<option value="50">Divide by 50</option>
+						</select>
+					</div>
+					<div>Divide the Volume will make the volume control easier if you want to listen to the songs more quietly.</div>
+					<div class="settingsflexrow">
+						<div>Edit Background:</div>
+						<button onclick="changeBackground('blue')">Blue</button>
+						<button onclick="changeBackground('red')">Red</button>
+						<button onclick="changeBackground('green')">Green</button>
+						<button onclick="changeBackground('purple')">Purple</button>
+						<button onclick="changeBackground('black')">Black</button>
+						<div>More detailed background customisation coming soon...</div>
+					</div>
+					<div>Change the background color or upload your own background with this setting.</div>
+					<h1 class="underline-text">System</h1>
+					<div class="settingsflexrow">
+						Discord Connection
+						<label class="switch">
+							<input type="checkbox" id="toggleSwitchDiscord" onclick="toggleDiscordAPI()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<div>Share your status in Discord!</div>
+					<div class="settingsflexrow">
+						<div>Stabilise Volume while downloading music</div>
+						<label class="switch">
+							<input type="checkbox" id="stabiliseVolumeToggle" onclick="stabiliseVolumeToggleTogglerFunction()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<div>If not selected, you will need to manually stabilise song volumes using the buttons below.</div>
+					<div class="settingsflexrow">
+						Stabilise all songs volumes:
+						<button onclick="processAllFiles()">Stabilise</button>
+						<div class="settingsflexrow" id="stabiliseProgress">Progress: Didn't start</div>
+					</div>
+					<div>Helps all the songs sounds the same on the same volume.</div>
+					<div class="settingsflexrow">
+						Remove all broken files from folders
+						<button onclick="cleanDebugFiles()">Clean</button>
+						<div class="settingsflexrow" id="cleanProgress">Progress: Didn't start</div>
+					</div>
+					<div>Clean the folder from buggy files.</div>
+					<div class="settingsflexrow">
+						Check Folder For New Songs
+						<button onclick="processNewSongs()">Check</button>
+						<div class="settingsflexrow" id="folderProgress">Progress: Didn't start</div>
+					</div>
+					<div>If you have added a new song to the folder, press this to add them to the songs list.</div>
+					<div class="settingsflexrow">
+						Redownload old songs
+						<button onclick="redownloadAllSongs()">Redownload</button>
+					</div>
+					<div class="settingsflexrow">You can use your old database to redownload all the songs back.</div>
+					<div class="settingsflexrow">Debug Mode <button id="debugButton">Toggle</button></div>
+					<div>Enter debug mode to see the errors and the logs.</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Previous Song:</div>
-					<button id="settingsPrevious" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Play/Pause:</div>
-					<button id="settingsPlayPause" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Next Song:</div>
-					<button id="settingsNext" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Skip 5 Seconds:</div>
-					<button id="settingsSkip" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Autoplay:</div>
-					<button id="settingsAutoplay" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Shuffle:</div>
-					<button id="settingsShuffle" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Mute:</div>
-					<button id="settingsMute" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Speed:</div>
-					<button id="settingsSpeed" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Loop:</div>
-					<button id="settingsLoop" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Random Song:</div>
-					<button id="settingsRandomSong" class="settingsKeybindsButton" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Random Playlist:</div>
-					<button id="settingsRandomPlaylist" class="settingsKeybindsButton" required></button>
-				</div>
-				<button onclick="saveKeybinds()">Save Keybinds</button>
-				<h1 class="underline-text">Customisation</h1>
-				<div class="settingsflexrow">
-					Divide the Volume
-					<select name="dividevolume" id="dividevolume" onchange="handleDropdownChange('dividevolume', this)">
-						<option value="1">Don't divide the volume</option>
-						<option value="10">Divide by 10</option>
-						<option value="20">Divide by 20</option>
-						<option value="50">Divide by 50</option>
-					</select>
-				</div>
-				<div>Divide the Volume will make the volume control easier if you want to listen to the songs more quietly.</div>
-				<div class="settingsflexrow">
-					<div>Edit Background:</div>
-					<button onclick="changeBackground('blue')">Blue</button>
-					<button onclick="changeBackground('red')">Red</button>
-					<button onclick="changeBackground('green')">Green</button>
-					<button onclick="changeBackground('purple')">Purple</button>
-					<button onclick="changeBackground('black')">Black</button>
-					<div>More detailed background customisation coming soon...</div>
-				</div>
-				<div>Change the background color or upload your own background with this setting.</div>
-				<h1 class="underline-text">System</h1>
-				<div class="settingsflexrow">
-					Discord Connection
-					<label class="switch">
-						<input type="checkbox" id="toggleSwitchDiscord" onclick="toggleDiscordAPI()" />
-						<span class="slider round"></span>
-					</label>
-				</div>
-				<div>Share your status in Discord!</div>
-				<div class="settingsflexrow">
-					<div>Stabilise Volume while downloading music</div>
-					<label class="switch">
-						<input type="checkbox" id="stabiliseVolumeToggle" onclick="stabiliseVolumeToggleTogglerFunction()" />
-						<span class="slider round"></span>
-					</label>
-				</div>
-				<div>If not selected, you will need to manually stabilise song volumes using the buttons below.</div>
-				<div class="settingsflexrow">
-					Stabilise all songs volumes:
-					<button onclick="processAllFiles()">Stabilise</button>
-					<div class="settingsflexrow" id="stabiliseProgress">Progress: Didn't start</div>
-				</div>
-				<div>Helps all the songs sounds the same on the same volume.</div>
-				<div class="settingsflexrow">
-					Remove all broken files from folders
-					<button onclick="cleanDebugFiles()">Clean</button>
-					<div class="settingsflexrow" id="cleanProgress">Progress: Didn't start</div>
-				</div>
-				<div>Clean the folder from buggy files.</div>
-				<div class="settingsflexrow">
-					Check Folder For New Songs
-					<button onclick="processNewSongs()">Check</button>
-					<div class="settingsflexrow" id="folderProgress">Progress: Didn't start</div>
-				</div>
-				<div>If you have added a new song to the folder, press this to add them to the songs list.</div>
-				<div class="settingsflexrow">
-					Redownload old songs
-					<button onclick="redownloadAllSongs()">Redownload</button>
-				</div>
-				<div class="settingsflexrow">You can use your old database to redownload all the songs back.</div>
-				<div class="settingsflexrow">Debug Mode <button id="debugButton">Toggle</button></div>
-				<div>Enter debug mode to see the errors and the logs.</div>
 			</div>
-			<div id="statistics-content" class="tab-content hidden"></div>
+			<div id="statistics-content" class="tab-content hidden">
+				<div class="scrollArea" id="statistics-scroll"></div>
+			</div>
 		</div>
 		<div id="videothumbnailbox"></div>
 		<div id="video-controls" class="flexrow">

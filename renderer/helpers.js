@@ -133,11 +133,11 @@ async function loadNewPage(query) {
 		checkNameThumbnail(false);
 	} else if (query == "statistics") {
 		await loadJSFile("statistics");
-		if (typeof renderStatistics === "function") renderStatistics(); // "typeof" fixes a console error
+		if (typeof renderStatistics == "function") renderStatistics(); // "typeof" fixes a console error
 	} else if (query.includes("legacy")) {
 		await loadJSFile("update_legacy_codes");
 		updateFunctions(query.replace("legacy", ""));
-	} else if (query == "download") {
+	} else if (query == "downloadModal") {
 		document.getElementById("downloadModal").style.display = "block";
 	} else if (query == "createAppThumbnailsFolder") {
 		await loadJSFile("run_spawn_processes");
