@@ -1367,12 +1367,12 @@ document.addEventListener("DOMContentLoaded", function () {
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
 
 	if (!fs.existsSync(appThumbnailFolder)) {
-		ranSpawnProcess("createAppThumbnailsFolder");
+		loadNewPage("createAppThumbnailsFolder");
 	} else {
 		const files = ["addtoplaylist.svg", "adjustments.svg", "backward.svg", "custom.svg", "customise.svg", "forward.svg", "greenAutoplay.svg", "greenLoop.svg", "greenShuffle.svg", "mute.svg", "next.svg", "pause.svg", "placeholder.jpg", "play.svg", "previous.svg", "redAutoplay.svg", "redLoop.svg", "redShuffle.svg", "speed.svg", "star.svg", "tarator_icon.icns", "tarator_icon.ico", "tarator_icon.png", "tarator16_icon.png", "tarator512_icon.png", "tarator1024_icon.png", "trash.svg"];
 		for (const file of files) {
 			if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
-				ranSpawnProcess("createAppThumbnailsFolder");
+				loadNewPage("createAppThumbnailsFolder");
 				return;
 			}
 		}
@@ -1422,7 +1422,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	ipcRenderer.invoke("get-app-version").then(async version => {
-		if (version != current_version) await loadNewPage(`legacy${current_version}`);
+		if (version != current_version) await loadNewPage(`legacy`, current_version);
 		current_version = version;
 		updateDatabase("current_version", current_version, settingsDb);
 		document.getElementById("version").textContent = `Version: ${version}`;

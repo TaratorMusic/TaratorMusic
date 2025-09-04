@@ -127,7 +127,7 @@ async function loadJSFile(filename) {
 	});
 }
 
-async function loadNewPage(query) {
+async function loadNewPage(query, info) {
 	if (query == "download") {
 		await loadJSFile("download_music");
 		checkNameThumbnail(false);
@@ -136,12 +136,15 @@ async function loadNewPage(query) {
 		if (typeof renderStatistics == "function") renderStatistics(); // "typeof" fixes a console error
 	} else if (query.includes("legacy")) {
 		await loadJSFile("update_legacy_codes");
-		updateFunctions(query.replace("legacy", ""));
+		updateFunctions(info);
 	} else if (query == "downloadModal") {
 		document.getElementById("downloadModal").style.display = "block";
 	} else if (query == "createAppThumbnailsFolder") {
 		await loadJSFile("run_spawn_processes");
 		if (functionName == "createAppThumbnailsFolder") createAppThumbnailsFolder();
+	} else if (query == "shortenSongIdsGoPart") {
+		await loadJSFile("run_spawn_processes");
+		shortenSongIdsGoPart(info);
 	}
 }
 

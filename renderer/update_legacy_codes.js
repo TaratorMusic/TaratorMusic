@@ -1,29 +1,57 @@
 async function updateFunctions(version) {
-	if (version == "null") { // Has to be between brackets
+	if (version == "null") {
+		// "null" has to be between brackets
 		await shortenSongIds();
 	}
 }
 
 async function shortenSongIds() {
-	await alertModal("Shortening song ID's... Press 'Okay' to begin.");
-	const rows = musicsDb.prepare("SELECT song_id FROM songs").all();
+	await alertModal("Shortening song ID's... Press 'Okay' to begin. Might take a while...");
+
+	const rows = musicsDb.prepare("SELECT song_id, song_extension, thumbnail_extension FROM songs").all();
+	const renameMapping = [];
 
 	for (const row of rows) {
 		if (row.song_id.length > 15) {
 			const oldId = row.song_id;
+			const songExtension = row.song_extension;
+			const thumbnailExtension = row.thumbnail_extension;
 			const newId = generateId();
 
+			const strippedOldId = oldId.replace("tarator", "").replace("-", "");
+			const strippedNewId = newId.replace("tarator", "").replace("-", "");
+
 			musicsDb.prepare("UPDATE songs SET song_id = ? WHERE song_id = ?").run(newId, oldId);
-			musicsDb.prepare("UPDATE timers SET song_id = ? WHERE song_id = ?").run(newId.replace("tarator", "").replace("-", ""), oldId.replace("tarator", "").replace("-", ""));
+			musicsDb.prepare("UPDATE timers SET song_id = ? WHERE song_id = ?").run(strippedNewId, strippedOldId);
 
-			const musicOldPath = path.join(musicFolder, oldId + ".mp3");
-			const musicNewPath = path.join(musicFolder, newId + ".mp3");
-			if (fs.existsSync(musicOldPath)) fs.renameSync(musicOldPath, musicNewPath);
+			const playlists = playlistsDb.prepare("SELECT id, songs FROM playlists").all();
+			for (const playlist of playlists) {
+				let songsArr = JSON.parse(playlist.songs);
+				let changed = false;
+				songsArr = songsArr.map(s => {
+					if (s === strippedOldId) {
+						changed = true;
+						return strippedNewId;
+					}
+					return s;
+				});
+				if (changed) playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(songsArr), playlist.id);
+			}
 
-			const thumbOldPath = path.join(thumbnailFolder, oldId + ".jpg");
-			const thumbNewPath = path.join(thumbnailFolder, newId + ".jpg");
-			if (fs.existsSync(thumbOldPath)) fs.renameSync(thumbOldPath, thumbNewPath);
+			renameMapping.push({
+				oldId,
+				newId,
+				songExtension,
+				thumbnailExtension,
+			});
 		}
 	}
+
+	let queryArray = [renameMapping, musicFolder, thumbnailFolder];
+
+	if (renameMapping.length > 0) {
+		await loadNewPage("shortenSongIdsGoPart", queryArray);
+	}
+
 	await alertModal("Task complete.");
 }
