@@ -19,6 +19,7 @@ It looks terrible :/
 ## TODO App Features
 
 ### Add a scroll bar but styled (Chrome only)
+### Add search bar in the playlists tab
 
 ### Statistics!
 Statistics tab:

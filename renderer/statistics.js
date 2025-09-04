@@ -23,16 +23,16 @@ async function createMostListenedSongBox() {
 	const most_listened_song = musicsDb
 		.prepare(
 			`
-            SELECT song_id, SUM(end_time - start_time) AS total_time
-            FROM timers
-            GROUP BY song_id
-            ORDER BY total_time DESC
-            LIMIT 1
-        `
+			SELECT song_id, SUM(end_time - start_time) AS total_time
+			FROM timers
+			GROUP BY song_id
+			ORDER BY total_time DESC
+			LIMIT 1
+		`
 		)
 		.get();
 
-	const mostListenedSongName = getSongNameById(`tarator-${most_listened_song.song_id}`) != null ? getSongNameById(`tarator-${most_listened_song.song_id}`) : "A deleted song";
+	const mostListenedSongsRow = musicsDb.prepare("SELECT song_name FROM songs WHERE song_id = ?").get(`tarator-${most_listened_song.song_id}`);
 
 	const mostListenedSongText = document.createElement("div");
 	mostListenedSongText.id = "mostListenedSongText";
@@ -41,29 +41,20 @@ async function createMostListenedSongBox() {
 	const firstAndLastListenOfTheBestSong = musicsDb
 		.prepare(
 			`
-                SELECT *
-                FROM timers
-                WHERE song_id = ?
-                ORDER BY start_time ASC
-                LIMIT 1
-            `
+			SELECT *
+			FROM timers
+			WHERE song_id = ?
+			ORDER BY start_time ASC
+			LIMIT 1
+		`
 		)
 		.get(most_listened_song.song_id);
-
-	const formatTime = (
-		timestamp // TODO: Get this to helpers.js
-	) =>
-		new Date(timestamp * 1000).toLocaleString(undefined, {
-			hour: "2-digit",
-			minute: "2-digit",
-			second: "2-digit",
-			day: "2-digit",
-			month: "2-digit",
-			year: "numeric",
-		});
-
-	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongName}. Listened for: ${most_listened_song.total_time} seconds. `; // TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness.
-	mostListenedSongText.innerHTML += `First listened at: ${formatTime(firstAndLastListenOfTheBestSong.start_time)} and last listened at ${formatTime(firstAndLastListenOfTheBestSong.end_time)}`;
+	
+	// TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness.
+	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow != undefined ? mostListenedSongsRow.song_name : "A deleted song"}. `;
+	// mostListenedSongText.innerHTML += `by ${mostListenedSongsRow.artist}`;
+	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds. `;
+	mostListenedSongText.innerHTML += `First listened at: ${formatUnixTime(firstAndLastListenOfTheBestSong.start_time)} and last listened at ${formatUnixTime(firstAndLastListenOfTheBestSong.end_time)}`;
 }
 
 async function createPieCharts() {
