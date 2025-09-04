@@ -27,10 +27,12 @@ Need scrollbars in my music and playlists tab
 Make settings menu look a bit better
 remove song stats from the customisation menu
 Add search bar in the playlists tab
+Customisable scrollbars maybe
+Redesign main menu cuz we will be moving the time spent in app to the statistics page
 
 ### Statistics!
 Statistics tab:
-- Favorite Song --> FAVORITE SONG:
+- FAVORITE SONG:
 - Thumbnail - Name by Artist
 - Language - Genre
 - Listen Amount - Listen Count - First Listen - Last Listen
@@ -41,7 +43,7 @@ Statistics tab:
 Pie chart here
 
 First ever song play time
-Perhaps a pie chart here? Or something github-like
+App installed at:
 
 most active day-hours with heatmaps
 
