@@ -1207,9 +1207,8 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 });
 
 document.addEventListener("keydown", event => {
-	if (event.key == "Tab") {
-		event.preventDefault();
-	}
+	if (event.key == "Tab") event.preventDefault();
+	if (event.key == "Enter" && document.getElementById("downloadModal").style.display != "none") loadNewPage("download");
 
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
 		return;
