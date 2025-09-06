@@ -183,6 +183,8 @@ async function daysHeatMap() {
 		},
 	};
 
+	const globalMax = Math.max(...averages.flat()) * 1.1 || 1;
+
 	for (let i = 0; i < 7; i++) {
 		const activityBox = document.createElement("div");
 		activityBox.className = "activityBox";
@@ -196,18 +198,15 @@ async function daysHeatMap() {
 		const activityChart = document.createElement("canvas");
 		activityChart.className = "hourChart";
 		activityBox.appendChild(activityChart);
-        
+
 		activityChart.width = window.innerWidth * 0.7;
 		activityChart.height = window.innerWidth * 0.0525;
 
 		const config = structuredClone(baseConfig);
 
-		const dayMax = Math.max(...averages[i]);
-		const yMax = dayMax > 0 ? dayMax * 1.1 : 1;
-
 		config.options.scales.y = {
 			min: 0,
-			max: yMax,
+			max: globalMax,
 			display: false,
 			grid: { display: false },
 		};
@@ -218,6 +217,7 @@ async function daysHeatMap() {
 			borderColor: "red",
 			backgroundColor: "rgba(255,0,0,0.3)",
 			fill: "origin",
+			tension: 0.4,
 		});
 
 		new Chart(activityChart, config);
