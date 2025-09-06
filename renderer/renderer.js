@@ -98,7 +98,6 @@ let stabiliseVolumeToggle;
 let current_version;
 
 const defaultSettings = {
-	totalTimeSpent: 0,
 	volume: 50,
 	rememberautoplay: 1,
 	remembershuffle: 1,

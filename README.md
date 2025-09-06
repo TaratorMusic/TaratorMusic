@@ -4,13 +4,13 @@
 
 ## Why TaratorMusic?
 
-- Free and open source
-- No ads
-- Usable offline
-- Download your Youtube and Spotify songs and playlists
-- Real song shuffling
-- Quick launch time
-- Many features while keeping the app light
+-   Free and open source
+-   No ads
+-   Usable offline
+-   Download your Youtube and Spotify songs and playlists
+-   Real song shuffling
+-   Quick launch time
+-   Many features while keeping the app light
 
 ## [LICENSE](LICENSE)
 
@@ -34,15 +34,15 @@ Jest and Github Actions to protect code quality and automatically roll out build
 
 ## How to develop:
 
-- Firstly, you need NPM, Node.js and Go installed on your computer.
-- Secondly, you can clone the git repository to a folder of your choice.
-- Thirdly, use "npm install" to download all the node modules.
-- Lastly, use "npm start" to run the app.
+-   Firstly, you need NPM, Node.js and Go installed on your computer.
+-   Secondly, you can clone the git repository to a folder of your choice.
+-   Thirdly, use "npm install" to download all the node modules.
+-   Lastly, use "npm start" to run the app.
 
 ## How to download:
 
 -   Go to the <a href="https://github.com/Victiniiiii/TaratorMusic/releases/latest">releases tab</a> and download whichever version suits your computer.
--   .exe files are meant for Windows, .dmg files are meant for Mac, and AppImage files are meant for linux users. You just need to run them, they are all included. You dont need to download .yml or .blockmap files. 
+-   .exe files are meant for Windows, .dmg files are meant for Mac, and AppImage files are meant for linux users. You just need to run them, they are all included. You dont need to download .yml or .blockmap files.
 -   Tip for Linux: It will create app folders (musics, playlists, settings etc.) where the AppImage runs, so you can put it in any folder you want and create a .desktop file to run it from the desktop.
 -   Make sure to contain the app files and musics inside an SSD, which will improve app speeds tremendously.
 -   When a new update is available, the version box at the top right of the main menu will start lighting up. You will be able to see the new content before you choose to update the app. When you update the app for Windows and Mac needs to be reinstalled from the github page, but for Linux you can update in-app.
@@ -56,19 +56,19 @@ The launch of this app just takes 2.2 seconds! This number was taken from a comp
 
 ### Actual Random
 
-The randomness of the next song in TaratorMusic has been statistically proven by Chi Square Test. In the test, 10.000 random songs have played after each other, and the test was successful even at 0.01 significance level.  
+The randomness of the next song in TaratorMusic has been statistically proven by Chi Square Test. In the test, 10.000 random songs have played after each other, and the test was successful even at 0.01 significance level.
 
 ### Download Your Own
 
-In this app, you can easily paste a link in the download section, change its name or thumbnail, and press download to make the music and its thumbnail appear in your folders. Works for playlists too! Or you can just carry your own mp3 files to the musics folder, and their thumbnails to the thumbnails folder.  
+In this app, you can easily paste a link in the download section, change its name or thumbnail, and press download to make the music and its thumbnail appear in your folders. Works for playlists too! Or you can just carry your own mp3 files to the musics folder, and their thumbnails to the thumbnails folder.
 
 ### Customisation
 
-You can customise everything starting from the app itself, the musics and the playlists. The music files and the playlists can be renamed, and get their thumbnails changed inside the app. The settings tab has a high variety of options on how to change user experience.  
+You can customise everything starting from the app itself, the musics and the playlists. The music files and the playlists can be renamed, and get their thumbnails changed inside the app. The settings tab has a high variety of options on how to change user experience.
 
 ### Discord
 
-This app is connected to Discord via Rich Presence. Thus everyone can know you are using TaratorMusic, and what song you are listening to. Although its easily toggleable inside the settings tab if you don't want it.  
+This app is connected to Discord via Rich Presence. Thus everyone can know you are using TaratorMusic, and what song you are listening to. Although its easily toggleable inside the settings tab if you don't want it.
 
 ### Memory Efficiency
 
@@ -82,11 +82,23 @@ You can enable and disable the volume stabilisation provided by FFmpeg package. 
 
 If you have your old databases intact, you can redownload all your songs back using a button in the settings page!
 
-## Upcoming Features:
+### Instant Song Search
+
+Thought of a song, but too bothered to go to the musics tab, search and play it? With this feature, you can use a keyboard shortcut of your choice to search for your song, and it will play the song whose name is closest to your query! (Current shortcut is: CTRL+F)
 
 ### Statistics
 
-The data of how many times and for how long you listened to each song are currently in your local database, but not being used. There will be a "Statistics" page which will be similar to Spotify Wrapped, and you will be able to see all your stats there.
+Interested in your listen data? The statistics tab lets you see your favorite song, favorite genres, artists and languages in pie charts, weekly and hourly listen data in heatmaps, and many more other statistics!
+
+## Upcoming Features:
+
+### Increased Speed
+
+The app experience will be noticeably faster, after i switch certain parts of the code to Golang, like the audio player, download section and the rich presence.
+
+### Personalised Song Recommendations
+
+You will be able to get special song recommendations based on what song you have listened to, and for how long.
 
 ### Immense Playlist Control
 
@@ -108,6 +120,14 @@ Apple Music URL's will be available in the future just like Spotify URL's.
 
 You will be able to form playlists automatically, depending on songs' names' languages, or song types, using lightweight machine learning.
 
+### Stream songs directly without downloading
+
+When you just want to browse, you will be able to quickly listen to your app recommended songs.
+
+### File conversions, in-app
+
+The app will let you change the extensions of both your songs and thumbnails directly.
+
 ### Improved Shuffle Customisation
 
 In the future, there will be an option to active "Improved Shuffle Customisation", which will learn from how much you listened to each song and by how long, and will weight the shuffle in the advantage of more listened songs. The "weight" will be customisable for each song easily, if you want to take or give weight to certain songs.
@@ -120,10 +140,6 @@ The option to fully customise the rich presence will be given to the users in th
 
 You will be able to stream your songs directly to voice chats only using in-app features.
 
-### Instant Song Search
-
-Thought of a song, but too bothered to go to the musics tab, search and play it? With this feature, you can use a keyboard shortcut of your choice to search for your song, and it will play the song whose name is closest to your query!
-
 ### And more!
 
 You can contact me and suggest more improvements and i will do my best implementing them. Or send a pull request.
@@ -131,7 +147,8 @@ You can contact me and suggest more improvements and i will do my best implement
 ## Screenshots:
 
 ### Yes, the UI doesn't look that good yet.
-I will focus on the designs after implementing the features planned, since they can change anytime, it would take too much time redesigning.   
+
+I will focus on the designs after implementing the features planned, since they can change anytime, it would take too much time redesigning.  
 Currently just focusing on adding as many features as possible.
 
 <img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/6ceb7ca6-1d86-43db-a7c2-d710cf1b943b" />
