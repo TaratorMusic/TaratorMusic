@@ -1101,6 +1101,12 @@ input:checked + .slider:before {
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
+    z-index: 132131312312931739172931793127391739;
+}
+
+#searchModal h1 {
+    margin: 0;
+    padding: 0 4.5vw 0 0;
 }
 
 #searchModalInput {

@@ -14,15 +14,14 @@ It looks terrible :/
 
 ## TODO App Features
 
-Closing a modal closes all modals.
-Make three-way & two-way & one-way modal functions into one, because it wastes so much space
-
 Legacy Function --> Transfer total time spent in settings db to a new table, with our new statistics
-Use beep in Go
 Fully complete the statistics page.
 Need scrollbars in my music and playlists tab
 Add search bar in the playlists tab and style the create new playlist button
 Redesign main menu cuz we will be moving the time spent in app to the statistics page
+
+Make three-way & two-way & one-way modal functions into one, because it wastes so much space
+Use beep in Go
 
 ### Statistics!
 Statistics tab:

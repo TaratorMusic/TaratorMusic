@@ -126,10 +126,13 @@
 					<button disabled id="installBtn">Install Update</button>
 				</div>
 			</div>
-            <div id="searchModal" class="modal">
-                <h1>Quick Song Search</h1>
-                <input id="searchModalInput" placeholder="Type a song name, and press enter">
-            </div>
+			<div id="searchModal" class="modal">
+				<div style="justify-content: space-between;" class="flexrow">
+					<h1>Quick Song Search</h1>
+					<span class="close" onclick="closeModal()">&times;</span>
+				</div>
+				<input id="searchModalInput" placeholder="Type a song name, and press Enter" />
+			</div>
 		</div>
 
 		<div class="sidebar">
@@ -164,9 +167,10 @@
 			<div id="my-music-content" class="tab-content hidden"></div>
 			<div id="playlists-content" class="tab-content hidden"></div>
 			<div id="settings-content" class="tab-content hidden scrollArea">
-                <div style="min-height: 120vh; width: 10px; margin-bottom: -15vh;"></div> <!-- I Hate CSS So Much-->
+				<div style="min-height: 120vh; width: 10px; margin-bottom: -15vh"></div>
+				<!-- I Hate CSS So Much-->
 				<h1 class="underline-text">Keybinds</h1>
-				<h2 style="margin-top: -3vh;">You can choose which keys will activate which actions here.</h2>
+				<h2 style="margin-top: -3vh">You can choose which keys will activate which actions here.</h2>
 				<div class="settingsKeybinds">
 					<div>Back 5 Seconds:</div>
 					<button id="settingsRewind" class="settingsKeybindsButton" required></button>
