@@ -318,14 +318,14 @@ function initializePlaylistsDatabase() {
 	}
 }
 
-function updateDatabase(column, value, db, table) {
+function updateDatabase(column, value, dbName, table) {
 	const key = `${table}.${column}`;
 
 	if (debounceMap.has(key)) clearTimeout(debounceMap.get(key));
 
 	const timeout = setTimeout(() => {
 		try {
-			db.prepare(`UPDATE ${table} SET ${column} = ?`).run(value);
+			dbName.prepare(`UPDATE ${table} SET ${column} = ?`).run(value);
 			console.log(`${table}.${column} updated to ${value}.`);
 		} catch (err) {
 			console.log(`Error updating ${table}.${column}:`, err.message);

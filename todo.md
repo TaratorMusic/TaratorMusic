@@ -36,18 +36,8 @@ Favorite Song's Thumbnail, make it Song by Artist (but commented)
 Language - Genre at the bottom but commented
 Listen Amount - Listen Count - First Listen - Last Listen
 
-First ever song play time
-App installed at:
-x playlists formed
-x songs listened inside playlists
-x songs listened outside playlists
-x songs listened total
-x songs downloaded from youtube
-x songs downloaded from spotify
-x songs downloaded total
-x hours spent in-app and x hours this session
-
 HTML TABLE Sortable menu with all songs and their stats (Listen count, length, percentage listened)
+SEARCH FOR TODOS IN THE SCRIPT
 
 ### Planned Features
 
