@@ -17,7 +17,6 @@ It looks terrible :/
 
 Fix bugs
 Use beep in Go
-Style settings page buttons
 Fully complete the statistics page.
 Need scrollbars in my music and playlists tab
 remove song stats from the customisation menu

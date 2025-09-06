@@ -559,8 +559,8 @@ audio {
 	display: none;
 	text-align: left;
 	align-items: flex-start;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
 }
 
 #settings-content div {
@@ -568,7 +568,29 @@ audio {
 }
 
 #settings-content h1 {
-    margin: 5vh 0;
+	margin: 5vh 0;
+}
+
+#settings-content select {
+	padding: 2px 4px;
+	background-color: rgba(0, 0, 0, 0.8);
+	border: 1px solid white;
+	color: white;
+	transition: all 0.5s ease-in-out;
+	border-radius: 5px;
+}
+
+#settings-content button {
+	padding: 5px 10px;
+	background-color: rgba(0, 0, 0, 0.8);
+	border: 1px solid white;
+	color: white;
+	transition: all 0.5s ease-in-out;
+	border-radius: 5px;
+}
+
+#settings-content button:hover {
+	background-color: rgba(0, 0, 0, 0.5);
 }
 
 .playlist {
@@ -1059,10 +1081,10 @@ input:checked + .slider:before {
 .scrollArea {
 	width: 83.75vw !important;
 	height: 92vh !important;
-    min-height: 92vh !important;
-    max-height: 92vh !important;
-    margin: -20px -20px 0 0 !important;
+	min-height: 92vh !important;
+	max-height: 92vh !important;
+	margin: -20px -20px 0 0 !important;
 	padding-top: 45vh !important;
-    padding-bottom: 5vh !important;
+	padding-bottom: 5vh !important;
 	overflow-y: scroll !important;
 }
