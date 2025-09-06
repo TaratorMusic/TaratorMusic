@@ -132,57 +132,45 @@ function initializeSettingsDatabase() {
 	let settingsRow;
 
 	try {
-		const row = settingsDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='settings'").get();
-		const tableExists = !!row;
+		settingsDb
+			.prepare(
+				`CREATE TABLE IF NOT EXISTS statistics (
+                    total_time_spent INTEGER,
+                    app_install_date INTEGER,
+                    first_song_listen_date INTEGER,
+                    playlists_formed INTEGER,
+                    songs_listened_in_playlists INTEGER,
+                    songs_listened_out_playlists INTEGER,
+                    songs_downloaded_youtube INTEGER,
+                    songs_downloaded_spotify INTEGER
+                )`
+			)
+			.run();
 
-		if (!tableExists) {
-			const keys = Object.keys(defaultSettings);
-			let createTableSQL = `CREATE TABLE settings (`;
+		const tableInfo = settingsDb.prepare("PRAGMA table_info(settings)").all();
+		const existingColumns = tableInfo.map(col => col.name);
 
-			keys.forEach((key, index) => {
-				const columnType = typeof defaultSettings[key] == "number" ? "INTEGER" : "TEXT";
-				createTableSQL += `${key} ${columnType} DEFAULT '${defaultSettings[key]}'`;
-				if (index < keys.length - 1) createTableSQL += ",\n";
-			});
-			createTableSQL += ")";
-
-			settingsDb.prepare(createTableSQL).run();
-		} else {
-			const columns = settingsDb.prepare("PRAGMA table_info(settings)").all();
-			const existingColumns = columns.map(col => col.name);
-			const missingColumns = Object.keys(defaultSettings).filter(key => !existingColumns.includes(key));
-
-			missingColumns.forEach(key => {
-				const columnType = typeof defaultSettings[key] == "number" ? "INTEGER" : "TEXT";
-				settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${columnType} DEFAULT '${defaultSettings[key]}'`).run();
-			});
+		for (const [key, value] of Object.entries(defaultSettings)) {
+			if (!existingColumns.includes(key)) {
+				const type = typeof value === "number" ? "INTEGER" : "TEXT";
+				settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${type} DEFAULT ?`).run(value);
+			}
 		}
 
-		settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
-
-		if (!settingsRow) {
+		if (existingColumns.length === 0) {
 			const columns = Object.keys(defaultSettings).join(", ");
 			const placeholders = Object.keys(defaultSettings)
 				.map(() => "?")
 				.join(", ");
-			const values = Object.values(defaultSettings);
-			const insertSQL = `INSERT INTO settings (${columns}) VALUES (${placeholders})`;
-			settingsDb.prepare(insertSQL).run(values);
-			settingsRow = settingsDb.prepare("SELECT * FROM settings").get();
-		} else {
-			Object.keys(defaultSettings).forEach(key => {
-				if (settingsRow[key] == null || settingsRow[key] == undefined) {
-					settingsDb.prepare(`UPDATE settings SET ${key} = ?`).run(defaultSettings[key]);
-					settingsRow[key] = defaultSettings[key];
-				}
-			});
+			settingsDb.prepare(`INSERT INTO settings (${columns}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
 		}
+
+		settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
+		console.log("Settings loaded:", settingsRow);
 	} catch (err) {
 		console.log("Database error:", err.message);
 		return;
 	}
-
-	console.log("Settings loaded:", settingsRow);
 
 	document.getElementById("settingsRewind").innerHTML = settingsRow.key_Rewind;
 	document.getElementById("settingsPrevious").innerHTML = settingsRow.key_Previous;
@@ -323,55 +311,10 @@ function initializePlaylistsDatabase() {
 			)
 			.run();
 
-		const pragma = playlistsDb.prepare(`PRAGMA table_info(playlists)`).all();
-		const idColumn = pragma.find(col => col.name == "id");
-		const hasThumbnail = pragma.some(col => col.name == "thumbnail");
-
-		if ((idColumn && idColumn.type.toUpperCase() == "INTEGER") || hasThumbnail) {
-			playlistsDb
-				.prepare(
-					`
-				CREATE TABLE IF NOT EXISTS playlists_new (
-					id TEXT PRIMARY KEY,
-					name TEXT,
-					songs TEXT,
-					thumbnail_extension TEXT
-				)
-			`
-				)
-				.run();
-
-			const rows = playlistsDb.prepare(`SELECT * FROM playlists`).all();
-			const insert = playlistsDb.prepare(`
-				INSERT INTO playlists_new (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)
-			`);
-
-			playlistsDb.transaction(() => {
-				for (const row of rows) {
-					let ext = null;
-					if (row.thumbnail) {
-						const match = row.thumbnail.match(/\.([a-zA-Z0-9]+)$/);
-						ext = match ? match[1].toLowerCase() : null;
-					} else if (row.thumbnail_extension) {
-						ext = row.thumbnail_extension;
-					}
-					insert.run(row.id.toString(), row.name, row.songs, ext);
-				}
-				playlistsDb.prepare(`DROP TABLE playlists`).run();
-				playlistsDb.prepare(`ALTER TABLE playlists_new RENAME TO playlists`).run();
-			})();
-		}
-
 		playlistsDb.transaction(() => {
 			const fav = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get("Favorites");
-			if (!fav) {
-				playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run("Favorites", "Favorites", JSON.stringify([]), "svg");
-			}
+			if (!fav) playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run("Favorites", "Favorites", JSON.stringify([]), "svg");
 		})();
-
-		const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists ORDER BY id").all();
-		console.log(`Loaded ${allPlaylists.length} playlist${allPlaylists.length == 1 ? "" : "s"} from the database.`);
-		return allPlaylists;
 	} catch (err) {
 		console.log("Error initializing playlists database:", err);
 		return [];
@@ -1201,6 +1144,7 @@ function searchSong() {
 
 	const row = stmt.get(`%${document.getElementById("searchModalInput").value}%`);
 	playMusic(row.song_id, false);
+	document.getElementById("searchModal").style.display = "none";
 }
 
 document.querySelectorAll('input[type="range"]').forEach(range => {

@@ -15,6 +15,7 @@ It looks terrible :/
 ## TODO App Features
 
 Closing a modal closes all modals.
+Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 
 Legacy Function --> Transfer total time spent in settings db to a new table, with our new statistics
 Use beep in Go
@@ -69,13 +70,7 @@ Total Amounts:
 - jest tests to test the usual stuff
 - go tests to test the backend
 
-### Code Cleanup
-- Make three-way & two-way & one-way modal functions into one, because it wastes so much space
-- Clean up the database functions
-- Instead of fileToDelete, make a button inside openCustomiseModal and add addEventListener to remove the song using the song ID
-
 ### Quality of Life
-- Pressing enter in the download modal should press the button
 - Add pages to the music tab and a way to navigate between them if using "show x rows".
 - Add "Stabilise All" and "Categorise All" at the top of My Music tab
 - Add approximate time remaining for volume stabilisation and downloads.
