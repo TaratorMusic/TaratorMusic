@@ -230,7 +230,6 @@ function initializeSettingsDatabase() {
 		}
 	}
 
-	updateTimer();
 	rememberautoplay && toggleAutoplay();
 	remembershuffle && toggleShuffle();
 	rememberloop && toggleLoop();
@@ -337,25 +336,16 @@ function updateDatabase(column, value, db, table) {
 	debounceMap.set(key, timeout);
 }
 
-function updateTimer() {
-	let sessionvalue, sessionunit;
-
-	if (sessionTimeSpent >= 3600) {
-		sessionvalue = (sessionTimeSpent / 3600).toFixed(0);
-		sessionunit = sessionvalue == 1 ? "hour" : "hours";
-	} else {
-		sessionvalue = (sessionTimeSpent / 60).toFixed(0);
-		sessionunit = sessionvalue == 1 ? "minute" : "minutes";
-	}
-
-	document.getElementById("mainmenusessiontimespent").innerHTML = `Session Time Spent: ${sessionvalue} ${sessionunit}`;
-}
-
 setInterval(() => {
-	totalTimeSpent += 60;
 	sessionTimeSpent += 60;
-	updateDatabase("totalTimeSpent", totalTimeSpent, settingsDb, "statistics");
-	updateTimer();
+	settingsDb
+		.prepare(
+        `
+            UPDATE statistics
+            SET totalTimeSpent = totalTimeSpent + 60
+        `
+		)
+		.run();
 }, 60000);
 
 function savePlayedTime() {

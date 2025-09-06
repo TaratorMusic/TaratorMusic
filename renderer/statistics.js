@@ -1,7 +1,7 @@
 const { Chart, LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler } = require("chart.js");
 Chart.register(LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler);
 
-const scrollableArea = document.getElementById("statistics-content");
+const statisticsContent = document.getElementById("statistics-content");
 
 async function renderStatistics() {
 	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)
@@ -12,11 +12,12 @@ async function renderStatistics() {
 	}
 
 	document.getElementById("statistics-content").style.display = "flex";
-	scrollableArea.innerHTML = "";
+	statisticsContent.innerHTML = "";
 
 	await createMostListenedSongBox();
 	await createPieCharts();
 	await daysHeatMap();
+	await generalStatistics();
 }
 
 async function createMostListenedSongBox() {
@@ -36,7 +37,7 @@ async function createMostListenedSongBox() {
 
 	const mostListenedSongText = document.createElement("div");
 	mostListenedSongText.id = "mostListenedSongText";
-	scrollableArea.appendChild(mostListenedSongText);
+	statisticsContent.appendChild(mostListenedSongText);
 
 	const firstAndLastListenOfTheBestSong = musicsDb
 		.prepare(
@@ -60,7 +61,7 @@ async function createMostListenedSongBox() {
 async function createPieCharts() {
 	const pieChartPart = document.createElement("div");
 	pieChartPart.id = "pieChartPart";
-	scrollableArea.appendChild(pieChartPart);
+	statisticsContent.appendChild(pieChartPart);
 
 	const canvasBox1 = document.createElement("div");
 	canvasBox1.className = "canvasBox";
@@ -188,7 +189,7 @@ async function daysHeatMap() {
 	for (let i = 0; i < 7; i++) {
 		const activityBox = document.createElement("div");
 		activityBox.className = "activityBox";
-		scrollableArea.appendChild(activityBox);
+		statisticsContent.appendChild(activityBox);
 
 		const canvasLabel = document.createElement("div");
 		canvasLabel.innerHTML = daysoftheweek[i];
@@ -222,4 +223,45 @@ async function daysHeatMap() {
 
 		new Chart(activityChart, config);
 	}
+}
+
+async function generalStatistics() {
+	const row = settingsDb.prepare("SELECT * FROM statistics").all()[0];
+
+	let totalvalue, totalunit, sessionvalue, sessionunit;
+
+	if (sessionTimeSpent >= 3600) {
+		totalvalue = (sessionTimeSpent / 3600).toFixed(0);
+		totalunit = totalvalue == 1 ? "hour" : "hours";
+	} else {
+		totalvalue = (sessionTimeSpent / 60).toFixed(0);
+		totalunit = totalvalue == 1 ? "minute" : "minutes";
+	}
+
+	if (sessionTimeSpent >= 3600) {
+		sessionvalue = (sessionTimeSpent / 3600).toFixed(0);
+		sessionunit = sessionvalue == 1 ? "hour" : "hours";
+	} else {
+		sessionvalue = (sessionTimeSpent / 60).toFixed(0);
+		sessionunit = sessionvalue == 1 ? "minute" : "minutes";
+	}
+
+	const theBigText = document.createElement("div");
+	statisticsContent.appendChild(theBigText);
+
+	// TODO: Add line breakers
+	// TODO: Actually keep track of the downloads/listens
+	// TODO: Convert UNIX to timestamps
+    
+	theBigText.innerHTML += `Total Time Spent in TaratorMusic: ${totalvalue} ${totalunit}`;
+	theBigText.innerHTML += `Session Time Spent: ${sessionvalue} ${sessionunit}`;
+
+	theBigText.innerHTML += `App installed at: TODO: CONVERT UNIX TO TIMESTAMP HERE`;
+	theBigText.innerHTML += `First song listened at: TODO: CONVERT UNIX TO TIMESTAMP HERE`;
+	theBigText.innerHTML += `Total amount of songs listened: ${row.songs_listened_out_playlists + row.songs_listened_in_playlists || 0}`;
+	theBigText.innerHTML += `Amount of songs listened inside playlists: ${row.songs_listened_in_playlists || 0}`;
+	theBigText.innerHTML += `Amount of songs listened outside playlists: ${row.songs_listened_out_playlists || 0}`;
+	theBigText.innerHTML += `Total amount of songs downloaded: ${row.songs_downloaded_youtube + row.songs_downloaded_spotify || 0}`;
+	theBigText.innerHTML += `Amount of songs downloaded from Youtube: ${row.songs_downloaded_youtube || 0}`;
+	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${row.songs_downloaded_spotify || 0}`;
 }

@@ -22,6 +22,7 @@ Fully complete the statistics page.
 Change function names to british english
 Add search bar in the playlists tab and style the create new playlist button
 Redesign main menu cuz we will be moving the time spent in app to the statistics page
+Data-tooltip on the action buttons are not working
 
 Use beep in Go
 Separate the imports in the download script for faster launch times
