@@ -42,6 +42,7 @@ const tooltip = document.getElementById("tooltip");
 const volumeControl = document.getElementById("volume");
 const videoLength = document.getElementById("video-length");
 const videoProgress = document.getElementById("video-progress");
+const searchModalInput = document.getElementById("searchModalInput");
 
 volumeControl.addEventListener("change", () => {
 	updateDatabase("volume", volumeControl.value, settingsDb);
@@ -1141,7 +1142,10 @@ function searchSong() {
         LIMIT 1
     `);
 
-	const row = stmt.get(`%${document.getElementById("searchModalInput").value}%`);
+	const row = stmt.get(`%${searchModalInput.value}%`);
+	searchModalInput.value = "";
+	searchModalInput.classList.add("red-placeholder");
+	searchModalInput.placeholder = "Song not found.";
 	playMusic(row.song_id, false);
 	document.getElementById("searchModal").style.display = "none";
 }
@@ -1167,6 +1171,8 @@ document.addEventListener("keydown", event => {
 
 	if (event.ctrlKey && event.key.toLowerCase() === "f") {
 		event.preventDefault();
+		searchModalInput.classList.remove("red-placeholder");
+		searchModalInput.placeholder = "Type a song name, and press Enter";
 		document.getElementById("searchModal").style.display = "flex";
 		document.getElementById("searchModalInput").focus();
 		return;

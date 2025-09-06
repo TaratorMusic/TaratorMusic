@@ -1101,17 +1101,21 @@ input:checked + .slider:before {
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-    z-index: 132131312312931739172931793127391739;
+	z-index: 132131312312931739172931793127391739;
 }
 
 #searchModal h1 {
-    margin: 0;
-    padding: 0 4.5vw 0 0;
+	margin: 0;
+	padding: 0 4.5vw 0 0;
 }
 
 #searchModalInput {
 	width: 25vw;
 	height: 8vh;
 	font-size: 1.4vw;
-    margin-top: 2vh;
+	margin-top: 2vh;
+}
+
+.red-placeholder::placeholder {
+	color: red;
 }
