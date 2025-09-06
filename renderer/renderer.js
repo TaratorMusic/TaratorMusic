@@ -1193,6 +1193,19 @@ async function removeSong(fileToDelete) {
 	if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 }
 
+function searchSong() {
+	const stmt = musicsDb.prepare(`
+        SELECT song_id
+        FROM songs
+        WHERE song_name LIKE ? COLLATE NOCASE
+        ORDER BY LENGTH(song_name)
+        LIMIT 1
+    `);
+
+	const row = stmt.get(`%${document.getElementById("searchModalInput").value}%`);
+	playMusic(row.song_id, false);
+}
+
 document.querySelectorAll('input[type="range"]').forEach(range => {
 	range.tabIndex = -1;
 	range.addEventListener("focus", () => range.blur());
@@ -1207,16 +1220,23 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 });
 
 document.addEventListener("keydown", event => {
+	if (event.key === "Escape") closeModal();
 	if (event.key == "Tab") event.preventDefault();
 	if (event.key == "Enter" && document.getElementById("downloadModal").style.display != "none") loadNewPage("download");
+	if (event.key == "Enter" && document.getElementById("searchModal").style.display != "none") searchSong();
+
+	if (event.ctrlKey && event.key.toLowerCase() === "f") {
+		event.preventDefault();
+		document.getElementById("searchModal").style.display = "flex";
+        document.getElementById("searchModalInput").focus();
+		return;
+	}
 
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
 		return;
 	}
 
-	if (event.key === "Escape") {
-		closeModal();
-	} else if (event.key == key_Rewind) {
+	if (event.key == key_Rewind) {
 		skipBackward();
 	} else if (event.key == key_Previous) {
 		playPreviousSong();

@@ -10,7 +10,7 @@ Not exactly sure what to do yet, but the main will definitely be reworked
 It looks terrible :/
 
 ## Bugs
-- Closing a modal closes all modals
+- Closing a modal closes all modals.
 - Mysterious error in the console: Cannot read properties of undefined (reading 'thumbnail_extension') (Happens after deleting songs) (Not dangerous)
 
 ## TODO App Features
@@ -22,7 +22,6 @@ Need scrollbars in my music and playlists tab
 remove song stats from the customisation menu
 Add search bar in the playlists tab and style the create new playlist button
 Redesign main menu cuz we will be moving the time spent in app to the statistics page
-Quick song search shortcut and modal
 
 ### Statistics!
 Statistics tab:
@@ -55,6 +54,7 @@ Total Amounts:
 
 ### New Features
 - Customise Discord Rich Presence box in the settings
+- Make quick search modal shortcut customisable
 - Integrate Discord bot that plays the music
 - Pause downloads, continue anytime: use localstorage
 - Use main speed - Use custom speed for this song (in customisation modal)

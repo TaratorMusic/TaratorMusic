@@ -1088,3 +1088,24 @@ input:checked + .slider:before {
 	padding-bottom: 5vh !important;
 	overflow-y: scroll !important;
 }
+
+#searchModal {
+	display: none;
+	padding: 1vw;
+	border: 1px solid #888;
+	width: 30vw;
+	height: 20vh;
+	margin: 35vh 0 0 35vw;
+	border-radius: 10px;
+	background-color: rgba(0, 0, 0, 0.8);
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+#searchModalInput {
+	width: 25vw;
+	height: 8vh;
+	font-size: 1.4vw;
+    margin-top: 2vh;
+}
