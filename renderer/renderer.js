@@ -1073,18 +1073,17 @@ async function updateThumbnailImage(event, mode) {
 
 function openCustomizeModal(songName) {
 	const songNameNoMp3 = removeExtensions(songName);
+	const baseName = getSongNameById(songNameNoMp3);
+	const oldThumbnailPath = path.join(thumbnailFolder, songNameNoMp3 + "." + thumbnail_extension);
 	document.getElementById("removeSongButton").dataset.songId = songNameNoMp3;
 
 	const stmt = musicsDb.prepare(`
-		SELECT times_listened, seconds_played, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
+		SELECT stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
 		FROM songs
 		WHERE song_id = ?
 	`);
 
-	const { times_listened, seconds_played, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension } = stmt.get(songNameNoMp3) || {};
-
-	const baseName = getSongNameById(songNameNoMp3);
-	const oldThumbnailPath = path.join(thumbnailFolder, songNameNoMp3 + "." + thumbnail_extension);
+	const { stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension } = stmt.get(songNameNoMp3);
 
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + "." + thumbnail_extension);
@@ -1092,8 +1091,6 @@ function openCustomizeModal(songName) {
 	document.getElementById("customizeSongName").value = baseName;
 	document.getElementById("customiseImage").src = oldThumbnailPath;
 
-	document.getElementById("modalTimePlayed").innerText = `Time Played: ${times_listened}`;
-	document.getElementById("modalSecondsPlayed").innerText = `Seconds Played: ${seconds_played}`;
 	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised == 1}`;
 	document.getElementById("modalFileSize").innerText = `File Size: ${(size / 1048576).toFixed(2)} MBs`;
 	document.getElementById("modalPlaySpeed").innerText = `Play Speed: Coming Soon!`;
@@ -1228,7 +1225,7 @@ document.addEventListener("keydown", event => {
 	if (event.ctrlKey && event.key.toLowerCase() === "f") {
 		event.preventDefault();
 		document.getElementById("searchModal").style.display = "flex";
-        document.getElementById("searchModalInput").focus();
+		document.getElementById("searchModalInput").focus();
 		return;
 	}
 
