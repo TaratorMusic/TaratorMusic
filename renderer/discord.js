@@ -56,9 +56,7 @@ async function updateDiscordPresence() {
 		document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Online";
 		document.getElementById("mainmenudiscordapi").style.color = "green";
 
-		const songName = document.getElementById("song-name").textContent;
-
-		if (songName == "No song is being played.") {
+		if (!audioElement) {
 			RPC.setActivity({
 				type: "2",
 				details: "Browsing Music",
@@ -66,22 +64,17 @@ async function updateDiscordPresence() {
 				largeImageKey: "tarator1024_icon",
 			});
 		} else {
-			const timeDisplayString = document.getElementById("video-length").textContent;
-
 			const activityPayload = {
 				type: "2",
-				details: songName,
+				details: document.getElementById("song-name").textContent,
 				largeImageKey: "tarator1024_icon",
 			};
 
-			const timeParts = timeDisplayString.split("/");
-			const currentTimeString = timeParts[0].trim();
-			const totalTimeString = timeParts[1].trim();
+			const timeParts = document.getElementById("video-length").textContent.split("/");
+			const currentSeconds = parseTimeToSeconds(timeParts[0].trim());
+			const totalSeconds = parseTimeToSeconds(timeParts[1].trim());
 
-			const currentSeconds = parseTimeToSeconds(currentTimeString);
-			const totalSeconds = parseTimeToSeconds(totalTimeString);
-
-			if (audioElement && audioElement.paused) {
+			if (audioElement.paused) {
 				activityPayload.state = "⏸ Paused";
 			} else if (currentSeconds !== null && totalSeconds !== null && totalSeconds > 0) {
 				const nowMs = Date.now();
