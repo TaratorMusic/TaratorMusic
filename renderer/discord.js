@@ -35,7 +35,7 @@ function destroyRPC() {
 
 function toggleDiscordAPI() {
 	discordRPCstatus = !discordRPCstatus;
-	updateDatabase("dc_rpc", discordRPCstatus ? 1 : 0, settingsDb);
+	updateDatabase("dc_rpc", discordRPCstatus ? 1 : 0, settingsDb, "settings");
 
 	if (discordRPCstatus) {
 		createRPC();

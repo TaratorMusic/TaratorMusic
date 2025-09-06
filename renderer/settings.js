@@ -7,16 +7,16 @@ async function saveKeybinds() {
 		return;
 	}
 
-	updateDatabase("key_Rewind", document.getElementById("settingsRewind").innerHTML, settingsDb);
-	updateDatabase("key_Previous", document.getElementById("settingsPrevious").innerHTML, settingsDb);
-	updateDatabase("key_PlayPause", document.getElementById("settingsPlayPause").innerHTML, settingsDb);
-	updateDatabase("key_Next", document.getElementById("settingsNext").innerHTML, settingsDb);
-	updateDatabase("key_Skip", document.getElementById("settingsSkip").innerHTML, settingsDb);
-	updateDatabase("key_Autoplay", document.getElementById("settingsAutoplay").innerHTML, settingsDb);
-	updateDatabase("key_Shuffle", document.getElementById("settingsShuffle").innerHTML, settingsDb);
-	updateDatabase("key_Mute", document.getElementById("settingsMute").innerHTML, settingsDb);
-	updateDatabase("key_Speed", document.getElementById("settingsSpeed").innerHTML, settingsDb);
-	updateDatabase("key_Loop", document.getElementById("settingsLoop").innerHTML, settingsDb);
+	updateDatabase("key_Rewind", document.getElementById("settingsRewind").innerHTML, settingsDb, "settings");
+	updateDatabase("key_Previous", document.getElementById("settingsPrevious").innerHTML, settingsDb, "settings");
+	updateDatabase("key_PlayPause", document.getElementById("settingsPlayPause").innerHTML, settingsDb, "settings");
+	updateDatabase("key_Next", document.getElementById("settingsNext").innerHTML, settingsDb, "settings");
+	updateDatabase("key_Skip", document.getElementById("settingsSkip").innerHTML, settingsDb, "settings");
+	updateDatabase("key_Autoplay", document.getElementById("settingsAutoplay").innerHTML, settingsDb, "settings");
+	updateDatabase("key_Shuffle", document.getElementById("settingsShuffle").innerHTML, settingsDb, "settings");
+	updateDatabase("key_Mute", document.getElementById("settingsMute").innerHTML, settingsDb, "settings");
+	updateDatabase("key_Speed", document.getElementById("settingsSpeed").innerHTML, settingsDb, "settings");
+	updateDatabase("key_Loop", document.getElementById("settingsLoop").innerHTML, settingsDb, "settings");
 
 	key_Rewind = document.getElementById("settingsRewind").innerHTML;
 	key_Previous = document.getElementById("settingsPrevious").innerHTML;
@@ -47,7 +47,7 @@ document.querySelectorAll(".settingsKeybindsButton").forEach(button => {
 });
 
 function changeBackground(color) {
-	updateDatabase("background", color, settingsDb);
+	updateDatabase("background", color, settingsDb, "settings");
 	document.body.className = `bg-gradient-${color}`;
 }
 
@@ -118,5 +118,5 @@ async function redownloadAllSongs() {
 
 function stabiliseVolumeToggleTogglerFunction() {
 	stabiliseVolumeToggle = stabiliseVolumeToggle == 1 ? 0 : 1;
-	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb);
+	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb, "settings");
 }

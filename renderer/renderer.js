@@ -45,7 +45,7 @@ const videoProgress = document.getElementById("video-progress");
 const searchModalInput = document.getElementById("searchModalInput");
 
 volumeControl.addEventListener("change", () => {
-	updateDatabase("volume", volumeControl.value, settingsDb);
+	updateDatabase("volume", volumeControl.value, settingsDb, "settings");
 	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
 });
 
@@ -74,7 +74,6 @@ let discordRPCstatus;
 const debounceMap = new Map();
 const songNameCache = new Map();
 
-let totalTimeSpent;
 let sessionTimeSpent = 0;
 let rememberautoplay;
 let remembershuffle;
@@ -197,7 +196,6 @@ function initializeSettingsDatabase() {
 	key_Loop = settingsRow.key_Loop;
 	key_randomSong = settingsRow.key_randomSong;
 	key_randomPlaylist = settingsRow.key_randomPlaylist;
-	totalTimeSpent = settingsRow.totalTimeSpent;
 	rememberautoplay = settingsRow.rememberautoplay;
 	remembershuffle = settingsRow.remembershuffle;
 	rememberloop = settingsRow.rememberloop;
@@ -321,17 +319,17 @@ function initializePlaylistsDatabase() {
 	}
 }
 
-function updateDatabase(name, option, db) {
-	const key = `${name}`;
+function updateDatabase(column, value, db, table) {
+	const key = `${table}.${column}`;
 
 	if (debounceMap.has(key)) clearTimeout(debounceMap.get(key));
 
 	const timeout = setTimeout(() => {
 		try {
-			db.prepare(`UPDATE settings SET ${name} = ?`).run(option);
-			console.log(`${name} updated to ${option}.`);
+			db.prepare(`UPDATE ${table} SET ${column} = ?`).run(value);
+			console.log(`${table}.${column} updated to ${value}.`);
 		} catch (err) {
-			console.log(`Error updating ${name}:`, err.message);
+			console.log(`Error updating ${table}.${column}:`, err.message);
 		}
 		debounceMap.delete(key);
 	}, 300);
@@ -340,15 +338,7 @@ function updateDatabase(name, option, db) {
 }
 
 function updateTimer() {
-	let totalvalue, totalunit, sessionvalue, sessionunit;
-
-	if (totalTimeSpent >= 3600) {
-		totalvalue = (totalTimeSpent / 3600).toFixed(0);
-		totalunit = totalvalue == 1 ? "hour" : "hours";
-	} else {
-		totalvalue = (totalTimeSpent / 60).toFixed(0);
-		totalunit = totalvalue == 1 ? "minute" : "minutes";
-	}
+	let sessionvalue, sessionunit;
 
 	if (sessionTimeSpent >= 3600) {
 		sessionvalue = (sessionTimeSpent / 3600).toFixed(0);
@@ -358,14 +348,13 @@ function updateTimer() {
 		sessionunit = sessionvalue == 1 ? "minute" : "minutes";
 	}
 
-	document.getElementById("mainmenutimespent").innerHTML = `Total Time Spent: ${totalvalue} ${totalunit}`;
 	document.getElementById("mainmenusessiontimespent").innerHTML = `Session Time Spent: ${sessionvalue} ${sessionunit}`;
 }
 
 setInterval(() => {
 	totalTimeSpent += 60;
 	sessionTimeSpent += 60;
-	updateDatabase("totalTimeSpent", totalTimeSpent, settingsDb);
+	updateDatabase("totalTimeSpent", totalTimeSpent, settingsDb, "statistics");
 	updateTimer();
 }, 60000);
 
@@ -909,11 +898,11 @@ function toggleAutoplay() {
 	if (isAutoplayActive) {
 		autoplayButton.classList.add("active");
 		autoplayButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenAutoplay.svg")}" alt="Autoplay Active">`;
-		updateDatabase("rememberautoplay", 1, settingsDb);
+		updateDatabase("rememberautoplay", 1, settingsDb, "settings");
 	} else {
 		autoplayButton.classList.remove("active");
 		autoplayButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redAutoplay.svg")}" alt="Autoplay Disabled">`;
-		updateDatabase("rememberautoplay", 0, settingsDb);
+		updateDatabase("rememberautoplay", 0, settingsDb, "settings");
 	}
 }
 
@@ -923,11 +912,11 @@ function toggleShuffle() {
 	if (isShuffleActive) {
 		shuffleButton.classList.add("active");
 		shuffleButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenShuffle.svg")}" alt="Shuffle Active">`;
-		updateDatabase("remembershuffle", 1, settingsDb);
+		updateDatabase("remembershuffle", 1, settingsDb, "settings");
 	} else {
 		shuffleButton.classList.remove("active");
 		shuffleButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redShuffle.svg")}" alt="Shuffle Disabled">`;
-		updateDatabase("remembershuffle", 0, settingsDb);
+		updateDatabase("remembershuffle", 0, settingsDb, "settings");
 	}
 }
 
@@ -937,11 +926,11 @@ function toggleLoop() {
 	if (isLooping) {
 		loopButton.classList.add("active");
 		loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenLoop.svg")}" alt="Loop Enabled">`;
-		updateDatabase("rememberloop", 1, settingsDb);
+		updateDatabase("rememberloop", 1, settingsDb, "settings");
 	} else {
 		loopButton.classList.remove("active");
 		loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redLoop.svg")}" alt="Loop Disabled">`;
-		updateDatabase("rememberloop", 0, settingsDb);
+		updateDatabase("rememberloop", 0, settingsDb, "settings");
 	}
 
 	if (audioElement) audioElement.loop = isLooping;
@@ -957,7 +946,7 @@ function mute() {
 		document.getElementById("muteButton").classList.remove("active");
 	}
 	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
-	updateDatabase("volume", volumeControl.value, settingsDb);
+	updateDatabase("volume", volumeControl.value, settingsDb, "settings");
 }
 
 function speed() {
@@ -974,7 +963,7 @@ function speed() {
 		}
 		speedOption.addEventListener("click", () => {
 			rememberspeed = speed;
-			updateDatabase("rememberspeed", speed, settingsDb);
+			updateDatabase("rememberspeed", speed, settingsDb, "settings");
 			if (audioElement) {
 				audioElement.playbackRate = rememberspeed;
 			}
@@ -1257,7 +1246,7 @@ function setupLazyBackgrounds() {
 function handleDropdownChange(option, selectElement) {
 	const selectedValue = option == "displayCount" && selectElement.value == "All" ? 9999999 : Number(selectElement.value);
 	console.log("Selected:", selectedValue, "at", option);
-	updateDatabase(option, selectedValue, settingsDb);
+	updateDatabase(option, selectedValue, settingsDb, "settings");
 	if (option == "dividevolume") {
 		dividevolume = selectedValue;
 		if (audioElement) {
@@ -1389,7 +1378,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	ipcRenderer.invoke("get-app-version").then(async version => {
 		if (version != current_version) await loadNewPage(`legacy`, current_version);
 		current_version = version;
-		updateDatabase("current_version", current_version, settingsDb);
+		updateDatabase("current_version", current_version, settingsDb, "settings");
 		document.getElementById("version").textContent = `Version: ${version}`;
 	});
 
