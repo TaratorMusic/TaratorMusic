@@ -361,7 +361,7 @@ setInterval(() => {
 		.run();
 }, 60000);
 
-function savePlayedTime() {
+async function savePlayedTime() {
 	const theId = removeExtensions(secondfilename).replace("tarator", "").replace("-", "");
 	const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
 	const playlist = currentPlaylist ? currentPlaylist.id.replace("tarator-", "") : null;
@@ -469,7 +469,7 @@ async function myMusicOnClick() {
 		filteredSongs.slice(0, maxVisible).forEach(songFile => {
 			const musicElement = createMusicElement(songFile);
 			if (songFile.id == removeExtensions(secondfilename)) musicElement.classList.add("playing");
-			musicElement.addEventListener("click", () => playMusic(songFile.id, false));
+			musicElement.addEventListener("click", () => playMusic(songFile.id, null));
 			musicListContainer.appendChild(musicElement);
 		});
 		setupLazyBackgrounds();
@@ -550,11 +550,11 @@ function createMusicElement(songFile) {
 	return musicElement;
 }
 
-async function playMusic(file, isPlaylist) {
+async function playMusic(file, playlistId) {
 	const songName = document.getElementById("song-name");
 
 	if (songPauseStartTime) totalPausedTime += Math.floor(Date.now() / 1000 - songPauseStartTime);
-	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) savePlayedTime();
+	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) await savePlayedTime();
 
 	songStartTime = Math.floor(Date.now() / 1000);
 	songPauseStartTime = null;
@@ -571,9 +571,7 @@ async function playMusic(file, isPlaylist) {
 	}
 
 	try {
-		if (!isPlaylist) {
-			currentPlaylist = null;
-		}
+		currentPlaylist = playlistId || null;
 
 		audioElement = new Audio();
 		manageAudioControls(audioElement);
@@ -630,9 +628,9 @@ async function playMusic(file, isPlaylist) {
 		updateDiscordPresence();
 
 		if (isShuffleActive) {
-			if (currentPlaylist) {
-				if (newPlaylistID !== currentPlaylist.id) {
-					newPlaylistID = currentPlaylist.id;
+			if (playlistId) {
+				if (newPlaylistID != playlistId.id) {
+					newPlaylistID = playlistId.id;
 					playlistPlayedSongs.splice(0, 9999);
 				}
 				playlistPlayedSongs.unshift(secondfilename);
@@ -713,11 +711,9 @@ async function playPlaylist(playlist, startingIndex = 0) {
 		return;
 	}
 
-	currentPlaylist = playlist;
-
 	for (let i = startingIndex; i < playlist.songs.length; i++) {
 		currentPlaylistElement = i;
-		await playMusic(playlist.songs[i], true);
+		await playMusic(playlist.songs[i], playlist);
 		if (!isAutoplayActive) {
 			break;
 		}
@@ -745,19 +741,19 @@ async function playPreviousSong() {
 	if (isShuffleActive) {
 		if (currentPlaylist) {
 			if (playlistPlayedSongs.length > 1) {
-				playMusic(playlistPlayedSongs[1], true);
+				playMusic(playlistPlayedSongs[1], currentPlaylist);
 				playlistPlayedSongs.splice(0, 2);
 			}
 		} else {
 			if (playedSongs.length > 1) {
-				playMusic(playedSongs[1], false);
+				playMusic(playedSongs[1], null);
 				playedSongs.splice(0, 2);
 			}
 		}
 	} else {
 		if (currentPlaylist) {
 			if (currentPlaylistElement > 0) {
-				playMusic(currentPlaylist.songs[currentPlaylistElement - 1], true);
+				playMusic(currentPlaylist.songs[currentPlaylistElement - 1], currentPlaylist);
 				currentPlaylistElement--;
 			}
 		} else {
@@ -771,7 +767,7 @@ async function playPreviousSong() {
 
 			const previousIndex = currentIndex > 0 ? currentIndex - 1 : sortedSongIds.length - 1;
 
-			playMusic(sortedSongIds[previousIndex], false);
+			playMusic(sortedSongIds[previousIndex], null);
 		}
 	}
 }
@@ -847,7 +843,7 @@ async function randomSongFunctionMainMenu() {
 		}
 	}
 
-	playMusic(musicItems[randomIndex].song_id, false);
+	playMusic(musicItems[randomIndex].song_id, null);
 }
 
 async function randomPlaylistFunctionMainMenu() {
@@ -1137,7 +1133,7 @@ function searchSong() {
 	searchModalInput.value = "";
 	searchModalInput.classList.add("red-placeholder");
 	searchModalInput.placeholder = "Song not found.";
-	playMusic(row.song_id, false);
+	playMusic(row.song_id, null);
 	document.getElementById("searchModal").style.display = "none";
 }
 
