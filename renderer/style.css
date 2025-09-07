@@ -400,7 +400,7 @@ audio {
 	max-width: 180px;
 }
 
-.customize-button {
+.customise-button {
 	position: absolute;
 	width: 40px;
 	height: 40px;
@@ -513,7 +513,7 @@ audio {
 	font-size: 2vw;
 }
 
-#customizeSongName {
+#customiseSongName {
 	width: 50vw;
 	height: 10vh;
 	font-size: 2vw;

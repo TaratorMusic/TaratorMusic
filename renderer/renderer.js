@@ -127,7 +127,7 @@ const defaultSettings = {
 	current_version: null,
 };
 
-function initializeSettingsDatabase() {
+function initialiseSettingsDatabase() {
 	let settingsRow;
 
 	try {
@@ -244,7 +244,7 @@ function initializeSettingsDatabase() {
 	document.getElementById("main-menu").click();
 }
 
-function initializeMusicsDatabase() {
+function initialiseMusicsDatabase() {
 	const requiredColumns = [
 		{ name: "song_id", type: "TEXT PRIMARY KEY" },
 		{ name: "song_name", type: "TEXT" },
@@ -296,7 +296,7 @@ function initializeMusicsDatabase() {
 	}
 }
 
-function initializePlaylistsDatabase() {
+function initialisePlaylistsDatabase() {
 	try {
 		playlistsDb
 			.prepare(
@@ -514,12 +514,12 @@ function createMusicElement(songFile) {
 	songLengthElement.classList.add("song-length");
 	songLengthElement.innerText = formatTime(songFile.length);
 
-	const customizeButtonElement = document.createElement("button");
+	const customiseButtonElement = document.createElement("button");
 
-	customizeButtonElement.classList.add("customize-button");
-	customizeButtonElement.addEventListener("click", event => {
+	customiseButtonElement.classList.add("customise-button");
+	customiseButtonElement.addEventListener("click", event => {
 		event.stopPropagation();
-		openCustomizeModal(songFile.name);
+		opencustomiseModal(songFile.name);
 	});
 
 	const addToPlaylistButtonElement = document.createElement("button");
@@ -529,12 +529,12 @@ function createMusicElement(songFile) {
 		openAddToPlaylistModal(fileNameWithoutExtension);
 	});
 
-	customizeButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
+	customiseButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
 	addToPlaylistButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "addtoplaylist.svg")}" alt="Add To Playlist">`;
 
 	musicElement.appendChild(songLengthElement);
 	musicElement.appendChild(songNameElement);
-	musicElement.appendChild(customizeButtonElement);
+	musicElement.appendChild(customiseButtonElement);
 	musicElement.appendChild(addToPlaylistButtonElement);
 	return musicElement;
 }
@@ -996,7 +996,7 @@ async function updateThumbnailImage(event, mode) {
 	}
 }
 
-function openCustomizeModal(songName) {
+function opencustomiseModal(songName) {
 	const songNameNoMp3 = removeExtensions(songName);
 	const baseName = getSongNameById(songNameNoMp3);
 	const oldThumbnailPath = path.join(thumbnailFolder, songNameNoMp3 + "." + thumbnail_extension);
@@ -1010,10 +1010,10 @@ function openCustomizeModal(songName) {
 
 	const { stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension } = stmt.get(songNameNoMp3);
 
-	document.getElementById("customizeSongName").value = baseName;
+	document.getElementById("customiseSongName").value = baseName;
 	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + "." + thumbnail_extension);
-	document.getElementById("customizeModal").style.display = "block";
-	document.getElementById("customizeSongName").value = baseName;
+	document.getElementById("customiseModal").style.display = "block";
+	document.getElementById("customiseSongName").value = baseName;
 	document.getElementById("customiseImage").src = oldThumbnailPath;
 
 	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised == 1}`;
@@ -1024,17 +1024,17 @@ function openCustomizeModal(songName) {
 	document.getElementById("modalMidrange").innerText = `Midrange: Coming Soon!`;
 	document.getElementById("modalVolume").innerText = `Volume: Coming Soon!`;
 
-	const customizeDiv = document.getElementById("customizeModal");
-	customizeDiv.dataset.oldSongName = baseName;
-	customizeDiv.dataset.oldThumbnailPath = oldThumbnailPath;
-	customizeDiv.dataset.songID = songName;
+	const customiseDiv = document.getElementById("customiseModal");
+	customiseDiv.dataset.oldSongName = baseName;
+	customiseDiv.dataset.oldThumbnailPath = oldThumbnailPath;
+	customiseDiv.dataset.songID = songName;
 }
 
 async function saveEditedSong() {
-	const customizeDiv = document.getElementById("customizeModal");
-	const songID = removeExtensions(customizeDiv.dataset.songID);
+	const customiseDiv = document.getElementById("customiseModal");
+	const songID = removeExtensions(customiseDiv.dataset.songID);
 
-	const newNameInput = document.getElementById("customizeSongName").value.trim();
+	const newNameInput = document.getElementById("customiseSongName").value.trim();
 
 	if (newNameInput.length < 1) {
 		await alertModal("Please do not set a song name empty.");
@@ -1044,9 +1044,9 @@ async function saveEditedSong() {
 	const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(songID);
 
 	const thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
-	const oldName = customizeDiv.dataset.oldSongName;
+	const oldName = customiseDiv.dataset.oldSongName;
 
-	const newThumbFile = document.getElementById("customizeThumbnail").files[0];
+	const newThumbFile = document.getElementById("customiseThumbnail").files[0];
 	let reloadSrc = `${thumbnailPath}?t=${Date.now()}`;
 
 	if (newThumbFile) {
@@ -1056,10 +1056,10 @@ async function saveEditedSong() {
 
 	musicsDb.prepare("UPDATE songs SET song_name = ? WHERE song_id = ?").run(newNameInput, songID);
 
-	document.getElementById("customizeModal").style.display = "none";
+	document.getElementById("customiseModal").style.display = "none";
 	document.getElementById("my-music").click();
 
-	if (secondfilename == customizeDiv.dataset.songID) {
+	if (secondfilename == customiseDiv.dataset.songID) {
 		document.getElementById("song-name").innerText = newNameInput;
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url("${reloadSrc}")`;
 	}
@@ -1109,7 +1109,7 @@ async function removeSong(fileToDelete) {
 	musicsDb.prepare("DELETE FROM songs WHERE song_id = ?").run(fileToDelete);
 
 	closeModal();
-	document.getElementById("customizeModal").style.display = "none";
+	document.getElementById("customiseModal").style.display = "none";
 	const divToRemove = document.querySelector(`div[alt="${fileToDelete}.${row.song_extension}"]`);
 	if (divToRemove) divToRemove.remove();
 	if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
@@ -1276,7 +1276,7 @@ function bottomRightFunctions(input) {
 			}
 		}
 	} else if (input == "customise") {
-		openCustomizeModal(secondfilename);
+		opencustomiseModal(secondfilename);
 	}
 }
 
@@ -1296,9 +1296,9 @@ ipcRenderer.on("download-progress", (event, percent) => {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
-	initializeSettingsDatabase();
-	initializeMusicsDatabase();
-	initializePlaylistsDatabase();
+	initialiseSettingsDatabase();
+	initialiseMusicsDatabase();
+	initialisePlaylistsDatabase();
 
 	ipcRenderer.send("renderer-domready");
 

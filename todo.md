@@ -22,10 +22,8 @@ Favorite Song's Thumbnail, make it Song by Artist (but commented)
 Language - Genre at the bottom but commented
 Listen Amount - Listen Count - First Listen - Last Listen
 
-HTML TABLE Sortable menu with all songs and their stats (Listen count, length, percentage listened)
 YENI MUSICSDB INPUTLARINDA; ARTIST; GENRE; LANGUAGE YOK!!!!!!!
 SEARCH FOR TODOS IN THE SCRIPT
-Change function names to british english
 Add search bar in the playlists tab and style the create new playlist button
 Redesign main menu cuz we will be moving the time spent in app to the statistics page
 Data-tooltip on the action buttons are not working

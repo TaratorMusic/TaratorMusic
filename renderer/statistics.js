@@ -278,6 +278,7 @@ async function generalStatistics() {
 }
 
 async function htmlTableStats(sortedData = null) {
+    // TODO: Add Listen Percentages, make song_name "..." at one point so not that long, add listen amounts and listen lengths too
 	const rows = sortedData || musicsDb.prepare("SELECT song_name, stabilised, size, speed, treble, midrange, volume, song_length FROM songs").all();
 
 	const oldContainer = document.getElementById("htmlTable");
