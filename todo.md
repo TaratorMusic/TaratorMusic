@@ -18,7 +18,13 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
-Fully complete the statistics page.
+Favorite Song's Thumbnail, make it Song by Artist (but commented)
+Language - Genre at the bottom but commented
+Listen Amount - Listen Count - First Listen - Last Listen
+
+HTML TABLE Sortable menu with all songs and their stats (Listen count, length, percentage listened)
+YENI MUSICSDB INPUTLARINDA; ARTIST; GENRE; LANGUAGE YOK!!!!!!!
+SEARCH FOR TODOS IN THE SCRIPT
 Change function names to british english
 Add search bar in the playlists tab and style the create new playlist button
 Redesign main menu cuz we will be moving the time spent in app to the statistics page
@@ -28,15 +34,6 @@ Use beep in Go
 Separate the imports in the download script for faster launch times
 Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 Need scrollbars in my music and playlists tab
-
-### Statistics tab remaining
-
-Favorite Song's Thumbnail, make it Song by Artist (but commented)
-Language - Genre at the bottom but commented
-Listen Amount - Listen Count - First Listen - Last Listen
-
-HTML TABLE Sortable menu with all songs and their stats (Listen count, length, percentage listened)
-SEARCH FOR TODOS IN THE SCRIPT
 
 ### Planned Features
 

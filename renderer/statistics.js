@@ -2,6 +2,7 @@ const { Chart, LineController, LineElement, PointElement, PieController, ArcElem
 Chart.register(LineController, LineElement, PointElement, PieController, ArcElement, CategoryScale, LinearScale, Title, Tooltip, Legend, Filler);
 
 const statisticsContent = document.getElementById("statistics-content");
+let sortOrder = {};
 
 async function renderStatistics() {
 	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)
@@ -259,7 +260,7 @@ async function generalStatistics() {
 	}
 
 	const theBigText = document.createElement("div");
-    theBigText.className = "theBigText";
+	theBigText.className = "theBigText";
 	statisticsContent.appendChild(theBigText);
 
 	// TODO: Actually keep track of the downloads/listens
@@ -276,6 +277,84 @@ async function generalStatistics() {
 	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${row.songs_downloaded_spotify || 0}<br>`;
 }
 
-async function htmlTableStats() {
-	console.log("TODO");
+async function htmlTableStats(sortedData = null) {
+	const rows = sortedData || musicsDb.prepare("SELECT song_name, stabilised, size, speed, treble, midrange, volume, song_length FROM songs").all();
+
+	const oldContainer = document.getElementById("htmlTable");
+	if (oldContainer) oldContainer.remove();
+
+	const container = document.createElement("div");
+	container.id = "htmlTable";
+
+	const table = document.createElement("table");
+	const thead = document.createElement("thead");
+	const headerRow = document.createElement("tr");
+
+	Object.keys(rows[0]).forEach(key => {
+		const th = document.createElement("th");
+		th.style.cursor = "pointer";
+		th.style.userSelect = "none";
+		th.style.position = "relative";
+
+		const textSpan = document.createElement("span");
+		textSpan.textContent = key;
+
+		const arrowSpan = document.createElement("span");
+		arrowSpan.style.position = "absolute";
+		arrowSpan.style.right = "5px";
+		arrowSpan.style.fontSize = "0.8em";
+
+		if (sortOrder[key]) {
+			arrowSpan.textContent = sortOrder[key] === "asc" ? "▲" : "▼";
+		}
+
+		th.appendChild(textSpan);
+		th.appendChild(arrowSpan);
+
+		th.onclick = () => {
+			Object.keys(sortOrder).forEach(k => {
+				if (k !== key) delete sortOrder[k];
+			});
+
+			const order = sortOrder[key] === "asc" ? "desc" : "asc";
+			sortOrder[key] = order;
+
+			const originalRows = musicsDb.prepare("SELECT song_name, stabilised, size, speed, treble, midrange, volume, song_length FROM songs").all();
+			const sorted = [...originalRows].sort((a, b) => {
+				let aVal = a[key];
+				let bVal = b[key];
+
+				if (!isNaN(aVal) && !isNaN(bVal)) {
+					aVal = parseFloat(aVal);
+					bVal = parseFloat(bVal);
+				}
+
+				if (aVal < bVal) return order === "asc" ? -1 : 1;
+				if (aVal > bVal) return order === "asc" ? 1 : -1;
+				return 0;
+			});
+
+			htmlTableStats(sorted);
+		};
+
+		headerRow.appendChild(th);
+	});
+
+	thead.appendChild(headerRow);
+	table.appendChild(thead);
+
+	const tbody = document.createElement("tbody");
+	rows.forEach(row => {
+		const tr = document.createElement("tr");
+		Object.values(row).forEach(value => {
+			const td = document.createElement("td");
+			td.textContent = value;
+			tr.appendChild(td);
+		});
+		tbody.appendChild(tr);
+	});
+
+	table.appendChild(tbody);
+	container.appendChild(table);
+	statisticsContent.appendChild(container);
 }

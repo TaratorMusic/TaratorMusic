@@ -578,7 +578,7 @@ audio {
 	color: white;
 	transition: all 0.5s ease-in-out;
 	border-radius: 5px;
-    cursor: pointer;
+	cursor: pointer;
 }
 
 #settings-content button {
@@ -588,7 +588,7 @@ audio {
 	color: white;
 	transition: all 0.5s ease-in-out;
 	border-radius: 5px;
-    cursor: pointer;
+	cursor: pointer;
 }
 
 #settings-content button:hover {
@@ -1086,9 +1086,10 @@ input:checked + .slider:before {
 	min-height: 92vh !important;
 	max-height: 92vh !important;
 	margin: -20px -20px 0 0 !important;
-	padding-top: 90vh !important;
 	padding-bottom: 5vh !important;
-	overflow-y: scroll !important;
+	overflow-y: auto !important;
+	padding: 3vh 0;
+	justify-content: flex-start;
 }
 
 #searchModal {
@@ -1123,5 +1124,21 @@ input:checked + .slider:before {
 }
 
 .theBigText {
-    font-size: 2vw;
+	font-size: 2vw;
+}
+
+table {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+th,
+td {
+	border: 1px solid #ccc;
+	padding: 8px;
+}
+
+th {
+	background: #2a2a2a;
+	cursor: pointer;
 }
