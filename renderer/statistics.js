@@ -49,7 +49,6 @@ async function createMostListenedSongBox() {
 	let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
 
 	const img = document.createElement("img");
-	img.src = `file://${thumbnailUrl.replace(/\\/g, "/")}?t=${Date.now()}`;
 	img.id = "statisticsMostListenedSongImage";
 	statisticsMostListenedBox.appendChild(img);
 
@@ -72,6 +71,8 @@ async function createMostListenedSongBox() {
 	} else {
 		mostListenedSongText.innerHTML = `Favorite Song: [Deleted Song].<br>`;
 	}
+
+	img.src = `file://${thumbnailUrl.replace(/\\/g, "/")}?t=${Date.now()}`;
 
 	// mostListenedSongText.innerHTML += by ${mostListenedSongsRow.artist}<br>;
 	// mostListenedSongText.innerHTML += Genre: ${mostListenedSongsRow.genre}, Language: ${mostListenedSongsRow.language}<br>;

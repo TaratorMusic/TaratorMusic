@@ -19,6 +19,9 @@ It looks terrible :/
 ## Coming Soon App Features
 
 Keep track of the downloads
+Merge my local statistics db
+Implement "Amount of songs listened inside - outside playlists" in statistics
+ListenPercentage sorts numbers alphabetically, not numerically
 Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
 Add search bar in the playlists tab and style the create new playlist button
 In HTML Stats:

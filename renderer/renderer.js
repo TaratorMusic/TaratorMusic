@@ -265,7 +265,7 @@ function initialiseSettingsDatabase() {
 	document.getElementById("main-menu").click();
 
 	ipcRenderer.invoke("get-app-version").then(async version => {
-		if (version != current_version) await loadNewPage(`legacy`, current_version);
+		if (version != current_version || current_version == undefined) await loadNewPage(`legacy`, current_version);
 		current_version = version;
 		updateDatabase("current_version", current_version, settingsDb, "settings");
 		document.getElementById("version").textContent = `Version: ${version}`;

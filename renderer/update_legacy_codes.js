@@ -1,6 +1,5 @@
 async function updateFunctions(version) {
-	if (version == "null") {
-		// "null" has to be between brackets
+	if (version == undefined) {
 		await moveTotalTimeListened();
 		await shortenSongIds();
 	}
@@ -8,7 +7,7 @@ async function updateFunctions(version) {
 
 async function moveTotalTimeListened() {
 	const row = settingsDb.prepare(`SELECT totalTimeSpent FROM settings`).get();
-	if (row && row.totalTimeSpent !== undefined) {
+	if (row && row.totalTimeSpent != undefined) {
 		settingsDb.transaction(() => {
 			settingsDb.prepare(`INSERT OR REPLACE INTO statistics (total_time_spent) VALUES (?)`).run(row.totalTimeSpent);
 			settingsDb.prepare(`ALTER TABLE settings DROP COLUMN totalTimeSpent`).run();
