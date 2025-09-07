@@ -146,6 +146,12 @@ function initializeSettingsDatabase() {
 			)
 			.run();
 
+		settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
+
+		if (settingsRow.app_install_date == null) {
+			settingsDb.prepare(`UPDATE statistics SET app_install_date = ?`).run(Math.floor(Date.now() / 1000 - totalPausedTime));
+		}
+
 		const tableInfo = settingsDb.prepare("PRAGMA table_info(settings)").all();
 		const existingColumns = tableInfo.map(col => col.name);
 
@@ -163,9 +169,6 @@ function initializeSettingsDatabase() {
 				.join(", ");
 			settingsDb.prepare(`INSERT INTO settings (${columns}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
 		}
-
-		settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
-		console.log("Settings loaded:", settingsRow);
 	} catch (err) {
 		console.log("Database error:", err.message);
 		return;
@@ -340,9 +343,9 @@ setInterval(() => {
 	sessionTimeSpent += 60;
 	settingsDb
 		.prepare(
-        `
+			`
             UPDATE statistics
-            SET totalTimeSpent = totalTimeSpent + 60
+            SET total_time_spent = total_time_spent + 60
         `
 		)
 		.run();

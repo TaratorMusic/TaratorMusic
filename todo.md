@@ -31,7 +31,6 @@ Need scrollbars in my music and playlists tab
 
 ### Statistics tab remaining
 
-Statistics tab:
 Favorite Song's Thumbnail, make it Song by Artist (but commented)
 Language - Genre at the bottom but commented
 Listen Amount - Listen Count - First Listen - Last Listen

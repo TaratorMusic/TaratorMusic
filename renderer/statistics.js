@@ -18,7 +18,7 @@ async function renderStatistics() {
 	await createPieCharts();
 	await daysHeatMap();
 	await generalStatistics();
-    await htmlTableStats();
+	await htmlTableStats();
 }
 
 async function createMostListenedSongBox() {
@@ -228,14 +228,25 @@ async function daysHeatMap() {
 
 async function generalStatistics() {
 	const row = settingsDb.prepare("SELECT * FROM statistics").all()[0];
+	const leastListenRow = musicsDb
+		.prepare(
+			`
+                SELECT *
+                FROM timers
+                ORDER BY start_time ASC
+                LIMIT 1
+            `
+		)
+		.get();
 
 	let totalvalue, totalunit, sessionvalue, sessionunit;
+	let totalTimeSpent = row.total_time_spent;
 
-	if (sessionTimeSpent >= 3600) {
-		totalvalue = (sessionTimeSpent / 3600).toFixed(0);
+	if (totalTimeSpent >= 3600) {
+		totalvalue = (totalTimeSpent / 3600).toFixed(0);
 		totalunit = totalvalue == 1 ? "hour" : "hours";
 	} else {
-		totalvalue = (sessionTimeSpent / 60).toFixed(0);
+		totalvalue = (totalTimeSpent / 60).toFixed(0);
 		totalunit = totalvalue == 1 ? "minute" : "minutes";
 	}
 
@@ -248,25 +259,23 @@ async function generalStatistics() {
 	}
 
 	const theBigText = document.createElement("div");
+    theBigText.className = "theBigText";
 	statisticsContent.appendChild(theBigText);
 
-    // Add a function to record the first app launch
-	// TODO: Add line breakers
 	// TODO: Actually keep track of the downloads/listens
-	// TODO: Convert UNIX to timestamps
 
-	theBigText.innerHTML += `Total Time Spent in TaratorMusic: ${totalvalue} ${totalunit}`;
-	theBigText.innerHTML += `Session Time Spent: ${sessionvalue} ${sessionunit}`;
-	theBigText.innerHTML += `Using TaratorMusic since: TODO: CONVERT UNIX TO TIMESTAMP HERE`;
-	theBigText.innerHTML += `First song listened at: TODO: CONVERT UNIX TO TIMESTAMP HERE`;
-	theBigText.innerHTML += `Total amount of songs listened: ${row.songs_listened_out_playlists + row.songs_listened_in_playlists || 0}`;
-	theBigText.innerHTML += `Amount of songs listened inside playlists: ${row.songs_listened_in_playlists || 0}`;
-	theBigText.innerHTML += `Amount of songs listened outside playlists: ${row.songs_listened_out_playlists || 0}`;
-	theBigText.innerHTML += `Total amount of songs downloaded: ${row.songs_downloaded_youtube + row.songs_downloaded_spotify || 0}`;
-	theBigText.innerHTML += `Amount of songs downloaded from Youtube: ${row.songs_downloaded_youtube || 0}`;
-	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${row.songs_downloaded_spotify || 0}`;
+	theBigText.innerHTML += `Total Time Spent in TaratorMusic: ${totalvalue} ${totalunit}<br>`;
+	theBigText.innerHTML += `Session Time Spent: ${sessionvalue} ${sessionunit}<br>`;
+	theBigText.innerHTML += `Using TaratorMusic since: ${formatUnixTime(row.app_install_date)}<br>`;
+	theBigText.innerHTML += `First song listened at: ${formatUnixTime(leastListenRow.start_time) || "Never"}<br>`;
+	theBigText.innerHTML += `Total amount of songs listened: ${row.songs_listened_out_playlists + row.songs_listened_in_playlists || 0}<br>`;
+	theBigText.innerHTML += `Amount of songs listened inside playlists: ${row.songs_listened_in_playlists || 0}<br>`;
+	theBigText.innerHTML += `Amount of songs listened outside playlists: ${row.songs_listened_out_playlists || 0}<br>`;
+	theBigText.innerHTML += `Total amount of songs downloaded: ${row.songs_downloaded_youtube + row.songs_downloaded_spotify || 0}<br>`;
+	theBigText.innerHTML += `Amount of songs downloaded from Youtube: ${row.songs_downloaded_youtube || 0}<br>`;
+	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${row.songs_downloaded_spotify || 0}<br>`;
 }
 
 async function htmlTableStats() {
-    console.log("TODO");
+	console.log("TODO");
 }

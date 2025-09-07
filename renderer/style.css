@@ -1086,7 +1086,7 @@ input:checked + .slider:before {
 	min-height: 92vh !important;
 	max-height: 92vh !important;
 	margin: -20px -20px 0 0 !important;
-	padding-top: 45vh !important;
+	padding-top: 90vh !important;
 	padding-bottom: 5vh !important;
 	overflow-y: scroll !important;
 }
@@ -1120,4 +1120,8 @@ input:checked + .slider:before {
 
 .red-placeholder::placeholder {
 	color: red;
+}
+
+.theBigText {
+    font-size: 2vw;
 }

@@ -127,7 +127,7 @@
 				</div>
 			</div>
 			<div id="searchModal" class="modal">
-				<div style="justify-content: space-between;" class="flexrow">
+				<div style="justify-content: space-between" class="flexrow">
 					<h1>Quick Song Search</h1>
 					<span class="close" onclick="closeModal()">&times;</span>
 				</div>
@@ -153,12 +153,11 @@
 					<div class="flexrowbutspacearound">
 						<div id="mainmenurandomsong" class="mainmenusquares" data-tooltip="Play a Random Song" onclick="randomSongFunctionMainMenu()">Random Song</div>
 						<div id="mainmenurandomplaylist" class="mainmenusquares" data-tooltip="Play a Random Playlist" onclick="randomPlaylistFunctionMainMenu()">Random Playlist</div>
-						<div class="mainmenusquares" style="flex-direction: column">
-							<div id="mainmenudiscordapi" style="height: 50%; margin-top: 10%" data-tooltip="Status of your Discord connection">Discord RPC Status: Loading...</div>
-							<div id="mainmenubotapi" style="color: yellow; height: 50%; margin-bottom: 5%" data-tooltip="Status of your bot which shares your songs on Discord voice chat">Discord Bot Status: Coming Soon</div>
+						<div class="mainmenusquares">
+							<div id="mainmenudiscordapi" data-tooltip="Status of your Discord connection">Discord RPC Status: Loading...</div>
 						</div>
-						<div class="mainmenusquares" style="flex-direction: column">
-							<div id="mainmenusessiontimespent" data-tooltip="Total Time Spent this Session">Session Time Spent: Loading</div>
+						<div class="mainmenusquares">
+							<div id="mainmenubotapi" style="color: yellow" data-tooltip="Status of your bot which shares your songs on Discord voice chat">Discord Bot Status: Coming Soon</div>
 						</div>
 					</div>
 				</div>
