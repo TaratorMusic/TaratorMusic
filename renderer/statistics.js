@@ -53,9 +53,10 @@ async function createMostListenedSongBox() {
 		)
 		.get(most_listened_song.song_id);
 
-	// TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness.
+	// TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness. Box.shadow
 	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow != undefined ? mostListenedSongsRow.song_name : "A deleted song"}. `;
-	// mostListenedSongText.innerHTML += `by ${mostListenedSongsRow.artist}`;
+	// mostListenedSongText.innerHTML += `by ${mostListenedSongsRow.artist}<br>`;
+	// mostListenedSongText.innerHTML += `Genre: ${mostListenedSongsRow.genre}, Language: ${mostListenedSongsRow.language}<br>`;
 	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds. `;
 	mostListenedSongText.innerHTML += `First listened at: ${formatUnixTime(firstAndLastListenOfTheBestSong.start_time)} and last listened at ${formatUnixTime(firstAndLastListenOfTheBestSong.end_time)}`;
 }
@@ -278,7 +279,7 @@ async function generalStatistics() {
 }
 
 async function htmlTableStats(sortedData = null) {
-    // TODO: Add Listen Percentages, make song_name "..." at one point so not that long, add listen amounts and listen lengths too
+	// TODO: Add Listen Percentages, make song_name "..." at one point so not that long, add listen amounts and listen lengths too
 	const rows = sortedData || musicsDb.prepare("SELECT song_name, stabilised, size, speed, treble, midrange, volume, song_length FROM songs").all();
 
 	const oldContainer = document.getElementById("htmlTable");

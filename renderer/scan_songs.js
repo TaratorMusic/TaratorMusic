@@ -237,11 +237,11 @@ async function processNewSongs() {
 					INSERT INTO songs (
 						song_id, song_name, song_url, song_length, seconds_played, 
 						times_listened, stabilised, size, speed, bass, treble, 
-						midrange, volume, song_extension, thumbnail_extension
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+						midrange, volume, song_extension, thumbnail_extension, artist, genre, language
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				`;
 
-				musicsDb.prepare(insertQuery).run(songId, songName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, songExt, thumbnailExt);
+				musicsDb.prepare(insertQuery).run(songId, songName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, songExt, thumbnailExt, null, null, null);
 
 				document.getElementById("folderProgress").innerText = `${currentProgress} Successfully added: ${songName}`;
 			} catch (error) {

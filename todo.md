@@ -18,20 +18,19 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
-Favorite Song's Thumbnail, make it Song by Artist (but commented)
-Language - Genre at the bottom but commented
+Favorite Song's Thumbnail
 Listen Amount - Listen Count - First Listen - Last Listen
 
-YENI MUSICSDB INPUTLARINDA; ARTIST; GENRE; LANGUAGE YOK!!!!!!!
-SEARCH FOR TODOS IN THE SCRIPT
 Add search bar in the playlists tab and style the create new playlist button
 Redesign main menu cuz we will be moving the time spent in app to the statistics page
-Data-tooltip on the action buttons are not working
+
+SEARCH FOR TODOS IN THE SCRIPT
 
 Use beep in Go
 Separate the imports in the download script for faster launch times
 Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 Need scrollbars in my music and playlists tab
+Data-tooltip on the action buttons are not working
 
 ### Planned Features
 

@@ -658,10 +658,10 @@ async function actuallyDownloadTheSong() {
 						`INSERT INTO songs (
 							song_id, song_name, song_url,
 							song_length, seconds_played, times_listened, stabilised,
-							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language
+						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 					)
-					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg");
+					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", null, null, null);
 				await commitStagedPlaylistAdds();
 			} catch (err) {
 				console.log("Failed to insert song into DB:", err);
@@ -856,10 +856,10 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 							`INSERT INTO songs (
 							song_id, song_name, song_url,
 							song_length, seconds_played, times_listened, stabilised,
-							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
-						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 						)
-						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg");
+						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", null, null, null);
 				} catch (err) {
 					console.log(`DB insert failed for ${songTitle}: ${err.message}`);
 				}
@@ -885,7 +885,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			try {
 				playlistsDb
 					.prepare(
-					`
+						`
 						INSERT INTO playlists (id, name, songs, thumbnail_extension)
 						VALUES (?, ?, ?, ?)
 					`
