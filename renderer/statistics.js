@@ -6,7 +6,6 @@ let sortOrder = {};
 
 async function renderStatistics() {
 	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)
-
 	if (!row) return alertModal("You haven't listened to any songs yet.");
 
 	document.getElementById("statistics-content").style.display = "flex";
@@ -64,24 +63,15 @@ async function createMostListenedSongBox() {
 	mostListenedSongText.id = "mostListenedSongText";
 	statisticsMostListenedBox.appendChild(mostListenedSongText);
 
-	const firstAndLastListenOfTheBestSong = musicsDb
-		.prepare(
-			`
-			SELECT *
-			FROM timers
-			WHERE song_id = ?
-			ORDER BY start_time ASC
-			LIMIT 1
-		`
-		)
-		.get(most_listened_song.song_id);
+	const { min_start, max_start, total_rows } = musicsDb.prepare("SELECT MIN(start_time) AS min_start, MAX(start_time) AS max_start, COUNT(*) AS total_rows FROM timers WHERE song_id = ?").get(most_listened_song.song_id);
 
-	// TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness. Box.shadow
+	// TODO: Show in cool box. Make the box shiny for extra coolness. Box.shadow
 	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow != undefined ? mostListenedSongsRow.song_name : "A deleted song"}.<br>`;
 	// mostListenedSongText.innerHTML += `by ${mostListenedSongsRow.artist}<br>`;
 	// mostListenedSongText.innerHTML += `Genre: ${mostListenedSongsRow.genre}, Language: ${mostListenedSongsRow.language}<br>`;
-	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds and x times. <br>`;
-	mostListenedSongText.innerHTML += `First listened at: ${formatUnixTime(firstAndLastListenOfTheBestSong.start_time)} and last listened at ${formatUnixTime(firstAndLastListenOfTheBestSong.end_time)}`;
+	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds and ${total_rows} times. <br>`;
+	mostListenedSongText.innerHTML += `First listened at: ${formatUnixTime(min_start)} and last listened at ${formatUnixTime(max_start)}<br>`;
+	mostListenedSongText.innerHTML += `Listen percentage: ${findListenPercentage(most_listened_song.song_id)}%`;
 }
 
 async function createPieCharts() {
@@ -301,9 +291,26 @@ async function generalStatistics() {
 	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${row.songs_downloaded_spotify || 0}<br>`;
 }
 
+// TODO: make song_name "..." at one point so not that long
+// TODO: Leave enough space for the little triangle
+// TODO: Give table headers proper names
 async function htmlTableStats(sortedData = null) {
-	// TODO: Add Listen Percentages, make song_name "..." at one point so not that long, add listen amounts and listen lengths too
-	const rows = sortedData || musicsDb.prepare("SELECT song_name, stabilised, size, speed, treble, midrange, volume, song_length FROM songs").all();
+	const rows = sortedData || musicsDb.prepare("SELECT song_id, song_name, song_length FROM songs").all();
+	const timers = musicsDb.prepare("SELECT song_id, start_time, end_time FROM timers").all();
+
+	for (let row of rows) {
+		const songId = row.song_id;
+		const clippedId = songId.replace("tarator-", "");
+
+		const songTimers = timers.filter(t => t.song_id == clippedId);
+		const listenAmount = songTimers.length;
+		const listenLength = songTimers.reduce((sum, t) => sum + (t.end_time - t.start_time), 0);
+		const listenPercentage = findListenPercentage(clippedId) + "%";
+
+		row.listenAmount = listenAmount;
+		row.listenLength = listenLength;
+		row.listenPercentage = listenPercentage;
+	}
 
 	const oldContainer = document.getElementById("htmlTable");
 	if (oldContainer) oldContainer.remove();
@@ -344,8 +351,7 @@ async function htmlTableStats(sortedData = null) {
 			const order = sortOrder[key] === "asc" ? "desc" : "asc";
 			sortOrder[key] = order;
 
-			const originalRows = musicsDb.prepare("SELECT song_name, stabilised, size, speed, treble, midrange, volume, song_length FROM songs").all();
-			const sorted = [...originalRows].sort((a, b) => {
+			const sorted = [...rows].sort((a, b) => {
 				let aVal = a[key];
 				let bVal = b[key];
 
@@ -382,4 +388,17 @@ async function htmlTableStats(sortedData = null) {
 	table.appendChild(tbody);
 	container.appendChild(table);
 	statisticsContent.appendChild(container);
+}
+
+function findListenPercentage(songId) {
+	try {
+		const row = musicsDb.prepare("SELECT song_length FROM songs WHERE song_id = ?").get(`tarator-${songId}`);
+		const stats = musicsDb.prepare("SELECT COUNT(*) AS row_count, SUM(end_time - start_time) AS total_duration FROM timers WHERE song_id = ?").get(songId) || {};
+		const totalLength = (stats.row_count || 0) * row.song_length;
+		const totalListened = stats.total_duration || 0;
+		if (totalLength == 0) return 0;
+		return ((totalListened / totalLength) * 100).toFixed(0);
+	} catch {
+		return 0;
+	}
 }

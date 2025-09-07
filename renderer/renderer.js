@@ -587,9 +587,7 @@ async function playMusic(file, isPlaylist) {
 			el.style.color = "white";
 		});
 
-		if (!audioContext) {
-			audioContext = new AudioContext();
-		}
+		if (!audioContext) audioContext = new AudioContext();
 
 		audioSource = audioContext.createMediaElementSource(audioElement);
 		audioSource.connect(audioContext.destination);

@@ -60,9 +60,6 @@ async function shortenSongIds() {
 		}
 	}
 
-	let queryArray = [renameMapping, musicFolder, thumbnailFolder];
-	if (renameMapping.length > 0) {
-		await loadNewPage("shortenSongIdsGoPart", queryArray);
-	}
+	if (renameMapping.length > 0) await loadNewPage("shortenSongIdsGoPart", [renameMapping, musicFolder, thumbnailFolder]);
 	await alertModal("Task complete.");
 }
