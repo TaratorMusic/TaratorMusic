@@ -146,10 +146,30 @@ function initialiseSettingsDatabase() {
 			)
 			.run();
 
-		settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
+		const columns = Object.entries(defaultSettings)
+			.map(([key, value]) => {
+				const type = typeof value === "number" ? "INTEGER" : "TEXT";
+				return `${key} ${type}`;
+			})
+			.join(", ");
 
-		if (settingsRow.app_install_date == null) {
-			settingsDb.prepare(`UPDATE statistics SET app_install_date = ?`).run(Math.floor(Date.now() / 1000 - totalPausedTime));
+		settingsDb.prepare(`CREATE TABLE IF NOT EXISTS settings (${columns})`).run();
+		settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
+		statsRow = settingsDb.prepare("SELECT * FROM statistics LIMIT 1").get();
+
+		if (!settingsRow) {
+			const columns = Object.keys(defaultSettings).join(", ");
+			const placeholders = Object.keys(defaultSettings)
+				.map(() => "?")
+				.join(", ");
+			settingsDb.prepare(`INSERT INTO settings (${columns}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
+			settingsRow = defaultSettings;
+		}
+
+		if (!statsRow) {
+			settingsDb.prepare(`INSERT INTO statistics (app_install_date) VALUES (?)`).run(Math.floor(Date.now() / 1000));
+		} else if (!statsRow.app_install_date) {
+			settingsDb.prepare(`UPDATE statistics SET app_install_date = ?`).run(Math.floor(Date.now() / 1000));
 		}
 
 		const tableInfo = settingsDb.prepare("PRAGMA table_info(settings)").all();
@@ -158,7 +178,8 @@ function initialiseSettingsDatabase() {
 		for (const [key, value] of Object.entries(defaultSettings)) {
 			if (!existingColumns.includes(key)) {
 				const type = typeof value === "number" ? "INTEGER" : "TEXT";
-				settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${type} DEFAULT ?`).run(value);
+				const defaultVal = typeof value === "number" ? value : `'${value}'`;
+				settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${type} DEFAULT ${defaultVal}`).run();
 			}
 		}
 
@@ -242,6 +263,13 @@ function initialiseSettingsDatabase() {
 
 	setupLazyBackgrounds();
 	document.getElementById("main-menu").click();
+
+	ipcRenderer.invoke("get-app-version").then(async version => {
+		if (version != current_version) await loadNewPage(`legacy`, current_version);
+		current_version = version;
+		updateDatabase("current_version", current_version, settingsDb, "settings");
+		document.getElementById("version").textContent = `Version: ${version}`;
+	});
 }
 
 function initialiseMusicsDatabase() {
@@ -1371,13 +1399,6 @@ document.addEventListener("DOMContentLoaded", function () {
 			clearTimeout(timeoutId);
 			tooltip.style.display = "none";
 		});
-	});
-
-	ipcRenderer.invoke("get-app-version").then(async version => {
-		if (version != current_version) await loadNewPage(`legacy`, current_version);
-		current_version = version;
-		updateDatabase("current_version", current_version, settingsDb, "settings");
-		document.getElementById("version").textContent = `Version: ${version}`;
 	});
 
 	document.getElementById("debugButton").addEventListener("click", () => {

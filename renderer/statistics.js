@@ -22,12 +22,12 @@ async function createMostListenedSongBox() {
 	const most_listened_song = musicsDb
 		.prepare(
 			`
-			SELECT song_id, SUM(end_time - start_time) AS total_time
-			FROM timers
-			GROUP BY song_id
-			ORDER BY total_time DESC
-			LIMIT 1
-		`
+            SELECT song_id, SUM(end_time - start_time) AS total_time
+            FROM timers
+            GROUP BY song_id
+            ORDER BY total_time DESC
+            LIMIT 1
+        `
 		)
 		.get();
 
@@ -46,18 +46,12 @@ async function createMostListenedSongBox() {
 	statisticsMostListenedBox.id = "statisticsMostListenedBox";
 	statisticsMostListened.appendChild(statisticsMostListenedBox);
 
-	const thumbnailFileName = `${songId}.${mostListenedSongsRow.thumbnail_extension}`;
-	const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
 	let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
-	if (fs.existsSync(thumbnailPath)) thumbnailUrl = thumbnailPath;
 
 	const img = document.createElement("img");
 	img.src = `file://${thumbnailUrl.replace(/\\/g, "/")}?t=${Date.now()}`;
 	img.id = "statisticsMostListenedSongImage";
 	statisticsMostListenedBox.appendChild(img);
-	img.addEventListener("click", () => {
-		playMusic(songId, null);
-	});
 
 	const mostListenedSongText = document.createElement("div");
 	mostListenedSongText.id = "mostListenedSongText";
@@ -65,10 +59,24 @@ async function createMostListenedSongBox() {
 
 	const { min_start, max_start, total_rows } = musicsDb.prepare("SELECT MIN(start_time) AS min_start, MAX(start_time) AS max_start, COUNT(*) AS total_rows FROM timers WHERE song_id = ?").get(most_listened_song.song_id);
 
-	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow != undefined ? mostListenedSongsRow.song_name : "A deleted song"}.<br>`;
-	// mostListenedSongText.innerHTML += `by ${mostListenedSongsRow.artist}<br>`;
-	// mostListenedSongText.innerHTML += `Genre: ${mostListenedSongsRow.genre}, Language: ${mostListenedSongsRow.language}<br>`;
-	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds and ${total_rows} times. <br>`;
+	if (mostListenedSongsRow) {
+		mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow.song_name}.<br>`;
+
+		const thumbnailFileName = `${songId}.${mostListenedSongsRow.thumbnail_extension}`;
+		const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
+		if (fs.existsSync(thumbnailPath)) thumbnailUrl = thumbnailPath;
+
+		img.addEventListener("click", () => {
+			playMusic(songId, null);
+		});
+	} else {
+		mostListenedSongText.innerHTML = `Favorite Song: [Deleted Song].<br>`;
+	}
+
+	// mostListenedSongText.innerHTML += by ${mostListenedSongsRow.artist}<br>;
+	// mostListenedSongText.innerHTML += Genre: ${mostListenedSongsRow.genre}, Language: ${mostListenedSongsRow.language}<br>;
+
+	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds and ${total_rows} times.<br>`;
 	mostListenedSongText.innerHTML += `First listened at: ${formatUnixTime(min_start)} and last listened at ${formatUnixTime(max_start)}<br>`;
 	mostListenedSongText.innerHTML += `Listen percentage: ${findListenPercentage(most_listened_song.song_id)}%`;
 }
