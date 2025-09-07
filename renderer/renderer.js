@@ -364,7 +364,7 @@ setInterval(() => {
 function savePlayedTime() {
 	const theId = removeExtensions(secondfilename).replace("tarator", "").replace("-", "");
 	const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
-	const playlist = currentPlaylist.id.replace("tarator-", "") || null;
+	const playlist = currentPlaylist ? currentPlaylist.id.replace("tarator-", "") : null;
 
 	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time, playlist) VALUES (?, ?, ?, ?)").run(theId, songStartTime, currentTimeUnix, playlist);
 	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds. Playlist: ${playlist}`);
@@ -554,7 +554,7 @@ async function playMusic(file, isPlaylist) {
 	const songName = document.getElementById("song-name");
 
 	if (songPauseStartTime) totalPausedTime += Math.floor(Date.now() / 1000 - songPauseStartTime);
-	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 10) savePlayedTime();
+	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) savePlayedTime();
 
 	songStartTime = Math.floor(Date.now() / 1000);
 	songPauseStartTime = null;
