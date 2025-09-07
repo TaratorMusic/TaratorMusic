@@ -269,30 +269,40 @@ function initialiseMusicsDatabase() {
 	musicsDb
 		.prepare(
 			`CREATE TABLE IF NOT EXISTS timers (
-			song_id TEXT,
-			start_time INTEGER,
-			end_time INTEGER
-		)`
+            song_id TEXT,
+            start_time INTEGER,
+            end_time INTEGER
+            playlist TEXT
+        )`
 		)
 		.run();
 
 	musicsDb
 		.prepare(
 			`CREATE TABLE IF NOT EXISTS songs (
-				${requiredColumns.map(c => `${c.name} ${c.type}`).join(", ")}
-			)`
+            ${requiredColumns.map(c => `${c.name} ${c.type}`).join(", ")}
+        )`
 		)
 		.run();
 
-	const existingColumns = musicsDb
+	const existingSongColumns = musicsDb
 		.prepare(`PRAGMA table_info(songs)`)
 		.all()
 		.map(col => col.name);
 
 	for (const col of requiredColumns) {
-		if (!existingColumns.includes(col.name)) {
+		if (!existingSongColumns.includes(col.name)) {
 			musicsDb.prepare(`ALTER TABLE songs ADD COLUMN ${col.name} ${col.type}`).run();
 		}
+	}
+
+	const existingTimerColumns = musicsDb
+		.prepare(`PRAGMA table_info(timers)`)
+		.all()
+		.map(col => col.name);
+
+	if (!existingTimerColumns.includes("playlist")) {
+		musicsDb.prepare(`ALTER TABLE timers ADD COLUMN playlist TEXT`).run();
 	}
 }
 
@@ -354,9 +364,10 @@ setInterval(() => {
 function savePlayedTime() {
 	const theId = removeExtensions(secondfilename).replace("tarator", "").replace("-", "");
 	const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
+	const playlist = currentPlaylist.id.replace("tarator-", "") || null;
 
-	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time) VALUES (?, ?, ?)").run(theId, songStartTime, currentTimeUnix);
-	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds.`);
+	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time, playlist) VALUES (?, ?, ?, ?)").run(theId, songStartTime, currentTimeUnix, playlist);
+	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds. Playlist: ${playlist}`);
 }
 
 tabs.forEach(tab => {

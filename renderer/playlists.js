@@ -253,7 +253,7 @@ function addToSelectedPlaylists(songName) {
 
 	try {
 		selectedPlaylists.forEach(playlistId => {
-			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE name = ?").get(playlistId);
+			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE id = ?").get(playlistId);
 
 			let songsInPlaylist = [];
 			if (playlist.songs) {
@@ -267,7 +267,7 @@ function addToSelectedPlaylists(songName) {
 			} else {
 				songsInPlaylist.push(songName);
 				const updatedSongs = JSON.stringify(songsInPlaylist);
-				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(updatedSongs, playlistId);
+				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(updatedSongs, playlistId);
 				console.log(`Song '${songName}' added to playlist '${playlistId}'.`);
 			}
 		});
@@ -289,11 +289,10 @@ function addToSelectedPlaylists(songName) {
 				}
 			}
 		});
+		closeModal();
 	} catch (err) {
 		console.log("Error updating playlists in the database:", err);
 	}
-
-	closeModal();
 }
 
 async function deletePlaylist() {

@@ -185,8 +185,8 @@ function generateId() {
 }
 
 function closeModal() {
-	if (document.getElementById("searchModal").style.display != "none") return (document.getElementById("searchModal").style.display = "none");
-	if (document.getElementById("addToPlaylistModal").style.display != "none") return (document.getElementById("addToPlaylistModal").style.display = "none");
+	if (document.getElementById("searchModal").style.display == "flex") return (document.getElementById("searchModal").style.display = "none");
+	if (document.getElementById("addToPlaylistModal").style.display == "block") return (document.getElementById("addToPlaylistModal").style.display = "none");
 	document.querySelectorAll(".modal, .confirm-modal-overlay").forEach(el => {
 		el.style.display = "none";
 	});
