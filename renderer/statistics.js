@@ -56,7 +56,7 @@ async function createMostListenedSongBox() {
 	img.id = "statisticsMostListenedSongImage";
 	statisticsMostListenedBox.appendChild(img);
 	img.addEventListener("click", () => {
-		playMusic(songId, false);
+		playMusic(songId, null);
 	});
 
 	const mostListenedSongText = document.createElement("div");
@@ -65,7 +65,6 @@ async function createMostListenedSongBox() {
 
 	const { min_start, max_start, total_rows } = musicsDb.prepare("SELECT MIN(start_time) AS min_start, MAX(start_time) AS max_start, COUNT(*) AS total_rows FROM timers WHERE song_id = ?").get(most_listened_song.song_id);
 
-	// TODO: Show in cool box. Make the box shiny for extra coolness. Box.shadow
 	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow != undefined ? mostListenedSongsRow.song_name : "A deleted song"}.<br>`;
 	// mostListenedSongText.innerHTML += `by ${mostListenedSongsRow.artist}<br>`;
 	// mostListenedSongText.innerHTML += `Genre: ${mostListenedSongsRow.genre}, Language: ${mostListenedSongsRow.language}<br>`;
@@ -277,8 +276,6 @@ async function generalStatistics() {
 	theBigText.className = "theBigText";
 	statisticsContent.appendChild(theBigText);
 
-	// TODO: Actually keep track of the downloads/listens
-
 	theBigText.innerHTML += `Total Time Spent in TaratorMusic: ${totalvalue} ${totalunit}<br>`;
 	theBigText.innerHTML += `Session Time Spent: ${sessionvalue} ${sessionunit}<br>`;
 	theBigText.innerHTML += `Using TaratorMusic since: ${formatUnixTime(row.app_install_date)}<br>`;
@@ -291,9 +288,6 @@ async function generalStatistics() {
 	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${row.songs_downloaded_spotify || 0}<br>`;
 }
 
-// TODO: make song_name "..." at one point so not that long
-// TODO: Leave enough space for the little triangle
-// TODO: Give table headers proper names
 async function htmlTableStats(sortedData = null) {
 	const rows = sortedData || musicsDb.prepare("SELECT song_id, song_name, song_length FROM songs").all();
 	const timers = musicsDb.prepare("SELECT song_id, start_time, end_time FROM timers").all();

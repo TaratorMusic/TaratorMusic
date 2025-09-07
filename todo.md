@@ -18,12 +18,15 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
-In musicsDb Timers table, add a new column: playlist
-
+Keep track of the downloads
+Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
 Add search bar in the playlists tab and style the create new playlist button
-Redesign main menu cuz we will be moving the time spent in app to the statistics page
+In HTML Stats:
+- make song_name "..." at one point so not that long
+- Leave enough space for the little triangle
+- Give table headers proper names
 
-SEARCH FOR TODOS IN THE SCRIPT
+NEXT VERSION PLANNED:
 
 Import the lastfm api and language npm package
 Use beep in Go
@@ -31,6 +34,7 @@ Separate the imports in the download script for faster launch times
 Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 Need scrollbars in my music and playlists tab
 Data-tooltip on the action buttons are not working
+Redesign main menu
 Most Listened Playlist and other playlist data in Statistics
 
 ### Planned Features
