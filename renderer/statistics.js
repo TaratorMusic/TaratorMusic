@@ -7,10 +7,7 @@ let sortOrder = {};
 async function renderStatistics() {
 	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)
 
-	if (!row) {
-		alertModal("You haven't listened to any songs yet.");
-		return;
-	}
+	if (!row) return alertModal("You haven't listened to any songs yet.");
 
 	document.getElementById("statistics-content").style.display = "flex";
 	statisticsContent.innerHTML = "";
@@ -35,11 +32,37 @@ async function createMostListenedSongBox() {
 		)
 		.get();
 
-	const mostListenedSongsRow = musicsDb.prepare("SELECT song_name FROM songs WHERE song_id = ?").get(`tarator-${most_listened_song.song_id}`);
+	const songId = "tarator-" + most_listened_song.song_id;
+	const mostListenedSongsRow = musicsDb.prepare("SELECT song_name, thumbnail_extension FROM songs WHERE song_id = ?").get(songId);
+
+	const statisticsMostListened = document.createElement("div");
+	statisticsMostListened.id = "statisticsMostListened";
+	statisticsContent.appendChild(statisticsMostListened);
+
+	const statisticsMostListenedTitle = document.createElement("h1");
+	statisticsMostListenedTitle.innerHTML = "Most Listened Song";
+	statisticsMostListened.appendChild(statisticsMostListenedTitle);
+
+	const statisticsMostListenedBox = document.createElement("div");
+	statisticsMostListenedBox.id = "statisticsMostListenedBox";
+	statisticsMostListened.appendChild(statisticsMostListenedBox);
+
+	const thumbnailFileName = `${songId}.${mostListenedSongsRow.thumbnail_extension}`;
+	const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
+	let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
+	if (fs.existsSync(thumbnailPath)) thumbnailUrl = thumbnailPath;
+
+	const img = document.createElement("img");
+	img.src = `file://${thumbnailUrl.replace(/\\/g, "/")}?t=${Date.now()}`;
+	img.id = "statisticsMostListenedSongImage";
+	statisticsMostListenedBox.appendChild(img);
+	img.addEventListener("click", () => {
+		playMusic(songId, false);
+	});
 
 	const mostListenedSongText = document.createElement("div");
 	mostListenedSongText.id = "mostListenedSongText";
-	statisticsContent.appendChild(mostListenedSongText);
+	statisticsMostListenedBox.appendChild(mostListenedSongText);
 
 	const firstAndLastListenOfTheBestSong = musicsDb
 		.prepare(
@@ -54,10 +77,10 @@ async function createMostListenedSongBox() {
 		.get(most_listened_song.song_id);
 
 	// TODO: Show in cool box, with song thumbnail, listen amount too. Make the box shiny for extra coolness. Box.shadow
-	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow != undefined ? mostListenedSongsRow.song_name : "A deleted song"}. `;
+	mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow != undefined ? mostListenedSongsRow.song_name : "A deleted song"}.<br>`;
 	// mostListenedSongText.innerHTML += `by ${mostListenedSongsRow.artist}<br>`;
 	// mostListenedSongText.innerHTML += `Genre: ${mostListenedSongsRow.genre}, Language: ${mostListenedSongsRow.language}<br>`;
-	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds. `;
+	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds and x times. <br>`;
 	mostListenedSongText.innerHTML += `First listened at: ${formatUnixTime(firstAndLastListenOfTheBestSong.start_time)} and last listened at ${formatUnixTime(firstAndLastListenOfTheBestSong.end_time)}`;
 }
 

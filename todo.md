@@ -18,7 +18,6 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
-Favorite Song's Thumbnail
 Listen Amount - Listen Count - First Listen - Last Listen
 
 Add search bar in the playlists tab and style the create new playlist button
@@ -26,6 +25,7 @@ Redesign main menu cuz we will be moving the time spent in app to the statistics
 
 SEARCH FOR TODOS IN THE SCRIPT
 
+Import the lastfm api and language npm package
 Use beep in Go
 Separate the imports in the download script for faster launch times
 Make three-way & two-way & one-way modal functions into one, because it wastes so much space
