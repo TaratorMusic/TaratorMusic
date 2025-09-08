@@ -63,6 +63,7 @@ async function redownloadAllSongs() {
 	}
 
 	await loadNewPage("download");
+	await loadNewPage("downloadModal");
 	await checkNameThumbnail(true);
 	downloadingStyle = "redownload";
 	const songs = [];
@@ -71,7 +72,7 @@ async function redownloadAllSongs() {
 
 	for (let i = 0; i < filteredRows.length; i++) {
 		const row = filteredRows[i];
-		let info;
+		let confirmed = false;
 		try {
 			info = await ytdl.getInfo(row.song_url);
 			document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
@@ -79,7 +80,7 @@ async function redownloadAllSongs() {
 			if (checkAllSongs == "SkipAll") {
 				continue;
 			} else if (checkAllSongs == "AskEach") {
-				const confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No");
+				confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No");
 				if (!confirmed) {
 					continue;
 				}
@@ -110,7 +111,7 @@ async function redownloadAllSongs() {
 			thumbnail: thumbnailUrl,
 		});
 
-		if (i + 1 != filteredRows.length) await sleep(2000); // For not overloading YTDL
+		if (i + 1 != filteredRows.length) await sleep(500); // For not overloading Youtube API
 	}
 
 	await renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailFolder, "tarator_icon.png"), songs);
