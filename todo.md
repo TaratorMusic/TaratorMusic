@@ -14,21 +14,12 @@ It looks terrible :/
 
 ## Bugs
 
--   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922
-- renderer.js:395 Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'replace')
-    at savePlayedTime (renderer.js:395:56)
-    at playMusic (renderer.js:585:99)
-    at randomSongFunctionMainMenu (renderer.js:874:2)
-    at HTMLDocument.<anonymous> (renderer.js:1226:3)
-- renderer.js:821 Uncaught (in promise) TypeError: Cannot read properties of undefined (reading '1')
-at playNextSong (renderer.js:821:47)
-at Audio.<anonymous> (renderer.js:731:4)
+-   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
 
 ## Coming Soon App Features
 
--   Keep track of the downloads
--   Merge my local statistics db
--   Implement "Amount of songs listened inside - outside playlists" in statistics
+-   Keep track of the download statistics
+-   Implement "Amount of songs listened inside - outside playlists" in statistics --> Its in timers table, not statistics
 -   ListenPercentage sorts numbers alphabetically, not numerically
 -   Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
 -   Add search bar in the playlists tab and style the create new playlist button
@@ -39,6 +30,7 @@ at Audio.<anonymous> (renderer.js:731:4)
 
 -   NEXT VERSION PLANNED:
 
+-   Move all stuff related to song playing to Go. Use advanced features like start/end trimming too. It will find the song list by scanning the folder instead of checking the database, then it will move the song list to Node, where it will be controlled after launch, like deleting and renaming songs, which will be sent back to our Go process. 
 -   Import the lastfm api and language npm package
 -   Use beep in Go
 -   Separate the imports in the download script for faster launch times
@@ -53,6 +45,7 @@ at Audio.<anonymous> (renderer.js:731:4)
 -   Customise Discord Rich Presence box in the settings
 -   Make quick search modal shortcut customisable
 -   Add song to queue
+-   Show memory usage via electron api
 -   Add approximate time remaining for volume stabilisation and downloads.
 -   Add link customisation to the customisation modal
 -   Integrate Discord bot that plays the music
