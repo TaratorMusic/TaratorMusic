@@ -14,31 +14,31 @@ It looks terrible :/
 
 ## Bugs
 
--   Mysterious error in the console: Cannot read properties of undefined (reading 'thumbnail_extension') (Happens after deleting songs) (Not dangerous)
+-   None at the moment
 
 ## Coming Soon App Features
 
-Keep track of the downloads
-Merge my local statistics db
-Implement "Amount of songs listened inside - outside playlists" in statistics
-ListenPercentage sorts numbers alphabetically, not numerically
-Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
-Add search bar in the playlists tab and style the create new playlist button
-In HTML Stats:
-- make song_name "..." at one point so not that long
-- Leave enough space for the little triangle
-- Give table headers proper names
+-   Keep track of the downloads
+-   Merge my local statistics db
+-   Implement "Amount of songs listened inside - outside playlists" in statistics
+-   ListenPercentage sorts numbers alphabetically, not numerically
+-   Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
+-   Add search bar in the playlists tab and style the create new playlist button
+-   In HTML Stats:
+-   make song_name "..." at one point so not that long
+-   Leave enough space for the little triangle
+-   Give table headers proper names
 
-NEXT VERSION PLANNED:
+-   NEXT VERSION PLANNED:
 
-Import the lastfm api and language npm package
-Use beep in Go
-Separate the imports in the download script for faster launch times
-Make three-way & two-way & one-way modal functions into one, because it wastes so much space
-Need scrollbars in my music and playlists tab
-Data-tooltip on the action buttons are not working
-Redesign main menu
-Most Listened Playlist and other playlist data in Statistics
+-   Import the lastfm api and language npm package
+-   Use beep in Go
+-   Separate the imports in the download script for faster launch times
+-   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
+-   Need scrollbars in my music and playlists tab
+-   Data-tooltip on the action buttons are not working
+-   Redesign main menu
+-   Most Listened Playlist and other playlist data in Statistics
 
 ### Planned Features
 

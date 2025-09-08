@@ -1032,7 +1032,6 @@ async function updateThumbnailImage(event, mode) {
 function opencustomiseModal(songName) {
 	const songNameNoMp3 = removeExtensions(songName);
 	const baseName = getSongNameById(songNameNoMp3);
-	const oldThumbnailPath = path.join(thumbnailFolder, songNameNoMp3 + "." + thumbnail_extension);
 	document.getElementById("removeSongButton").dataset.songId = songNameNoMp3;
 
 	const stmt = musicsDb.prepare(`
@@ -1042,6 +1041,8 @@ function opencustomiseModal(songName) {
 	`);
 
 	const { stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension } = stmt.get(songNameNoMp3);
+
+	const oldThumbnailPath = path.join(thumbnailFolder, songNameNoMp3 + "." + thumbnail_extension);
 
 	document.getElementById("customiseSongName").value = baseName;
 	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + "." + thumbnail_extension);
