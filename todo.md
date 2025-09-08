@@ -14,7 +14,15 @@ It looks terrible :/
 
 ## Bugs
 
--   None at the moment
+-   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922
+- renderer.js:395 Uncaught (in promise) TypeError: Cannot read properties of undefined (reading 'replace')
+    at savePlayedTime (renderer.js:395:56)
+    at playMusic (renderer.js:585:99)
+    at randomSongFunctionMainMenu (renderer.js:874:2)
+    at HTMLDocument.<anonymous> (renderer.js:1226:3)
+- renderer.js:821 Uncaught (in promise) TypeError: Cannot read properties of undefined (reading '1')
+at playNextSong (renderer.js:821:47)
+at Audio.<anonymous> (renderer.js:731:4)
 
 ## Coming Soon App Features
 
