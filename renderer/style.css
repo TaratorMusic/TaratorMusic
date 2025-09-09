@@ -326,14 +326,36 @@ audio {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 	gap: 5px;
+	margin-top: 1vh !important;
+	height: 85vh !important;
+	min-height: 85vh !important;
+	max-height: 85vh !important;
+	padding: 2vh 0 !important;
+}
+
+#music-search {
+    width: 63.75vw !important;
+    min-width: 63.75vw !important;
+    max-width: 63.75vw !important;
+    height: 3vh !important;
+    font-size: 2.2vh !important;
 }
 
 #controlsBar {
 	display: flex;
-	justify-content: center;
+	flex-direction: row;
+	justify-content: start;
 	align-items: center;
+	width: 83.75vw !important;
 	gap: 10px;
 	margin-bottom: 10px;
+}
+
+#display-count, #songCountElement {
+	width: 8vw !important;
+    min-width: 8vw !important;
+    max-width: 8vw !important;
+    font-size: 1vw;
 }
 
 #videothumbnailbox {
@@ -544,7 +566,14 @@ audio {
 	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 	grid-auto-rows: 200px;
 	gap: 10px;
-	align-content: end;
+	min-height: 92vh !important;
+	height: 92vh !important;
+	max-height: 92vh !important;
+	justify-content: flex-start;
+	width: 83.75vw !important;
+	margin: -20px -20px 0 0 !important;
+	padding-bottom: 5vh !important;
+	padding: 3vh 0;
 }
 
 #playlists-content {
@@ -571,7 +600,7 @@ audio {
 	margin: 5vh 0;
 }
 
-#settings-content select {
+#settings-content select, #display-count, #music-search {
 	padding: 2px 4px;
 	background-color: rgba(0, 0, 0, 0.8);
 	border: 1px solid white;

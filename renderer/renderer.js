@@ -446,7 +446,6 @@ async function myMusicOnClick() {
 	musicSearchInput.type = "text";
 	musicSearchInput.id = "music-search";
 	musicSearchInput.placeholder = `Search in ${taratorFolder}...`;
-	musicSearchInput.style.flex = "1";
 
 	const displayCountSelect = document.createElement("select");
 	displayCountSelect.id = "display-count";
@@ -464,6 +463,7 @@ async function myMusicOnClick() {
 
 	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension FROM songs").all();
 	const songCountElement = document.createElement("div");
+    songCountElement.id = "songCountElement";
 	songCountElement.innerText = `${songRows.length} songs.`;
 
 	controlsBar.appendChild(musicSearchInput);
@@ -473,6 +473,8 @@ async function myMusicOnClick() {
 
 	const musicListContainer = document.createElement("div");
 	musicListContainer.id = "music-list-container";
+	musicListContainer.className = "scrollArea";
+
 	myMusicContent.appendChild(musicListContainer);
 
 	const musicFiles = songRows
