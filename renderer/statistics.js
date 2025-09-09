@@ -253,12 +253,19 @@ async function generalStatistics() {
 	const row = settingsDb.prepare("SELECT * FROM statistics").all()[0];
 	const leastListenRow = musicsDb
 		.prepare(
-			`
-                SELECT *
-                FROM timers
-                ORDER BY start_time ASC
-                LIMIT 1
-            `
+            `SELECT *
+            FROM timers
+            ORDER BY start_time ASC
+            LIMIT 1`
+		)
+		.get();
+
+	const counts = musicsDb
+		.prepare(
+            `SELECT 
+            COUNT(CASE WHEN playlist IS NULL THEN 1 END) AS null_count,
+            COUNT(CASE WHEN playlist IS NOT NULL THEN 1 END) AS not_null_count
+            FROM timers`
 		)
 		.get();
 
@@ -289,9 +296,9 @@ async function generalStatistics() {
 	theBigText.innerHTML += `Session Time Spent: ${sessionvalue} ${sessionunit}<br>`;
 	theBigText.innerHTML += `Using TaratorMusic since: ${formatUnixTime(row.app_install_date)}<br>`;
 	theBigText.innerHTML += `First song listened at: ${formatUnixTime(leastListenRow.start_time) || "Never"}<br>`;
-	theBigText.innerHTML += `Total amount of songs listened: ${row.songs_listened_out_playlists + row.songs_listened_in_playlists || 0}<br>`;
-	theBigText.innerHTML += `Amount of songs listened inside playlists: ${row.songs_listened_in_playlists || 0}<br>`;
-	theBigText.innerHTML += `Amount of songs listened outside playlists: ${row.songs_listened_out_playlists || 0}<br>`;
+	theBigText.innerHTML += `Total amount of songs listened: ${counts.null_count + counts.not_null_count || 0}<br>`;
+	theBigText.innerHTML += `Amount of songs listened inside playlists: ${counts.not_null_count || 0}<br>`;
+	theBigText.innerHTML += `Amount of songs listened outside playlists: ${counts.null_count || 0}<br>`;
 	theBigText.innerHTML += `Total amount of songs downloaded: ${row.songs_downloaded_youtube + row.songs_downloaded_spotify || 0}<br>`;
 	theBigText.innerHTML += `Amount of songs downloaded from Youtube: ${row.songs_downloaded_youtube || 0}<br>`;
 	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${row.songs_downloaded_spotify || 0}<br>`;

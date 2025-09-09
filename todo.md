@@ -18,8 +18,6 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
--   Keep track of the download statistics
--   Implement "Amount of songs listened inside - outside playlists" in statistics --> Its in timers table, not statistics
 -   Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
 -   Need scrollbars in my music and playlists tab
 -   Add search bar in the playlists tab and style the create new playlist button

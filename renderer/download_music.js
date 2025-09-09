@@ -641,9 +641,8 @@ async function actuallyDownloadTheSong() {
 						resolve(meta);
 					});
 				});
-				if (metadata.format && metadata.format.duration) {
-					duration = Math.round(metadata.format.duration);
-				}
+
+				duration = Math.round(metadata.format.duration);
 			} catch (error) {
 				console.log("Failed to retrieve metadata:", error);
 			}
@@ -662,6 +661,15 @@ async function actuallyDownloadTheSong() {
 						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 					)
 					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", null, null, null);
+
+				settingsDb
+					.prepare(
+						`UPDATE statistics SET
+                        ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} =
+                        ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + 1`
+					)
+					.run();
+
 				await commitStagedPlaylistAdds();
 			} catch (err) {
 				console.log("Failed to insert song into DB:", err);
@@ -878,6 +886,14 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			await sleep(1000);
 		}
 
+		settingsDb
+			.prepare(
+				`UPDATE statistics SET
+                ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} =
+                ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${totalSongs}`
+			)
+			.run();
+
 		if (window.isSaveAsPlaylistActive) {
 			const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
 			const songsJson = JSON.stringify(songIds.map(id => id.trim()));
@@ -896,7 +912,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			}
 		}
 
-		document.getElementById("downloadModalText").innerText = "All songs downloaded and normalized successfully!";
+		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
 		document.getElementById("finalDownloadButton").disabled = false;
 		if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 		await commitStagedPlaylistAdds();

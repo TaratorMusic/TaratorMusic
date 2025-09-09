@@ -138,8 +138,6 @@ function initialiseSettingsDatabase() {
                     app_install_date INTEGER,
                     first_song_listen_date INTEGER,
                     playlists_formed INTEGER,
-                    songs_listened_in_playlists INTEGER,
-                    songs_listened_out_playlists INTEGER,
                     songs_downloaded_youtube INTEGER,
                     songs_downloaded_spotify INTEGER
                 )`
