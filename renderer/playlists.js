@@ -27,20 +27,38 @@ function displayPlaylists(playlists) {
 	const playlistsContent = document.getElementById("playlists-content");
 	playlistsContent.innerHTML = "";
 
+	const controlsDiv = document.createElement("div");
+	controlsDiv.id = "controlsDiv";
+
 	const createPlaylistButton = document.createElement("button");
 	createPlaylistButton.addEventListener("click", () => {
 		document.getElementById("createPlaylistModal").style.display = "block";
 	});
 	createPlaylistButton.innerHTML = "Create New Playlist";
-	createPlaylistButton.style = "width: 15vw; height: 5vh; margin-left: 0.5vw";
-	playlistsContent.appendChild(createPlaylistButton);
+	createPlaylistButton.id = "createPlaylistButton";
+
+	const searchInput = document.createElement("input");
+	searchInput.id = "searchInput";
+	searchInput.type = "text";
+	searchInput.placeholder = "Search playlists...";
+
+	controlsDiv.appendChild(searchInput);
+	controlsDiv.appendChild(createPlaylistButton);
+	playlistsContent.appendChild(controlsDiv);
+
+	const playlistsArea = document.createElement("div");
+    playlistsArea.id = "playlistsArea";
+	playlistsArea.className = "scrollArea";
+    playlistsContent.appendChild(playlistsArea)
+
+	const playlistElements = [];
 
 	playlists.forEach(playlist => {
 		const playlistElement = document.createElement("div");
 		playlistElement.className = "playlist";
 		playlistElement.setAttribute("data-playlist-id", playlist.id);
-		const thumbnailPath = path.join(thumbnailFolder, `${playlist.id}.${playlist.thumbnail_extension}`);
 
+		const thumbnailPath = path.join(thumbnailFolder, `${playlist.id}.${playlist.thumbnail_extension}`);
 		let thumbnailSrc = "";
 
 		if (playlist.id == "Favorites") {
@@ -105,7 +123,15 @@ function displayPlaylists(playlists) {
 			playPlaylist(playlist, 0);
 		});
 
-		playlistsContent.appendChild(playlistElement);
+		playlistsArea.appendChild(playlistElement);
+		playlistElements.push({ element: playlistElement, name: playlist.name.toLowerCase() });
+	});
+
+	searchInput.addEventListener("input", () => {
+		const query = searchInput.value.toLowerCase();
+		playlistElements.forEach(p => {
+			p.element.style.display = p.name.includes(query) ? "flex" : "none";
+		});
 	});
 }
 

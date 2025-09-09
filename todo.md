@@ -19,8 +19,6 @@ It looks terrible :/
 ## Coming Soon App Features
 
 -   Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
--   Need scrollbars in my music and playlists tab
--   Add search bar in the playlists tab and style the create new playlist button
 -   In HTML Stats:
 -   Give each column a specified width and font-size
 -   make song_name "..." at one point so not that long

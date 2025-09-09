@@ -334,11 +334,13 @@ audio {
 }
 
 #music-search {
-    width: 63.75vw !important;
-    min-width: 63.75vw !important;
-    max-width: 63.75vw !important;
-    height: 3vh !important;
-    font-size: 2.2vh !important;
+	width: 63.75vw !important;
+	min-width: 63.75vw !important;
+	max-width: 63.75vw !important;
+	height: 3vh !important;
+	font-size: 2.2vh !important;
+	padding: 2vh 10px !important;
+	cursor: unset !important;
 }
 
 #controlsBar {
@@ -351,11 +353,12 @@ audio {
 	margin-bottom: 10px;
 }
 
-#display-count, #songCountElement {
+#display-count,
+#songCountElement {
 	width: 8vw !important;
-    min-width: 8vw !important;
-    max-width: 8vw !important;
-    font-size: 1vw;
+	min-width: 8vw !important;
+	max-width: 8vw !important;
+	font-size: 2.2vh !important;
 }
 
 #videothumbnailbox {
@@ -580,8 +583,14 @@ audio {
 	display: none;
 	grid-template-rows: 50px;
 	grid-auto-rows: 200px;
-	gap: 10px;
-	align-content: end;
+	min-height: 92vh !important;
+	height: 92vh !important;
+	max-height: 92vh !important;
+	justify-content: flex-start;
+	width: 83.75vw !important;
+	margin: 2px 0 0 0 !important;
+	padding-bottom: 5vh !important;
+	align-items: unset !important;
 }
 
 #settings-content {
@@ -600,7 +609,9 @@ audio {
 	margin: 5vh 0;
 }
 
-#settings-content select, #display-count, #music-search {
+#settings-content select,
+#display-count,
+#music-search {
 	padding: 2px 4px;
 	background-color: rgba(0, 0, 0, 0.8);
 	border: 1px solid white;
@@ -624,11 +635,19 @@ audio {
 	background-color: rgba(0, 0, 0, 0.5);
 }
 
+#playlistsArea {
+	height: 85vh !important;
+	min-height: 85vh !important;
+	max-height: 85vh !important;
+    padding: 2vh 0 !important;
+    margin-top: 0.3vh !important;
+}
+
 .playlist {
 	width: 80vw;
 	height: 200px;
 	border: 1px solid #ccc;
-	margin: 10px;
+	margin: 10px 0;
 	display: flex;
 	flex-direction: row;
 	vertical-align: top;
@@ -1194,4 +1213,45 @@ th {
 	height: 20vh;
 	cursor: pointer;
 	border-radius: 10px;
+}
+
+#controlsDiv {
+	display: flex;
+	flex-direction: row;
+	justify-content: start;
+	align-items: center;
+	width: 83.75vw !important;
+	gap: 10px;
+	margin-bottom: 10px;
+}
+
+#searchInput {
+	width: 60vw !important;
+	min-width: 60vw !important;
+	max-width: 60vw !important;
+	height: 3vh !important;
+	font-size: 2.2vh !important;
+	padding: 2vh 10px !important;
+	background-color: rgba(0, 0, 0, 0.8);
+	border: 1px solid white;
+	border-radius: 4px;
+}
+
+#createPlaylistButton {
+	width: 15vw !important;
+	min-width: 15vw !important;
+	max-width: 15vw !important;
+	height: 3vh !important;
+	font-size: 2.2vh !important;
+	padding: 2vh 10px !important;
+	background-color: rgba(0, 0, 0, 0.8);
+	border: 1px solid white;
+	border-radius: 4px;
+	cursor: pointer;
+	color: white !important;
+	margin-left: 5vw;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
 }
