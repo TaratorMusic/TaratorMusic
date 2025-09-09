@@ -20,13 +20,13 @@ It looks terrible :/
 
 -   Keep track of the download statistics
 -   Implement "Amount of songs listened inside - outside playlists" in statistics --> Its in timers table, not statistics
--   ListenPercentage sorts numbers alphabetically, not numerically
 -   Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
+-   Need scrollbars in my music and playlists tab
 -   Add search bar in the playlists tab and style the create new playlist button
 -   In HTML Stats:
+-   Give each column a specified width and font-size
 -   make song_name "..." at one point so not that long
 -   Leave enough space for the little triangle
--   Give table headers proper names
 
 -   NEXT VERSION PLANNED:
 
@@ -35,7 +35,6 @@ It looks terrible :/
 -   Use beep in Go
 -   Separate the imports in the download script for faster launch times
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
--   Need scrollbars in my music and playlists tab
 -   Data-tooltip on the action buttons are not working
 -   Redesign main menu
 -   Most Listened Playlist and other playlist data in Statistics

@@ -325,6 +325,15 @@ async function htmlTableStats(sortedData = null) {
 	const thead = document.createElement("thead");
 	const headerRow = document.createElement("tr");
 
+	const headerNames = {
+		song_id: "ID",
+		song_name: "Song Name",
+		song_length: "Length",
+		listenAmount: "Times Listened",
+		listenLength: "Total Time",
+		listenPercentage: "Listen %",
+	};
+
 	Object.keys(rows[0]).forEach(key => {
 		const th = document.createElement("th");
 		th.style.cursor = "pointer";
@@ -332,7 +341,7 @@ async function htmlTableStats(sortedData = null) {
 		th.style.position = "relative";
 
 		const textSpan = document.createElement("span");
-		textSpan.textContent = key;
+		textSpan.textContent = headerNames[key] || key;
 
 		const arrowSpan = document.createElement("span");
 		arrowSpan.style.position = "absolute";
@@ -358,7 +367,10 @@ async function htmlTableStats(sortedData = null) {
 				let aVal = a[key];
 				let bVal = b[key];
 
-				if (!isNaN(aVal) && !isNaN(bVal)) {
+				if (typeof aVal === "string" && aVal.endsWith("%") && typeof bVal === "string" && bVal.endsWith("%")) {
+					aVal = parseFloat(aVal.replace("%", ""));
+					bVal = parseFloat(bVal.replace("%", ""));
+				} else if (!isNaN(aVal) && !isNaN(bVal)) {
 					aVal = parseFloat(aVal);
 					bVal = parseFloat(bVal);
 				}
