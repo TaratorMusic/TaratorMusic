@@ -21,8 +21,7 @@ jobs:
                   fetch-depth: 0
             - name: Read package.json version
               id: pkg
-              run: |
-                  echo version=$(node -p 'require("./package.json").version') >> $GITHUB_OUTPUT
+              run: echo version=$(node -p 'require("./package.json").version') >> $GITHUB_OUTPUT
             - name: Get latest git tag
               id: tag
               run: |
@@ -48,9 +47,14 @@ jobs:
                   node-version: 20.18.1
             - run: npm ci
             - run: npm run postinstall
+            - name: Install Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: 1.21
             - name: Build
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              shell: pwsh
               run: npm run dist
             - uses: actions/upload-artifact@v4
               with:
@@ -69,6 +73,9 @@ jobs:
             - uses: actions/setup-node@v3
               with:
                   node-version: 20.18.1
+            - uses: actions/setup-go@v4
+              with:
+                  go-version: 1.21
             - run: npm ci
             - run: npm run postinstall
             - name: Build
@@ -89,6 +96,9 @@ jobs:
             - uses: actions/setup-node@v3
               with:
                   node-version: 20.18.1
+            - uses: actions/setup-go@v4
+              with:
+                  go-version: 1.21
             - run: npm ci
             - run: npm run postinstall
             - name: Build
