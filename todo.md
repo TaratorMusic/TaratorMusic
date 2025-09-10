@@ -14,14 +14,15 @@ It looks terrible :/
 
 ## Bugs
 
+-   Playlist music download stopped with an empty error, line 938
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
 -   My music search bar is few pixels above playlists search bar in small screens
 
 ## Coming Soon App Features
 
--   Move all stuff related to song playing to Go. Use advanced features like start/end trimming too. It will find the song list by scanning the folder instead of checking the database, then it will move the song list to Node, where it will be controlled after launch, like deleting and renaming songs, which will be sent back to our Go process. 
+-   Run: sudo apt install libasound2-dev --- and npm i speaker
+-   Make a Go script that will clean the folders of any bugged/extra files, and send the full file list to Node.js, make sure this works in app launch. So, instead of checking the database, we will check our folders for music files. If it finds any differences between the folders and the database, it will prompt the user to run the redownload function.
 -   Import the lastfm api and language npm package
--   Use beep in Go
 -   Separate the imports in the download script for faster launch times
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working

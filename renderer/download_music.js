@@ -935,13 +935,13 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 			let total = 0;
 
 			stream.on("error", error => {
-				console.log("Stream error:", error.message);
+				console.log("Stream error:", error);
 				writeStream.destroy();
 				if (fs.existsSync(outputFilePath)) {
 					try {
 						fs.unlinkSync(outputFilePath);
 					} catch (unlinkError) {
-						console.log("Failed to remove partial file:", unlinkError.message);
+						console.log("Failed to remove partial file:", unlinkError);
 					}
 				}
 				reject(error);
