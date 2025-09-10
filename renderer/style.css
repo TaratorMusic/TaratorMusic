@@ -639,8 +639,8 @@ audio {
 	height: 85vh !important;
 	min-height: 85vh !important;
 	max-height: 85vh !important;
-    padding: 2vh 0 !important;
-    margin-top: 0.3vh !important;
+	padding: 2vh 0 !important;
+	margin-top: 0.3vh !important;
 }
 
 .playlist {
@@ -1067,41 +1067,6 @@ input:checked + .slider:before {
 	border: 1px solid white;
 }
 
-#pieChartPart {
-	width: 75vw;
-	display: flex;
-	flex-direction: row;
-	justify-content: space-around;
-	align-items: center;
-}
-
-.canvasBox {
-	width: 20vw;
-	height: 25vw;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	color: white;
-	margin-top: 3vh;
-}
-
-.canvasBox p {
-	margin-top: 1vh;
-}
-
-.hourChart {
-	margin: 0 5vw;
-}
-
-.activityBox {
-	width: 80vw;
-	display: flex;
-	flex-direction: row;
-	justify-content: space-between;
-	align-items: center;
-}
-
 .scrollArea::-webkit-scrollbar,
 .playlist-songs::-webkit-scrollbar {
 	display: block;
@@ -1191,30 +1156,6 @@ th {
 	cursor: pointer;
 }
 
-#statisticsMostListened {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	background-color: darkslategray;
-	border-radius: 16px;
-	padding: 20px;
-	border: 1px solid black;
-}
-
-#statisticsMostListenedBox {
-	width: 70vw;
-	display: flex;
-	flex-direction: row;
-}
-
-#statisticsMostListenedSongImage {
-	width: 20vw;
-	height: 20vh;
-	cursor: pointer;
-	border-radius: 10px;
-}
-
 #controlsDiv {
 	display: flex;
 	flex-direction: row;
@@ -1235,7 +1176,7 @@ th {
 	background-color: rgba(0, 0, 0, 0.8);
 	border: 1px solid white;
 	border-radius: 4px;
-    color: white !important;
+	color: white !important;
 }
 
 #createPlaylistButton {
@@ -1255,4 +1196,197 @@ th {
 	justify-content: center;
 	align-items: center;
 	text-align: center;
+}
+
+#statisticsMostListened {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background-color: rgba(0, 0, 0, 0.3);
+	border-radius: 16px;
+	padding: 20px;
+	border: 1px solid black;
+	animation: glowingShadow 6s linear infinite;
+}
+
+#statisticsMostListenedBox {
+	width: 70vw;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 20px;
+	background: rgba(0, 0, 0, 0.3);
+	border-radius: 12px;
+	padding: 15px;
+}
+
+#statisticsMostListenedSongImage {
+	width: 20vw;
+	height: 20vh;
+	cursor: pointer;
+	border-radius: 10px;
+	object-fit: cover;
+	box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+	transition: transform 0.2s ease-in-out;
+}
+
+#statisticsMostListenedSongImage:hover {
+	transform: scale(1.05);
+}
+
+#mostListenedSongText {
+	flex: 1;
+	color: white;
+	font-family: Arial, sans-serif;
+	font-size: 1.1rem;
+	line-height: 1.5;
+}
+
+@keyframes glowingShadow {
+	0% {
+		box-shadow: 0 0 25px 5px #ff4d4d;
+	}
+	25% {
+		box-shadow: 0 0 25px 5px #4d94ff;
+	}
+	50% {
+		box-shadow: 0 0 25px 5px #4dff88;
+	}
+	75% {
+		box-shadow: 0 0 25px 5px #ffdb4d;
+	}
+	100% {
+		box-shadow: 0 0 25px 5px #ff4d4d;
+	}
+}
+
+#pieChartPart {
+	width: 75vw;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin-top: 4vh;
+	gap: 3vh;
+}
+
+#pieChartPartTitle {
+	font-size: 1.8rem;
+	font-weight: bold;
+	color: white;
+	text-align: center;
+	font-family: Arial, sans-serif;
+}
+
+#pieChartPartBoxes {
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-around;
+	align-items: flex-start;
+	flex-wrap: wrap;
+	gap: 2vw;
+}
+
+.canvasBox {
+	width: 22vw;
+	height: auto;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	background: rgba(0, 0, 0, 0.4);
+	border-radius: 16px;
+	padding: 15px;
+	color: white;
+	text-align: center;
+}
+
+.canvasBox canvas {
+	width: 100% !important;
+	height: auto !important;
+	max-width: 18vw;
+	max-height: 18vw;
+}
+
+.canvasBox p {
+	margin-top: 3vh;
+	font-size: 1rem;
+	font-weight: 500;
+	color: #e0e0e0;
+}
+
+.hourChart {
+	margin: 0 5vw;
+}
+
+.activityBox {
+	width: 80vw;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	margin: 1vh 0;
+	padding: 8px 12px;
+	background: rgba(0, 0, 0, 0.35);
+	border-radius: 12px;
+}
+
+.activityBox div {
+	min-width: 9vw;
+	color: white;
+	font-size: 1.2vw;
+	font-weight: 600;
+	text-align: left;
+	margin-right: 1vw;
+	font-family: Arial, sans-serif;
+}
+
+.hourChart {
+	flex-grow: 1;
+	margin-left: 1vw;
+}
+
+#daysHeatMapTitle {
+	font-size: 1.8rem;
+	font-weight: bold;
+	color: white;
+	text-align: center;
+	margin: 3vh 0 2vh 0;
+	font-family: Arial, sans-serif;
+}
+
+.theBigText {
+	width: 75vw;
+	background: rgba(0, 0, 0, 0.4);
+	padding: 25px;
+	border-radius: 16px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	color: white;
+	font-family: Arial, sans-serif;
+	font-size: 1.1rem;
+	line-height: 1.6;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 3vh auto;
+}
+
+.theBigText span.label {
+	font-weight: 600;
+	color: #ffd700;
+}
+
+.theBigText span.value {
+	font-weight: 500;
+	color: #ffffff;
+}
+
+#generalStatisticsTitle {
+	font-size: 1.8rem;
+	font-weight: bold;
+	color: white;
+	text-align: center;
+	margin: 3vh 0 2vh 0;
+	font-family: Arial, sans-serif;
 }

@@ -19,10 +19,6 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
--   Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
-
--   NEXT VERSION PLANNED:
-
 -   Move all stuff related to song playing to Go. Use advanced features like start/end trimming too. It will find the song list by scanning the folder instead of checking the database, then it will move the song list to Node, where it will be controlled after launch, like deleting and renaming songs, which will be sent back to our Go process. 
 -   Import the lastfm api and language npm package
 -   Use beep in Go
@@ -37,7 +33,6 @@ It looks terrible :/
 -   Customise Discord Rich Presence box in the settings
 -   Make quick search modal shortcut customisable
 -   Add song to queue
--   Show memory usage via electron api
 -   Add approximate time remaining for volume stabilisation and downloads.
 -   Add link customisation to the customisation modal
 -   Integrate Discord bot that plays the music

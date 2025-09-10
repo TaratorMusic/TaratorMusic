@@ -87,15 +87,24 @@ async function createPieCharts() {
 	pieChartPart.id = "pieChartPart";
 	statisticsContent.appendChild(pieChartPart);
 
+	const pieChartTitle = document.createElement("h1");
+	pieChartTitle.id = "pieChartPartTitle";
+	pieChartTitle.innerHTML = "Your Listening Breakdown";
+	pieChartPart.appendChild(pieChartTitle);
+
+	const pieChartBoxes = document.createElement("div");
+	pieChartBoxes.id = "pieChartPartBoxes";
+	pieChartPart.appendChild(pieChartBoxes);
+
 	const canvasBox1 = document.createElement("div");
 	canvasBox1.className = "canvasBox";
-	pieChartPart.appendChild(canvasBox1);
+	pieChartBoxes.appendChild(canvasBox1);
 	const canvasBox2 = document.createElement("div");
 	canvasBox2.className = "canvasBox";
-	pieChartPart.appendChild(canvasBox2);
+	pieChartBoxes.appendChild(canvasBox2);
 	const canvasBox3 = document.createElement("div");
 	canvasBox3.className = "canvasBox";
-	pieChartPart.appendChild(canvasBox3);
+	pieChartBoxes.appendChild(canvasBox3);
 
 	const canvas1 = document.createElement("canvas");
 	canvas1.id = "bestGenrePieChart";
@@ -174,6 +183,11 @@ async function createPieCharts() {
 }
 
 async function daysHeatMap() {
+	const title = document.createElement("h1");
+	title.id = "daysHeatMapTitle";
+	title.innerHTML = "Listening Activity by day and hour";
+	statisticsContent.appendChild(title);
+
 	const rows = musicsDb.prepare("SELECT start_time, end_time FROM timers").all();
 
 	const days = Array.from({ length: 7 }, () => Array(24).fill(0));
@@ -250,10 +264,15 @@ async function daysHeatMap() {
 }
 
 async function generalStatistics() {
+	const statsTitle = document.createElement("h1");
+	statsTitle.id = "generalStatisticsTitle";
+	statsTitle.innerHTML = "General Statistics";
+	statisticsContent.appendChild(statsTitle);
+
 	const row = settingsDb.prepare("SELECT * FROM statistics").all()[0];
 	const leastListenRow = musicsDb
 		.prepare(
-            `SELECT *
+			`SELECT *
             FROM timers
             ORDER BY start_time ASC
             LIMIT 1`
@@ -262,7 +281,7 @@ async function generalStatistics() {
 
 	const counts = musicsDb
 		.prepare(
-            `SELECT 
+			`SELECT 
             COUNT(CASE WHEN playlist IS NULL THEN 1 END) AS null_count,
             COUNT(CASE WHEN playlist IS NOT NULL THEN 1 END) AS not_null_count
             FROM timers`
@@ -305,31 +324,31 @@ async function generalStatistics() {
 }
 
 async function htmlTableStats(sortedData = null) {
-    const rows = sortedData || musicsDb.prepare("SELECT song_id, song_name, song_length FROM songs").all();
-    const timers = musicsDb.prepare("SELECT song_id, start_time, end_time FROM timers").all();
+	const rows = sortedData || musicsDb.prepare("SELECT song_id, song_name, song_length FROM songs").all();
+	const timers = musicsDb.prepare("SELECT song_id, start_time, end_time FROM timers").all();
 
-    for (let row of rows) {
-        const songId = row.song_id;
-        const clippedId = songId.replace("tarator-", "");
+	for (let row of rows) {
+		const songId = row.song_id;
+		const clippedId = songId.replace("tarator-", "");
 
-        const songTimers = timers.filter(t => t.song_id == clippedId);
-        const listenAmount = songTimers.length;
-        const listenLength = songTimers.reduce((sum, t) => sum + (t.end_time - t.start_time), 0);
-        const listenPercentage = findListenPercentage(clippedId) + "%";
+		const songTimers = timers.filter(t => t.song_id == clippedId);
+		const listenAmount = songTimers.length;
+		const listenLength = songTimers.reduce((sum, t) => sum + (t.end_time - t.start_time), 0);
+		const listenPercentage = findListenPercentage(clippedId) + "%";
 
-        row.listenAmount = listenAmount;
-        row.listenLength = listenLength;
-        row.listenPercentage = listenPercentage;
-    }
+		row.listenAmount = listenAmount;
+		row.listenLength = listenLength;
+		row.listenPercentage = listenPercentage;
+	}
 
-    const oldContainer = document.getElementById("htmlTable");
-    if (oldContainer) oldContainer.remove();
+	const oldContainer = document.getElementById("htmlTable");
+	if (oldContainer) oldContainer.remove();
 
-    const container = document.createElement("div");
-    container.id = "htmlTable";
+	const container = document.createElement("div");
+	container.id = "htmlTable";
 
-    const style = document.createElement("style");
-    style.textContent = `
+	const style = document.createElement("style");
+	style.textContent = `
         #htmlTable table {
             width: 80vw;
             font-size: 1.2vw;
@@ -352,92 +371,91 @@ async function htmlTableStats(sortedData = null) {
             font-size: 1vw;
         }
     `;
-    container.appendChild(style);
+	container.appendChild(style);
 
-    const table = document.createElement("table");
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
+	const table = document.createElement("table");
+	const thead = document.createElement("thead");
+	const headerRow = document.createElement("tr");
 
-    const headerNames = {
-        song_id: "ID",
-        song_name: "Song Name",
-        song_length: "Length",
-        listenAmount: "Times Listened",
-        listenLength: "Total Time",
-        listenPercentage: "Listen %",
-    };
+	const headerNames = {
+		song_id: "ID",
+		song_name: "Song Name",
+		song_length: "Length",
+		listenAmount: "Times Listened",
+		listenLength: "Total Time",
+		listenPercentage: "Listen %",
+	};
 
-    Object.keys(rows[0]).forEach(key => {
-        const th = document.createElement("th");
-        th.style.cursor = "pointer";
-        th.style.userSelect = "none";
-        th.style.position = "relative";
+	Object.keys(rows[0]).forEach(key => {
+		const th = document.createElement("th");
+		th.style.cursor = "pointer";
+		th.style.userSelect = "none";
+		th.style.position = "relative";
 
-        const textSpan = document.createElement("span");
-        textSpan.textContent = headerNames[key] || key;
+		const textSpan = document.createElement("span");
+		textSpan.textContent = headerNames[key] || key;
 
-        const arrowSpan = document.createElement("span");
-        arrowSpan.style.position = "absolute";
-        arrowSpan.style.right = "5px";
-        arrowSpan.style.fontSize = "0.8em";
+		const arrowSpan = document.createElement("span");
+		arrowSpan.style.position = "absolute";
+		arrowSpan.style.right = "5px";
+		arrowSpan.style.fontSize = "0.8em";
 
-        if (sortOrder[key]) {
-            arrowSpan.textContent = sortOrder[key] === "asc" ? "▲" : "▼";
-        }
+		if (sortOrder[key]) {
+			arrowSpan.textContent = sortOrder[key] === "asc" ? "▲" : "▼";
+		}
 
-        th.appendChild(textSpan);
-        th.appendChild(arrowSpan);
+		th.appendChild(textSpan);
+		th.appendChild(arrowSpan);
 
-        th.onclick = () => {
-            Object.keys(sortOrder).forEach(k => {
-                if (k !== key) delete sortOrder[k];
-            });
+		th.onclick = () => {
+			Object.keys(sortOrder).forEach(k => {
+				if (k !== key) delete sortOrder[k];
+			});
 
-            const order = sortOrder[key] === "asc" ? "desc" : "asc";
-            sortOrder[key] = order;
+			const order = sortOrder[key] === "asc" ? "desc" : "asc";
+			sortOrder[key] = order;
 
-            const sorted = [...rows].sort((a, b) => {
-                let aVal = a[key];
-                let bVal = b[key];
+			const sorted = [...rows].sort((a, b) => {
+				let aVal = a[key];
+				let bVal = b[key];
 
-                if (typeof aVal === "string" && aVal.endsWith("%") && typeof bVal === "string" && bVal.endsWith("%")) {
-                    aVal = parseFloat(aVal.replace("%", ""));
-                    bVal = parseFloat(bVal.replace("%", ""));
-                } else if (!isNaN(aVal) && !isNaN(bVal)) {
-                    aVal = parseFloat(aVal);
-                    bVal = parseFloat(bVal);
-                }
+				if (typeof aVal === "string" && aVal.endsWith("%") && typeof bVal === "string" && bVal.endsWith("%")) {
+					aVal = parseFloat(aVal.replace("%", ""));
+					bVal = parseFloat(bVal.replace("%", ""));
+				} else if (!isNaN(aVal) && !isNaN(bVal)) {
+					aVal = parseFloat(aVal);
+					bVal = parseFloat(bVal);
+				}
 
-                if (aVal < bVal) return order === "asc" ? -1 : 1;
-                if (aVal > bVal) return order === "asc" ? 1 : -1;
-                return 0;
-            });
+				if (aVal < bVal) return order === "asc" ? -1 : 1;
+				if (aVal > bVal) return order === "asc" ? 1 : -1;
+				return 0;
+			});
 
-            htmlTableStats(sorted);
-        };
+			htmlTableStats(sorted);
+		};
 
-        headerRow.appendChild(th);
-    });
+		headerRow.appendChild(th);
+	});
 
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
+	thead.appendChild(headerRow);
+	table.appendChild(thead);
 
-    const tbody = document.createElement("tbody");
-    rows.forEach(row => {
-        const tr = document.createElement("tr");
-        Object.values(row).forEach(value => {
-            const td = document.createElement("td");
-            td.textContent = value;
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
+	const tbody = document.createElement("tbody");
+	rows.forEach(row => {
+		const tr = document.createElement("tr");
+		Object.values(row).forEach(value => {
+			const td = document.createElement("td");
+			td.textContent = value;
+			tr.appendChild(td);
+		});
+		tbody.appendChild(tr);
+	});
 
-    table.appendChild(tbody);
-    container.appendChild(table);
-    statisticsContent.appendChild(container);
+	table.appendChild(tbody);
+	container.appendChild(table);
+	statisticsContent.appendChild(container);
 }
-
 
 function findListenPercentage(songId) {
 	try {
