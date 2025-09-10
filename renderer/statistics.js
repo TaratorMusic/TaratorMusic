@@ -305,112 +305,139 @@ async function generalStatistics() {
 }
 
 async function htmlTableStats(sortedData = null) {
-	const rows = sortedData || musicsDb.prepare("SELECT song_id, song_name, song_length FROM songs").all();
-	const timers = musicsDb.prepare("SELECT song_id, start_time, end_time FROM timers").all();
+    const rows = sortedData || musicsDb.prepare("SELECT song_id, song_name, song_length FROM songs").all();
+    const timers = musicsDb.prepare("SELECT song_id, start_time, end_time FROM timers").all();
 
-	for (let row of rows) {
-		const songId = row.song_id;
-		const clippedId = songId.replace("tarator-", "");
+    for (let row of rows) {
+        const songId = row.song_id;
+        const clippedId = songId.replace("tarator-", "");
 
-		const songTimers = timers.filter(t => t.song_id == clippedId);
-		const listenAmount = songTimers.length;
-		const listenLength = songTimers.reduce((sum, t) => sum + (t.end_time - t.start_time), 0);
-		const listenPercentage = findListenPercentage(clippedId) + "%";
+        const songTimers = timers.filter(t => t.song_id == clippedId);
+        const listenAmount = songTimers.length;
+        const listenLength = songTimers.reduce((sum, t) => sum + (t.end_time - t.start_time), 0);
+        const listenPercentage = findListenPercentage(clippedId) + "%";
 
-		row.listenAmount = listenAmount;
-		row.listenLength = listenLength;
-		row.listenPercentage = listenPercentage;
-	}
+        row.listenAmount = listenAmount;
+        row.listenLength = listenLength;
+        row.listenPercentage = listenPercentage;
+    }
 
-	const oldContainer = document.getElementById("htmlTable");
-	if (oldContainer) oldContainer.remove();
+    const oldContainer = document.getElementById("htmlTable");
+    if (oldContainer) oldContainer.remove();
 
-	const container = document.createElement("div");
-	container.id = "htmlTable";
+    const container = document.createElement("div");
+    container.id = "htmlTable";
 
-	const table = document.createElement("table");
-	const thead = document.createElement("thead");
-	const headerRow = document.createElement("tr");
+    const style = document.createElement("style");
+    style.textContent = `
+        #htmlTable table {
+            width: 80vw;
+            font-size: 1.2vw;
+            border-collapse: collapse;
+        }
+        #htmlTable th, #htmlTable td {
+            padding: 0.6vw;
+            border: 1px solid #444;
+            max-width: 15vw;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #htmlTable th {
+            font-size: 1.1vw;
+            background: #222;
+            color: #eee;
+        }
+        #htmlTable td {
+            font-size: 1vw;
+        }
+    `;
+    container.appendChild(style);
 
-	const headerNames = {
-		song_id: "ID",
-		song_name: "Song Name",
-		song_length: "Length",
-		listenAmount: "Times Listened",
-		listenLength: "Total Time",
-		listenPercentage: "Listen %",
-	};
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
 
-	Object.keys(rows[0]).forEach(key => {
-		const th = document.createElement("th");
-		th.style.cursor = "pointer";
-		th.style.userSelect = "none";
-		th.style.position = "relative";
+    const headerNames = {
+        song_id: "ID",
+        song_name: "Song Name",
+        song_length: "Length",
+        listenAmount: "Times Listened",
+        listenLength: "Total Time",
+        listenPercentage: "Listen %",
+    };
 
-		const textSpan = document.createElement("span");
-		textSpan.textContent = headerNames[key] || key;
+    Object.keys(rows[0]).forEach(key => {
+        const th = document.createElement("th");
+        th.style.cursor = "pointer";
+        th.style.userSelect = "none";
+        th.style.position = "relative";
 
-		const arrowSpan = document.createElement("span");
-		arrowSpan.style.position = "absolute";
-		arrowSpan.style.right = "5px";
-		arrowSpan.style.fontSize = "0.8em";
+        const textSpan = document.createElement("span");
+        textSpan.textContent = headerNames[key] || key;
 
-		if (sortOrder[key]) {
-			arrowSpan.textContent = sortOrder[key] === "asc" ? "▲" : "▼";
-		}
+        const arrowSpan = document.createElement("span");
+        arrowSpan.style.position = "absolute";
+        arrowSpan.style.right = "5px";
+        arrowSpan.style.fontSize = "0.8em";
 
-		th.appendChild(textSpan);
-		th.appendChild(arrowSpan);
+        if (sortOrder[key]) {
+            arrowSpan.textContent = sortOrder[key] === "asc" ? "▲" : "▼";
+        }
 
-		th.onclick = () => {
-			Object.keys(sortOrder).forEach(k => {
-				if (k !== key) delete sortOrder[k];
-			});
+        th.appendChild(textSpan);
+        th.appendChild(arrowSpan);
 
-			const order = sortOrder[key] === "asc" ? "desc" : "asc";
-			sortOrder[key] = order;
+        th.onclick = () => {
+            Object.keys(sortOrder).forEach(k => {
+                if (k !== key) delete sortOrder[k];
+            });
 
-			const sorted = [...rows].sort((a, b) => {
-				let aVal = a[key];
-				let bVal = b[key];
+            const order = sortOrder[key] === "asc" ? "desc" : "asc";
+            sortOrder[key] = order;
 
-				if (typeof aVal === "string" && aVal.endsWith("%") && typeof bVal === "string" && bVal.endsWith("%")) {
-					aVal = parseFloat(aVal.replace("%", ""));
-					bVal = parseFloat(bVal.replace("%", ""));
-				} else if (!isNaN(aVal) && !isNaN(bVal)) {
-					aVal = parseFloat(aVal);
-					bVal = parseFloat(bVal);
-				}
+            const sorted = [...rows].sort((a, b) => {
+                let aVal = a[key];
+                let bVal = b[key];
 
-				if (aVal < bVal) return order === "asc" ? -1 : 1;
-				if (aVal > bVal) return order === "asc" ? 1 : -1;
-				return 0;
-			});
+                if (typeof aVal === "string" && aVal.endsWith("%") && typeof bVal === "string" && bVal.endsWith("%")) {
+                    aVal = parseFloat(aVal.replace("%", ""));
+                    bVal = parseFloat(bVal.replace("%", ""));
+                } else if (!isNaN(aVal) && !isNaN(bVal)) {
+                    aVal = parseFloat(aVal);
+                    bVal = parseFloat(bVal);
+                }
 
-			htmlTableStats(sorted);
-		};
+                if (aVal < bVal) return order === "asc" ? -1 : 1;
+                if (aVal > bVal) return order === "asc" ? 1 : -1;
+                return 0;
+            });
 
-		headerRow.appendChild(th);
-	});
+            htmlTableStats(sorted);
+        };
 
-	thead.appendChild(headerRow);
-	table.appendChild(thead);
+        headerRow.appendChild(th);
+    });
 
-	const tbody = document.createElement("tbody");
-	rows.forEach(row => {
-		const tr = document.createElement("tr");
-		Object.values(row).forEach(value => {
-			const td = document.createElement("td");
-			td.textContent = value;
-			tr.appendChild(td);
-		});
-		tbody.appendChild(tr);
-	});
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
-	table.appendChild(tbody);
-	container.appendChild(table);
-	statisticsContent.appendChild(container);
+    const tbody = document.createElement("tbody");
+    rows.forEach(row => {
+        const tr = document.createElement("tr");
+        Object.values(row).forEach(value => {
+            const td = document.createElement("td");
+            td.textContent = value;
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+    statisticsContent.appendChild(container);
 }
+
 
 function findListenPercentage(songId) {
 	try {

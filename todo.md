@@ -15,14 +15,11 @@ It looks terrible :/
 ## Bugs
 
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
+-   My music search bar is few pixels above playlists search bar in small screens
 
 ## Coming Soon App Features
 
 -   Show favorite song in cool box. Make the box shiny for extra coolness. Box.shadow
--   In HTML Stats:
--   Give each column a specified width and font-size
--   make song_name "..." at one point so not that long
--   Leave enough space for the little triangle
 
 -   NEXT VERSION PLANNED:
 
