@@ -3,24 +3,27 @@ const { autoUpdater } = require("electron-updater");
 const path = require("path");
 
 if (process.env.APPIMAGE) {
-	const libPath = path.join(process.resourcesPath, "lib");
-	process.env.LD_LIBRARY_PATH = libPath + ":" + (process.env.LD_LIBRARY_PATH || "");
+    const fs = require("fs");
+    const os = require("os");
 
-	const backendBinaries = ["create_app_thumbnails_folder", "check_dupe_songs", "shorten_song_ids"];
-	const tempBackendFolder = path.join(os.tmpdir(), "backend");
-	if (!fs.existsSync(tempBackendFolder)) fs.mkdirSync(tempBackendFolder, { recursive: true });
+    const libPath = path.join(process.resourcesPath, "lib");
+    process.env.LD_LIBRARY_PATH = libPath + ":" + (process.env.LD_LIBRARY_PATH || "");
 
-	backendBinaries.forEach(bin => {
-		const tmpPath = path.join(tempBackendFolder, bin);
-		if (!fs.existsSync(tmpPath)) {
-			const sourceBinary = path.join(__dirname, "backend", bin);
-			if (!fs.existsSync(sourceBinary)) {
-				throw new Error(`Go binary not found in AppImage at ${sourceBinary}`);
-			}
-			fs.copyFileSync(sourceBinary, tmpPath);
-			fs.chmodSync(tmpPath, 0o755);
-		}
-	});
+    const backendBinaries = ["create_app_thumbnails_folder", "check_dupe_songs", "shorten_song_ids"];
+    const tempBackendFolder = path.join(os.tmpdir(), "backend");
+    if (!fs.existsSync(tempBackendFolder)) fs.mkdirSync(tempBackendFolder, { recursive: true });
+
+    backendBinaries.forEach(bin => {
+        const tmpPath = path.join(tempBackendFolder, bin);
+        if (!fs.existsSync(tmpPath)) {
+            const sourceBinary = path.join(__dirname, "backend", bin);
+            if (!fs.existsSync(sourceBinary)) {
+                throw new Error(`Go binary not found in AppImage at ${sourceBinary}`);
+            }
+            fs.copyFileSync(sourceBinary, tmpPath);
+            fs.chmodSync(tmpPath, 0o755);
+        }
+    });
 }
 
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
