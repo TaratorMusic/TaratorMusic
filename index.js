@@ -3,27 +3,25 @@ const { autoUpdater } = require("electron-updater");
 const path = require("path");
 
 if (process.env.APPIMAGE) {
-    const fs = require("fs");
-    const os = require("os");
+	const fs = require("fs");
 
-    const libPath = path.join(process.resourcesPath, "lib");
-    process.env.LD_LIBRARY_PATH = libPath + ":" + (process.env.LD_LIBRARY_PATH || "");
+	const appDir = path.dirname(process.env.APPIMAGE);
+	const binFolder = path.join(appDir, "bin");
+	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
 
-    const backendBinaries = ["create_app_thumbnails_folder", "check_dupe_songs", "shorten_song_ids"];
-    const tempBackendFolder = path.join(os.tmpdir(), "backend");
-    if (!fs.existsSync(tempBackendFolder)) fs.mkdirSync(tempBackendFolder, { recursive: true });
+	const backendBinaries = ["create_app_thumbnails_folder", "check_dupe_songs", "shorten_song_ids"];
 
-    backendBinaries.forEach(bin => {
-        const tmpPath = path.join(tempBackendFolder, bin);
-        if (!fs.existsSync(tmpPath)) {
-            const sourceBinary = path.join(__dirname, "backend", bin);
-            if (!fs.existsSync(sourceBinary)) {
-                throw new Error(`Go binary not found in AppImage at ${sourceBinary}`);
-            }
-            fs.copyFileSync(sourceBinary, tmpPath);
-            fs.chmodSync(tmpPath, 0o755);
-        }
-    });
+	backendBinaries.forEach(bin => {
+		const targetPath = path.join(binFolder, bin);
+		if (!fs.existsSync(targetPath)) {
+			const sourceBinary = path.join(__dirname, "backend", bin);
+			if (!fs.existsSync(sourceBinary)) {
+				throw new Error(`Go binary not found in AppImage at ${sourceBinary}`);
+			}
+			fs.copyFileSync(sourceBinary, targetPath);
+			fs.chmodSync(targetPath, 0o755);
+		}
+	});
 }
 
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
@@ -67,9 +65,7 @@ function createWindow() {
 	ipcMain.handle("get-app-version", () => app.getVersion());
 
 	ipcMain.handle("get-app-base-path", () => {
-		if (process.env.APPIMAGE) {
-			return path.dirname(process.env.APPIMAGE);
-		}
+		if (process.env.APPIMAGE) return path.dirname(process.env.APPIMAGE);
 		return app.getAppPath();
 	});
 
