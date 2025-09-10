@@ -6,13 +6,13 @@ async function updateFunctions(version) {
 }
 
 async function moveTotalTimeListened() {
+	const cols = settingsDb.prepare(`PRAGMA table_info(settings)`).all();
+	if (!cols.some(c => c.name === "totalTimeSpent")) return;
 	const row = settingsDb.prepare(`SELECT totalTimeSpent FROM settings`).get();
-	if (row && row.totalTimeSpent != undefined) {
-		settingsDb.transaction(() => {
-			settingsDb.prepare(`INSERT OR REPLACE INTO statistics (total_time_spent) VALUES (?)`).run(row.totalTimeSpent);
-			settingsDb.prepare(`ALTER TABLE settings DROP COLUMN totalTimeSpent`).run();
-		})();
-	}
+	if (!row || row.totalTimeSpent == null) return;
+	settingsDb.transaction(() => {
+		settingsDb.prepare(`INSERT OR REPLACE INTO statistics (total_time_spent) VALUES (?)`).run(row.totalTimeSpent);
+	})();
 }
 
 async function shortenSongIds() {
