@@ -21,6 +21,7 @@ It looks terrible :/
 ## Coming Soon App Features
 
 -   Run: sudo apt install libasound2-dev --- and npm i speaker
+-   Sorting should sort big to small first
 -   Make a Go script that will clean the folders of any bugged/extra files, and send the full file list to Node.js, make sure this works in app launch. So, instead of checking the database, we will check our folders for music files. If it finds any differences between the folders and the database, it will prompt the user to run the redownload function.
 -   Import the lastfm api and language npm package
 -   Separate the imports in the download script for faster launch times
@@ -28,6 +29,7 @@ It looks terrible :/
 -   Data-tooltip on the action buttons are not working
 -   Redesign main menu
 -   Most Listened Playlist and other playlist data in Statistics
+-   Refresh the readme screenshots
 
 ### Planned Features
 

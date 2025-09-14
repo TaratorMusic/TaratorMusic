@@ -74,6 +74,19 @@ function createWindow() {
 		if (splash && !splash.isDestroyed()) splash.destroy();
 		if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
 	});
+
+	mainWindow.on("close", async e => {
+		e.preventDefault();
+		const saved = await new Promise(resolve => {
+			mainWindow.webContents.send("save-progress");
+			ipcMain.once("save-complete", () => resolve(true));
+			setTimeout(() => resolve(false), 5000);
+		});
+		if (saved) {
+			mainWindow.destroy();
+			if (process.platform !== "darwin") app.quit();
+		}
+	});
 }
 
 app.whenReady().then(() => {
@@ -119,8 +132,4 @@ app.whenReady().then(() => {
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length == 0) createWindow();
 	});
-});
-
-app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") app.quit();
 });

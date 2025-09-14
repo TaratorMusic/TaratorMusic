@@ -463,7 +463,7 @@ async function myMusicOnClick() {
 
 	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension FROM songs").all();
 	const songCountElement = document.createElement("div");
-    songCountElement.id = "songCountElement";
+	songCountElement.id = "songCountElement";
 	songCountElement.innerText = `${songRows.length} songs.`;
 
 	controlsBar.appendChild(musicSearchInput);
@@ -579,14 +579,7 @@ function createMusicElement(songFile) {
 }
 
 async function playMusic(file, playlistId) {
-	const songName = document.getElementById("song-name");
-
-	if (songPauseStartTime) totalPausedTime += Math.floor(Date.now() / 1000 - songPauseStartTime);
-	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) await savePlayedTime();
-
-	songStartTime = Math.floor(Date.now() / 1000);
-	songPauseStartTime = null;
-	totalPausedTime = 0;
+	await saveUserProgress();
 
 	if (audioElement) {
 		audioElement.pause();
@@ -599,6 +592,8 @@ async function playMusic(file, playlistId) {
 	}
 
 	try {
+		const songName = document.getElementById("song-name");
+
 		currentPlaylist = playlistId || null;
 
 		audioElement = new Audio();
@@ -1314,6 +1309,15 @@ function bottomRightFunctions(input) {
 	}
 }
 
+async function saveUserProgress() {
+	if (songPauseStartTime) totalPausedTime += Math.floor(Date.now() / 1000 - songPauseStartTime);
+	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) await savePlayedTime();
+
+	songStartTime = Math.floor(Date.now() / 1000);
+	songPauseStartTime = null;
+	totalPausedTime = 0;
+}
+
 ipcRenderer.on("update-available", (event, releaseNotes) => {
 	document.getElementById("patchNotes").innerHTML = releaseNotes;
 	document.getElementById("version").classList.add("no-animation");
@@ -1327,6 +1331,11 @@ ipcRenderer.on("download-progress", (event, percent) => {
 	const progressBar = document.getElementById("downloadProgress");
 	progressBar.style.width = percent + "%";
 	progressBar.innerText = Math.floor(percent) + "%";
+});
+
+ipcRenderer.on("save-progress", async () => {
+	await saveUserProgress();
+	ipcRenderer.send("save-complete");
 });
 
 document.addEventListener("DOMContentLoaded", function () {
