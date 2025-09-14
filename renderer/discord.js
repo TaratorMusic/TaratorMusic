@@ -79,6 +79,7 @@ function toggleDiscordAPI() {
 }
 
 function updateDiscordPresence() {
+    if (!discordRPCstatus) return;
 	const isIdle = !audioElement;
 	const songName = isIdle ? "" : document.getElementById("song-name").textContent;
 	let currentSec = 0;
