@@ -1181,8 +1181,8 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 document.addEventListener("keydown", event => {
 	if (event.key === "Escape") closeModal();
 	if (event.key == "Tab") event.preventDefault();
-	if (event.key == "Enter" && document.getElementById("downloadModal").style.display != "none") loadNewPage("download");
-	if (event.key == "Enter" && document.getElementById("searchModal").style.display != "none") searchSong();
+	if (event.key == "Enter" && document.getElementById("downloadModal").style.display == "block") return loadNewPage("download");
+	if (event.key == "Enter" && document.getElementById("searchModal").style.display == "flex") return searchSong();
 
 	if (event.ctrlKey && event.key.toLowerCase() === "f") {
 		event.preventDefault();
