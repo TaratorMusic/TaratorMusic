@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -11,27 +12,22 @@ type SongMetadata struct {
 	Artist   string `json:"artist"`
 	Genre    string `json:"genre"`
 	Language string `json:"language"`
+	Title    string `json:"title"`
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run songinfo.go <song1> <song2> ...")
-		return
+		fmt.Fprintln(os.Stderr, "no songs given")
+		os.Exit(1)
 	}
-
-	songs := os.Args[1:]
-	result := make(map[string]SongMetadata)
-
-	for _, title := range songs {
+	enc := json.NewEncoder(os.Stdout)
+	for _, title := range os.Args[1:] {
 		artist, genre, lang := musicbrainzWrapper.DetectMetadata(title)
-		result[title] = SongMetadata{
+		enc.Encode(SongMetadata{
+			Title:    title,
 			Artist:   artist,
 			Genre:    genre,
 			Language: lang,
-		}
-	}
-
-	for title, meta := range result {
-		fmt.Printf("Song: %q, Artist: %s, Genre: %s, Language: %s\n", title, meta.Artist, meta.Genre, meta.Language)
+		})
 	}
 }

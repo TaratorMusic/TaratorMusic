@@ -32,7 +32,7 @@ async function createMostListenedSongBox() {
 		.get();
 
 	const songId = "tarator-" + most_listened_song.song_id;
-	const mostListenedSongsRow = musicsDb.prepare("SELECT song_name, thumbnail_extension FROM songs WHERE song_id = ?").get(songId);
+	const mostListenedSongsRow = musicsDb.prepare("SELECT song_name, thumbnail_extension, artist, language, genre FROM songs WHERE song_id = ?").get(songId);
 
 	const statisticsMostListened = document.createElement("div");
 	statisticsMostListened.id = "statisticsMostListened";
@@ -58,8 +58,12 @@ async function createMostListenedSongBox() {
 
 	const { min_start, max_start, total_rows } = musicsDb.prepare("SELECT MIN(start_time) AS min_start, MAX(start_time) AS max_start, COUNT(*) AS total_rows FROM timers WHERE song_id = ?").get(most_listened_song.song_id);
 
+	const artist = mostListenedSongsRow.artist || "Unknown Artist";
+	const genre = mostListenedSongsRow.genre || "Unknown Genre";
+	const language = mostListenedSongsRow.language || "Unknown Language";
+
 	if (mostListenedSongsRow) {
-		mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow.song_name}.<br>`;
+		mostListenedSongText.innerHTML = `Favorite Song: ${mostListenedSongsRow.song_name} by ${artist}.<br>`;
 
 		const thumbnailFileName = `${songId}.${mostListenedSongsRow.thumbnail_extension}`;
 		const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
@@ -74,8 +78,7 @@ async function createMostListenedSongBox() {
 
 	img.src = `file://${thumbnailUrl.replace(/\\/g, "/")}?t=${Date.now()}`;
 
-	// mostListenedSongText.innerHTML += by ${mostListenedSongsRow.artist}<br>;
-	// mostListenedSongText.innerHTML += Genre: ${mostListenedSongsRow.genre}, Language: ${mostListenedSongsRow.language}<br>;
+	mostListenedSongText.innerHTML += `Genre: ${genre}, Language: ${language}<br>`;
 
 	mostListenedSongText.innerHTML += `Listened for: ${most_listened_song.total_time} seconds and ${total_rows} times.<br>`;
 	mostListenedSongText.innerHTML += `First listened at: ${formatUnixTime(min_start)} and last listened at ${formatUnixTime(max_start)}<br>`;
@@ -83,6 +86,15 @@ async function createMostListenedSongBox() {
 }
 
 async function createPieCharts() {
+	function colorFromName(name) {
+		let hash = 0;
+		for (let i = 0; i < name.length; i++) {
+			hash = name.charCodeAt(i) + ((hash << 5) - hash);
+		}
+		const hue = Math.abs(hash) % 360;
+		return `hsl(${hue},70%,50%)`;
+	}
+
 	const pieChartPart = document.createElement("div");
 	pieChartPart.id = "pieChartPart";
 	statisticsContent.appendChild(pieChartPart);
@@ -106,80 +118,79 @@ async function createPieCharts() {
 	canvasBox3.className = "canvasBox";
 	pieChartBoxes.appendChild(canvasBox3);
 
+	const rows = musicsDb.prepare("SELECT artist, language, genre FROM songs").all();
+
+	const artistCount = {};
+	const genreCount = {};
+	const languageCount = {};
+	for (const row of rows) {
+		artistCount[row.artist] = (artistCount[row.artist] || 0) + 1;
+		genreCount[row.genre] = (genreCount[row.genre] || 0) + 1;
+		languageCount[row.language] = (languageCount[row.language] || 0) + 1;
+	}
+
+	function buildChart(canvasId, counts, topLabelsCount = 5) {
+		const labels = Object.keys(counts);
+		const data = Object.values(counts);
+		const colors = labels.map(l => colorFromName(l));
+
+		const sortedLabels = labels
+			.map((l, i) => ({ label: l, value: data[i] }))
+			.sort((a, b) => b.value - a.value)
+			.slice(0, topLabelsCount)
+			.map(l => l.label);
+
+		new Chart(document.getElementById(canvasId).getContext("2d"), {
+			type: "pie",
+			data: {
+				labels: labels,
+				datasets: [
+					{
+						data: data,
+						backgroundColor: colors,
+					},
+				],
+			},
+			options: {
+				plugins: {
+					legend: {
+						display: true,
+						labels: {
+                            color: "white",
+							filter: item => sortedLabels.includes(item.text),
+						},
+					},
+				},
+			},
+		});
+	}
+
 	const canvas1 = document.createElement("canvas");
-	canvas1.id = "bestGenrePieChart";
+	canvas1.id = "artistPieChart";
 	canvas1.className = "pieChart";
 	canvasBox1.appendChild(canvas1);
-
 	const canvas1description = document.createElement("p");
-	canvas1description.innerHTML = "Favorite Artists (Coming Soon)";
+	canvas1description.innerHTML = "Favorite Artists";
 	canvasBox1.appendChild(canvas1description);
-
-	new Chart(canvas1.getContext("2d"), {
-		type: "pie",
-		data: {
-			labels: ["Coming Soon"],
-			datasets: [
-				{
-					data: [1],
-					backgroundColor: ["blue"],
-				},
-			],
-		},
-		options: {
-			plugins: { legend: { display: false } },
-		},
-	});
+	buildChart("artistPieChart", artistCount);
 
 	const canvas2 = document.createElement("canvas");
-	canvas2.id = "bestGenrePieChart";
+	canvas2.id = "genrePieChart";
 	canvas2.className = "pieChart";
 	canvasBox2.appendChild(canvas2);
-
 	const canvas2description = document.createElement("p");
-	canvas2description.innerHTML = "Favorite Genres (Coming Soon)";
+	canvas2description.innerHTML = "Favorite Genres";
 	canvasBox2.appendChild(canvas2description);
-
-	new Chart(canvas2.getContext("2d"), {
-		type: "pie",
-		data: {
-			labels: ["Coming Soon"],
-			datasets: [
-				{
-					data: [1],
-					backgroundColor: ["pink"],
-				},
-			],
-		},
-		options: {
-			plugins: { legend: { display: false } },
-		},
-	});
+	buildChart("genrePieChart", genreCount);
 
 	const canvas3 = document.createElement("canvas");
-	canvas3.id = "bestLanguagePieChart";
+	canvas3.id = "languagePieChart";
 	canvas3.className = "pieChart";
 	canvasBox3.appendChild(canvas3);
-
 	const canvas3description = document.createElement("p");
-	canvas3description.innerHTML = "Favorite Languages (Coming Soon)";
+	canvas3description.innerHTML = "Favorite Languages";
 	canvasBox3.appendChild(canvas3description);
-
-	new Chart(canvas3.getContext("2d"), {
-		type: "pie",
-		data: {
-			labels: ["Coming Soon"],
-			datasets: [
-				{
-					data: [1],
-					backgroundColor: ["green"],
-				},
-			],
-		},
-		options: {
-			plugins: { legend: { display: false } },
-		},
-	});
+	buildChart("languagePieChart", languageCount);
 }
 
 async function daysHeatMap() {

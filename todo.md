@@ -21,15 +21,17 @@ It looks terrible :/
 
 ### Version 1.7.5:
 
--   Total time spent not working??
+-   Make the musicbrainz function run on downloads, and give it a button in the settings
+
+-   Add link, artist, genre and language customisation to the customisation modal
+-   Stabilise song and check song data in the customisation modal
+
 -   Make a Go script that will clean the folders of any bugged/extra files, and send the full file list to Node.js, make sure this works in app launch. So, instead of checking the database, we will check our folders for music files. If it finds any differences between the folders and the database, it will prompt the user to run the redownload function.
--   Add link customisation to the customisation modal
 -   Separate the imports in the download script for faster launch times. This includes "spawn" and all the imports in the download_music.js
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working
 -   Most Listened Playlist and other playlist data in Statistics
 -   Add pages to the music tab and a way to navigate between them if using "show x rows".
--   Stabilise song and check song data in the customisation modal
 -   Refresh the readme screenshots
 
 ### Version 1.7.6+:
