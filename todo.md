@@ -14,9 +14,8 @@ It looks terrible :/
 
 ## Bugs
 
--   Playlist music download stopped with an empty error, line 938
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
--   My music search bar is few pixels above playlists search bar in small screens
+-   My music search bar is few pixels above playlists search bar
 
 ## Coming Soon App Features
 

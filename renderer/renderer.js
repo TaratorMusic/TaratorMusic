@@ -138,7 +138,6 @@ function initialiseSettingsDatabase() {
 				`CREATE TABLE IF NOT EXISTS statistics (
                     total_time_spent INTEGER,
                     app_install_date INTEGER,
-                    first_song_listen_date INTEGER,
                     playlists_formed INTEGER,
                     songs_downloaded_youtube INTEGER,
                     songs_downloaded_spotify INTEGER
@@ -167,7 +166,7 @@ function initialiseSettingsDatabase() {
 		}
 
 		if (!statsRow) {
-			settingsDb.prepare(`INSERT INTO statistics (app_install_date) VALUES (?)`).run(Math.floor(Date.now() / 1000));
+			settingsDb.prepare(`INSERT INTO statistics (total_time_spent, app_install_date, playlists_formed, songs_downloaded_youtube, songs_downloaded_spotify) VALUES (?, ?, ?, ?, ?)`).run(0, Math.floor(Date.now() / 1000), 0, 0, 0);
 		} else if (!statsRow.app_install_date) {
 			settingsDb.prepare(`UPDATE statistics SET app_install_date = ?`).run(Math.floor(Date.now() / 1000));
 		}
