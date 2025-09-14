@@ -4,6 +4,7 @@ const { ipcRenderer } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const Database = require("better-sqlite3");
+const { spawn } = require("child_process");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath;
@@ -71,6 +72,7 @@ let audioSource;
 let searchedSongsUrl;
 let downloadingStyle;
 let discordRPCstatus;
+let discordDaemon = null;
 const debounceMap = new Map();
 const songNameCache = new Map();
 
@@ -226,9 +228,12 @@ function initialiseSettingsDatabase() {
 	dividevolume = settingsRow.dividevolume;
 	displayCount = settingsRow.displayCount;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
-	discordRPCstatus = settingsRow.dc_rpc;
 	current_version = settingsRow.current_version;
 	document.body.className = `bg-gradient-${settingsRow.background}`;
+    
+	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
+	if (discordRPCstatus) sendCommandToDaemon("create");
+	document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
 
 	const icons = {
 		backwardButton: "backward.svg",

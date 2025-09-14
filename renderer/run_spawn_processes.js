@@ -1,5 +1,3 @@
-const { spawn } = require("child_process");
-
 function createAppThumbnailsFolder() {
 	return new Promise((resolve, reject) => {
 		const goBinary = path.join(backendFolder, "create_app_thumbnails_folder");

@@ -1,95 +1,117 @@
-const clientId = "1258898699816275969";
-const DiscordRPC = require("discord-rpc");
+function startDaemon() {
+	if (discordDaemon) return;
 
-let RPC = null;
-discordRPCstatus ? createRPC() : updateDiscordPresence();
+	discordDaemon = spawn(path.join(backendFolder, "dc_rich_presence"), ["daemon"]);
 
-document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
+	discordDaemon.stdout.on("data", data => {
+		const dataString = data.toString().trim();
 
-function createRPC() {
-	RPC = new DiscordRPC.Client({ transport: "ipc" });
-	DiscordRPC.register(clientId);
-
-	RPC.on("ready", async () => {
-		updateDiscordPresence();
+		try {
+			const response = JSON.parse(dataString);
+			updateDiscordStatus(response.status);
+		} catch (e) {
+			console.error("Failed to parse daemon response:", dataString);
+			updateDiscordStatus("error");
+		}
 	});
 
-	RPC.login({ clientId }).catch(err => {
-		console.log("Discord RPC Login Failed:", err);
-		document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Error";
-		document.getElementById("mainmenudiscordapi").style.color = "red";
+	discordDaemon.stderr.on("data", data => {
+		console.error("Daemon error:", data.toString());
+		updateDiscordStatus("error");
+	});
+
+	discordDaemon.on("close", code => {
+		console.log("Daemon closed with code:", code);
+		discordDaemon = null;
+		updateDiscordStatus("disabled");
+	});
+
+	discordDaemon.on("error", error => {
+		console.error("Daemon spawn error:", error);
+		discordDaemon = null;
+		updateDiscordStatus("error");
 	});
 }
 
-function destroyRPC() {
-	if (RPC) {
-		try {
-			RPC.clearActivity();
-			RPC.destroy();
-		} catch (err) {
-			console.log("Error while destroying RPC:", err);
-		}
-		RPC = null;
+function updateDiscordStatus(status) {
+	const element = document.getElementById("mainmenudiscordapi");
+
+	if (status === "online") {
+		element.innerHTML = "Discord RPC Status: Online";
+		element.style.color = "green";
+		discordRPCstatus = true;
+	} else if (status === "error") {
+		element.innerHTML = "Discord RPC Status: Error";
+		element.style.color = "red";
+		discordRPCstatus = false;
+	} else if (status === "disabled") {
+		element.innerHTML = "Discord RPC Status: Disabled";
+		element.style.color = "yellow";
+		discordRPCstatus = false;
+	}
+}
+
+function sendCommandToDaemon(command, args = []) {
+	if (!discordDaemon) {
+		startDaemon();
+		setTimeout(() => {
+			if (discordDaemon) {
+				const commandLine = [command, ...args].join(" ") + "\n";
+				discordDaemon.stdin.write(commandLine);
+			}
+		}, 100);
+	} else {
+		const commandLine = [command, ...args].join(" ") + "\n";
+		discordDaemon.stdin.write(commandLine);
 	}
 }
 
 function toggleDiscordAPI() {
-	discordRPCstatus = !discordRPCstatus;
-	updateDatabase("dc_rpc", discordRPCstatus ? 1 : 0, settingsDb, "settings");
-
 	if (discordRPCstatus) {
-		createRPC();
+		discordRPCstatus = false;
+		sendCommandToDaemon("destroy");
 	} else {
-		destroyRPC();
-		updateDiscordPresence();
+		discordRPCstatus = true;
+		sendCommandToDaemon("create");
+	}
+
+	updateDatabase("dc_rpc", discordRPCstatus ? 1 : 0, settingsDb, "settings");
+}
+
+function updateDiscordPresence() {
+	const isIdle = !audioElement;
+	const songName = isIdle ? "" : document.getElementById("song-name").textContent;
+	let currentSec = 0;
+	let totalSec = 0;
+	let paused = false;
+
+	if (!isIdle) {
+		const timeParts = document.getElementById("video-length").textContent.split("/");
+		currentSec = parseTimeToSeconds(timeParts[0].trim()) || 0;
+		totalSec = parseTimeToSeconds(timeParts[1].trim()) || 0;
+		paused = audioElement.paused;
+	}
+
+	sendCommandToDaemon("update", [songName, currentSec.toString(), totalSec.toString(), paused.toString(), isIdle.toString()]);
+}
+
+function stopDaemon() {
+	if (discordDaemon) {
+		sendCommandToDaemon("quit");
+		discordDaemon = null;
 	}
 }
 
-async function updateDiscordPresence() {
-	if (discordRPCstatus && RPC) {
-		if (!RPC.transport || RPC.transport.socket?.destroyed) {
-			document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Down";
-			document.getElementById("mainmenudiscordapi").style.color = "red";
-			return;
-		}
+process.on("beforeExit", () => {
+	stopDaemon();
+});
 
-		document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Online";
-		document.getElementById("mainmenudiscordapi").style.color = "green";
+process.on("SIGINT", () => {
+	stopDaemon();
+	process.exit();
+});
 
-		if (!audioElement) {
-			RPC.setActivity({
-				type: "2",
-				details: "Browsing Music",
-				state: "Idle",
-				largeImageKey: "tarator1024_icon",
-			});
-		} else {
-			const activityPayload = {
-				type: "2",
-				details: document.getElementById("song-name").textContent,
-				largeImageKey: "tarator1024_icon",
-			};
-
-			const timeParts = document.getElementById("video-length").textContent.split("/");
-			const currentSeconds = parseTimeToSeconds(timeParts[0].trim());
-			const totalSeconds = parseTimeToSeconds(timeParts[1].trim());
-
-			if (audioElement.paused) {
-				activityPayload.state = "⏸ Paused";
-			} else if (currentSeconds !== null && totalSeconds !== null && totalSeconds > 0) {
-				const nowMs = Date.now();
-
-				const validatedCurrentSeconds = Math.min(currentSeconds, totalSeconds);
-
-				activityPayload.state = "──────────────────────────​";
-				activityPayload.startTimestamp = Math.floor(nowMs / 1000 - validatedCurrentSeconds);
-				activityPayload.endTimestamp = activityPayload.startTimestamp + totalSeconds;
-			}
-
-			RPC.setActivity(activityPayload);
-		}
-	} else {
-		document.getElementById("mainmenudiscordapi").innerHTML = "Discord RPC Status: Disabled";
-		document.getElementById("mainmenudiscordapi").style.color = "yellow";
-	}
-}
+process.on("SIGTERM", () => {
+	stopDaemon();
+	process.exit();
+});

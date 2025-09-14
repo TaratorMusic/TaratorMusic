@@ -9,9 +9,9 @@
 	},
 	"scripts": {
 		"start": "npm run gobuild && electron .",
-        "nogo": "electron .",
+		"nogo": "electron .",
 		"dist": "npm run gobuild && electron-builder",
-		"gobuild": "find ./backend -type f -name main.go -exec sh -c 'for f; do name=$(basename $(dirname \"$f\")); go build -o ./bin/$name \"$f\"; done' sh {} +",
+		"gobuild": "find ./backend -type f -name main.go -exec sh -c 'for f; do name=$(basename $(dirname \"$f\")); CGO_ENABLED=0 go build -o ./bin/$name \"$f\"; done' sh {} +",
 		"postinstall": "electron-builder install-app-deps"
 	},
 	"repository": {

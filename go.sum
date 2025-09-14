@@ -1,4 +1,6 @@
-github.com/Victiniiiii/musicbrainz-wrapper v0.0.0-20250914082615-ef98fa0e915f h1:eK0Lt3D9zKEj3Mi2hTvWLcnDY+UV4llU9a6PkchDeb8=
-github.com/Victiniiiii/musicbrainz-wrapper v0.0.0-20250914082615-ef98fa0e915f/go.mod h1:KmygfD1WgMz2TkmO99SmKzIkzRQe8eJh8lNlLmwUGgM=
 github.com/Victiniiiii/musicbrainz-wrapper v0.0.0-20250914093323-2afba3d794c1 h1:tcvS0Se6NQyxd1B6y5+AdN+IyCRCwbOvmSdWRxaQJBI=
 github.com/Victiniiiii/musicbrainz-wrapper v0.0.0-20250914093323-2afba3d794c1/go.mod h1:wJ9rTzrOobEPb9YzlJzk2oG4AgdfIRNYZ8f1Wz8xEeE=
+github.com/Victiniiiii/rp v0.3.2-0.20250914133821-55b2dc47ebae h1:/QFS6IPmFhgnT8SODnulDGSSxSrYCPep+y9imM1wvPY=
+github.com/Victiniiiii/rp v0.3.2-0.20250914133821-55b2dc47ebae/go.mod h1:SRgGH4t4ayBmOhBgNg5PQEmuQ8UNlU4vQrIiIrpZAzU=
+gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce h1:+JknDZhAj8YMt7GC73Ei8pv4MzjDUNPHgQWJdtMAaDU=
+gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce/go.mod h1:5AcXVHNjg+BDxry382+8OKon8SEWiKktQR07RKPsv1c=
