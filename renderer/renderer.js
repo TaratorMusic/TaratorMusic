@@ -230,9 +230,9 @@ function initialiseSettingsDatabase() {
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 	current_version = settingsRow.current_version;
 	document.body.className = `bg-gradient-${settingsRow.background}`;
-    
+
 	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
-	if (discordRPCstatus) sendCommandToDaemon("create");
+	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
 	document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
 
 	const icons = {
