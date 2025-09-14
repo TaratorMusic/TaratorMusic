@@ -347,32 +347,6 @@ async function htmlTableStats(sortedData = null) {
 	const container = document.createElement("div");
 	container.id = "htmlTable";
 
-	const style = document.createElement("style");
-	style.textContent = `
-        #htmlTable table {
-            width: 80vw;
-            font-size: 1.2vw;
-            border-collapse: collapse;
-        }
-        #htmlTable th, #htmlTable td {
-            padding: 0.6vw;
-            border: 1px solid #444;
-            max-width: 15vw;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        #htmlTable th {
-            font-size: 1.1vw;
-            background: #222;
-            color: #eee;
-        }
-        #htmlTable td {
-            font-size: 1vw;
-        }
-    `;
-	container.appendChild(style);
-
 	const table = document.createElement("table");
 	const thead = document.createElement("thead");
 	const headerRow = document.createElement("tr");
@@ -412,7 +386,7 @@ async function htmlTableStats(sortedData = null) {
 				if (k !== key) delete sortOrder[k];
 			});
 
-			const order = sortOrder[key] === "asc" ? "desc" : "asc";
+			const order = sortOrder[key] === "asc" ? "desc" : sortOrder[key] === "desc" ? "asc" : "desc";
 			sortOrder[key] = order;
 
 			const sorted = [...rows].sort((a, b) => {

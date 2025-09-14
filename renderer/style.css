@@ -1390,3 +1390,29 @@ th {
 	margin: 3vh 0 2vh 0;
 	font-family: Arial, sans-serif;
 }
+
+#htmlTable table {
+	width: 80vw;
+	font-size: 1.2vw;
+	border-collapse: collapse;
+}
+
+#htmlTable th,
+#htmlTable td {
+	padding: 0.6vw;
+	border: 1px solid #444;
+	max-width: 15vw;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#htmlTable th {
+	font-size: 1.1vw;
+	background: #222;
+	color: #eee;
+}
+
+#htmlTable td {
+	font-size: 1vw;
+}
