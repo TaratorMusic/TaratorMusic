@@ -9,7 +9,7 @@ if (process.env.APPIMAGE) {
 	const binFolder = path.join(appDir, "bin");
 	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
 
-	const backendBinaries = ["create_app_thumbnails_folder", "check_dupe_songs", "shorten_song_ids", "musicbrainz_fetch"];
+	const backendBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "shorten_song_ids", "startup_check"];
 
 	backendBinaries.forEach(bin => {
 		const targetPath = path.join(binFolder, bin);

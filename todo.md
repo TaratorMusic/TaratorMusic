@@ -21,22 +21,29 @@ It looks terrible :/
 
 ### Version 1.7.5:
 
+-   CreateAPpTHUMBNAILS NOT WORKING????
 -   Make the musicbrainz function run on downloads, and give it a button in the settings
 
 -   Add link, artist, genre and language customisation to the customisation modal
 -   Stabilise song and check song data in the customisation modal
 
 -   Make a Go script that will clean the folders of any bugged/extra files, and send the full file list to Node.js, make sure this works in app launch. So, instead of checking the database, we will check our folders for music files. If it finds any differences between the folders and the database, it will prompt the user to run the redownload function.
+-   Remove the "Remove all broken files" and "Check folder for new songs" buttons from the settings and their functions.
+-   Edit processallfiles function so no cleaning inside
+
 -   Separate the imports in the download script for faster launch times. This includes "spawn" and all the imports in the download_music.js
--   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
--   Data-tooltip on the action buttons are not working
--   Most Listened Playlist and other playlist data in Statistics
--   Add pages to the music tab and a way to navigate between them if using "show x rows".
+
+-   Update the readme, especially the "current features" parts
 -   Refresh the readme screenshots
 
 ### Version 1.7.6+:
 
--   Use our check_dupe_songs go file
+-   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
+-   Data-tooltip on the action buttons are not working
+-   Most Listened Playlist and other playlist data in Statistics
+-   Add pages to the music tab and a way to navigate between them if using "show x rows".
+-   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)
+-   Use our check_dupe_songs go file while downloading songs to avoid duplications
 -   Run: sudo apt install libasound2-dev --- and npm i speaker
 -   Add song to queue
 -   Rewrite downloading sections in Go

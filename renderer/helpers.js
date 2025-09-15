@@ -140,10 +140,8 @@ async function loadNewPage(query, info) {
 	} else if (query == "downloadModal") {
 		document.getElementById("downloadModal").style.display = "block";
 	} else if (query == "createAppThumbnailsFolder") {
-		await loadJSFile("run_spawn_processes");
-		if (functionName == "createAppThumbnailsFolder") createAppThumbnailsFolder();
+		createAppThumbnailsFolder();
 	} else if (query == "shortenSongIdsGoPart") {
-		await loadJSFile("run_spawn_processes");
 		shortenSongIdsGoPart(info);
 	}
 }

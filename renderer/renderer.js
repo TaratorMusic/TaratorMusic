@@ -1346,6 +1346,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	initialiseSettingsDatabase();
 	initialiseMusicsDatabase();
 	initialisePlaylistsDatabase();
+    startupCheck();
 
 	ipcRenderer.send("renderer-domready");
 
