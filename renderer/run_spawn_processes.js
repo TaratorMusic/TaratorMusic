@@ -83,7 +83,8 @@ async function startupCheck() {
 		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
 
-		const allMusics = musicsDb.prepare("SELECT song_id, song_name, song_extension, thumbnail_extension, size, song_length, artist, genre, language FROM songs").all();
+		const allMusics = musicsDb.prepare("SELECT song_id, song_extension, thumbnail_extension FROM songs").all();
+		const musicMap = Object.fromEntries(allMusics.map(({ song_id, ...rest }) => [song_id, rest]));
 
 		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
 		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
@@ -114,16 +115,14 @@ async function startupCheck() {
 			if (code !== 0) return reject(new Error(`Go process exited with code ${code}`));
 			try {
 				data = JSON.parse(data);
-				console.log(data);
 
 				if (Object.keys(data).length != allMusics.length) {
-					// Find out which are not in the database and add them. Remember to generate a new ID for it.
-					alertModal(promptUserOnSongs());
-					resolve(data);
+					foundNewSongs(data, musicMap);
 				} else {
 					alertModal(promptUserOnSongs());
-					resolve(data);
 				}
+
+				resolve(data);
 			} catch (e) {
 				reject(e);
 			}
@@ -131,19 +130,42 @@ async function startupCheck() {
 	});
 }
 
-function promptUserOnSongs() {
+function promptUserOnSongs(redownload) {
+	let thePrompt = "";
 	const stabilisedNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE size IS NULL").get().total;
 	const artistNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE artist IS NULL").get().total;
 
+	if (redownload != 0) thePrompt += `You have ${redownload} songs not installed.`;
+
 	if (stabilisedNull != 0 || artistNull != 0) {
-		let thePrompt;
 		if (stabilisedNull != 0) thePrompt += `You have ${stabilisedNull} songs not stabilised.`;
 		if (artistNull != 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information.`;
 		thePrompt += "Complete your songs data using the options in the settings menu.";
-		return thePrompt;
 	}
 
-	return "";
+	return thePrompt;
+}
+
+async function foundNewSongs(folderSongs, databaseSongs) {
+	const folderOnly = {};
+	const databaseOnly = {};
+
+	for (const key of Object.keys(folderSongs)) {
+		if (!(key in databaseSongs)) {
+			folderOnly[key] = folderSongs[key];
+		}
+	}
+
+	for (const key of Object.keys(databaseSongs)) {
+		if (!(key in folderSongs)) {
+			databaseOnly[key] = databaseSongs[key];
+		}
+	}
+
+	console.log("In folder only:", folderOnly);
+
+	// Find out which are not in the database and add them. Remember to generate a new ID for it.
+	await alertModal(promptUserOnSongs(Object.keys(databaseOnly).length));
 }
 
 // async function processNewSongs() {
