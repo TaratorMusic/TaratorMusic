@@ -135,9 +135,6 @@ async function loadNewPage(query, info) {
 	} else if (query == "statistics") {
 		await loadJSFile("statistics");
 		if (typeof renderStatistics == "function") renderStatistics(); // "typeof" fixes a console error
-	} else if (query == "legacy") {
-		await loadJSFile("update_legacy_codes");
-		updateFunctions(info);
 	} else if (query == "downloadModal") {
 		document.getElementById("downloadModal").style.display = "block";
 	} else if (query == "createAppThumbnailsFolder") {

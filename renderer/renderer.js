@@ -267,7 +267,7 @@ function initialiseSettingsDatabase() {
 	document.getElementById("main-menu").click();
 
 	ipcRenderer.invoke("get-app-version").then(async version => {
-		if (version != current_version || current_version == undefined) await loadNewPage(`legacy`, current_version);
+		// if (version != current_version) await loadNewPage(`legacy`, current_version);
 		current_version = version;
 		updateDatabase("current_version", current_version, settingsDb, "settings");
 		document.getElementById("version").textContent = `Version: ${version}`;
@@ -1346,7 +1346,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	initialiseSettingsDatabase();
 	initialiseMusicsDatabase();
 	initialisePlaylistsDatabase();
-    startupCheck();
 
 	ipcRenderer.send("renderer-domready");
 
@@ -1360,42 +1359,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
-
-	if (!fs.existsSync(appThumbnailFolder)) {
-		loadNewPage("createAppThumbnailsFolder");
-	} else {
-		const files = ["addtoplaylist.svg", "adjustments.svg", "backward.svg", "custom.svg", "customise.svg", "forward.svg", "greenAutoplay.svg", "greenLoop.svg", "greenShuffle.svg", "mute.svg", "next.svg", "pause.svg", "placeholder.jpg", "play.svg", "previous.svg", "redAutoplay.svg", "redLoop.svg", "redShuffle.svg", "speed.svg", "star.svg", "tarator_icon.icns", "tarator_icon.ico", "tarator_icon.png", "tarator16_icon.png", "tarator512_icon.png", "tarator1024_icon.png", "trash.svg"];
-		for (const file of files) {
-			if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
-				loadNewPage("createAppThumbnailsFolder");
-				return;
-			}
-		}
-	}
-
-	const missingSongs = musicsDb.prepare("SELECT song_id FROM songs WHERE song_extension IS NULL").all();
-	if (missingSongs.length > 0) {
-		const musicFiles = fs.readdirSync(musicFolder);
-		for (const { song_id } of missingSongs) {
-			const file = musicFiles.find(f => path.parse(f).name === song_id);
-			if (file) {
-				const ext = path.extname(file).slice(1);
-				musicsDb.prepare("UPDATE songs SET song_extension = ? WHERE song_id = ?").run(ext, song_id);
-			}
-		}
-	}
-
-	const missingThumbs = musicsDb.prepare("SELECT song_id FROM songs WHERE thumbnail_extension IS NULL").all();
-	if (missingThumbs.length > 0) {
-		const thumbFiles = fs.readdirSync(thumbnailFolder);
-		for (const { song_id } of missingThumbs) {
-			const file = thumbFiles.find(f => path.parse(f).name === song_id);
-			if (file) {
-				const ext = path.extname(file).slice(1);
-				musicsDb.prepare("UPDATE songs SET thumbnail_extension = ? WHERE song_id = ?").run(ext, song_id);
-			}
-		}
-	}
 
 	document.querySelectorAll("div[data-tooltip]").forEach(el => {
 		el.addEventListener("mouseenter", e => {
@@ -1443,4 +1406,6 @@ document.addEventListener("DOMContentLoaded", function () {
 			chart.height = window.innerWidth * 0.0525;
 		});
 	});
+
+	startupCheck();
 });

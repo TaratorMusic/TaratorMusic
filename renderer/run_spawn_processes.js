@@ -83,6 +83,42 @@ async function startupCheck() {
 		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
 
+		if (!fs.existsSync(appThumbnailFolder)) {
+			loadNewPage("createAppThumbnailsFolder");
+		} else {
+			const files = ["addtoplaylist.svg", "adjustments.svg", "backward.svg", "custom.svg", "customise.svg", "forward.svg", "greenAutoplay.svg", "greenLoop.svg", "greenShuffle.svg", "mute.svg", "next.svg", "pause.svg", "placeholder.jpg", "play.svg", "previous.svg", "redAutoplay.svg", "redLoop.svg", "redShuffle.svg", "speed.svg", "star.svg", "tarator_icon.icns", "tarator_icon.ico", "tarator_icon.png", "tarator16_icon.png", "tarator512_icon.png", "tarator1024_icon.png", "trash.svg"];
+			for (const file of files) {
+				if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
+					loadNewPage("createAppThumbnailsFolder");
+					return;
+				}
+			}
+		}
+
+		const missingSongs = musicsDb.prepare("SELECT song_id FROM songs WHERE song_extension IS NULL").all();
+		if (missingSongs.length > 0) {
+			const musicFiles = fs.readdirSync(musicFolder);
+			for (const { song_id } of missingSongs) {
+				const file = musicFiles.find(f => path.parse(f).name === song_id);
+				if (file) {
+					const ext = path.extname(file).slice(1);
+					musicsDb.prepare("UPDATE songs SET song_extension = ? WHERE song_id = ?").run(ext, song_id);
+				}
+			}
+		}
+
+		const missingThumbs = musicsDb.prepare("SELECT song_id FROM songs WHERE thumbnail_extension IS NULL").all();
+		if (missingThumbs.length > 0) {
+			const thumbFiles = fs.readdirSync(thumbnailFolder);
+			for (const { song_id } of missingThumbs) {
+				const file = thumbFiles.find(f => path.parse(f).name === song_id);
+				if (file) {
+					const ext = path.extname(file).slice(1);
+					musicsDb.prepare("UPDATE songs SET thumbnail_extension = ? WHERE song_id = ?").run(ext, song_id);
+				}
+			}
+		}
+
 		const allMusics = musicsDb.prepare("SELECT song_id, song_extension, thumbnail_extension FROM songs").all();
 		const musicMap = Object.fromEntries(allMusics.map(({ song_id, ...rest }) => [song_id, rest]));
 
@@ -135,18 +171,20 @@ function promptUserOnSongs(redownload) {
 	const stabilisedNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE size IS NULL").get().total;
 	const artistNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE artist IS NULL").get().total;
 
-	if (redownload != 0) thePrompt += `You have ${redownload} songs not installed.`;
+	if (redownload != 0) thePrompt += `You have ${redownload} songs not installed. `;
 
 	if (stabilisedNull != 0 || artistNull != 0) {
-		if (stabilisedNull != 0) thePrompt += `You have ${stabilisedNull} songs not stabilised.`;
-		if (artistNull != 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information.`;
-		thePrompt += "Complete your songs data using the options in the settings menu.";
+		if (stabilisedNull != 0) thePrompt += `You have ${stabilisedNull} songs not stabilised. `;
+		if (artistNull != 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information. `;
 	}
+
+	if (thePrompt != "") thePrompt += "Complete your songs data using the options in the settings menu.";
 
 	return thePrompt;
 }
 
 async function foundNewSongs(folderSongs, databaseSongs) {
+    await alertModal("Found new songs in your folders.")
 	const folderOnly = {};
 	const databaseOnly = {};
 
@@ -162,115 +200,40 @@ async function foundNewSongs(folderSongs, databaseSongs) {
 		}
 	}
 
-	console.log("In folder only:", folderOnly);
+	for (const fileName of Object.keys(folderOnly)) {
+		let songName = fileName;
 
-	// Find out which are not in the database and add them. Remember to generate a new ID for it.
+		if (!fileName.includes("tarator")) {
+			songName = generateId();
+			const thumbSrc = path.join(thumbnailFolder, fileName) + folderOnly[fileName].thumbnail_extension;
+
+			if (fs.existsSync(thumbSrc)) fs.renameSync(thumbSrc, path.join(thumbnailFolder, songName));
+			await fs.renameSync(path.join(musicFolder, fileName), path.join(musicFolder, songName));
+		}
+
+		const fullPath = path.join(musicFolder, songName) + folderOnly[fileName].song_extension;
+
+		const metadata = await new Promise((resolve, reject) => {
+			ffmpeg.ffprobe(fullPath, (err, meta) => {
+				if (err) return reject(err);
+				resolve(meta);
+			});
+		});
+
+		const duration = metadata.format?.duration ? Math.round(metadata.format.duration) : null;
+		const stats = fs.statSync(fullPath);
+		const fileSize = stats.size;
+
+		const insertQuery = `
+            INSERT INTO songs (
+                song_id, song_name, song_url, song_length, seconds_played,
+                times_listened, stabilised, size, speed, bass, treble,
+                midrange, volume, song_extension, thumbnail_extension, artist, genre, language
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+		musicsDb.prepare(insertQuery).run(songName, songName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, folderOnly[fileName].song_extension, folderOnly[fileName].thumbnail_extension, null, null, null);
+	}
+
 	await alertModal(promptUserOnSongs(Object.keys(databaseOnly).length));
 }
-
-// async function processNewSongs() {
-// 	try {
-// 		const files = await fs.promises.readdir(musicFolder);
-// 		const audioExtensions = new Set([".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"]);
-// 		const audioFiles = [];
-
-// 		for (const fileName of files) {
-// 			if (fileName.includes("tarator")) continue;
-
-// 			const fullPath = path.join(musicFolder, fileName);
-
-// 			try {
-// 				const stats = await fs.promises.stat(fullPath);
-// 				if (!stats.isFile()) continue;
-
-// 				const ext = path.extname(fileName).toLowerCase();
-// 				if (audioExtensions.has(ext)) {
-// 					audioFiles.push(fileName);
-// 				}
-// 			} catch (error) {
-// 				console.log(`Cannot access file ${fileName}:`, error.message);
-// 			}
-// 		}
-
-// 		if (audioFiles.length === 0) {
-// 			document.getElementById("folderProgress").innerText = "No new audio files found.";
-// 			return;
-// 		}
-
-// 		for (let i = 0; i < audioFiles.length; i++) {
-// 			const fileName = audioFiles[i];
-// 			const currentProgress = `(${i + 1}/${audioFiles.length})`;
-
-// 			try {
-// 				const fullPath = path.join(musicFolder, fileName);
-// 				const songName = removeExtensions(fileName);
-// 				const songId = generateId();
-
-// 				document.getElementById("folderProgress").innerText = `${currentProgress} Processing: ${songName}...`;
-
-// 				let duration = null;
-// 				try {
-// 					document.getElementById("folderProgress").innerText = `${currentProgress} Getting duration for: ${songName}...`;
-
-// 					const metadata = await new Promise((resolve, reject) => {
-// 						ffmpeg.ffprobe(fullPath, (err, meta) => {
-// 							if (err) return reject(err);
-// 							resolve(meta);
-// 						});
-// 					});
-
-// 					duration = metadata.format?.duration ? Math.round(metadata.format.duration) : null;
-
-// 					document.getElementById("folderProgress").innerText = `${currentProgress} Duration: ${duration ? `${duration}s` : "unknown"}`;
-// 				} catch (error) {
-// 					console.log(`Failed to get duration for ${songName}:`, error.message);
-// 					document.getElementById("folderProgress").innerText = `${currentProgress} Duration: unknown (${error.message})`;
-// 				}
-
-// 				const songExt = path.extname(fileName).slice(1).toLowerCase();
-// 				const newSongPath = path.join(musicFolder, `${songId}.${songExt}`);
-// 				await fs.promises.rename(fullPath, newSongPath);
-
-// 				let thumbnailExt = null;
-// 				try {
-// 					const oldThumbnailBase = path.parse(fileName).name;
-// 					const thumbFiles = await fs.promises.readdir(thumbnailFolder);
-// 					const thumbFile = thumbFiles.find(f => path.parse(f).name === oldThumbnailBase);
-
-// 					if (thumbFile) {
-// 						thumbnailExt = path.extname(thumbFile).slice(1).toLowerCase();
-// 						const oldThumbPath = path.join(thumbnailFolder, thumbFile);
-// 						const newThumbPath = path.join(thumbnailFolder, `${songId}.${thumbnailExt}`);
-
-// 						await fs.promises.rename(oldThumbPath, newThumbPath);
-// 					}
-// 				} catch (error) {
-// 					console.log(`Failed to process thumbnail for ${fileName}:`, error.message);
-// 				}
-
-// 				const stats = await fs.promises.stat(newSongPath);
-// 				const fileSize = stats.size;
-
-// 				const insertQuery = `
-// 					INSERT INTO songs (
-// 						song_id, song_name, song_url, song_length, seconds_played,
-// 						times_listened, stabilised, size, speed, bass, treble,
-// 						midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-// 					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-// 				`;
-
-// 				musicsDb.prepare(insertQuery).run(songId, songName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, songExt, thumbnailExt, null, null, null);
-
-// 				document.getElementById("folderProgress").innerText = `${currentProgress} Successfully added: ${songName}`;
-// 			} catch (error) {
-// 				console.error(`Failed to process ${fileName}:`, error);
-// 				document.getElementById("folderProgress").innerText = `${currentProgress} Failed to process ${fileName}: ${error.message}`;
-// 			}
-// 		}
-
-// 		document.getElementById("folderProgress").innerText = "Folder check complete!";
-// 	} catch (error) {
-// 		console.error("Error in processNewSongs:", error);
-// 		document.getElementById("folderProgress").innerText = `Error reading music folder: ${error.message}`;
-// 	}
-// }
