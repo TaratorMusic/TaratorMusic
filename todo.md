@@ -15,12 +15,12 @@ It looks terrible :/
 ## Bugs
 
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
--   My music search bar is few pixels above playlists search bar
 
 ## Coming Soon App Features
 
 ### Version 1.7.5:
 
+-   My music search bar is few pixels above playlists search bar
 -   CreateAPpTHUMBNAILS NOT WORKING????
 -   Make the musicbrainz function run on downloads, and give it a button in the settings
 
@@ -55,6 +55,7 @@ It looks terrible :/
 ### Planned Features
 
 -   Customise Discord Rich Presence box in the settings
+-   Edit app font
 -   Add approximate time remaining for volume stabilisation and downloads.
 -   Integrate Discord bot that plays the music
 -   Pause downloads, continue anytime: use localstorage --> It should notify the user when the app is restarted that a download is mid-way.
@@ -80,7 +81,6 @@ It looks terrible :/
 -   More placeholder photos
 -   Customisable scrollbars maybe
 -   App language
--   Edit app font
 -   Edit My Music grid
 -   Disable thumbnails
 -   Change placeholder thumbnail --> if (userPlaceholderThumbnail) else (placeholderThumbnail)

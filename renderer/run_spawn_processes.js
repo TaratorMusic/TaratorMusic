@@ -104,7 +104,7 @@ async function startupCheck() {
 		});
 
 		const goBinary = path.join(backendFolder, "startup_check");
-		const proc = spawn(goBinary, [musicFolder], { stdio: ["pipe", "pipe", "inherit"] });
+		const proc = spawn(goBinary, [musicFolder, thumbnailFolder], { stdio: ["pipe", "pipe", "inherit"] });
 		let data = "";
 
 		proc.on("error", reject);
@@ -114,6 +114,7 @@ async function startupCheck() {
 			if (code !== 0) return reject(new Error(`Go process exited with code ${code}`));
 			try {
 				data = JSON.parse(data);
+                console.log(data);
 				resolve(data);
 			} catch (e) {
 				reject(e);
