@@ -465,7 +465,7 @@ async function myMusicOnClick() {
 
 	displayCountSelect.onchange = () => handleDropdownChange("displayCount", displayCountSelect);
 
-	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension FROM songs").all();
+	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension, song_length FROM songs").all();
 	const songCountElement = document.createElement("div");
 	songCountElement.id = "songCountElement";
 	songCountElement.innerText = `${songRows.length} songs.`;
@@ -485,7 +485,7 @@ async function myMusicOnClick() {
 		.map(databaseRow => ({
 			id: databaseRow.song_id,
 			name: `${databaseRow.song_id}.${databaseRow.song_extension}`,
-			thumbnail: `file://${databaseRow.id + databaseRow.thumbnail_extension}`,
+			thumbnail: `file://${databaseRow.song_id + "." + databaseRow.thumbnail_extension}`,
 			length: databaseRow.song_length || 0,
 		}))
 		.sort((songA, songB) => getSongNameCached(songA.id).toLowerCase().localeCompare(getSongNameCached(songB.id).toLowerCase()));
@@ -539,8 +539,7 @@ function createMusicElement(songFile) {
 	const fileNameWithoutExtension = path.parse(songFile.name).name;
 	const row = musicsDb.prepare("SELECT thumbnail_extension FROM songs WHERE song_id = ?").get(fileNameWithoutExtension);
 
-	const thumbnailFileName = `${fileNameWithoutExtension}.${row.thumbnail_extension}`;
-	const thumbnailPath = path.join(thumbnailFolder, thumbnailFileName.replace(/%20/g, " "));
+	const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + row.thumbnail_extension);
 
 	if (fs.existsSync(thumbnailPath)) {
 		const backgroundElement = document.createElement("div");

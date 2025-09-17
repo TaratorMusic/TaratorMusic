@@ -80,8 +80,9 @@ async function grabAndStoreSongInfo() {
 
 async function startupCheck() {
 	return new Promise((resolve, reject) => {
-		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
+		musicsDb.prepare("UPDATE songs SET song_extension = LTRIM(song_extension, '.')").run();
+		musicsDb.prepare("UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')").run();
 
 		if (!fs.existsSync(appThumbnailFolder)) {
 			loadNewPage("createAppThumbnailsFolder");
@@ -171,7 +172,7 @@ function promptUserOnSongs(redownload) {
 	const stabilisedNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE size IS NULL").get().total;
 	const artistNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE artist IS NULL").get().total;
 
-	if (redownload != 0) thePrompt += `You have ${redownload} songs not installed. `;
+	if (redownload > 0) thePrompt += `You have ${redownload} songs not installed. `;
 
 	if (stabilisedNull != 0 || artistNull != 0) {
 		if (stabilisedNull != 0) thePrompt += `You have ${stabilisedNull} songs not stabilised. `;
@@ -184,7 +185,7 @@ function promptUserOnSongs(redownload) {
 }
 
 async function foundNewSongs(folderSongs, databaseSongs) {
-    await alertModal("Found new songs in your folders.")
+	await alertModal("Found new songs in your folders.");
 	const folderOnly = {};
 	const databaseOnly = {};
 
@@ -232,7 +233,7 @@ async function foundNewSongs(folderSongs, databaseSongs) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-		musicsDb.prepare(insertQuery).run(songName, songName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, folderOnly[fileName].song_extension, folderOnly[fileName].thumbnail_extension, null, null, null);
+		musicsDb.prepare(insertQuery).run(songName, fileName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, folderOnly[fileName].song_extension, folderOnly[fileName].thumbnail_extension, null, null, null);
 	}
 
 	await alertModal(promptUserOnSongs(Object.keys(databaseOnly).length));
