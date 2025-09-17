@@ -40,6 +40,7 @@ It looks terrible :/
 
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working
+-   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language"
 -   Most Listened Playlist and other playlist data in Statistics
 -   Add pages to the music tab and a way to navigate between them if using "show x rows".
 -   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)

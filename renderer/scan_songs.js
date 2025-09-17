@@ -39,57 +39,32 @@ async function normalizeAudio(filePath) {
 }
 
 async function processAllFiles() {
-	const allFiles = fs.readdirSync(musicFolder);
-	const tempFiles = allFiles.filter(f => f.includes("!"));
-	if (tempFiles.length > 0) {
-		console.log(`Cleaning up ${tempFiles.length} temporary files...`);
-		tempFiles.forEach(tempFile => {
-			try {
-				fs.unlinkSync(path.join(musicFolder, tempFile));
-				console.log(`Deleted: ${tempFile}`);
-			} catch (err) {
-				console.log(`Could not delete ${tempFile}:`, err.message);
-			}
-		});
-	}
-
-	const files = fs.readdirSync(musicFolder).filter(f => {
-		return !f.startsWith(".") && !f.startsWith("normalized_") && !f.includes("temp_normalized");
-	});
-
-	document.getElementById("stabiliseProgress").innerText = `Found ${files.length} files to process`;
+	const rows = musicsDb.prepare("SELECT song_id, song_extension, stabilised FROM songs WHERE stabilised != 1").all();
+	document.getElementById("stabiliseProgress").innerText = `Found ${rows.length} songs to process.`;
 
 	let processedCount = 0;
-	const totalFiles = files.length;
+	const totalRows = rows.length;
 
-	for (const file of files) {
-		const fullPath = path.join(musicFolder, file);
-		if (!fs.statSync(fullPath).isFile()) continue;
+	for (const row of rows) {
+		const fileName = row.song_id + row.song_extension;
+		const fullPath = path.join(musicFolder, fileName);
 
-		const name = path.basename(file, path.extname(file));
-		const row = musicsDb.prepare("SELECT stabilised FROM songs WHERE song_id = ?").get(name);
+		document.getElementById("stabiliseProgress").innerText = `[${processedCount + 1}/${totalRows}] Normalizing ${getSongNameById(row.song_id)}...`;
 
-		if (row && row.stabilised == 1) {
-			processedCount++;
-			document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalFiles}] Skipping ${name}, already processed.`;
-			continue;
-		}
-
-		document.getElementById("stabiliseProgress").innerText = `[${processedCount + 1}/${totalFiles}] Normalizing ${getSongNameById(name)}...`;
 		try {
 			await normalizeAudio(fullPath);
-			const updateResult = musicsDb.prepare("UPDATE songs SET stabilised = ? WHERE song_id = ?").run(1, name);
+			const updateResult = musicsDb.prepare("UPDATE songs SET stabilised = 1 WHERE song_id = ?").run(row.song_id);
 			processedCount++;
 			if (updateResult.changes > 0) {
-				document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalFiles}] Successfully normalized and marked ${getSongNameById(name)}`;
+				document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalRows}] Successfully normalized and marked ${getSongNameById(row.song_id)}`;
 			} else {
-				document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalFiles}] Failed to update database for ${getSongNameById(name)}`;
+				document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalRows}] Failed to update database for ${getSongNameById(row.song_id)}`;
 			}
 		} catch (e) {
 			processedCount++;
-			document.getElementById("stabiliseProgress").innerText = (`[${processedCount}/${totalFiles}] Failed to normalize ${getSongNameById(name)}:`, e.message);
+			document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalRows}] Failed to normalize ${getSongNameById(row.song_id)}: ${e.message}`;
 		}
 	}
 
-	document.getElementById("stabiliseProgress").innerText = "Song stabilisation complete.";
+	document.getElementById("stabiliseProgress").innerText = `Song stabilisation complete. ${processedCount} songs processed.`;
 }

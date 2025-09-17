@@ -114,15 +114,20 @@ async function startupCheck() {
 			if (code !== 0) return reject(new Error(`Go process exited with code ${code}`));
 			try {
 				data = JSON.parse(data);
-                console.log(data);
-				resolve(data);
+				console.log(data);
+
+				if (Object.keys(data).length != allMusics.length) {
+					// Find out which are not in the database and add them. Remember to generate a new ID for it.
+					resolve(data);
+				} else {
+					resolve(data);
+				}
+
+				// TODO: You have: 3 undownloaded songs, 5 unstabilised songs, 7 songs with no genre information, go to settings to add these...
 			} catch (e) {
 				reject(e);
 			}
 		});
-
-		// Compare our database length and the output length. If different, find out which are not in the database and add them. Remember to generate a new ID for it.
-		// TODO: You have: 3 undownloaded songs, 5 unstabilised songs, 7 songs with no genre information, go to settings to add these...
 	});
 }
 
@@ -154,8 +159,6 @@ async function startupCheck() {
 // 			document.getElementById("folderProgress").innerText = "No new audio files found.";
 // 			return;
 // 		}
-
-// 		document.getElementById("folderProgress").innerText = `Found ${audioFiles.length} audio file(s) to process...`;
 
 // 		for (let i = 0; i < audioFiles.length; i++) {
 // 			const fileName = audioFiles[i];
