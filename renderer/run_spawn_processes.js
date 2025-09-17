@@ -80,10 +80,10 @@ async function grabAndStoreSongInfo() {
 
 async function startupCheck() {
 	return new Promise((resolve, reject) => {
-		const allMusics = musicsDb.prepare("SELECT song_id, song_name, song_extension, thumbnail_extension, size, song_length, artist, genre, language FROM songs").all();
-
 		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
 		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
+
+		const allMusics = musicsDb.prepare("SELECT song_id, song_name, song_extension, thumbnail_extension, size, song_length, artist, genre, language FROM songs").all();
 
 		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
 		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
@@ -118,17 +118,32 @@ async function startupCheck() {
 
 				if (Object.keys(data).length != allMusics.length) {
 					// Find out which are not in the database and add them. Remember to generate a new ID for it.
+					alertModal(promptUserOnSongs());
 					resolve(data);
 				} else {
+					alertModal(promptUserOnSongs());
 					resolve(data);
 				}
-
-				// TODO: You have: 3 undownloaded songs, 5 unstabilised songs, 7 songs with no genre information, go to settings to add these...
 			} catch (e) {
 				reject(e);
 			}
 		});
 	});
+}
+
+function promptUserOnSongs() {
+	const stabilisedNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE size IS NULL").get().total;
+	const artistNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE artist IS NULL").get().total;
+
+	if (stabilisedNull != 0 || artistNull != 0) {
+		let thePrompt;
+		if (stabilisedNull != 0) thePrompt += `You have ${stabilisedNull} songs not stabilised.`;
+		if (artistNull != 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information.`;
+		thePrompt += "Complete your songs data using the options in the settings menu.";
+		return thePrompt;
+	}
+
+	return "";
 }
 
 // async function processNewSongs() {

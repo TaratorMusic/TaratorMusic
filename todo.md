@@ -21,17 +21,14 @@ It looks terrible :/
 ### Version 1.7.5:
 
 -   My music search bar is few pixels above playlists search bar
+-   Song search box needs more width, because of small screens
 -   CreateAPpTHUMBNAILS NOT WORKING????
 -   Make the musicbrainz function run on downloads, and give it a button in the settings
 
 -   Add link, artist, genre and language customisation to the customisation modal
 -   Stabilise song and check song data in the customisation modal
 
--   Make a Go script that will clean the folders of any bugged/extra files, and send the full file list to Node.js, make sure this works in app launch. So, instead of checking the database, we will check our folders for music files. If it finds any differences between the folders and the database, it will prompt the user to run the redownload function.
--   Remove the "Remove all broken files" and "Check folder for new songs" buttons from the settings and their functions.
--   Edit processallfiles function so no cleaning inside
-
--   Separate the imports in the download script for faster launch times. This includes "spawn" and all the imports in the download_music.js
+-   Separate the imports in the download script for faster launch times.
 
 -   Update the readme, especially the "current features" parts
 -   Refresh the readme screenshots

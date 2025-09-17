@@ -89,6 +89,7 @@ function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
 }
 
 async function alertModal(message) {
+    if (message == "") return;
 	return confirmModal(message, "Okay", null).then(() => {});
 }
 
