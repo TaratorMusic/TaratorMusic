@@ -82,9 +82,29 @@ async function startupCheck() {
 	return new Promise((resolve, reject) => {
 		const allMusics = musicsDb.prepare("SELECT song_id, song_name, song_extension, thumbnail_extension, size, song_length, artist, genre, language FROM songs").all();
 
+		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
+		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
+
+		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
+		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
+		const updatePlaylist = playlistsDb.prepare(`UPDATE playlists SET songs = ? WHERE id = ?`);
+
+		selectPlaylists.forEach(row => {
+			let songArray = JSON.parse(row.songs || "[]");
+
+			const filtered = songArray.filter(id => {
+				const exists = checkSongExists.get(id);
+				return !!exists;
+			});
+
+			if (filtered.length !== songArray.length) {
+				const newSongsJson = JSON.stringify(filtered);
+				updatePlaylist.run(newSongsJson, row.id);
+			}
+		});
+
 		const goBinary = path.join(backendFolder, "startup_check");
 		const proc = spawn(goBinary, [musicFolder], { stdio: ["pipe", "pipe", "inherit"] });
-
 		let data = "";
 
 		proc.on("error", reject);
@@ -100,45 +120,10 @@ async function startupCheck() {
 			}
 		});
 
-        // Compare our database length and the output length. If different, find out which are not in the database and add them. Remember to generate a new ID for it.
-        // TODO: You have: 3 undownloaded songs, 5 unstabilised songs, 7 songs with no genre information, go to settings to add these...
-
+		// Compare our database length and the output length. If different, find out which are not in the database and add them. Remember to generate a new ID for it.
+		// TODO: You have: 3 undownloaded songs, 5 unstabilised songs, 7 songs with no genre information, go to settings to add these...
 	});
 }
-
-// const musicFiles = fs.readdirSync(musicFolder);
-// 		const allSongs = musicsDb.prepare(`SELECT song_id FROM songs`).all();
-// 		const deleteSong = musicsDb.prepare(`DELETE FROM songs WHERE song_id = ?`);
-
-// 		allSongs.forEach(song => {
-// 			const exists = musicFiles.some(f => f.startsWith(song.song_id));
-// 			if (!exists) {
-// 				deleteSong.run(song.song_id);
-// 				console.log("Deleted", song.song_id);
-// 			}
-// 		});
-
-// 		musicsDb.prepare(`DELETE FROM songs WHERE song_name LIKE '%tarator%' COLLATE NOCASE`).run();
-// 		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
-
-// 		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
-// 		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
-// 		const updatePlaylist = playlistsDb.prepare(`UPDATE playlists SET songs = ? WHERE id = ?`);
-
-// 		selectPlaylists.forEach(row => {
-// 			let songArray = JSON.parse(row.songs || "[]");
-
-// 			const filtered = songArray.filter(id => {
-// 				const exists = checkSongExists.get(id);
-// 				return !!exists;
-// 			});
-
-// 			if (filtered.length !== songArray.length) {
-// 				const newSongsJson = JSON.stringify(filtered);
-// 				updatePlaylist.run(newSongsJson, row.id);
-// 			}
-// 		});
-
 
 // async function processNewSongs() {
 // 	try {
@@ -227,8 +212,8 @@ async function startupCheck() {
 
 // 				const insertQuery = `
 // 					INSERT INTO songs (
-// 						song_id, song_name, song_url, song_length, seconds_played, 
-// 						times_listened, stabilised, size, speed, bass, treble, 
+// 						song_id, song_name, song_url, song_length, seconds_played,
+// 						times_listened, stabilised, size, speed, bass, treble,
 // 						midrange, volume, song_extension, thumbnail_extension, artist, genre, language
 // 					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 // 				`;
