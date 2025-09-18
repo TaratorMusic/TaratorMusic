@@ -4,9 +4,8 @@
 
 ## Why TaratorMusic?
 
--   Free and open source
--   No ads
--   Usable offline
+-   Free and open source, no ads
+-   Offline first, with online features
 -   Download your Youtube and Spotify songs and playlists
 -   Real song shuffling
 -   Quick launch time
@@ -26,6 +25,10 @@ cheerio and puppeteer to scrape song and playlist data from Spotify,
 
 Better-SQLite3 to store most listened songs, playlists and settings data,
 
+Chart.js to show user stats in the statistics tab,
+
+MusicBrainz API to fetch song genre, artist and language information,
+
 FFmpeg and FFprobe to automatically stabilise audio levels,
 
 Discord Rich Presence to momentarily share listened songs in Discord
@@ -42,8 +45,8 @@ Jest and Github Actions to protect code quality and automatically roll out build
 ## How to download:
 
 -   Go to the <a href="https://github.com/Victiniiiii/TaratorMusic/releases/latest">releases tab</a> and download whichever version suits your computer.
--   .exe files are meant for Windows, .dmg files are meant for Mac, and AppImage files are meant for linux users. You just need to run them, they are all included. You dont need to download .yml or .blockmap files.
--   Tip for Linux: It will create app folders (musics, playlists, settings etc.) where the AppImage runs, so you can put it in any folder you want and create a .desktop file to run it from the desktop.
+-   .exe files are meant for Windows, .dmg files are meant for Mac, and AppImage files are meant for linux users. You just need to run them, they are all included. You don't need to download .yml or .blockmap files.
+-   Tip for Linux: It will create app folders (musics, playlists, databases etc.) where the AppImage runs, so you can put it in any folder you want and create a .desktop file to run it from the desktop.
 -   Make sure to contain the app files and musics inside an SSD, which will improve app speeds tremendously.
 -   When a new update is available, the version box at the top right of the main menu will start lighting up. You will be able to see the new content before you choose to update the app. When you update the app for Windows and Mac needs to be reinstalled from the github page, but for Linux you can update in-app.
 -   Enjoy!
@@ -72,7 +75,7 @@ This app is connected to Discord via Rich Presence. Thus everyone can know you a
 
 ### Memory Efficiency
 
-TaratorMusic only uses 75MB per second of memory while open, 95MB per second while listening to a song, and 125 MB per second while downloading a song. The lightweightness of the app makes it suitable for computers with very low specs.
+TaratorMusic only uses around 0% - 1% CPU and under 200 MB of RAM during playback. The lightweightness of the app makes it suitable for computers with very low specs.
 
 ### Volume Stabilisation
 
@@ -92,13 +95,9 @@ Interested in your listen data? The statistics tab lets you see your favorite so
 
 ## Upcoming Features:
 
-### Increased Speed
-
-The app experience will be noticeably faster, after i switch certain parts of the code to Golang, like the audio player, download section and the rich presence.
-
 ### Personalised Song Recommendations
 
-You will be able to get special song recommendations based on what song you have listened to, and for how long.
+You will be able to get special song recommendations based on what songs you have listened to, and for how long.
 
 ### Immense Playlist Control
 
@@ -106,7 +105,7 @@ When this feature is implemented, you will be able to customise your playlists i
 
 ### Pause Your Downloads, Continue Anytime
 
-Why not pause the long playlist download and continue later? Won't be that hard to implement.
+Why not pause the long playlist download and continue later?
 
 ### Customise the songs by editing basses, drums, etc.
 

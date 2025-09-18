@@ -1,11 +1,4 @@
-const fetch = require("node-fetch");
-const https = require("https");
-const cheerio = require("cheerio");
-const puppeteer = require("puppeteer");
-
 const ytdl = require("@distube/ytdl-core");
-const ytpl = require("@distube/ytpl");
-const ytsr = require("@distube/ytsr");
 
 let pendingPlaylistAddsWithIds = new Map();
 
@@ -32,6 +25,7 @@ function differentiateMediaLinks(url) {
 }
 
 async function searchInYoutube(songName, resultLimit = 1) {
+	const ytsr = require("@distube/ytsr");
 	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
 	searchedSongsUrl = result.items[resultLimit - 1].url;
 	return searchedSongsUrl;
@@ -80,6 +74,9 @@ function checkNameThumbnail(redownload) {
 }
 
 async function getSpotifySongName(link) {
+	const fetch = require("node-fetch");
+	const cheerio = require("cheerio");
+
 	const response = await fetch(link, {
 		headers: {
 			"User-Agent": "Mozilla/5.0",
@@ -97,6 +94,8 @@ async function getSpotifySongName(link) {
 }
 
 async function getPlaylistSongsAndArtists(link) {
+	const puppeteer = require("puppeteer");
+
 	document.getElementById("downloadModalText").innerText = "Launching browser...";
 	const browser = await puppeteer.launch({ headless: true });
 	const page = await browser.newPage();
@@ -224,6 +223,8 @@ async function getPlaylistSongsAndArtists(link) {
 	document.getElementById("downloadModalText").innerText = `Extracted ${songs.length} tracks. Searching for the tracks in Youtube...`;
 
 	async function fetchWithRetry(video, retries = 5) {
+		const ytsr = require("@distube/ytsr");
+
 		const query = `${video.title} ${video.artist}`;
 		for (let i = 0; i < retries; i++) {
 			const result = await ytsr(query, { limit: 1, type: "video" });
@@ -349,6 +350,8 @@ async function processVideoLink(videoUrl) {
 }
 
 async function fetchPlaylistData(url) {
+	const ytpl = require("@distube/ytpl");
+
 	try {
 		const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
 		if (!match) throw new Error("Invalid playlist URL");
@@ -488,6 +491,8 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		}
 
 		async function saveBufferFromUrl(url, pathToSave) {
+			const https = require("https");
+
 			return new Promise((resolve, reject) => {
 				https
 					.get(url, res => {
@@ -740,6 +745,8 @@ async function actuallyDownloadTheSong() {
 }
 
 async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID) {
+	const fetch = require("node-fetch");
+
 	for (const [key, _] of pendingPlaylistAddsWithIds) {
 		const element = document.getElementById(key);
 		if (!element) continue;

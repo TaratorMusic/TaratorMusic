@@ -18,14 +18,7 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
-### Version 1.7.5:
-
--   Separate the imports in the download script for faster launch times.
-
--   Update the readme, especially the "current features" parts
--   Refresh the readme screenshots
-
-### Version 1.7.6+:
+### Version 1.7.6:
 
 -   My music search bar is few pixels above playlists search bar
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
@@ -44,10 +37,13 @@ It looks terrible :/
 -   Factory Reset (With options like: only settings, remove all songs/playlists etc.)
 -   Redesign main menu
 
+### Version 1.7.7+:
+
 ### Planned Features
 
 -   Customise Discord Rich Presence box in the settings
 -   Edit app font
+-   Add the .desktop and the wrapper script inside the app, it will run if the app is AppImage and the user doesnt have the wrapper script in the folder.
 -   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
 -   Add approximate time remaining for volume stabilisation and downloads.
 -   Integrate Discord bot that plays the music
