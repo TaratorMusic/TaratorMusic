@@ -1031,6 +1031,7 @@ function opencustomiseModal(songName) {
 	const songNameNoMp3 = removeExtensions(songName);
 	const baseName = getSongNameById(songNameNoMp3);
 	document.getElementById("removeSongButton").dataset.songId = songNameNoMp3;
+	document.getElementById("stabiliseSongButton").dataset.songId = songNameNoMp3;
 
 	const stmt = musicsDb.prepare(`
 		SELECT stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url
@@ -1329,6 +1330,15 @@ async function saveUserProgress() {
 	totalPausedTime = 0;
 }
 
+async function stabiliseThisSong(songId) {
+	const stmt = musicsDb.prepare("SELECT song_name, song_extension, stabilised FROM songs WHERE song_id = ?").get(songId);
+	if (stmt.stabilised == 1) return await alertModal("You have this song already stabilised.");
+	document.getElementById("stabiliseSongButton").disabled = true;
+	await normalizeAudio(path.join(musicFolder, songId + "." + stmt.song_extension));
+	await alertModal(`Song "${stmt.song_name}" successfully stabilised.`);
+	document.getElementById("stabiliseSongButton").disabled = false;
+}
+
 ipcRenderer.on("update-available", (event, releaseNotes) => {
 	document.getElementById("patchNotes").innerHTML = releaseNotes;
 	document.getElementById("version").classList.add("no-animation");
@@ -1366,6 +1376,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
+	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
 
 	document.querySelectorAll("div[data-tooltip]").forEach(el => {
 		el.addEventListener("mouseenter", e => {

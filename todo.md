@@ -20,9 +20,6 @@ It looks terrible :/
 
 ### Version 1.7.5:
 
--   Stabilise song and check song data in the customisation modal
--   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
-
 -   Separate the imports in the download script for faster launch times.
 
 -   Update the readme, especially the "current features" parts
@@ -51,6 +48,7 @@ It looks terrible :/
 
 -   Customise Discord Rich Presence box in the settings
 -   Edit app font
+-   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
 -   Add approximate time remaining for volume stabilisation and downloads.
 -   Integrate Discord bot that plays the music
 -   Pause downloads, continue anytime: use localstorage --> It should notify the user when the app is restarted that a download is mid-way.
