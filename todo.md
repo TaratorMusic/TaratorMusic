@@ -20,8 +20,8 @@ It looks terrible :/
 
 ### Version 1.7.5:
 
--   Add link, artist, genre and language customisation to the customisation modal
 -   Stabilise song and check song data in the customisation modal
+-   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
 
 -   Separate the imports in the download script for faster launch times.
 

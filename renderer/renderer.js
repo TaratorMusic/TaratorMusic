@@ -1033,20 +1033,23 @@ function opencustomiseModal(songName) {
 	document.getElementById("removeSongButton").dataset.songId = songNameNoMp3;
 
 	const stmt = musicsDb.prepare(`
-		SELECT stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension
+		SELECT stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url
 		FROM songs
 		WHERE song_id = ?
 	`);
 
-	const { stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension } = stmt.get(songNameNoMp3);
+	const { stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songNameNoMp3);
 
 	const oldThumbnailPath = path.join(thumbnailFolder, songNameNoMp3 + "." + thumbnail_extension);
 
-	document.getElementById("customiseSongName").value = baseName;
-	document.getElementById("customiseImage").src = path.join(thumbnailFolder, baseName + "." + thumbnail_extension);
 	document.getElementById("customiseModal").style.display = "block";
+
 	document.getElementById("customiseSongName").value = baseName;
 	document.getElementById("customiseImage").src = oldThumbnailPath;
+	document.getElementById("customiseSongLink").value = song_url;
+	document.getElementById("customiseSongGenre").value = genre;
+	document.getElementById("customiseSongArtist").value = artist;
+	document.getElementById("customiseSongLanguage").value = language;
 
 	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised == 1}`;
 	document.getElementById("modalFileSize").innerText = `File Size: ${(size / 1048576).toFixed(2)} MBs`;
@@ -1068,6 +1071,11 @@ async function saveEditedSong() {
 
 	const newNameInput = document.getElementById("customiseSongName").value.trim();
 
+	const songsUrl = document.getElementById("customiseSongLink").value;
+	const songsGenre = document.getElementById("customiseSongGenre").value;
+	const songsArtist = document.getElementById("customiseSongArtist").value;
+	const songsLanguage = document.getElementById("customiseSongLanguage").value;
+
 	if (newNameInput.length < 1) {
 		await alertModal("Please do not set a song name empty.");
 		return;
@@ -1086,7 +1094,7 @@ async function saveEditedSong() {
 		fs.writeFileSync(thumbnailPath, data);
 	}
 
-	musicsDb.prepare("UPDATE songs SET song_name = ? WHERE song_id = ?").run(newNameInput, songID);
+	musicsDb.prepare("UPDATE songs SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ? WHERE song_id = ?").run(newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID);
 
 	document.getElementById("customiseModal").style.display = "none";
 	document.getElementById("my-music").click();
