@@ -127,7 +127,7 @@
 				</div>
 			</div>
 			<div id="searchModal" class="modal">
-				<div style="justify-content: space-between" class="flexrow">
+				<div style="justify-content: space-between; width: 100%" class="flexrow">
 					<h1>Quick Song Search</h1>
 					<span class="close" onclick="closeModal()">&times;</span>
 				</div>
@@ -228,7 +228,7 @@
 				</div>
 				<h5>Divide the Volume will make the volume control easier if you want to listen to the songs more quietly.</h5>
 				<div class="settingsflexrow">
-					<h2>Edit Background:</h2>
+					<h2>Edit Background</h2>
 					<button onclick="changeBackground('blue')">Blue</button>
 					<button onclick="changeBackground('red')">Red</button>
 					<button onclick="changeBackground('green')">Green</button>
@@ -247,7 +247,7 @@
 				</div>
 				<h5>Share your status in Discord!</h5>
 				<div class="settingsflexrow">
-					<h2>Stabilise Volume while downloading music</h2>
+					<h2>Stabilise Volume While Downloading Music</h2>
 					<label class="switch">
 						<input type="checkbox" id="stabiliseVolumeToggle" onclick="stabiliseVolumeToggleTogglerFunction()" />
 						<span class="slider round"></span>
@@ -255,14 +255,18 @@
 				</div>
 				<h5>If not selected, you will need to manually stabilise song volumes using the buttons below.</h5>
 				<div class="settingsflexrow">
-					<h2>Stabilise all songs volumes:</h2>
+					<h2>Stabilise All Volumes</h2>
 					<button onclick="processAllFiles()">Stabilise</button>
 					<div class="settingsflexrow" id="stabiliseProgress">Progress: Didn't start</div>
 				</div>
 				<h5>Helps all the songs sounds the same on the same volume.</h5>
-                <!-- TODO: Check song data using musicbrainz API -->
 				<div class="settingsflexrow">
-					<h2>Redownload old songs</h2>
+					<h2>Add Song Information</h2>
+					<button onclick="grabAndStoreSongInfo()">Check</button>
+				</div>
+				<h5>You can add song genre, artist and language by checking online.</h5>
+				<div class="settingsflexrow">
+					<h2>Redownload Old Songs</h2>
 					<button onclick="redownloadAllSongs()">Redownload</button>
 				</div>
 				<h5>You can use your old database to redownload all the songs back.</h5>

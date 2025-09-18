@@ -38,14 +38,19 @@ async function grabAndStoreSongInfo() {
 		const songs = musicsDb
 			.prepare(
 				`
-            SELECT song_name FROM songs
-            WHERE artist IS NULL OR genre IS NULL OR language IS NULL
-        `
+                SELECT song_name FROM songs
+                WHERE artist IS NULL OR genre IS NULL OR language IS NULL
+            `
 			)
 			.all()
 			.map(r => r.song_name);
 
-		if (!songs.length) return resolve();
+		if (!songs.length) {
+			alertModal("No songs with missing information.");
+			return resolve();
+		}
+        
+		alertModal(`${songs.length} songs will be searched for information. You can close this window and the action will happen in the background.`);
 
 		const proc = spawn(goBinary, songs);
 		const stmt = musicsDb.prepare(`

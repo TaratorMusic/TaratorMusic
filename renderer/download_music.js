@@ -2,6 +2,7 @@ const fetch = require("node-fetch");
 const https = require("https");
 const cheerio = require("cheerio");
 const puppeteer = require("puppeteer");
+
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require("@distube/ytpl");
 const ytsr = require("@distube/ytsr");
@@ -678,6 +679,7 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
+			grabAndStoreSongInfo();
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
@@ -916,6 +918,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 		document.getElementById("finalDownloadButton").disabled = false;
 		if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 		await commitStagedPlaylistAdds();
+		grabAndStoreSongInfo();
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 		document.getElementById("finalDownloadButton").disabled = false;

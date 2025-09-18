@@ -20,13 +20,8 @@ It looks terrible :/
 
 ### Version 1.7.5:
 
--   My music search bar is few pixels above playlists search bar
--   Song search box needs more width, because of small screens
 
 -   CreateAPpTHUMBNAILS NOT WORKING????
-
--   Make the musicbrainz function run on downloads, and give it a button in the settings
--   To prevent weird percentages, if timer > song time timer = song time
 
 -   Add link, artist, genre and language customisation to the customisation modal
 -   Stabilise song and check song data in the customisation modal
@@ -38,6 +33,7 @@ It looks terrible :/
 
 ### Version 1.7.6+:
 
+-   My music search bar is few pixels above playlists search bar
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language"
