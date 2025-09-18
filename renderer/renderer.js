@@ -903,7 +903,7 @@ async function randomPlaylistFunctionMainMenu() {
 function playPause(status) {
 	if (status == "play") {
 		audioElement.play();
-		totalPausedTime += songPauseStartTime - Math.floor(Date.now() / 1000);
+		totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
 	} else {
