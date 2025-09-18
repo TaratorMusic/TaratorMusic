@@ -1,4 +1,5 @@
-function createAppThumbnailsFolder() {
+async function createAppThumbnailsFolder() {
+	await alertModal("Some app assets not found, they will now be fetched from the repository. Click the button to continue.");
 	return new Promise((resolve, reject) => {
 		const goBinary = path.join(backendFolder, "create_app_thumbnails_folder");
 		const proc = spawn(goBinary, [appThumbnailFolder], { stdio: "inherit" });
@@ -49,7 +50,7 @@ async function grabAndStoreSongInfo() {
 			alertModal("No songs with missing information.");
 			return resolve();
 		}
-        
+
 		alertModal(`${songs.length} songs will be searched for information. You can close this window and the action will happen in the background.`);
 
 		const proc = spawn(goBinary, songs);

@@ -20,9 +20,6 @@ It looks terrible :/
 
 ### Version 1.7.5:
 
-
--   CreateAPpTHUMBNAILS NOT WORKING????
-
 -   Add link, artist, genre and language customisation to the customisation modal
 -   Stabilise song and check song data in the customisation modal
 
@@ -43,6 +40,7 @@ It looks terrible :/
 -   Use our check_dupe_songs go file while downloading songs to avoid duplications
 -   Run: sudo apt install libasound2-dev --- and npm i speaker
 -   Add song to queue
+-   What if the restart wasnt needed after downloading the assets, we can just force reload the app, or load the missing assets individually
 -   Rewrite downloading sections in Go
 -   Make quick search modal shortcut customisable
 -   Use last.fm API to find similar songs and artists. It will search for top 5 similar songs while downloading. It should work with the ystr(song_link) instead of the song name. We will give points to the similar songs like 5 4 3 2 1, and add up these for all the songs in our library to find the best recommendations.
