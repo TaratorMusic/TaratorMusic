@@ -150,9 +150,12 @@ You can contact me and suggest more improvements and i will do my best implement
 I will focus on the designs after implementing the features planned, since they can change anytime, it would take too much time redesigning.  
 Currently just focusing on adding as many features as possible.
 
-<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/6ceb7ca6-1d86-43db-a7c2-d710cf1b943b" />
-<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/e478dcf1-1c98-43f6-99ea-19b664eefb5c" />
-<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/9d080d17-e830-476d-887f-e74a9f2f7c1a" />
-<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/0af91765-0663-421e-b253-3b3577aa1cf3" />
-<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/271b74a4-19e9-43a5-8802-5f5da965f1e3" />
-<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/3a48bc2e-0382-4ebe-aac6-feb28615a9aa" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/8399a037-ff19-4934-a084-ac06b9fde19c" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/31569403-2927-42a6-8662-4435711a8b48" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/d4add7cc-9e18-4154-9229-a2cb13ae2875" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/9253008d-0028-47cf-8386-cb9408d3b587" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/a3c0ff80-55a1-4ba8-822e-7600e1a46325" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/2745601c-9764-4234-8769-50872969ba32" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/43dda80a-e324-4c7a-8ff9-900bfc6b3187" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/a519e201-184c-4517-a4ef-f85641b019c3" />
+<img width="1600" height="882" alt="image" src="https://github.com/user-attachments/assets/2b6a7df6-88cf-40f9-8d11-a50e8b3e6ab4" />
