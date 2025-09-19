@@ -14,12 +14,22 @@ It looks terrible :/
 
 ## Bugs
 
+-   Cant change playlist thumbnails. Uncaught (in promise) ReferenceError: playlist is not defined
+    at saveEditedPlaylist (playlists.js:192:52)
+    at HTMLButtonElement.onclick (index.html:41:76)
+-   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"online"}
+-   Bin folder in linux is BUGGED!!!!!!!!!!
+-   When a song is renamed, it doesnt get renamed in the cache. --> NO NEED TO SCROLL ALL THE WAY UP ON DATA CHANGE
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
+-   When something is searched in the my music tab, and its results are shorter than a page, the grid acts weirdly
 
 ## Coming Soon App Features
 
 ### Version 1.7.6:
 
+-   Use deezer api for similar songs data, and save them to the DB
+-   Make the charts on song listen time instead of song amounts perhaps? or toggle
+-   Ensure that all the pie colors are much different than each other, but keep them the same each time (not random)
 -   My music search bar is few pixels above playlists search bar
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working
@@ -34,6 +44,7 @@ It looks terrible :/
 -   Rewrite downloading sections in Go
 -   Make quick search modal shortcut customisable
 -   Use last.fm API to find similar songs and artists. It will search for top 5 similar songs while downloading. It should work with the ystr(song_link) instead of the song name. We will give points to the similar songs like 5 4 3 2 1, and add up these for all the songs in our library to find the best recommendations.
+-   Also it would be great if connecting the song data to last.fm is possible
 -   Factory Reset (With options like: only settings, remove all songs/playlists etc.)
 -   Redesign main menu
 
