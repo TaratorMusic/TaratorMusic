@@ -14,9 +14,6 @@ It looks terrible :/
 
 ## Bugs
 
--   Cant change playlist thumbnails. Uncaught (in promise) ReferenceError: playlist is not defined
-    at saveEditedPlaylist (playlists.js:192:52)
-    at HTMLButtonElement.onclick (index.html:41:76)
 -   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"online"}
 -   Bin folder in linux is BUGGED!!!!!!!!!!
 -   When a song is renamed, it doesnt get renamed in the cache. --> NO NEED TO SCROLL ALL THE WAY UP ON DATA CHANGE
@@ -31,27 +28,28 @@ It looks terrible :/
 -   Make the charts on song listen time instead of song amounts perhaps? or toggle
 -   Ensure that all the pie colors are much different than each other, but keep them the same each time (not random)
 -   My music search bar is few pixels above playlists search bar
--   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
--   Data-tooltip on the action buttons are not working
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language"
 -   Most Listened Playlist and other playlist data in Statistics
 -   Add pages to the music tab and a way to navigate between them if using "show x rows".
 -   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)
+-   Make quick search modal shortcut customisable
+
+### Version 1.7.7+:
+
+-   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
+-   Data-tooltip on the action buttons are not working
 -   Use our check_dupe_songs go file while downloading songs to avoid duplications
 -   Run: sudo apt install libasound2-dev --- and npm i speaker
 -   Add song to queue
 -   What if the restart wasnt needed after downloading the assets, we can just force reload the app, or load the missing assets individually
--   Rewrite downloading sections in Go
--   Make quick search modal shortcut customisable
 -   Use last.fm API to find similar songs and artists. It will search for top 5 similar songs while downloading. It should work with the ystr(song_link) instead of the song name. We will give points to the similar songs like 5 4 3 2 1, and add up these for all the songs in our library to find the best recommendations.
 -   Also it would be great if connecting the song data to last.fm is possible
 -   Factory Reset (With options like: only settings, remove all songs/playlists etc.)
 -   Redesign main menu
 
-### Version 1.7.7+:
-
 ### Planned Features
 
+-   Rewrite downloading sections in Go
 -   Customise Discord Rich Presence box in the settings
 -   Edit app font
 -   Add the .desktop and the wrapper script inside the app, it will run if the app is AppImage and the user doesnt have the wrapper script in the folder.

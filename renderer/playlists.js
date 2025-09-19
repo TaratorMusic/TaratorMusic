@@ -189,7 +189,7 @@ async function saveEditedPlaylist() {
 		}
 	}
 
-	let thumbnailPath = path.join(thumbnailFolder, `${playlist.id}.${playlistThumbnailExtension}`);
+	let thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${playlistThumbnailExtension}`);
 	const writeOrRenameThumbnailPromise = new Promise((resolve, reject) => {
 		if (newThumbnail.startsWith("data:image")) {
 			const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
