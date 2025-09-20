@@ -50,6 +50,7 @@ volumeControl.addEventListener("change", () => {
 	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
 });
 
+const platform = process.platform;
 let currentPlayingElement = null;
 let audioElement = null;
 let secondfilename = "";
@@ -134,14 +135,16 @@ function initialiseSettingsDatabase() {
 
 	try {
 		settingsDb
-			.prepare(`
+			.prepare(
+				`
                 UPDATE statistics SET
                 total_time_spent = IFNULL(total_time_spent, 0),
                 app_install_date = IFNULL(app_install_date, 0),
                 playlists_formed = IFNULL(playlists_formed, 0),
                 songs_downloaded_youtube = IFNULL(songs_downloaded_youtube, 0),
                 songs_downloaded_spotify = IFNULL(songs_downloaded_spotify, 0)
-            `)
+            `
+			)
 			.run();
 
 		const columns = Object.entries(defaultSettings)
@@ -586,9 +589,7 @@ async function playMusic(file, playlistId) {
 	if (audioElement) {
 		audioElement.pause();
 		audioElement.src = "";
-		if (audioSource) {
-			audioSource.disconnect();
-		}
+		audioSource.disconnect();
 	} else {
 		initStaticControls();
 	}
@@ -625,6 +626,8 @@ async function playMusic(file, playlistId) {
 
 		audioSource = audioContext.createMediaElementSource(audioElement);
 		audioSource.connect(audioContext.destination);
+
+        if (process.platform == "linux") editMPRIS(file)
 
 		await audioElement.play();
 		playButton.style.display = "none";
@@ -683,6 +686,26 @@ async function playMusic(file, playlistId) {
 	} catch (error) {
 		console.log("Error:", error);
 	}
+}
+
+async function stopMusic() {
+	await saveUserProgress();
+
+	audioElement.pause();
+	audioElement.src = "";
+	if (audioSource) audioSource.disconnect();
+
+	document.querySelectorAll(".settingsMenuButtons").forEach(el => {
+		el.style.color = "red";
+	});
+
+	playButton.style.display = "inline-block";
+	pauseButton.style.display = "none";
+	document.getElementById("videothumbnailbox").style.backgroundImage = ``;
+	document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
+
+	document.getElementById("song-name").textContent = "No song is being played.";
+	document.getElementById("video-length").textContent = "00:00 / 00:00";
 }
 
 function initStaticControls() {
@@ -905,11 +928,13 @@ function playPause(status) {
 		totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
+		if (platform == "linux") player.playbackStatus = "Playing";
 	} else {
 		audioElement.pause();
 		songPauseStartTime = Math.floor(Date.now() / 1000);
 		pauseButton.style.display = "none";
 		playButton.style.display = "inline-block";
+		if (platform == "linux") player.playbackStatus = "Paused";
 	}
 
 	updateDiscordPresence();
@@ -1282,9 +1307,7 @@ function handleDropdownChange(option, selectElement) {
 	updateDatabase(option, selectedValue, settingsDb, "settings");
 	if (option == "dividevolume") {
 		dividevolume = selectedValue;
-		if (audioElement) {
-			audioElement.volume = volumeControl.value / 100 / dividevolume;
-		}
+		if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
 	} else if (option == "displayCount") {
 		displayCount = selectedValue;
 	}
@@ -1405,8 +1428,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	document.getElementById("installBtn").addEventListener("click", () => {
-		const platform = process.platform;
-
 		if (platform == "win32" || platform == "darwin") {
 			window.open("https://github.com/Victiniiiii/TaratorMusic/releases/latest", "_blank");
 			return;
@@ -1425,4 +1446,5 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	startupCheck();
+	if (platform == "linux") loadJSFile("mpris");
 });
