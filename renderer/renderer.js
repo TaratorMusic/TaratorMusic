@@ -134,15 +134,14 @@ function initialiseSettingsDatabase() {
 
 	try {
 		settingsDb
-			.prepare(
-				`CREATE TABLE IF NOT EXISTS statistics (
-                    total_time_spent INTEGER,
-                    app_install_date INTEGER,
-                    playlists_formed INTEGER,
-                    songs_downloaded_youtube INTEGER,
-                    songs_downloaded_spotify INTEGER
-                )`
-			)
+			.prepare(`
+                UPDATE statistics SET
+                total_time_spent = IFNULL(total_time_spent, 0),
+                app_install_date = IFNULL(app_install_date, 0),
+                playlists_formed = IFNULL(playlists_formed, 0),
+                songs_downloaded_youtube = IFNULL(songs_downloaded_youtube, 0),
+                songs_downloaded_spotify = IFNULL(songs_downloaded_spotify, 0)
+            `)
 			.run();
 
 		const columns = Object.entries(defaultSettings)

@@ -31,7 +31,7 @@ async function searchInYoutube(songName, resultLimit = 1) {
 	return searchedSongsUrl;
 }
 
-function checkNameThumbnail(redownload) {
+function checkNameThumbnail(predetermined) {
 	document.getElementById("downloadFirstButton").disabled = true;
 
 	if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
@@ -49,7 +49,7 @@ function checkNameThumbnail(redownload) {
 	downloadModalBottomRow.appendChild(downloadModalText);
 	downloadModalText.innerHTML = "Checking...";
 
-	if (redownload) return;
+	if (predetermined) return;
 
 	const userInput = document.getElementById("downloadFirstInput").value.trim();
 	if (userInput == "") {

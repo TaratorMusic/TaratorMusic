@@ -24,6 +24,7 @@ It looks terrible :/
 
 ### Version 1.7.6:
 
+-   Add mpris-service for Linux only --> Maybe make it its own JS file?
 -   Use deezer api for similar songs data, and save them to the DB
 -   Make the charts on song listen time instead of song amounts perhaps? or toggle
 -   Ensure that all the pie colors are much different than each other, but keep them the same each time (not random)
