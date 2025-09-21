@@ -9,7 +9,7 @@ const player = Player({
 });
 
 player.on("quit", function () {
-	process.exit();
+	process.exit(); // BUGGED
 });
 
 const events = ["raise", "quit", "next", "previous", "pause", "playpause", "stop", "play", "seek", "position", "open", "volume", "loopStatus", "shuffle"];
