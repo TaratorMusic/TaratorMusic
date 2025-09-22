@@ -1,4 +1,6 @@
 node_modules/
+.vscode/
+
 musics/
 thumbnails/
 databases/
@@ -17,7 +19,4 @@ bin/
 *.m4a
 *-player-script.js
 
-.vscode/
-
-miniaudio/thecommand.txt
-miniaudio/play
+miniaudio/player

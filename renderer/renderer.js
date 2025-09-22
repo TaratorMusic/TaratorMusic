@@ -35,6 +35,7 @@ let settingsDb, playlistsDb, musicsDb;
 	playlistsDb = new Database(playlistsDbPath);
 	musicsDb = new Database(musicsDbPath);
 })();
+let audioPlayer;
 
 const tabs = document.querySelectorAll(".sidebar div");
 const playButton = document.getElementById("playButton");
@@ -74,6 +75,8 @@ let searchedSongsUrl;
 let downloadingStyle;
 let discordRPCstatus;
 let discordDaemon = null;
+let songDuration;
+let isUserSeeking = false;
 const debounceMap = new Map();
 const songNameCache = new Map();
 
@@ -583,53 +586,28 @@ function createMusicElement(songFile) {
 	return musicElement;
 }
 
+// TODO: Spawn the binary at /bin, not at /miniaudio, and move /miniaudio to /backend
 async function playMusic(file, playlistId) {
 	await saveUserProgress();
 
-	if (audioElement) {
-		audioElement.pause();
-		audioElement.src = "";
-		audioSource.disconnect();
-	} else {
-		initStaticControls();
+	if (!audioPlayer) {
+		videoProgress.value = 0;
+		if (songDuration) videoLength.textContent = `00:00 / ${formatTime(songDuration)}`;
 	}
 
 	try {
 		const songName = document.getElementById("song-name");
-
 		currentPlaylist = playlistId || null;
-
-		audioElement = new Audio();
-		manageAudioControls(audioElement);
 		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(file);
-
-		audioElement.addEventListener("loadedmetadata", () => {
-			songDuration = audioElement.duration;
-		});
-
-		audioElement.controls = true;
-		audioElement.autoplay = true;
-
 		secondfilename = file;
-
 		songName.textContent = getSongNameById(file);
+		const songPath = path.join(musicFolder, `${secondfilename}.${row.song_extension}`);
 
-		audioElement.src = `file://${path.join(musicFolder, secondfilename + "." + row.song_extension)}`;
-		audioElement.volume = volumeControl.value / 100 / dividevolume;
-		audioElement.playbackRate = rememberspeed;
-		audioElement.loop = isLooping == true;
-		document.querySelectorAll(".settingsMenuButtons").forEach(el => {
-			el.style.color = "white";
-		});
+		videoProgress.value = 0;
+		songDuration = 0;
 
-		if (!audioContext) audioContext = new AudioContext();
+		audioPlayer.stdin.write(`play ${songPath}\n`);
 
-		audioSource = audioContext.createMediaElementSource(audioElement);
-		audioSource.connect(audioContext.destination);
-
-		if (process.platform == "linux") editMPRIS(file);
-
-		await audioElement.play();
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
 
@@ -654,6 +632,7 @@ async function playMusic(file, playlistId) {
 		currentPlayingElement = songName;
 		currentPlayingElement.setAttribute("data-file-name", secondfilename);
 		updateDiscordPresence();
+		editMPRIS(file);
 
 		if (isShuffleActive) {
 			if (playlistId) {
@@ -662,27 +641,12 @@ async function playMusic(file, playlistId) {
 					playlistPlayedSongs.splice(0, 9999);
 				}
 				playlistPlayedSongs.unshift(secondfilename);
-				if (playlistPlayedSongs.length > 9999) {
-					playlistPlayedSongs.pop();
-				}
+				if (playlistPlayedSongs.length > 9999) playlistPlayedSongs.pop();
 			} else {
 				playedSongs.unshift(secondfilename);
-				if (playedSongs.length > 9999) {
-					playedSongs.pop();
-				}
+				if (playedSongs.length > 9999) playedSongs.pop();
 			}
 		}
-
-		return new Promise(resolve => {
-			audioElement.addEventListener(
-				"ended",
-				async () => {
-					songDuration = 0;
-					resolve();
-				},
-				{ once: true }
-			);
-		});
 	} catch (error) {
 		console.log("Error:", error);
 	}
@@ -691,9 +655,7 @@ async function playMusic(file, playlistId) {
 async function stopMusic() {
 	await saveUserProgress();
 
-	audioElement.pause();
-	audioElement.src = "";
-	if (audioSource) audioSource.disconnect();
+	if (audioPlayer) audioPlayer.stdin.write("stop\n");
 
 	document.querySelectorAll(".settingsMenuButtons").forEach(el => {
 		el.style.color = "red";
@@ -705,52 +667,9 @@ async function stopMusic() {
 	document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
 
 	document.getElementById("song-name").textContent = "No song is being played.";
-	document.getElementById("video-length").textContent = "00:00 / 00:00";
-}
-
-function initStaticControls() {
-	volumeControl.addEventListener("input", () => {
-		audioElement.volume = volumeControl.value / 100 / dividevolume;
-	});
-
-	playButton.addEventListener("click", () => {
-		playPause("play");
-	});
-
-	pauseButton.addEventListener("click", () => {
-		playPause("pause");
-	});
-
-	videoProgress.addEventListener("input", () => {
-		const seekTime = (audioElement.duration * parseFloat(videoProgress.value)) / 100;
-		if (Number.isFinite(seekTime)) {
-			audioElement.currentTime = seekTime;
-		}
-	});
-}
-
-function manageAudioControls(audioElement) {
-	audioElement.addEventListener("loadedmetadata", () => {
-		videoProgress.value = 0;
-		const duration = formatTime(audioElement.duration);
-		videoLength.textContent = `00:00 / ${duration}`;
-	});
-
-	audioElement.addEventListener("timeupdate", () => {
-		const currentTime = formatTime(audioElement.currentTime);
-		const duration = formatTime(audioElement.duration);
-		videoLength.textContent = `${currentTime} / ${duration}`;
-		videoProgress.value = (audioElement.currentTime / audioElement.duration) * 100;
-		updateDiscordPresence();
-	});
-
-	audioElement.addEventListener("ended", () => {
-		pauseButton.style.display = "none";
-		playButton.style.display = "inline-block";
-		if (isAutoplayActive) {
-			playNextSong();
-		}
-	});
+	videoLength.textContent = "00:00 / 00:00";
+	videoProgress.value = 0;
+	songDuration = 0;
 }
 
 async function playPlaylist(playlist, startingIndex = 0) {
@@ -1446,5 +1365,76 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	startupCheck();
+
+	audioPlayer = spawn(path.join(taratorFolder, "miniaudio/player"), [], { stdio: ["pipe", "pipe", "pipe"] });
+
+	setInterval(() => {
+		audioPlayer.stdin.write("status\n");
+	}, 1000);
+
+	audioPlayer.stdout.on("data", data => {
+		console.log(data.toString());
+		const output = data.toString();
+		const currentMatch = output.match(/Position: ([0-9.]+) seconds/);
+		const lengthMatch = output.match(/Length: ([0-9.]+) seconds/);
+
+		if (currentMatch && lengthMatch) {
+			const currentTimeSec = parseFloat(currentMatch[1]);
+			const totalDuration = parseFloat(lengthMatch[1]);
+
+			if (!songDuration || Math.abs(songDuration - totalDuration) > 0.1) {
+				songDuration = totalDuration;
+			}
+
+			const currentTime = formatTime(currentTimeSec);
+			const duration = formatTime(songDuration);
+			videoLength.textContent = `${currentTime} / ${duration}`;
+
+			if (songDuration > 0) {
+				videoProgress.value = (currentTimeSec / songDuration) * 100;
+			}
+		}
+
+		const isPlaying = /Playing: Yes/.test(output);
+		if (!isPlaying) {
+			playButton.style.display = "inline-block";
+			pauseButton.style.display = "none";
+		} else {
+			playButton.style.display = "none";
+			pauseButton.style.display = "inline-block";
+		}
+	});
+
+	volumeControl.addEventListener("input", () => {
+		const volume = volumeControl.value / 100;
+		if (audioPlayer) audioPlayer.stdin.write(`volume ${volume}\n`);
+	});
+
+	playButton.addEventListener("click", () => {
+		if (audioPlayer) audioPlayer.stdin.write("pause\n");
+	});
+
+	pauseButton.addEventListener("click", () => {
+		if (audioPlayer) audioPlayer.stdin.write("pause\n");
+	});
+
+	videoProgress.addEventListener("mousedown", () => {
+		isUserSeeking = true;
+	});
+
+	videoProgress.addEventListener("mouseup", () => {
+		isUserSeeking = false;
+	});
+
+	videoProgress.addEventListener("input", () => {
+		if (!isUserSeeking) return;
+
+		const seekPercent = parseFloat(videoProgress.value);
+		if (!Number.isNaN(seekPercent) && audioPlayer && songDuration > 0) {
+			const seekTime = (songDuration * seekPercent) / 100;
+			audioPlayer.stdin.write(`seek ${seekTime}\n`);
+		}
+	});
+
 	if (platform == "linux") loadJSFile("mpris");
 });

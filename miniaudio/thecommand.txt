@@ -1,1 +1,1 @@
-gcc -o play main.c miniaudio.c -lm -lpthread
+gcc -O2 player.c miniaudio.c -o player -ldl -lpthread -lm
