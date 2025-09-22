@@ -627,7 +627,7 @@ async function playMusic(file, playlistId) {
 		audioSource = audioContext.createMediaElementSource(audioElement);
 		audioSource.connect(audioContext.destination);
 
-        if (process.platform == "linux") editMPRIS(file)
+		if (process.platform == "linux") editMPRIS(file);
 
 		await audioElement.play();
 		playButton.style.display = "none";

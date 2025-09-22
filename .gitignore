@@ -16,3 +16,8 @@ bin/
 *.mp4
 *.m4a
 *-player-script.js
+
+.vscode/
+
+miniaudio/thecommand.txt
+miniaudio/play
