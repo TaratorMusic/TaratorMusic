@@ -8,10 +8,11 @@
 		"name": "Victiniiiii"
 	},
 	"scripts": {
-		"start": "npm run gobuild && electron .",
-		"nogo": "electron .",
-		"dist": "npm run gobuild && electron-builder",
+		"start":  "electron .",
+        "build" : "npm run gobuild && npm run cbuild && electron .",
+		"dist": "npm run build && electron-builder",
 		"gobuild": "find ./backend -type f -name main.go -exec sh -c 'for f; do name=$(basename $(dirname \"$f\")); CGO_ENABLED=0 go build -o ./bin/$name \"$f\"; done' sh {} +",
+		"cbuild": "gcc -O2 ./backend/miniaudio/player.c ./backend/miniaudio/miniaudio.c -o ./bin/player -ldl -lpthread -lm",
 		"postinstall": "electron-builder install-app-deps"
 	},
 	"repository": {

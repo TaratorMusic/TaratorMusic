@@ -1366,7 +1366,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	startupCheck();
 
-	audioPlayer = spawn(path.join(taratorFolder, "miniaudio/player"), [], { stdio: ["pipe", "pipe", "pipe"] });
+	audioPlayer = spawn(path.join(backendFolder, "player"), [], { stdio: ["pipe", "pipe", "pipe"] });
 
 	setInterval(() => {
 		audioPlayer.stdin.write("status\n");

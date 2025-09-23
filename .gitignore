@@ -18,5 +18,3 @@ bin/
 *.mp4
 *.m4a
 *-player-script.js
-
-miniaudio/player
