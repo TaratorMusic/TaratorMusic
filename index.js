@@ -88,6 +88,15 @@ function createWindow() {
 		if (splash && !splash.isDestroyed()) splash.destroy();
 		if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
 	});
+
+	ipcMain.handle("raise-window", () => {
+		mainWindow.focus();
+		mainWindow.moveTop();
+	});
+
+	ipcMain.handle("close-app", () => {
+		mainWindow.close();
+	});
 }
 
 app.whenReady().then(() => {

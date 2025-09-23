@@ -12,8 +12,8 @@ const events = ["raise", "quit", "next", "previous", "pause", "playpause", "stop
 
 events.forEach(eventName => {
 	player.on(eventName, (...args) => {
-		if (eventName === "raise") console.log("unused function for now:", eventName, args); // TODO, will raise the app
-		else if (eventName === "quit") process.exit(); // TODO: Bugged
+		if (eventName === "raise") ipcRenderer.invoke("raise-window");
+		else if (eventName === "quit") ipcRenderer.invoke("close-app");
 		else if (eventName === "next") playNextSong();
 		else if (eventName === "previous") playPreviousSong();
 		else if (eventName === "pause") playPause();
