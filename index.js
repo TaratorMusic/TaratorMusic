@@ -14,10 +14,8 @@ if (process.env.APPIMAGE) {
 	backendBinaries.forEach(bin => {
 		const targetPath = path.join(binFolder, bin);
 		if (!fs.existsSync(targetPath)) {
-			const sourceBinary = path.join(__dirname, "backend", bin);
-			if (!fs.existsSync(sourceBinary)) {
-				throw new Error(`Go binary not found in AppImage at ${sourceBinary}`);
-			}
+			const sourceBinary = path.join(__dirname, "bin", bin);
+			if (!fs.existsSync(sourceBinary)) throw new Error(`Go binary not found in AppImage at ${sourceBinary}`);
 			fs.copyFileSync(sourceBinary, targetPath);
 			fs.chmodSync(targetPath, 0o755);
 		}
