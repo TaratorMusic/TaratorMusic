@@ -260,7 +260,7 @@ function initialiseSettingsDatabase() {
 	remembershuffle && toggleShuffle();
 	rememberloop && toggleLoop();
 
-	volumeControl.value = volume / 100 / dividevolume;
+	volumeControl.value = volume * 100;
 
 	setupLazyBackgrounds();
 	document.getElementById("main-menu").click();
@@ -580,7 +580,6 @@ function createMusicElement(songFile) {
 	return musicElement;
 }
 
-// TODO: Spawn the binary at /bin, not at /miniaudio, and move /miniaudio to /backend
 async function playMusic(file, playlistId) {
 	await saveUserProgress();
 
@@ -600,6 +599,7 @@ async function playMusic(file, playlistId) {
 		const songPath = path.join(musicFolder, `${playingSongsID}.${row.song_extension}`);
 		audioPlayer.stdin.write(`play ${songPath}\n`);
 		audioPlayer.stdin.write(`volume ${volume}\n`);
+		audioPlayer.stdin.write(`speed ${rememberspeed}\n`);
 
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
@@ -899,7 +899,7 @@ function speed() {
 		speedOption.addEventListener("click", () => {
 			rememberspeed = speed;
 			updateDatabase("rememberspeed", speed, settingsDb, "settings");
-			// if (audioElement) audioElement.playbackRate = rememberspeed; TODO: WRONG ELEMENT
+			if (audioPlayer) audioPlayer.stdin.write(`speed ${rememberspeed}\n`);
 
 			closeModal();
 		});
@@ -907,13 +907,16 @@ function speed() {
 	});
 }
 
-// TODO: SKIPFORWARD AND SKIPBACKWARD
 function skipForward() {
-	// if (audioElement) audioElement.currentTime = Math.min(audioElement.currentTime + 5, audioElement.duration);
+	const newTime = Math.min(songDuration, (Number(videoProgress.value) / 100) * songDuration + 5);
+	videoProgress.value = String((newTime / songDuration) * 100);
+	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 }
 
 function skipBackward() {
-	// if (audioElement) audioElement.currentTime = Math.max(audioElement.currentTime - 5, 0);
+	const newTime = Math.max(0, (Number(videoProgress.value) / 100) * songDuration - 5);
+	videoProgress.value = String((newTime / songDuration) * 100);
+	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 }
 
 function opencustomiseModal(songName) {
@@ -1315,7 +1318,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	setInterval(() => {
 		audioPlayer.stdin.write("status\n");
-	}, 100);
+	}, 250);
 
 	audioPlayer.stdout.on("data", data => {
 		const output = data.toString();
