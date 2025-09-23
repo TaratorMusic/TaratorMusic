@@ -20,14 +20,14 @@ events.forEach(eventName => {
 		else if (eventName === "quit") process.exit();
 		else if (eventName === "next") playNextSong();
 		else if (eventName === "previous") playPreviousSong();
-		else if (eventName === "pause") playPause("pause");
-		else if (eventName === "playpause") playPause("play");
+		else if (eventName === "pause" && audioPlayer) audioPlayer.stdin.write("pause\n");
+		else if (eventName === "playpause" && audioPlayer) audioPlayer.stdin.write("pause\n");
 		else if (eventName === "stop") stopMusic();
-		else if (eventName === "play") playPause("play");
+		else if (eventName === "play") randomSongFunctionMainMenu();
 		else if (eventName === "seek") console.log("unused function for now:", eventName);
-		else if (eventName === "position") console.log("unused function for now:", eventName); // Needs to be used to set song position
+		else if (eventName === "position") console.log("unused function for now:", eventName);
 		else if (eventName === "open") console.log("unused function for now:", eventName);
-		else if (eventName === "volume") console.log("unused function for now:", eventName); // Needs to be used to set volume
+		else if (eventName === "volume") console.log("unused function for now:", eventName);
 		else if (eventName === "loopStatus") toggleLoop();
 		else if (eventName === "shuffle") toggleShuffle();
 	});

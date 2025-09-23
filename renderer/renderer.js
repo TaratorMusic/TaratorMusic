@@ -35,7 +35,6 @@ let settingsDb, playlistsDb, musicsDb;
 	playlistsDb = new Database(playlistsDbPath);
 	musicsDb = new Database(musicsDbPath);
 })();
-let audioPlayer;
 
 const tabs = document.querySelectorAll(".sidebar div");
 const playButton = document.getElementById("playButton");
@@ -46,14 +45,9 @@ const videoLength = document.getElementById("video-length");
 const videoProgress = document.getElementById("video-progress");
 const searchModalInput = document.getElementById("searchModalInput");
 
-volumeControl.addEventListener("change", () => {
-	updateDatabase("volume", volumeControl.value, settingsDb, "settings");
-	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
-});
-
 const platform = process.platform;
+let audioPlayer;
 let currentPlayingElement = null;
-let audioElement = null;
 let secondfilename = "";
 let currentPlaylist = null;
 let currentPlaylistElement = null;
@@ -228,7 +222,7 @@ function initialiseSettingsDatabase() {
 	remembershuffle = settingsRow.remembershuffle;
 	rememberloop = settingsRow.rememberloop;
 	rememberspeed = settingsRow.rememberspeed;
-	volume = settingsRow.volume;
+	volume = settingsRow.volume / 100;
 	dividevolume = settingsRow.dividevolume;
 	displayCount = settingsRow.displayCount;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
@@ -265,8 +259,7 @@ function initialiseSettingsDatabase() {
 	remembershuffle && toggleShuffle();
 	rememberloop && toggleLoop();
 
-	volumeControl.value = volume;
-	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
+	volumeControl.value = volume / 100 / dividevolume;
 
 	setupLazyBackgrounds();
 	document.getElementById("main-menu").click();
@@ -590,11 +583,6 @@ function createMusicElement(songFile) {
 async function playMusic(file, playlistId) {
 	await saveUserProgress();
 
-	if (!audioPlayer) {
-		videoProgress.value = 0;
-		if (songDuration) videoLength.textContent = `00:00 / ${formatTime(songDuration)}`;
-	}
-
 	try {
 		const songName = document.getElementById("song-name");
 		currentPlaylist = playlistId || null;
@@ -607,6 +595,8 @@ async function playMusic(file, playlistId) {
 		songDuration = 0;
 
 		audioPlayer.stdin.write(`play ${songPath}\n`);
+		audioPlayer.stdin.write(`volume ${volume}\n`);
+		console.log(volume);
 
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
@@ -724,8 +714,7 @@ async function playPreviousSong() {
 				currentPlaylistElement--;
 			}
 		} else {
-			const parts = audioElement.src.split("/");
-			const currentFileName = removeExtensions(parts[parts.length - 1]);
+			const currentFileName = currentPlayingElement.innerHTML;
 
 			const currentIndex = sortedSongIds.indexOf(currentFileName);
 			if (currentIndex == -1) {
@@ -740,6 +729,7 @@ async function playPreviousSong() {
 }
 
 async function playNextSong() {
+	// ADD ISLOOPING HERE!!
 	if (!currentPlayingElement) return;
 
 	const allMusics = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
@@ -769,8 +759,7 @@ async function playNextSong() {
 				currentPlaylistElement = randomIndex;
 			}
 		} else {
-			const parts = audioElement.src.split("/");
-			const currentFileName = removeExtensions(parts[parts.length - 1]);
+			const currentFileName = currentPlayingElement.innerHTML;
 			if (sortedSongIds.length == 1) {
 				nextSongId = currentFileName;
 			} else {
@@ -787,8 +776,7 @@ async function playNextSong() {
 				nextSongId = currentPlaylist.songs[++currentPlaylistElement];
 			}
 		} else {
-			const parts = audioElement.src.split("/");
-			const currentFileName = removeExtensions(parts[parts.length - 1]);
+			const currentFileName = currentPlayingElement.innerHTML;
 			const currentIndex = sortedSongIds.indexOf(currentFileName);
 			const nextIndex = currentIndex < sortedSongIds.length - 1 ? currentIndex + 1 : 0;
 			nextSongId = sortedSongIds[nextIndex];
@@ -798,7 +786,7 @@ async function playNextSong() {
 	if (nextSongId) {
 		playMusic(nextSongId, !!currentPlaylist);
 	}
-}
+} // TODO: Detect if song playing or paused in JS fully
 
 async function randomSongFunctionMainMenu() {
 	const musicItems = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
@@ -839,24 +827,6 @@ async function randomPlaylistFunctionMainMenu() {
 	const selectedPlaylist = availablePlaylists[randomIndex];
 
 	await playPlaylist(selectedPlaylist, 0);
-}
-
-function playPause(status) {
-	if (status == "play") {
-		audioElement.play();
-		totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
-		playButton.style.display = "none";
-		pauseButton.style.display = "inline-block";
-		if (platform == "linux") player.playbackStatus = "Playing";
-	} else {
-		audioElement.pause();
-		songPauseStartTime = Math.floor(Date.now() / 1000);
-		pauseButton.style.display = "none";
-		playButton.style.display = "inline-block";
-		if (platform == "linux") player.playbackStatus = "Paused";
-	}
-
-	updateDiscordPresence();
 }
 
 function toggleAutoplay() {
@@ -900,7 +870,7 @@ function toggleLoop() {
 		updateDatabase("rememberloop", 0, settingsDb, "settings");
 	}
 
-	if (audioElement) audioElement.loop = isLooping;
+	// if (audioElement) audioElement.loop = isLooping; TODO: BUGGED
 }
 
 function mute() {
@@ -912,7 +882,7 @@ function mute() {
 		volumeControl.value = previousVolume;
 		document.getElementById("muteButton").classList.remove("active");
 	}
-	if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
+	if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
 	updateDatabase("volume", volumeControl.value, settingsDb, "settings");
 }
 
@@ -931,43 +901,21 @@ function speed() {
 		speedOption.addEventListener("click", () => {
 			rememberspeed = speed;
 			updateDatabase("rememberspeed", speed, settingsDb, "settings");
-			if (audioElement) {
-				audioElement.playbackRate = rememberspeed;
-			}
+			// if (audioElement) audioElement.playbackRate = rememberspeed; TODO: WRONG ELEMENT
+
 			closeModal();
 		});
 		document.getElementById("speedOptions").appendChild(speedOption);
 	});
 }
 
+// TODO: SKIPFORWARD AND SKIPBACKWARD
 function skipForward() {
-	if (audioElement) {
-		audioElement.currentTime = Math.min(audioElement.currentTime + 5, audioElement.duration);
-	}
+	// if (audioElement) audioElement.currentTime = Math.min(audioElement.currentTime + 5, audioElement.duration);
 }
 
 function skipBackward() {
-	if (audioElement) {
-		audioElement.currentTime = Math.max(audioElement.currentTime - 5, 0);
-	}
-}
-
-async function updateThumbnailImage(event, mode) {
-	const file = event.target.files[0];
-	if (file && file.type == "image/jpeg") {
-		const reader = new FileReader();
-		reader.onload = e => {
-			if (typeof mode == "number") {
-				const id = mode == 1 ? "customiseImage" : mode == 2 ? "editPlaylistThumbnail" : mode == 3 ? "thumbnailImage" : null;
-				if (id) document.getElementById(id).src = e.target.result;
-			} else if (mode instanceof HTMLElement) {
-				mode.style.backgroundImage = `url(${e.target.result})`;
-			}
-		};
-		reader.readAsDataURL(file);
-	} else {
-		await alertModal("Please select a valid JPG image.");
-	}
+	// if (audioElement) audioElement.currentTime = Math.max(audioElement.currentTime - 5, 0);
 }
 
 function opencustomiseModal(songName) {
@@ -1153,11 +1101,8 @@ document.addEventListener("keydown", event => {
 	} else if (event.key == key_Previous) {
 		playPreviousSong();
 	} else if (event.key == key_PlayPause) {
-		if (audioElement.paused) {
-			playPause("play");
-		} else {
-			playPause("pause");
-		}
+		if (audioPlayer) audioPlayer.stdin.write("pause\n");
+		updateDiscordPresence();
 	} else if (event.key == key_Next) {
 		playNextSong();
 	} else if (event.key == key_Skip) {
@@ -1226,7 +1171,7 @@ function handleDropdownChange(option, selectElement) {
 	updateDatabase(option, selectedValue, settingsDb, "settings");
 	if (option == "dividevolume") {
 		dividevolume = selectedValue;
-		if (audioElement) audioElement.volume = volumeControl.value / 100 / dividevolume;
+		if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
 	} else if (option == "displayCount") {
 		displayCount = selectedValue;
 	}
@@ -1307,6 +1252,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	ipcRenderer.send("renderer-domready");
 
+	if (platform == "linux") loadJSFile("mpris");
+
 	const divideVolumeSelect = document.getElementById("dividevolume");
 	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
 		if (divideVolumeSelect.options[i].value == dividevolume) {
@@ -1370,13 +1317,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	setInterval(() => {
 		audioPlayer.stdin.write("status\n");
-	}, 1000);
+	}, 100);
 
 	audioPlayer.stdout.on("data", data => {
-		console.log(data.toString());
 		const output = data.toString();
-		const currentMatch = output.match(/Position: ([0-9.]+) seconds/);
-		const lengthMatch = output.match(/Length: ([0-9.]+) seconds/);
+
+		const currentMatch = output.match(/Position: ([0-9.]+) sec/);
+		const lengthMatch = output.match(/Length: ([0-9.]+) sec/);
 
 		if (currentMatch && lengthMatch) {
 			const currentTimeSec = parseFloat(currentMatch[1]);
@@ -1392,22 +1339,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
 			if (songDuration > 0) {
 				videoProgress.value = (currentTimeSec / songDuration) * 100;
+
+				if (currentTimeSec >= songDuration - 0.1) {
+					playNextSong();
+				}
 			}
 		}
 
-		const isPlaying = /Playing: Yes/.test(output);
-		if (!isPlaying) {
-			playButton.style.display = "inline-block";
-			pauseButton.style.display = "none";
-		} else {
+		if (/Playing: Yes/.test(output)) {
 			playButton.style.display = "none";
 			pauseButton.style.display = "inline-block";
+			totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
+			if (platform == "linux") player.playbackStatus = "Playing";
+		} else {
+			playButton.style.display = "inline-block";
+			pauseButton.style.display = "none";
+			if (platform == "linux") player.playbackStatus = "Paused";
+			songPauseStartTime = Math.floor(Date.now() / 1000);
 		}
 	});
 
 	volumeControl.addEventListener("input", () => {
-		const volume = volumeControl.value / 100;
+		volume = volumeControl.value / 100 / dividevolume;
 		if (audioPlayer) audioPlayer.stdin.write(`volume ${volume}\n`);
+		updateDatabase("volume", volumeControl.value, settingsDb, "settings");
 	});
 
 	playButton.addEventListener("click", () => {
@@ -1435,6 +1390,4 @@ document.addEventListener("DOMContentLoaded", function () {
 			audioPlayer.stdin.write(`seek ${seekTime}\n`);
 		}
 	});
-
-	if (platform == "linux") loadJSFile("mpris");
 });

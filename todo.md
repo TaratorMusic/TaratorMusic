@@ -25,12 +25,9 @@ It looks terrible :/
 ### Version 1.7.6:
 
 -   Add mpris-service for Linux only --> Maybe make it its own JS file?
--   Fix miniaudio not updating our html and progress bar not working
 -   Make all mpriss stuff work
 -   Complete TODO's in renderer
--   Move miniaudio to /backend and its output to /bin
-
-
+-   Song save on app close doesnt work
 
 -   Use deezer api for similar songs data, and save them to the DB
 -   Make the charts on song listen time instead of song amounts perhaps? or toggle
