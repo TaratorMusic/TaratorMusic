@@ -49,8 +49,7 @@ const platform = process.platform;
 let audioPlayer;
 let player = null;
 
-let currentPlayingElement = null;
-let secondfilename = "";
+let playingSongsID = "";
 let currentPlaylist = null;
 let currentPlaylistElement = null;
 let playlistPlayedSongs = [];
@@ -392,7 +391,7 @@ setInterval(() => {
 }, 60000);
 
 async function savePlayedTime() {
-	const theId = removeExtensions(secondfilename).replace("tarator", "").replace("-", "");
+	const theId = removeExtensions(playingSongsID).replace("tarator", "").replace("-", "");
 	const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
 	const playlist = currentPlaylist ? currentPlaylist.id.replace("tarator-", "") : null;
 
@@ -500,7 +499,7 @@ async function myMusicOnClick() {
 		const maxVisible = displayCount == "All" ? filteredSongs.length : parseInt(displayCount * previousItemsPerRow);
 		filteredSongs.slice(0, maxVisible).forEach(songFile => {
 			const musicElement = createMusicElement(songFile);
-			if (songFile.id == removeExtensions(secondfilename)) musicElement.classList.add("playing");
+			if (songFile.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 			musicElement.addEventListener("click", () => playMusic(songFile.id, null));
 			musicListContainer.appendChild(musicElement);
 		});
@@ -587,18 +586,20 @@ async function playMusic(file, playlistId) {
 
 	try {
 		const songName = document.getElementById("song-name");
-		currentPlaylist = playlistId || null;
-		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(file);
-		secondfilename = file;
+		songName.setAttribute("data-file-name", playingSongsID);
 		songName.textContent = getSongNameById(file);
-		const songPath = path.join(musicFolder, `${secondfilename}.${row.song_extension}`);
+
+		currentPlaylist = playlistId || null;
+
+		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(file);
+		playingSongsID = file;
 
 		videoProgress.value = 0;
 		songDuration = 0;
 
+		const songPath = path.join(musicFolder, `${playingSongsID}.${row.song_extension}`);
 		audioPlayer.stdin.write(`play ${songPath}\n`);
 		audioPlayer.stdin.write(`volume ${volume}\n`);
-		console.log(volume);
 
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
@@ -616,13 +617,11 @@ async function playMusic(file, playlistId) {
 
 		document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
 		document.querySelectorAll(".music-item").forEach(musicElement => {
-			if (removeExtensions(musicElement.getAttribute("data-file-name")) == secondfilename) {
+			if (removeExtensions(musicElement.getAttribute("data-file-name")) == playingSongsID) {
 				musicElement.classList.add("playing");
 			}
 		});
 
-		currentPlayingElement = songName;
-		currentPlayingElement.setAttribute("data-file-name", secondfilename);
 		updateDiscordPresence();
 		editMPRIS(file);
 
@@ -632,10 +631,10 @@ async function playMusic(file, playlistId) {
 					newPlaylistID = playlistId.id;
 					playlistPlayedSongs.splice(0, 9999);
 				}
-				playlistPlayedSongs.unshift(secondfilename);
+				playlistPlayedSongs.unshift(playingSongsID);
 				if (playlistPlayedSongs.length > 9999) playlistPlayedSongs.pop();
 			} else {
-				playedSongs.unshift(secondfilename);
+				playedSongs.unshift(playingSongsID);
 				if (playedSongs.length > 9999) playedSongs.pop();
 			}
 		}
@@ -684,7 +683,7 @@ async function playPlaylist(playlist, startingIndex = 0) {
 }
 
 async function playPreviousSong() {
-	if (!currentPlayingElement) return;
+	if (!playingSongsID) return;
 
 	const allMusics = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
 	const songMap = new Map();
@@ -716,12 +715,10 @@ async function playPreviousSong() {
 				currentPlaylistElement--;
 			}
 		} else {
-			const currentFileName = currentPlayingElement.innerHTML;
+			const currentFileName = getSongNameById(playingSongsID);
 
 			const currentIndex = sortedSongIds.indexOf(currentFileName);
-			if (currentIndex == -1) {
-				return;
-			}
+			if (currentIndex == -1) return;
 
 			const previousIndex = currentIndex > 0 ? currentIndex - 1 : sortedSongIds.length - 1;
 
@@ -729,10 +726,11 @@ async function playPreviousSong() {
 		}
 	}
 }
-
+// TODO: Detect if song playing or paused in JS fully
 async function playNextSong() {
-	// ADD ISLOOPING HERE!!
-	if (!currentPlayingElement) return;
+	if (!playingSongsID) return;
+
+	if (isLooping) return playMusic(playingSongsID, null);
 
 	const allMusics = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
 	const songMap = new Map();
@@ -761,7 +759,7 @@ async function playNextSong() {
 				currentPlaylistElement = randomIndex;
 			}
 		} else {
-			const currentFileName = currentPlayingElement.innerHTML;
+			const currentFileName = getSongNameById(playingSongsID);
 			if (sortedSongIds.length == 1) {
 				nextSongId = currentFileName;
 			} else {
@@ -778,7 +776,7 @@ async function playNextSong() {
 				nextSongId = currentPlaylist.songs[++currentPlaylistElement];
 			}
 		} else {
-			const currentFileName = currentPlayingElement.innerHTML;
+			const currentFileName = getSongNameById(playingSongsID);
 			const currentIndex = sortedSongIds.indexOf(currentFileName);
 			const nextIndex = currentIndex < sortedSongIds.length - 1 ? currentIndex + 1 : 0;
 			nextSongId = sortedSongIds[nextIndex];
@@ -788,13 +786,13 @@ async function playNextSong() {
 	if (nextSongId) {
 		playMusic(nextSongId, !!currentPlaylist);
 	}
-} // TODO: Detect if song playing or paused in JS fully
+}
 
 async function randomSongFunctionMainMenu() {
 	const musicItems = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
 	let randomIndex = Math.floor(Math.random() * musicItems.length);
 
-	if (currentPlayingElement) {
+	if (playingSongsID) {
 		while (removeExtensions(musicItems[randomIndex].song_name) == document.getElementById("song-name").innerText) {
 			randomIndex = Math.floor(Math.random() * musicItems.length);
 		}
@@ -871,8 +869,6 @@ function toggleLoop() {
 		loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redLoop.svg")}" alt="Loop Disabled">`;
 		updateDatabase("rememberloop", 0, settingsDb, "settings");
 	}
-
-	// if (audioElement) audioElement.loop = isLooping; TODO: BUGGED
 }
 
 function mute() {
@@ -993,7 +989,7 @@ async function saveEditedSong() {
 	document.getElementById("customiseModal").style.display = "none";
 	document.getElementById("my-music").click();
 
-	if (secondfilename == customiseDiv.dataset.songID) {
+	if (playingSongsID == customiseDiv.dataset.songID) {
 		document.getElementById("song-name").innerText = newNameInput;
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url("${reloadSrc}")`;
 	}
@@ -1014,7 +1010,7 @@ async function saveEditedSong() {
 		}, 50);
 	})
 		.then(el => {
-			if (newNameInput == removeExtensions(secondfilename)) el.classList.add("playing");
+			if (newNameInput == removeExtensions(playingSongsID)) el.classList.add("playing");
 			el.querySelector(".song-name").textContent = newNameInput;
 			el.querySelector(".background-element").style.backgroundImage = `url("${reloadSrc}")`;
 		})
@@ -1186,9 +1182,9 @@ function getSongNameById(songId) {
 }
 
 function bottomRightFunctions(input) {
-	if (!secondfilename) return;
+	if (!playingSongsID) return;
 	if (input == "addToPlaylist") {
-		openAddToPlaylistModal(removeExtensions(secondfilename));
+		openAddToPlaylistModal(removeExtensions(playingSongsID));
 	} else if (input == "addToFavorites") {
 		let songs = [];
 		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE id = ?").get("Favorites");
@@ -1196,8 +1192,8 @@ function bottomRightFunctions(input) {
 			songs = JSON.parse(fav.songs);
 		}
 
-		if (!songs.includes(removeExtensions(secondfilename))) {
-			songs.push(removeExtensions(secondfilename));
+		if (!songs.includes(removeExtensions(playingSongsID))) {
+			songs.push(removeExtensions(playingSongsID));
 			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(songs), "Favorites");
 
 			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") {
@@ -1205,7 +1201,7 @@ function bottomRightFunctions(input) {
 			}
 		}
 	} else if (input == "customise") {
-		opencustomiseModal(secondfilename);
+		opencustomiseModal(playingSongsID);
 	}
 }
 
@@ -1356,7 +1352,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		} else {
 			playButton.style.display = "inline-block";
 			pauseButton.style.display = "none";
-			if (platform == "linux"&& player) player.playbackStatus = "Paused";
+			if (platform == "linux" && player) player.playbackStatus = "Paused";
 			songPauseStartTime = Math.floor(Date.now() / 1000);
 		}
 	});
