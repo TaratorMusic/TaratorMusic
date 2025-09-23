@@ -60,6 +60,20 @@ function createWindow() {
 		},
 	});
 
+	mainWindow.on("close", e => {
+		e.preventDefault();
+		mainWindow.webContents.send("save-progress");
+		const timeout = setTimeout(() => {
+			mainWindow.destroy();
+			if (process.platform !== "darwin") app.quit();
+		}, 5000);
+		ipcMain.once("save-complete", () => {
+			clearTimeout(timeout);
+			mainWindow.destroy();
+			if (process.platform !== "darwin") app.quit();
+		});
+	});
+
 	mainWindow.loadFile("renderer/index.html");
 
 	ipcMain.handle("get-app-version", () => app.getVersion());
@@ -73,19 +87,6 @@ function createWindow() {
 		if (e.sender.id !== mainWindow.webContents.id) return;
 		if (splash && !splash.isDestroyed()) splash.destroy();
 		if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
-	});
-
-	mainWindow.on("close", async e => {
-		e.preventDefault();
-		const saved = await new Promise(resolve => {
-			mainWindow.webContents.send("save-progress");
-			ipcMain.once("save-complete", () => resolve(true));
-			setTimeout(() => resolve(false), 5000);
-		});
-		if (saved) {
-			mainWindow.destroy();
-			if (process.platform !== "darwin") app.quit();
-		}
 	});
 }
 

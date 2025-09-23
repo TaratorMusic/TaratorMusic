@@ -8,10 +8,6 @@ player = Player({
 	supportedInterfaces: ["player"],
 });
 
-player.on("quit", function () {
-	process.exit(); // BUGGED
-});
-
 const events = ["raise", "quit", "next", "previous", "pause", "playpause", "stop", "play", "seek", "position", "open", "volume", "loopStatus", "shuffle"];
 
 events.forEach(eventName => {
@@ -20,9 +16,9 @@ events.forEach(eventName => {
 		else if (eventName === "quit") process.exit(); // TODO: Bugged
 		else if (eventName === "next") playNextSong();
 		else if (eventName === "previous") playPreviousSong();
-		else if (eventName === "pause" && audioPlayer) audioPlayer.stdin.write("pause\n");
-		else if (eventName === "playpause" && audioPlayer) playingSongsID ? audioPlayer.stdin.write("pause\n") : randomSongFunctionMainMenu();
-		else if (eventName === "stop" && audioPlayer) audioPlayer.stdin.write("pause\n"); // TODO stopMusic();
+		else if (eventName === "pause") playPause();
+		else if (eventName === "playpause") playingSongsID ? playPause() : randomSongFunctionMainMenu();
+		else if (eventName === "stop") playPause();
 		else if (eventName === "play") console.log("unused function for now:", eventName); // TODO
 		else if (eventName === "seek") console.log("unused function for now:", eventName); // TODO
 		else if (eventName === "position" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);

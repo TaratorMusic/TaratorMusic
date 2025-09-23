@@ -1,6 +1,5 @@
 // renderer.js
 
-const { ipcRenderer } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const Database = require("better-sqlite3");
@@ -60,7 +59,7 @@ let playedSongs = [];
 let newPlaylistID = null;
 let disableKeyPresses = 0;
 let songStartTime = null;
-let songPauseStartTime = null;
+let songPauseStartTime = 0;
 let totalPausedTime = 0;
 let previousVolume = null;
 let timeoutId = null;
@@ -72,6 +71,7 @@ let discordRPCstatus;
 let discordDaemon = null;
 let songDuration;
 let isUserSeeking = false;
+let playing = false;
 const debounceMap = new Map();
 const songNameCache = new Map();
 
@@ -390,15 +390,6 @@ setInterval(() => {
 		.run();
 }, 60000);
 
-async function savePlayedTime() {
-	const theId = removeExtensions(playingSongsID).replace("tarator", "").replace("-", "");
-	const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
-	const playlist = currentPlaylist ? currentPlaylist.id.replace("tarator-", "") : null;
-
-	musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time, playlist) VALUES (?, ?, ?, ?)").run(theId, songStartTime, currentTimeUnix, playlist);
-	console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds. Playlist: ${playlist}`);
-}
-
 tabs.forEach(tab => {
 	tab.addEventListener("click", () => {
 		tabs.forEach(div => div.classList.remove("active"));
@@ -643,26 +634,6 @@ async function playMusic(file, playlistId) {
 	}
 }
 
-async function stopMusic() {
-	await saveUserProgress();
-
-	if (audioPlayer) audioPlayer.stdin.write("stop\n");
-
-	document.querySelectorAll(".settingsMenuButtons").forEach(el => {
-		el.style.color = "red";
-	});
-
-	playButton.style.display = "inline-block";
-	pauseButton.style.display = "none";
-	document.getElementById("videothumbnailbox").style.backgroundImage = ``;
-	document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
-
-	document.getElementById("song-name").textContent = "No song is being played.";
-	videoLength.textContent = "00:00 / 00:00";
-	videoProgress.value = 0;
-	songDuration = 0;
-}
-
 async function playPlaylist(playlist, startingIndex = 0) {
 	if (!playlist.songs || playlist.songs.length == 0) {
 		console.log(`Playlist ${playlist.name} is empty.`);
@@ -827,6 +798,28 @@ async function randomPlaylistFunctionMainMenu() {
 	const selectedPlaylist = availablePlaylists[randomIndex];
 
 	await playPlaylist(selectedPlaylist, 0);
+}
+
+function playPause() {
+	updateDiscordPresence();
+
+	if (!audioPlayer) return;
+
+	audioPlayer.stdin.write("pause\n");
+
+	if (playing) {
+		playButton.style.display = "none";
+		pauseButton.style.display = "inline-block";
+		if (playingSongsID) totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
+		if (platform == "linux" && player) player.playbackStatus = "Playing";
+		playing = true;
+	} else {
+		playButton.style.display = "inline-block";
+		pauseButton.style.display = "none";
+		if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
+		if (platform == "linux" && player) player.playbackStatus = "Paused";
+		playing = false;
+	}
 }
 
 function toggleAutoplay() {
@@ -1102,8 +1095,7 @@ document.addEventListener("keydown", event => {
 	} else if (event.key == key_Previous) {
 		playPreviousSong();
 	} else if (event.key == key_PlayPause) {
-		if (audioPlayer) audioPlayer.stdin.write("pause\n");
-		updateDiscordPresence();
+		playPause();
 	} else if (event.key == key_Next) {
 		playNextSong();
 	} else if (event.key == key_Skip) {
@@ -1210,7 +1202,15 @@ function bottomRightFunctions(input) {
 
 async function saveUserProgress() {
 	if (songPauseStartTime) totalPausedTime += Math.floor(Date.now() / 1000 - songPauseStartTime);
-	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) await savePlayedTime();
+
+	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) {
+		const theId = removeExtensions(playingSongsID).replace("tarator", "").replace("-", "");
+		const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
+		const playlist = currentPlaylist ? currentPlaylist.id.replace("tarator-", "") : null;
+
+		musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time, playlist) VALUES (?, ?, ?, ?)").run(theId, songStartTime, currentTimeUnix, playlist);
+		console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds. Playlist: ${playlist}`);
+	}
 
 	songStartTime = Math.floor(Date.now() / 1000);
 	songPauseStartTime = null;
@@ -1225,26 +1225,6 @@ async function stabiliseThisSong(songId) {
 	await alertModal(`Song "${stmt.song_name}" successfully stabilised.`);
 	document.getElementById("stabiliseSongButton").disabled = false;
 }
-
-ipcRenderer.on("update-available", (event, releaseNotes) => {
-	document.getElementById("patchNotes").innerHTML = releaseNotes;
-	document.getElementById("version").classList.add("no-animation");
-	document.getElementById("installBtn").disabled = false;
-	if (platform == "win32" || platform == "darwin") {
-		document.getElementById("installBtn").innerText = "Go to the latest release page";
-	}
-});
-
-ipcRenderer.on("download-progress", (event, percent) => {
-	const progressBar = document.getElementById("downloadProgress");
-	progressBar.style.width = percent + "%";
-	progressBar.innerText = Math.floor(percent) + "%";
-});
-
-ipcRenderer.on("save-progress", async () => {
-	await saveUserProgress();
-	ipcRenderer.send("save-complete");
-});
 
 document.addEventListener("DOMContentLoaded", function () {
 	initialiseSettingsDatabase();
@@ -1325,7 +1305,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		const currentMatch = output.match(/Position: ([0-9.]+) sec/);
 		const lengthMatch = output.match(/Length: ([0-9.]+) sec/);
-		const isNotPlaying = /Playing: No/.test(output);
 
 		if (currentMatch && lengthMatch) {
 			const currentTimeSec = parseFloat(currentMatch[1]);
@@ -1346,18 +1325,6 @@ document.addEventListener("DOMContentLoaded", function () {
 				if (platform == "linux" && player) player.getPosition = () => Math.floor(currentTimeSec * 1e6);
 			}
 		}
-
-		if (!isNotPlaying) {
-			playButton.style.display = "none";
-			pauseButton.style.display = "inline-block";
-			totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
-			if (platform == "linux" && player) player.playbackStatus = "Playing";
-		} else {
-			playButton.style.display = "inline-block";
-			pauseButton.style.display = "none";
-			if (platform == "linux" && player) player.playbackStatus = "Paused";
-			songPauseStartTime = Math.floor(Date.now() / 1000);
-		}
 	});
 
 	volumeControl.addEventListener("input", () => {
@@ -1367,11 +1334,11 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	playButton.addEventListener("click", () => {
-		if (audioPlayer) audioPlayer.stdin.write("pause\n");
+		playPause();
 	});
 
 	pauseButton.addEventListener("click", () => {
-		if (audioPlayer) audioPlayer.stdin.write("pause\n");
+		playPause();
 	});
 
 	videoProgress.addEventListener("mousedown", () => {

@@ -22,8 +22,6 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
--   Complete TODO's in renderer
--   Song save on app close doesnt work
 -   My music search bar is few pixels above playlists search bar
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language"
 -   Ensure that all the pie colors are much different than each other, but keep them the same each time (not random)
