@@ -726,7 +726,7 @@ async function playPreviousSong() {
 		}
 	}
 }
-// TODO: Detect if song playing or paused in JS fully
+
 async function playNextSong() {
 	if (!playingSongsID) return;
 
@@ -1325,6 +1325,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 		const currentMatch = output.match(/Position: ([0-9.]+) sec/);
 		const lengthMatch = output.match(/Length: ([0-9.]+) sec/);
+		const isNotPlaying = /Playing: No/.test(output);
 
 		if (currentMatch && lengthMatch) {
 			const currentTimeSec = parseFloat(currentMatch[1]);
@@ -1346,7 +1347,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			}
 		}
 
-		if (/Playing: Yes/.test(output)) {
+		if (!isNotPlaying) {
 			playButton.style.display = "none";
 			pauseButton.style.display = "inline-block";
 			totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;

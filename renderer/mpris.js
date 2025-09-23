@@ -22,12 +22,12 @@ events.forEach(eventName => {
 		else if (eventName === "previous") playPreviousSong();
 		else if (eventName === "pause" && audioPlayer) audioPlayer.stdin.write("pause\n");
 		else if (eventName === "playpause" && audioPlayer) playingSongsID ? audioPlayer.stdin.write("pause\n") : randomSongFunctionMainMenu();
-		else if (eventName === "stop" && audioPlayer) audioPlayer.stdin.write("pause\n"); // To be added later: stopMusic();
-		else if (eventName === "play") console.log("unused function for now:", eventName);
-		else if (eventName === "seek") console.log("unused function for now:", eventName);
+		else if (eventName === "stop" && audioPlayer) audioPlayer.stdin.write("pause\n"); // TODO stopMusic();
+		else if (eventName === "play") console.log("unused function for now:", eventName); // TODO
+		else if (eventName === "seek") console.log("unused function for now:", eventName); // TODO
 		else if (eventName === "position" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
-		else if (eventName === "open") console.log("unused function for now:", eventName, args);
-		else if (eventName === "volume") console.log("unused function for now:", eventName, args);
+		else if (eventName === "open") console.log("unused function for now:", eventName, args); // TODO
+		else if (eventName === "volume") console.log("unused function for now:", eventName, args); // TODO
 		else if (eventName === "loopStatus") toggleLoop();
 		else if (eventName === "shuffle") toggleShuffle();
 	});

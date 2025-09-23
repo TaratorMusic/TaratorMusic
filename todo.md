@@ -22,33 +22,28 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
-### Version 1.7.6:
-
--   Add mpris-service for Linux only --> Maybe make it its own JS file?
--   Make all mpriss stuff work
 -   Complete TODO's in renderer
 -   Song save on app close doesnt work
-
--   Use deezer api for similar songs data, and save them to the DB
--   Make the charts on song listen time instead of song amounts perhaps? or toggle
--   Ensure that all the pie colors are much different than each other, but keep them the same each time (not random)
 -   My music search bar is few pixels above playlists search bar
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language"
+-   Ensure that all the pie colors are much different than each other, but keep them the same each time (not random)
+
+### Version 1.7.7:
+
+-   Use deezer api for similar songs data, and save them to the DB. It will search for top 5 similar songs while downloading. It should work with the ystr(song_link) instead of the song name. We will give points to the similar songs like 5 4 3 2 1, and add up these for all the songs in our library to find the best recommendations.
+-   Add song to queue
+-   Make the charts on song listen time instead of song amounts perhaps? or toggle
 -   Most Listened Playlist and other playlist data in Statistics
 -   Add pages to the music tab and a way to navigate between them if using "show x rows".
 -   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)
 -   Make quick search modal shortcut customisable
 
-### Version 1.7.7+:
+### Version 1.7.8+:
 
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working
 -   Use our check_dupe_songs go file while downloading songs to avoid duplications
--   Run: sudo apt install libasound2-dev --- and npm i speaker
--   Add song to queue
 -   What if the restart wasnt needed after downloading the assets, we can just force reload the app, or load the missing assets individually
--   Use last.fm API to find similar songs and artists. It will search for top 5 similar songs while downloading. It should work with the ystr(song_link) instead of the song name. We will give points to the similar songs like 5 4 3 2 1, and add up these for all the songs in our library to find the best recommendations.
--   Also it would be great if connecting the song data to last.fm is possible
 -   Factory Reset (With options like: only settings, remove all songs/playlists etc.)
 -   Redesign main menu
 
@@ -84,7 +79,9 @@ It looks terrible :/
 -   More placeholder photos
 -   Customisable scrollbars maybe
 -   App language
+-   Make all mpris stuff work
 -   Edit My Music grid
+-   Also it would be great if connecting the song data to last.fm is possible
 -   Disable thumbnails
 -   Change placeholder thumbnail --> if (userPlaceholderThumbnail) else (placeholderThumbnail)
 -   Move app folders
