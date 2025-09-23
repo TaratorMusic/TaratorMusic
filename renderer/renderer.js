@@ -47,6 +47,8 @@ const searchModalInput = document.getElementById("searchModalInput");
 
 const platform = process.platform;
 let audioPlayer;
+let player = null;
+
 let currentPlayingElement = null;
 let secondfilename = "";
 let currentPlaylist = null;
@@ -1350,11 +1352,11 @@ document.addEventListener("DOMContentLoaded", function () {
 			playButton.style.display = "none";
 			pauseButton.style.display = "inline-block";
 			totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
-			if (platform == "linux") player.playbackStatus = "Playing";
+			if (platform == "linux" && player) player.playbackStatus = "Playing";
 		} else {
 			playButton.style.display = "inline-block";
 			pauseButton.style.display = "none";
-			if (platform == "linux") player.playbackStatus = "Paused";
+			if (platform == "linux"&& player) player.playbackStatus = "Paused";
 			songPauseStartTime = Math.floor(Date.now() / 1000);
 		}
 	});

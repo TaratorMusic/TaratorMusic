@@ -1,6 +1,6 @@
 const Player = require("mpris-service");
 
-const player = Player({
+player = Player({
 	name: "TaratorMusic",
 	identity: "TaratorMusic",
 	supportedUriSchemes: ["file"],
@@ -16,7 +16,7 @@ const events = ["raise", "quit", "next", "previous", "pause", "playpause", "stop
 
 events.forEach(eventName => {
 	player.on(eventName, (...args) => {
-		if (eventName === "raise") console.log("unused function for now:", eventName);
+		if (eventName === "raise") console.log("unused function for now:", eventName, args);
 		else if (eventName === "quit") process.exit();
 		else if (eventName === "next") playNextSong();
 		else if (eventName === "previous") playPreviousSong();
@@ -25,9 +25,9 @@ events.forEach(eventName => {
 		else if (eventName === "stop") stopMusic();
 		else if (eventName === "play") randomSongFunctionMainMenu();
 		else if (eventName === "seek") console.log("unused function for now:", eventName);
-		else if (eventName === "position") console.log("unused function for now:", eventName);
-		else if (eventName === "open") console.log("unused function for now:", eventName);
-		else if (eventName === "volume") console.log("unused function for now:", eventName);
+		else if (eventName === "position") console.log("unused function for now:", eventName, args);
+		else if (eventName === "open") console.log("unused function for now:", eventName, args);
+		else if (eventName === "volume") console.log("unused function for now:", eventName, args);
 		else if (eventName === "loopStatus") toggleLoop();
 		else if (eventName === "shuffle") toggleShuffle();
 	});
