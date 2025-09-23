@@ -623,7 +623,7 @@ async function playMusic(file, playlistId) {
 		});
 
 		updateDiscordPresence();
-		editMPRIS(file);
+		editMPRIS();
 
 		if (isShuffleActive) {
 			if (playlistId) {
@@ -1341,9 +1341,8 @@ document.addEventListener("DOMContentLoaded", function () {
 			if (songDuration > 0) {
 				videoProgress.value = (currentTimeSec / songDuration) * 100;
 
-				if (currentTimeSec >= songDuration - 0.1) {
-					playNextSong();
-				}
+				if (currentTimeSec >= songDuration - 0.1) playNextSong();
+				if (platform == "linux" && player) player.getPosition = () => Math.floor(currentTimeSec * 1e6);
 			}
 		}
 
