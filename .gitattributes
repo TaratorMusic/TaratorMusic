@@ -1,2 +1,2 @@
-miniaudio/miniaudio.c linguist-generated=true
-miniaudio/miniaudio.h linguist-generated=true
+backend/miniaudio/miniaudio.c linguist-generated=true
+backend/miniaudio/miniaudio.h linguist-generated=true
