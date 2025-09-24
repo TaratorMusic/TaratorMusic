@@ -86,12 +86,13 @@ async function createMostListenedSongBox() {
 }
 
 async function createPieCharts() {
-	function colorFromName(name) {
+	function colorFromName(name, index = 0) {
 		let hash = 0;
 		for (let i = 0; i < name.length; i++) {
 			hash = name.charCodeAt(i) + ((hash << 5) - hash);
 		}
-		const hue = Math.abs(hash) % 360;
+		const baseHue = Math.abs(hash) % 360;
+		const hue = (baseHue + (index % 5) * 72) % 360;
 		return `hsl(${hue},70%,50%)`;
 	}
 
@@ -132,13 +133,18 @@ async function createPieCharts() {
 	function buildChart(canvasId, counts, topLabelsCount = 5) {
 		const labels = Object.keys(counts);
 		const data = Object.values(counts);
-		const colors = labels.map(l => colorFromName(l));
 
-		const sortedLabels = labels
+		const sortedItems = labels
 			.map((l, i) => ({ label: l, value: data[i] }))
 			.sort((a, b) => b.value - a.value)
-			.slice(0, topLabelsCount)
-			.map(l => l.label);
+			.slice(0, topLabelsCount);
+
+		const sortedLabels = sortedItems.map(i => i.label);
+
+		const colors = labels.map((l, i) => {
+			const topIndex = sortedLabels.indexOf(l);
+			return topIndex >= 0 ? colorFromName(l, topIndex) : colorFromName(l);
+		});
 
 		new Chart(document.getElementById(canvasId).getContext("2d"), {
 			type: "pie",
@@ -156,7 +162,7 @@ async function createPieCharts() {
 					legend: {
 						display: true,
 						labels: {
-                            color: "white",
+							color: "white",
 							filter: item => sortedLabels.includes(item.text),
 						},
 					},

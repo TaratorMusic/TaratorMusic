@@ -22,7 +22,6 @@ It looks terrible :/
 -   When something is searched in the my music tab, and its results are shorter than a page, the grid acts weirdly
 -   When a song is renamed, it doesnt get renamed in the cache. --> NO NEED TO SCROLL ALL THE WAY UP ON DATA CHANGE
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language"
--   Ensure that all the pie colors are much different than each other, but keep them the same each time (not random)
 
 ### Version 1.7.7:
 
