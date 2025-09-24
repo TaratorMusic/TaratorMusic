@@ -75,7 +75,7 @@ function toggleDiscordAPI() {
 		sendCommandToDaemon("create");
 	}
 
-	updateDatabase("dc_rpc", discordRPCstatus ? 1 : 0, settingsDb, "settings");
+	updateDatabase("dc_rpc", discordRPCstatus ? 0 : 1, settingsDb, "settings");
 }
 
 function updateDiscordPresence() {

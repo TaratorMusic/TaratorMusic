@@ -410,7 +410,7 @@ tabs.forEach(tab => {
 				if (content.id == "main-menu-content") {
 					document.getElementById("main-menu-content").style.display = "flex";
 				} else if (content.id == "my-music-content") {
-					document.getElementById("my-music-content").style.display = "block";
+					document.getElementById("my-music-content").style.display = "flex";
 				} else if (content.id == "playlists-content") {
 					document.getElementById("playlists-content").style.display = "grid";
 				} else if (content.id == "settings-content") {
