@@ -117,7 +117,6 @@ func handleCommand(command string, args []string, clientID string) {
 
 func main() {
 	clientID := "1258898699816275969"
-
 	if len(os.Args) > 1 {
 		command := os.Args[1]
 		if command != "daemon" {
@@ -139,7 +138,19 @@ func main() {
 		}
 
 		command := parts[0]
-		args := parts[1:]
+		var args []string
+
+		if command == "update" && len(parts) >= 6 {
+			songNameParts := parts[1 : len(parts)-4]
+			songName := strings.Join(songNameParts, " ")
+
+			lastFour := parts[len(parts)-4:]
+
+			args = []string{songName, lastFour[0], lastFour[1], lastFour[2], lastFour[3]}
+		} else {
+			args = parts[1:]
+		}
+
 		handleCommand(command, args, clientID)
 	}
 }

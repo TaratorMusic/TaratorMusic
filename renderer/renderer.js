@@ -613,9 +613,6 @@ async function playMusic(file, playlistId) {
 			}
 		});
 
-		updateDiscordPresence();
-		editMPRIS();
-
 		if (isShuffleActive) {
 			if (playlistId) {
 				if (newPlaylistID != playlistId.id) {
@@ -801,8 +798,6 @@ async function randomPlaylistFunctionMainMenu() {
 }
 
 function playPause() {
-	updateDiscordPresence();
-
 	if (!audioPlayer) return;
 
 	audioPlayer.stdin.write("pause\n");
@@ -1325,6 +1320,9 @@ document.addEventListener("DOMContentLoaded", function () {
 				if (platform == "linux" && player) player.getPosition = () => Math.floor(currentTimeSec * 1e6);
 			}
 		}
+
+		updateDiscordPresence();
+		if (audioPlayer && player && playingSongsID) editMPRIS();
 	});
 
 	volumeControl.addEventListener("input", () => {

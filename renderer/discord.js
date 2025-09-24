@@ -59,7 +59,7 @@ function sendCommandToDaemon(command, args = []) {
 				const commandLine = [command, ...args].join(" ") + "\n";
 				discordDaemon.stdin.write(commandLine);
 			}
-		}, 100);
+		}, 200);
 	} else {
 		const commandLine = [command, ...args].join(" ") + "\n";
 		discordDaemon.stdin.write(commandLine);
@@ -80,20 +80,18 @@ function toggleDiscordAPI() {
 
 function updateDiscordPresence() {
     if (!discordRPCstatus) return;
-	const isIdle = !audioElement;
+	const isIdle = !audioPlayer;
 	const songName = isIdle ? "" : document.getElementById("song-name").textContent;
 	let currentSec = 0;
 	let totalSec = 0;
-	let paused = false;
 
 	if (!isIdle) {
 		const timeParts = document.getElementById("video-length").textContent.split("/");
 		currentSec = parseTimeToSeconds(timeParts[0].trim()) || 0;
 		totalSec = parseTimeToSeconds(timeParts[1].trim()) || 0;
-		paused = audioElement.paused;
 	}
 
-	sendCommandToDaemon("update", [songName, currentSec.toString(), totalSec.toString(), paused.toString(), isIdle.toString()]);
+	sendCommandToDaemon("update", [songName, currentSec.toString(), totalSec.toString(), playing.toString(), isIdle.toString()]);
 }
 
 function stopDaemon() {

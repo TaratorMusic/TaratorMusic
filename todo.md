@@ -14,14 +14,12 @@ It looks terrible :/
 
 ## Bugs
 
--   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"online"}
--   When a song is renamed, it doesnt get renamed in the cache. --> NO NEED TO SCROLL ALL THE WAY UP ON DATA CHANGE
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
--   When something is searched in the my music tab, and its results are shorter than a page, the grid acts weirdly
 
 ## Coming Soon App Features
 
--   Fix most bugs
+-   When something is searched in the my music tab, and its results are shorter than a page, the grid acts weirdly
+-   When a song is renamed, it doesnt get renamed in the cache. --> NO NEED TO SCROLL ALL THE WAY UP ON DATA CHANGE
 -   My music search bar is few pixels above playlists search bar
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language"
 -   Ensure that all the pie colors are much different than each other, but keep them the same each time (not random)
