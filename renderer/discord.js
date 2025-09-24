@@ -80,18 +80,22 @@ function toggleDiscordAPI() {
 
 function updateDiscordPresence() {
     if (!discordRPCstatus) return;
-	const isIdle = !audioPlayer;
-	const songName = isIdle ? "" : document.getElementById("song-name").textContent;
-	let currentSec = 0;
-	let totalSec = 0;
-
-	if (!isIdle) {
-		const timeParts = document.getElementById("video-length").textContent.split("/");
-		currentSec = parseTimeToSeconds(timeParts[0].trim()) || 0;
-		totalSec = parseTimeToSeconds(timeParts[1].trim()) || 0;
-	}
-
-	sendCommandToDaemon("update", [songName, currentSec.toString(), totalSec.toString(), playing.toString(), isIdle.toString()]);
+    const isIdle = !audioPlayer;
+    const songName = isIdle ? "" : document.getElementById("song-name").textContent;
+    const artistData = isIdle ? null : musicsDb.prepare(`SELECT artist FROM songs WHERE song_id = ?`).get(playingSongsID);
+    const artistName = artistData ? artistData.artist : "";
+    
+    let currentSec = 0;
+    let totalSec = 0;
+    if (!isIdle) {
+        const timeParts = document.getElementById("video-length").textContent.split("/");
+        currentSec = parseTimeToSeconds(timeParts[0].trim()) || 0;
+        totalSec = parseTimeToSeconds(timeParts[1].trim()) || 0;
+    }
+    
+    const songData = artistName ? `${songName}|||${artistName}` : songName;
+    
+    sendCommandToDaemon("update", [songData, currentSec.toString(), totalSec.toString(), playing.toString(), isIdle.toString()]);
 }
 
 function stopDaemon() {
