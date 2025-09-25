@@ -1194,6 +1194,7 @@ function bottomRightFunctions(input) {
 			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(songs), "Favorites");
 
 			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists();
+			addToFavoritesButtonBottomRight.style.color = "red";
 		}
 	} else if (input == "customise") {
 		opencustomiseModal(playingSongsID);

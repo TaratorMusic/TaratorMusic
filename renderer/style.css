@@ -275,7 +275,6 @@ audio {
 	background-position: center;
 	background-repeat: no-repeat;
 	border-radius: 15px;
-	margin-bottom: 10px;
 }
 
 .background-element {
@@ -323,14 +322,15 @@ audio {
 }
 
 #music-list-container {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-	gap: 5px;
-	margin-top: 1vh !important;
-	height: 85vh !important;
-	min-height: 85vh !important;
-	max-height: 85vh !important;
-	padding: 2vh 0 !important;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 200px));
+    grid-auto-rows: min-content;
+    gap: 10px;
+    margin-top: 1vh !important;
+    height: 85vh !important;
+    padding: 2vh 0 !important;
+    overflow-y: auto !important;
+    justify-content: start;
 }
 
 #songCountElement {
@@ -570,6 +570,7 @@ audio {
 	max-height: 92vh !important;
 	justify-content: flex-start;
 	width: 83.75vw !important;
+    max-width: 83.75vw !important;
 }
 
 #playlists-content {
@@ -1163,7 +1164,7 @@ th {
 	justify-content: start;
 	align-items: center;
 	width: 83.75vw !important;
-    height: 4vh;
+	height: 4vh;
 	margin-bottom: 10px;
 }
 
@@ -1173,7 +1174,7 @@ th {
 	justify-content: start;
 	align-items: center;
 	width: 83.75vw !important;
-    height: 4vh;
+	height: 4vh;
 	margin-bottom: 10px;
 }
 
