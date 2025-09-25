@@ -18,9 +18,11 @@ It looks terrible :/
 
 ## Coming Soon App Features
 
-- // TODO: UNLIMITED EVENTLISTENERS IN LINE 500 something "resize"
--   When something is searched in the my music tab, and its results are shorter than a page, the grid acts weirdly
+-   // TODO: UNLIMITED EVENTLISTENERS IN LINE 500 something "resize"
 -   When a song is renamed, it doesnt get renamed in the cache. --> NO NEED TO SCROLL ALL THE WAY UP ON DATA CHANGE
+- Rewrite mymusiconclick for these fixes
+
+-   When something is searched in the my music tab, and its results are shorter than a page, the grid acts weirdly
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language"
 
 ### Version 1.7.7:

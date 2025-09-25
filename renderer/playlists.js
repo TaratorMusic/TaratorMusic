@@ -47,9 +47,9 @@ function displayPlaylists(playlists) {
 	playlistsContent.appendChild(controlsDiv);
 
 	const playlistsArea = document.createElement("div");
-    playlistsArea.id = "playlistsArea";
+	playlistsArea.id = "playlistsArea";
 	playlistsArea.className = "scrollArea";
-    playlistsContent.appendChild(playlistsArea)
+	playlistsContent.appendChild(playlistsArea);
 
 	const playlistElements = [];
 
@@ -316,6 +316,8 @@ function addToSelectedPlaylists(songName) {
 			}
 		});
 		closeModal();
+
+		if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists();
 	} catch (err) {
 		console.log("Error updating playlists in the database:", err);
 	}

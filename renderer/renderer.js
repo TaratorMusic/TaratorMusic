@@ -587,6 +587,14 @@ async function playMusic(file, playlistId) {
 		videoProgress.value = 0;
 		songDuration = 0;
 
+		document.getElementById("addToFavoritesButtonBottomRight").style.color = "white";
+		document.getElementById("addToPlaylistButtonBottomRight").style.color = "white";
+		document.getElementById("customiseButtonBottomRight").style.color = "white";
+
+		if (!!playlistsDb.prepare("SELECT 1 FROM playlists WHERE name=? AND EXISTS (SELECT 1 FROM json_each(songs) WHERE value=?)").get("Favorites", file)) {
+			addToFavoritesButtonBottomRight.style.color = "red";
+		}
+
 		const songPath = path.join(musicFolder, `${playingSongsID}.${row.song_extension}`);
 		audioPlayer.stdin.write(`play ${songPath}\n`);
 		audioPlayer.stdin.write(`volume ${volume}\n`);
@@ -1174,21 +1182,18 @@ function getSongNameById(songId) {
 function bottomRightFunctions(input) {
 	if (!playingSongsID) return;
 	if (input == "addToPlaylist") {
-		openAddToPlaylistModal(removeExtensions(playingSongsID));
+		openAddToPlaylistModal(playingSongsID);
 	} else if (input == "addToFavorites") {
 		let songs = [];
-		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE id = ?").get("Favorites");
-		if (fav && fav.songs) {
-			songs = JSON.parse(fav.songs);
-		}
 
-		if (!songs.includes(removeExtensions(playingSongsID))) {
-			songs.push(removeExtensions(playingSongsID));
+		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE id = ?").get("Favorites");
+		if (fav && fav.songs) songs = JSON.parse(fav.songs);
+
+		if (!songs.includes(playingSongsID)) {
+			songs.push(playingSongsID);
 			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(songs), "Favorites");
 
-			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") {
-				getPlaylists();
-			}
+			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists();
 		}
 	} else if (input == "customise") {
 		opencustomiseModal(playingSongsID);
