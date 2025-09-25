@@ -16,11 +16,18 @@ events.forEach(eventName => {
 		else if (eventName === "quit") ipcRenderer.invoke("close-app");
 		else if (eventName === "next") playNextSong();
 		else if (eventName === "previous") playPreviousSong();
-		else if (eventName === "pause") playPause();
-		else if (eventName === "playpause") playingSongsID ? playPause() : randomSongFunctionMainMenu();
-		else if (eventName === "stop") playPause();
-		else if (eventName === "play") console.log("unused function for now:", eventName); // TODO
-		else if (eventName === "seek") console.log("unused function for now:", eventName); // TODO
+		else if (eventName === "pause") {
+			playPause();
+			playing = false;
+		} else if (eventName === "playpause") playingSongsID ? playPause() : randomSongFunctionMainMenu();
+		else if (eventName === "stop") {
+			playPause();
+			playing = false;
+		} else if (eventName === "play") {
+			console.log("unused function for now:", eventName);
+			playing = true;
+		} // TODO
+		else if (eventName === "seek" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
 		else if (eventName === "position" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
 		else if (eventName === "open") console.log("unused function for now:", eventName, args); // TODO
 		else if (eventName === "volume") console.log("unused function for now:", eventName, args); // TODO

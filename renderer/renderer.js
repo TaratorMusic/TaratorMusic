@@ -621,6 +621,13 @@ async function playMusic(file, playlistId) {
 			}
 		});
 
+		if (player) {
+			editMPRIS();
+			player.playbackStatus = "Playing";
+		}
+
+		playing = true;
+
 		if (isShuffleActive) {
 			if (playlistId) {
 				if (newPlaylistID != playlistId.id) {
@@ -811,17 +818,17 @@ function playPause() {
 	audioPlayer.stdin.write("pause\n");
 
 	if (playing) {
-		playButton.style.display = "none";
-		pauseButton.style.display = "inline-block";
-		if (playingSongsID) totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
-		if (platform == "linux" && player) player.playbackStatus = "Playing";
-		playing = true;
-	} else {
 		playButton.style.display = "inline-block";
 		pauseButton.style.display = "none";
 		if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
-		if (platform == "linux" && player) player.playbackStatus = "Paused";
+		if (player) player.playbackStatus = "Paused";
 		playing = false;
+	} else {
+		playButton.style.display = "none";
+		pauseButton.style.display = "inline-block";
+		if (playingSongsID) totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
+		if (player) player.playbackStatus = "Playing";
+		playing = true;
 	}
 }
 
@@ -1323,12 +1330,11 @@ document.addEventListener("DOMContentLoaded", function () {
 				videoProgress.value = (currentTimeSec / songDuration) * 100;
 
 				if (currentTimeSec >= songDuration - 0.1) playNextSong();
-				if (platform == "linux" && player) player.getPosition = () => Math.floor(currentTimeSec * 1e6);
+				if (player && playingSongsID) player.getPosition = () => Math.floor(currentTimeSec * 1e6);
 			}
 		}
 
 		updateDiscordPresence();
-		if (audioPlayer && player && playingSongsID) editMPRIS();
 	});
 
 	volumeControl.addEventListener("input", () => {
