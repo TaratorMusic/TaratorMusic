@@ -82,9 +82,3 @@ It looks terrible :/
 -   Move app folders
 -   Package Data to Desktop
 -   Could save data online
-
-### Tests
-
--   Need to setup electron tests via playwright
--   jest tests to test the usual stuff
--   go tests to test the backend --> use "exec" to run the files and expect correct output

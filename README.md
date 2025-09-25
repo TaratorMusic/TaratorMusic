@@ -15,25 +15,25 @@
 
 ## Technologies Used
 
-HTML & CSS & JavaScript for the Front-end, Node.js and Go for the Back-end.
+HTML & CSS & JavaScript for the Front-end, Node.js and Go for the Back-end
 
-Electron to make it a cross platform desktop app, electron-updater to detect new versions and give the user the option to update,
+Electron to make it a cross platform desktop app, electron-updater to detect new versions and give the user the option to update
 
-@distube/ytdl-core and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists. @distube/ytsr for searching videos in youtube.
+@distube/ytdl-core and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists. @distube/ytsr for searching videos in youtube
 
-cheerio and puppeteer to scrape song and playlist data from Spotify,
+cheerio and puppeteer to scrape song and playlist data from Spotify
 
-Better-SQLite3 to store most listened songs, playlists and settings data,
+Better-SQLite3 to store most listened songs, playlists and settings data
 
-Chart.js to show user stats in the statistics tab,
+Chart.js to show user stats in the statistics tab
 
-MusicBrainz API to fetch song genre, artist and language information,
+MusicBrainz API to fetch song genre, artist and language information
 
 FFmpeg and FFprobe to automatically stabilise audio levels,
 
 Discord Rich Presence to momentarily share listened songs in Discord
 
-Jest and Github Actions to protect code quality and automatically roll out builds
+Github Actions to protect code quality and automatically roll out builds
 
 ## How to develop:
 
