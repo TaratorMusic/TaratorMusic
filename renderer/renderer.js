@@ -427,9 +427,9 @@ tabs.forEach(tab => {
 
 function getSongNameCached(songId) {
 	if (!songNameCache.has(songId)) {
-		const stmt = musicsDb.prepare("SELECT song_name, song_extension, thumbnail_extension FROM songs WHERE song_id = ?");
+		const stmt = musicsDb.prepare("SELECT song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?");
 		const row = stmt.get(songId);
-		songNameCache.set(songId, row || { song_name: null, song_extension: null, thumbnail_extension: null });
+		songNameCache.set(songId, row || { song_name: null, song_extension: null, thumbnail_extension: null, genre: null, artist: null, language: null });
 	}
 	return songNameCache.get(songId);
 }
@@ -492,30 +492,48 @@ function renderMusics() {
 	container.innerHTML = "";
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 
-	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension, song_length FROM songs").all();
+	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension FROM songs").all();
 	document.getElementById("songCountElement").innerText = `${songRows.length} songs.`;
 
 	const musicFiles = songRows
-		.map(databaseRow => ({
-			id: databaseRow.song_id,
-			name: `${databaseRow.song_id}.${databaseRow.song_extension}`,
-			thumbnail: `file://${databaseRow.song_id + "." + databaseRow.thumbnail_extension}`,
-			length: databaseRow.song_length || 0,
+		.map(row => ({
+			id: row.song_id,
+			name: `${row.song_id}.${row.song_extension}`,
+			thumbnail: `file://${row.song_id + "." + row.thumbnail_extension}`,
+			length: row.song_length || 0,
+			info: getSongNameCached(row.song_id),
 		}))
-		.sort((songA, songB) => (getSongNameCached(songA.id).song_name || "").toLowerCase().localeCompare((getSongNameCached(songB.id).song_name || "").toLowerCase()));
+		.sort((a, b) => (a.info.song_name || "").toLowerCase().localeCompare((b.info.song_name || "").toLowerCase()));
 
-	let filteredSongs = musicFiles.filter(s => (getSongNameCached(s.id).song_name || "").toLowerCase().includes(document.querySelector("#music-search").value.trim().toLowerCase()));
+	let searchValue = document.querySelector("#music-search").value.trim();
+	const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
+	if (exactMatch) searchValue = searchValue.slice(1, -1).toLowerCase();
 
-	const maxVisible = displayCount == "All" ? filteredSongs.length : parseInt(displayCount * previousItemsPerRow);
+	const filteredSongs = musicFiles.filter(song => {
+		if (!searchValue) return true;
 
-	filteredSongs.slice(0, maxVisible).forEach(songFile => {
-		const musicElement = createMusicElement(songFile);
-		if (songFile.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
-		musicElement.addEventListener("click", () => playMusic(songFile.id, null));
+		const { song_name, artist, genre, language } = song.info;
+		const id = song.id.toString();
+
+		const compare = fieldValue => {
+			if (!fieldValue) return false;
+			const value = fieldValue.toLowerCase();
+			return exactMatch ? value === searchValue : value.includes(searchValue);
+		};
+
+		return compare(song_name) || (exactMatch ? id === searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
+	});
+
+	const maxVisible = displayCount === "All" ? filteredSongs.length : parseInt(displayCount * previousItemsPerRow);
+
+	filteredSongs.slice(0, maxVisible).forEach(song => {
+		const musicElement = createMusicElement(song);
+		if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+		musicElement.addEventListener("click", () => playMusic(song.id, null));
 		container.appendChild(musicElement);
 	});
-	setupLazyBackgrounds();
 
+	setupLazyBackgrounds();
 	container.scrollTop = scrollPos;
 }
 
@@ -1126,7 +1144,7 @@ document.addEventListener("keydown", event => {
 function setupLazyBackgrounds() {
 	const bgElements = document.querySelectorAll(".background-element[data-bg]");
 	const vh = window.innerHeight;
-	const margin = `${2 * vh}px 0px`;
+	const margin = `${4 * vh}px 0px`;
 
 	if ("IntersectionObserver" in window) {
 		const observer = new IntersectionObserver(
