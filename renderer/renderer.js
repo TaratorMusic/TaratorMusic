@@ -486,7 +486,10 @@ async function myMusicOnClick() {
 }
 
 function renderMusics() {
-	document.getElementById("music-list-container").innerHTML = "";
+	const container = document.getElementById("music-list-container");
+	const scrollPos = container.scrollTop;
+
+	container.innerHTML = "";
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 
 	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension, song_length FROM songs").all();
@@ -501,8 +504,7 @@ function renderMusics() {
 		}))
 		.sort((songA, songB) => (getSongNameCached(songA.id).song_name || "").toLowerCase().localeCompare((getSongNameCached(songB.id).song_name || "").toLowerCase()));
 
-	let filteredSongs = [...musicFiles];
-	filteredSongs = musicFiles.filter(s => (getSongNameCached(s.id).song_name || "").toLowerCase().includes(document.querySelector("#music-search").value.trim().toLowerCase()));
+	let filteredSongs = musicFiles.filter(s => (getSongNameCached(s.id).song_name || "").toLowerCase().includes(document.querySelector("#music-search").value.trim().toLowerCase()));
 
 	const maxVisible = displayCount == "All" ? filteredSongs.length : parseInt(displayCount * previousItemsPerRow);
 
@@ -510,9 +512,11 @@ function renderMusics() {
 		const musicElement = createMusicElement(songFile);
 		if (songFile.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 		musicElement.addEventListener("click", () => playMusic(songFile.id, null));
-		document.getElementById("music-list-container").appendChild(musicElement);
+		container.appendChild(musicElement);
 	});
 	setupLazyBackgrounds();
+
+	container.scrollTop = scrollPos;
 }
 
 function createMusicElement(songFile) {

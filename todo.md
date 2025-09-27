@@ -5,7 +5,6 @@
 ## Coming Soon App Features
 
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language, song ID"
--   When re-rendering the my music tab, scroll back to the same location.
 -   When renaming a song, re-render the music tab, and re-render the cache
 -   Page vs scroll in the my music tab
 
