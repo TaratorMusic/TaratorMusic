@@ -64,8 +64,6 @@ let songPauseStartTime = 0;
 let totalPausedTime = 0;
 let previousVolume = null;
 let timeoutId = null;
-let audioContext;
-let audioSource;
 let searchedSongsUrl;
 let downloadingStyle;
 let discordRPCstatus;
@@ -428,9 +426,12 @@ tabs.forEach(tab => {
 });
 
 function getSongNameCached(songId) {
-	// TODO: add extensions to the cache map?
-	if (!songNameCache.has(songId)) songNameCache.set(songId, getSongNameById(songId));
-	return songNameCache.get(songId) || "";
+	if (!songNameCache.has(songId)) {
+		const stmt = musicsDb.prepare("SELECT song_name, song_extension, thumbnail_extension FROM songs WHERE song_id = ?");
+		const row = stmt.get(songId);
+		songNameCache.set(songId, row || { song_name: null, song_extension: null, thumbnail_extension: null });
+	}
+	return songNameCache.get(songId);
 }
 
 async function myMusicOnClick() {
@@ -498,10 +499,10 @@ function renderMusics() {
 			thumbnail: `file://${databaseRow.song_id + "." + databaseRow.thumbnail_extension}`,
 			length: databaseRow.song_length || 0,
 		}))
-		.sort((songA, songB) => getSongNameCached(songA.id).toLowerCase().localeCompare(getSongNameCached(songB.id).toLowerCase()));
+		.sort((songA, songB) => (getSongNameCached(songA.id).song_name || "").toLowerCase().localeCompare((getSongNameCached(songB.id).song_name || "").toLowerCase()));
 
 	let filteredSongs = [...musicFiles];
-	filteredSongs = musicFiles.filter(s => getSongNameCached(s.id).toLowerCase().includes(document.querySelector("#music-search").value.trim().toLowerCase()));
+	filteredSongs = musicFiles.filter(s => (getSongNameCached(s.id).song_name || "").toLowerCase().includes(document.querySelector("#music-search").value.trim().toLowerCase()));
 
 	const maxVisible = displayCount == "All" ? filteredSongs.length : parseInt(displayCount * previousItemsPerRow);
 
@@ -521,9 +522,7 @@ function createMusicElement(songFile) {
 	musicElement.setAttribute("data-file-name", songFile.name);
 
 	const fileNameWithoutExtension = path.parse(songFile.name).name;
-	const row = musicsDb.prepare("SELECT thumbnail_extension FROM songs WHERE song_id = ?").get(fileNameWithoutExtension);
-
-	const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + row.thumbnail_extension);
+	const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + getSongNameCached(fileNameWithoutExtension).thumbnail_extension);
 
 	if (fs.existsSync(thumbnailPath)) {
 		const backgroundElement = document.createElement("div");
@@ -534,7 +533,7 @@ function createMusicElement(songFile) {
 
 	const songNameElement = document.createElement("div");
 	songNameElement.classList.add("song-name");
-	songNameElement.innerText = getSongNameCached(fileNameWithoutExtension);
+	songNameElement.innerText = getSongNameCached(fileNameWithoutExtension).song_name;
 
 	const songLengthElement = document.createElement("div");
 	songLengthElement.classList.add("song-length");
@@ -575,7 +574,6 @@ async function playMusic(file, playlistId) {
 
 		currentPlaylist = playlistId || null;
 
-		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(file);
 		playingSongsID = file;
 
 		videoProgress.value = 0;
@@ -589,7 +587,7 @@ async function playMusic(file, playlistId) {
 			addToFavoritesButtonBottomRight.style.color = "red";
 		}
 
-		const songPath = path.join(musicFolder, `${playingSongsID}.${row.song_extension}`);
+		const songPath = path.join(musicFolder, `${playingSongsID}.${getSongNameCached(file).song_extension}`);
 		audioPlayer.stdin.write(`play ${songPath}\n`);
 		audioPlayer.stdin.write(`volume ${volume}\n`);
 		audioPlayer.stdin.write(`speed ${rememberspeed}\n`);
@@ -597,7 +595,7 @@ async function playMusic(file, playlistId) {
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
 
-		const thumbnailPath = path.join(thumbnailFolder, `${file}.${row.thumbnail_extension}`.replace(/%20/g, " "));
+		const thumbnailPath = path.join(thumbnailFolder, `${file}.${getSongNameCached(file).thumbnail_extension}`.replace(/%20/g, " "));
 		let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
 
 		if (fs.existsSync(thumbnailPath)) {

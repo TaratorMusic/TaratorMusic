@@ -4,9 +4,10 @@
 
 ## Coming Soon App Features
 
--   When a song is renamed, it doesnt get renamed in the cache. --> NO NEED TO SCROLL ALL THE WAY UP ON DATA CHANGE
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language, song ID"
--   Re-rendering songs should be able to be easily called outside the function
+-   When re-rendering the my music tab, scroll back to the same location.
+-   When renaming a song, re-render the music tab, and re-render the cache
+-   Page vs scroll in the my music tab
 
 ### Big updates remaining:
 
