@@ -90,7 +90,7 @@ function displayPlaylists(playlists) {
 
 		const playlistSongs = document.createElement("div");
 		playlistInfoandSongs.appendChild(playlistSongs);
-		playlistSongs.className = "playlist-songs";
+		playlistSongs.className = "scrollArea playlist-songs";
 
 		if (playlist.id != "Favorites") {
 			const playlistCustomiseButton = document.createElement("div");

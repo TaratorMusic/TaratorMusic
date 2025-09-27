@@ -43,6 +43,7 @@ const volumeControl = document.getElementById("volume");
 const videoLength = document.getElementById("video-length");
 const videoProgress = document.getElementById("video-progress");
 const searchModalInput = document.getElementById("searchModalInput");
+const content = document.getElementById("content");
 
 const platform = process.platform;
 let audioPlayer;
@@ -72,6 +73,8 @@ let discordDaemon = null;
 let songDuration;
 let isUserSeeking = false;
 let playing = false;
+let previousItemsPerRow;
+
 const debounceMap = new Map();
 const songNameCache = new Map();
 
@@ -425,6 +428,7 @@ tabs.forEach(tab => {
 });
 
 function getSongNameCached(songId) {
+	// TODO: add extensions to the cache map?
 	if (!songNameCache.has(songId)) songNameCache.set(songId, getSongNameById(songId));
 	return songNameCache.get(songId) || "";
 }
@@ -458,7 +462,6 @@ async function myMusicOnClick() {
 	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension, song_length FROM songs").all();
 	const songCountElement = document.createElement("div");
 	songCountElement.id = "songCountElement";
-	songCountElement.innerText = `${songRows.length} songs.`;
 
 	controlsBar.appendChild(musicSearchInput);
 	controlsBar.appendChild(songCountElement);
@@ -468,8 +471,25 @@ async function myMusicOnClick() {
 	const musicListContainer = document.createElement("div");
 	musicListContainer.id = "music-list-container";
 	musicListContainer.className = "scrollArea";
+	musicListContainer.innerHTML = "";
 
 	myMusicContent.appendChild(musicListContainer);
+
+	musicSearchInput.addEventListener("input", renderMusics);
+	displayCountSelect.addEventListener("change", () => {
+		displayCount = displayCountSelect.value;
+		renderMusics();
+	});
+
+	renderMusics();
+}
+
+function renderMusics() {
+	document.getElementById("music-list-container").innerHTML = "";
+	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
+
+	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension, song_length FROM songs").all();
+	document.getElementById("songCountElement").innerText = `${songRows.length} songs.`;
 
 	const musicFiles = songRows
 		.map(databaseRow => ({
@@ -481,43 +501,17 @@ async function myMusicOnClick() {
 		.sort((songA, songB) => getSongNameCached(songA.id).toLowerCase().localeCompare(getSongNameCached(songB.id).toLowerCase()));
 
 	let filteredSongs = [...musicFiles];
-	let previousItemsPerRow = null;
-	let resizeTimeoutId = null;
+	filteredSongs = musicFiles.filter(s => getSongNameCached(s.id).toLowerCase().includes(document.querySelector("#music-search").value.trim().toLowerCase()));
 
-	function renderSongs() {
-		filteredSongs = musicFiles.filter(songFile => getSongNameCached(songFile.id).toLowerCase().includes(musicSearchInput.value.trim().toLowerCase()));
-		musicListContainer.innerHTML = "";
-		const maxVisible = displayCount == "All" ? filteredSongs.length : parseInt(displayCount * previousItemsPerRow);
-		filteredSongs.slice(0, maxVisible).forEach(songFile => {
-			const musicElement = createMusicElement(songFile);
-			if (songFile.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
-			musicElement.addEventListener("click", () => playMusic(songFile.id, null));
-			musicListContainer.appendChild(musicElement);
-		});
-		setupLazyBackgrounds();
-	}
+	const maxVisible = displayCount == "All" ? filteredSongs.length : parseInt(displayCount * previousItemsPerRow);
 
-	function recalculateItemsPerRow() {
-		const contentWidth = document.getElementById("content").offsetWidth;
-		const newItemsPerRow = Math.floor((contentWidth - 53) / 205);
-		if (newItemsPerRow !== previousItemsPerRow) {
-			previousItemsPerRow = newItemsPerRow;
-			renderSongs();
-		}
-	}
-
-	window.addEventListener("resize", () => {
-		clearTimeout(resizeTimeoutId);
-		resizeTimeoutId = setTimeout(recalculateItemsPerRow, 250);
+	filteredSongs.slice(0, maxVisible).forEach(songFile => {
+		const musicElement = createMusicElement(songFile);
+		if (songFile.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+		musicElement.addEventListener("click", () => playMusic(songFile.id, null));
+		document.getElementById("music-list-container").appendChild(musicElement);
 	});
-
-	musicSearchInput.addEventListener("input", renderSongs);
-	displayCountSelect.addEventListener("change", () => {
-		displayCount = displayCountSelect.value;
-		renderSongs();
-	});
-
-	recalculateItemsPerRow();
+	setupLazyBackgrounds();
 }
 
 function createMusicElement(songFile) {
@@ -536,7 +530,7 @@ function createMusicElement(songFile) {
 		backgroundElement.classList.add("background-element");
 		backgroundElement.dataset.bg = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
 		musicElement.appendChild(backgroundElement);
-	}
+	} // TODO: placeholder thumbnail?
 
 	const songNameElement = document.createElement("div");
 	songNameElement.classList.add("song-name");
@@ -1293,13 +1287,6 @@ document.addEventListener("DOMContentLoaded", function () {
 		ipcRenderer.send("download-update");
 	});
 
-	window.addEventListener("resize", () => {
-		document.querySelectorAll(".hourChart").forEach(chart => {
-			chart.width = window.innerWidth * 0.7;
-			chart.height = window.innerWidth * 0.0525;
-		});
-	});
-
 	startupCheck();
 
 	audioPlayer = spawn(path.join(backendFolder, "player"), [], { stdio: ["pipe", "pipe", "pipe"] });
@@ -1368,4 +1355,20 @@ document.addEventListener("DOMContentLoaded", function () {
 			audioPlayer.stdin.write(`seek ${seekTime}\n`);
 		}
 	});
+
+	window.addEventListener("resize", () => {
+		if (document.getElementById("music-list-container")) {
+			if (previousItemsPerRow != Math.floor((content.offsetWidth - 53) / 205)) {
+				renderMusics();
+			}
+			previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
+		}
+
+		document.querySelectorAll(".hourChart").forEach(chart => {
+			chart.width = window.innerWidth * 0.7;
+			chart.height = window.innerWidth * 0.0525;
+		});
+	});
+
+	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 });

@@ -4,8 +4,6 @@
 
 ## Coming Soon App Features
 
--   Rewrite mymusiconclick for these fixes:
--   UNLIMITED EVENTLISTENERS IN LINE 500 something "resize"
 -   When a song is renamed, it doesnt get renamed in the cache. --> NO NEED TO SCROLL ALL THE WAY UP ON DATA CHANGE
 -   While searching for songs in "My Music" tab, make a setting for the search, "All, only songs, artists, genre, language, song ID"
 -   Re-rendering songs should be able to be easily called outside the function
@@ -75,3 +73,4 @@
 -   Package Data to Desktop
 -   Could save data online
 -   Add cool animations
+-   Clip songs to cut out empty parts automatically?
