@@ -4,7 +4,6 @@
 
 ## Coming Soon App Features
 
--   When renaming a song, re-render the music tab, and re-render the cache
 -   Page vs scroll in the my music tab
 -   Closing autoplay doesnt work
 

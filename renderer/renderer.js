@@ -1005,6 +1005,8 @@ async function saveEditedSong() {
 	}
 
 	musicsDb.prepare("UPDATE songs SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ? WHERE song_id = ?").run(newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID);
+	const updated = musicsDb.prepare("SELECT song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?").get(songID);
+	songNameCache.set(songID, updated);
 
 	document.getElementById("customiseModal").style.display = "none";
 	document.getElementById("my-music").click();
@@ -1057,6 +1059,7 @@ async function removeSong(fileToDelete) {
 	});
 
 	musicsDb.prepare("DELETE FROM songs WHERE song_id = ?").run(fileToDelete);
+	songNameCache.delete(fileToDelete);
 
 	closeModal();
 	document.getElementById("customiseModal").style.display = "none";
