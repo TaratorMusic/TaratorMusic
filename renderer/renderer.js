@@ -1339,7 +1339,17 @@ document.addEventListener("DOMContentLoaded", function () {
 			if (songDuration > 0) {
 				videoProgress.value = (currentTimeSec / songDuration) * 100;
 
-				if (currentTimeSec >= songDuration - 0.1) playNextSong();
+				if (currentTimeSec >= songDuration - 0.1) {
+					if (isAutoplayActive) {
+						playNextSong();
+					} else {
+						playButton.style.display = "inline-block";
+						pauseButton.style.display = "none";
+						if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
+						if (player) player.playbackStatus = "Paused";
+						playing = false;
+					}
+				}
 				if (player && playingSongsID) player.getPosition = () => Math.floor(currentTimeSec * 1e6);
 			}
 		}

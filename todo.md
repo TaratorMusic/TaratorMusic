@@ -5,7 +5,6 @@
 ## Coming Soon App Features
 
 -   Page vs scroll in the my music tab
--   Closing autoplay doesnt work
 
 ### Big updates remaining:
 
