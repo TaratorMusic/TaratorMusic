@@ -74,7 +74,7 @@ let playing = false;
 let previousItemsPerRow;
 
 const debounceMap = new Map();
-const songNameCache = new Map();
+let songNameCache = new Map();
 
 let sessionTimeSpent = 0;
 let rememberautoplay;
@@ -333,6 +333,18 @@ function initialiseMusicsDatabase() {
 
 	if (!existingTimerColumns.includes("playlist")) {
 		musicsDb.prepare(`ALTER TABLE timers ADD COLUMN playlist TEXT`).run();
+	}
+
+	const rows = musicsDb.prepare("SELECT song_id, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs").all();
+	for (const row of rows) {
+		songNameCache.set(row.song_id, {
+			song_name: row.song_name,
+			song_extension: row.song_extension,
+			thumbnail_extension: row.thumbnail_extension,
+			genre: row.genre,
+			artist: row.artist,
+			language: row.language,
+		});
 	}
 }
 
@@ -726,42 +738,31 @@ async function playPreviousSong() {
 
 async function playNextSong() {
 	if (!playingSongsID) return;
-
 	if (isLooping) return playMusic(playingSongsID, null);
 
-	const allMusics = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
-	const songMap = new Map();
-	allMusics.forEach(song => songMap.set(song.song_id, song.song_name));
-
-	const sortedEntries = [...songMap.entries()].sort((a, b) => {
-		const nameA = a[1] || "";
-		const nameB = b[1] || "";
-		return nameA.localeCompare(nameB);
-	});
-	const sortedSongIds = sortedEntries.map(entry => entry[0]);
+	const sortedSongIds = [...songNameCache.entries()].sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || "")).map(entry => entry[0]);
 
 	let nextSongId;
 
 	if (isShuffleActive) {
 		if (currentPlaylist) {
 			const currentSongId = currentPlaylist.songs[currentPlaylistElement];
-			if (currentPlaylist.songs.length == 1) {
+			if (currentPlaylist.songs.length === 1) {
 				nextSongId = currentSongId;
 			} else {
 				let randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
-				while (currentPlaylist.songs[randomIndex] == currentSongId) {
+				while (currentPlaylist.songs[randomIndex] === currentSongId) {
 					randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
 				}
 				nextSongId = currentPlaylist.songs[randomIndex];
 				currentPlaylistElement = randomIndex;
 			}
 		} else {
-			const currentFileName = getSongNameById(playingSongsID);
-			if (sortedSongIds.length == 1) {
-				nextSongId = currentFileName;
+			if (sortedSongIds.length === 1) {
+				nextSongId = sortedSongIds[0];
 			} else {
 				let randomIndex = Math.floor(Math.random() * sortedSongIds.length);
-				while (sortedSongIds[randomIndex] == currentFileName) {
+				while (sortedSongIds[randomIndex] === playingSongsID) {
 					randomIndex = Math.floor(Math.random() * sortedSongIds.length);
 				}
 				nextSongId = sortedSongIds[randomIndex];
@@ -773,8 +774,7 @@ async function playNextSong() {
 				nextSongId = currentPlaylist.songs[++currentPlaylistElement];
 			}
 		} else {
-			const currentFileName = getSongNameById(playingSongsID);
-			const currentIndex = sortedSongIds.indexOf(currentFileName);
+			const currentIndex = sortedSongIds.indexOf(playingSongsID);
 			const nextIndex = currentIndex < sortedSongIds.length - 1 ? currentIndex + 1 : 0;
 			nextSongId = sortedSongIds[nextIndex];
 		}

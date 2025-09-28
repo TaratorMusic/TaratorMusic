@@ -6,6 +6,7 @@
 
 -   When renaming a song, re-render the music tab, and re-render the cache
 -   Page vs scroll in the my music tab
+-   Closing autoplay doesnt work
 
 ### Big updates remaining:
 
@@ -20,6 +21,7 @@
 ### Version 1.7.7:
 
 -   Add song to queue
+-   Make the db saves non-blocking
 -   Make the charts on song listen time instead of song amounts perhaps? or toggle
 -   Most Listened Playlist and other playlist data in Statistics
 -   Add pages to the music tab and a way to navigate between them if using "show x rows".
