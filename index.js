@@ -64,7 +64,7 @@ function createWindow() {
 		const timeout = setTimeout(() => {
 			mainWindow.destroy();
 			if (process.platform !== "darwin") app.quit();
-		}, 5000);
+		}, 2000);
 		ipcMain.once("save-complete", () => {
 			clearTimeout(timeout);
 			mainWindow.destroy();

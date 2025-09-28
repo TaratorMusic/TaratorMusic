@@ -1,6 +1,7 @@
 ## Bugs
 
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
+-   Youtube gives error 403. Might need to rewrite in Golang (Use my ytpl-ytsr too)
 
 ## Coming Soon App Features
 

@@ -72,6 +72,7 @@ let songDuration;
 let isUserSeeking = false;
 let playing = false;
 let previousItemsPerRow;
+let currentPage = 1;
 
 const debounceMap = new Map();
 let songNameCache = new Map();
@@ -460,6 +461,19 @@ async function myMusicOnClick() {
 
 	const displayCountSelect = document.createElement("select");
 	displayCountSelect.id = "display-count";
+
+	// Add two buttons, left and right. Make them disabled if scroll is enabled
+	// Store the page we are at as a global variable.
+	// Same as re-rendering, it needs to come back to the page like we are scrolling back.
+	// Save the preference between scroll-pages in settingsDb
+
+	const buttonLeft = document.createElement("button");
+	const buttonRight = document.createElement("button");
+	buttonLeft.className = "pageScrollButtons";
+	buttonRight.className = "pageScrollButtons";
+	buttonLeft.addEventListener("click", () => {
+		swapPage(page - 1);
+	});
 
 	const availableRowCounts = [0, 1, 2, 3, 4, 6, 8, 16, "All"];
 	availableRowCounts.forEach(rowCount => {

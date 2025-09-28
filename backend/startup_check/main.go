@@ -18,7 +18,19 @@ func main() {
 
 	musicFolder := os.Args[1]
 	thumbnailFolder := os.Args[2]
-	debugPattern := regexp.MustCompile(`^174655\d+-player-script\.js$`)
+	debugPattern := regexp.MustCompile(`^\d+-player-script\.js$`)
+
+	parentDir := filepath.Dir(musicFolder)
+
+	filepath.WalkDir(parentDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if debugPattern.MatchString(d.Name()) {
+			os.Remove(path)
+		}
+		return nil
+	})
 
 	musicMap := make(map[string]string)
 	filepath.WalkDir(musicFolder, func(path string, d fs.DirEntry, err error) error {
@@ -49,7 +61,6 @@ func main() {
 		if err != nil || d.IsDir() {
 			return nil
 		}
-
 		ext := filepath.Ext(d.Name())
 		id := strings.TrimSuffix(d.Name(), ext)
 		if _, ok := musicMap[id]; ok {
@@ -57,7 +68,6 @@ func main() {
 		} else {
 			os.Remove(path)
 		}
-
 		return nil
 	})
 
@@ -69,7 +79,6 @@ func main() {
 		} else {
 			thumbExt = nil
 		}
-
 		result[id] = map[string]*string{
 			"song_extension":      &musicExt,
 			"thumbnail_extension": thumbExt,
