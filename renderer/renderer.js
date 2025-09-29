@@ -96,7 +96,6 @@ let key_Loop;
 let key_randomSong;
 let key_randomPlaylist;
 let dividevolume;
-let displayCount;
 let stabiliseVolumeToggle;
 let current_version;
 
@@ -119,7 +118,7 @@ const defaultSettings = {
 	key_randomSong: "1",
 	key_randomPlaylist: "2",
 	dividevolume: 1,
-	displayCount: 4,
+	displayPage: "scroll",
 	background: "green",
 	stabiliseVolumeToggle: 1,
 	dc_rpc: 0,
@@ -227,7 +226,7 @@ function initialiseSettingsDatabase() {
 	rememberspeed = settingsRow.rememberspeed;
 	volume = settingsRow.volume / 100;
 	dividevolume = settingsRow.dividevolume;
-	displayCount = settingsRow.displayCount;
+	displayPage = settingsRow.displayPage;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 	current_version = settingsRow.current_version;
 	document.body.className = `bg-gradient-${settingsRow.background}`;
@@ -459,8 +458,8 @@ async function myMusicOnClick() {
 	musicSearchInput.id = "music-search";
 	musicSearchInput.placeholder = `Search in ${taratorFolder}...`;
 
-	const displayCountSelect = document.createElement("select");
-	displayCountSelect.id = "display-count";
+	const displayPageSelect = document.createElement("select");
+	displayPageSelect.id = "display-count";
 
 	// Add two buttons, left and right. Make them disabled if scroll is enabled
 	// Store the page we are at as a global variable.
@@ -471,20 +470,35 @@ async function myMusicOnClick() {
 	const buttonRight = document.createElement("button");
 	buttonLeft.className = "pageScrollButtons";
 	buttonRight.className = "pageScrollButtons";
+	buttonLeft.innerText = "<";
+	buttonRight.innerText = ">";
+
 	buttonLeft.addEventListener("click", () => {
-		swapPage(page - 1);
+		if (currentPage != 1) currentPage--;
+		renderMusics();
 	});
 
-	const availableRowCounts = [0, 1, 2, 3, 4, 6, 8, 16, "All"];
+	buttonRight.addEventListener("click", () => {
+		if (Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) != currentPage) currentPage++;
+		renderMusics();
+	});
+
+	const availableRowCounts = ["scroll", "page"];
 	availableRowCounts.forEach(rowCount => {
 		const optionElement = document.createElement("option");
 		optionElement.value = rowCount;
-		optionElement.innerText = rowCount == "All" ? "Show All" : `Show ${rowCount} Row${rowCount == 1 ? "" : "s"}`;
-		if (rowCount == displayCount || (displayCount == 9999999 && rowCount == "All")) optionElement.selected = true;
-		displayCountSelect.appendChild(optionElement);
+		optionElement.innerText = rowCount == "scroll" ? "Scroll Mode" : "Page Mode";
+		if (rowCount === displayPage) optionElement.selected = true;
+		displayPageSelect.appendChild(optionElement);
 	});
 
-	displayCountSelect.onchange = () => handleDropdownChange("displayCount", displayCountSelect);
+	displayPageSelect.onchange = () => {
+		const selectedValue = displayPageSelect.value;
+		console.log("Selected:", selectedValue, "at displayPage");
+		updateDatabase("displayPage", selectedValue, settingsDb, "settings");
+		displayPage = selectedValue;
+		renderMusics();
+	};
 
 	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension, song_length FROM songs").all();
 	const songCountElement = document.createElement("div");
@@ -492,7 +506,9 @@ async function myMusicOnClick() {
 
 	controlsBar.appendChild(musicSearchInput);
 	controlsBar.appendChild(songCountElement);
-	controlsBar.appendChild(displayCountSelect);
+	controlsBar.appendChild(buttonLeft);
+	controlsBar.appendChild(displayPageSelect);
+	controlsBar.appendChild(buttonRight);
 	myMusicContent.appendChild(controlsBar);
 
 	const musicListContainer = document.createElement("div");
@@ -503,10 +519,6 @@ async function myMusicOnClick() {
 	myMusicContent.appendChild(musicListContainer);
 
 	musicSearchInput.addEventListener("input", renderMusics);
-	displayCountSelect.addEventListener("change", () => {
-		displayCount = displayCountSelect.value;
-		renderMusics();
-	});
 
 	renderMusics();
 }
@@ -517,6 +529,7 @@ function renderMusics() {
 
 	container.innerHTML = "";
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
+	if (Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) < currentPage) currentPage = Math.ceil(songNameCache.size / (3 * previousItemsPerRow));
 
 	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension FROM songs").all();
 	document.getElementById("songCountElement").innerText = `${songRows.length} songs.`;
@@ -550,9 +563,14 @@ function renderMusics() {
 		return compare(song_name) || (exactMatch ? id === searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
 	});
 
-	const maxVisible = displayCount === "All" ? filteredSongs.length : parseInt(displayCount * previousItemsPerRow);
+	const maxVisible = displayPage == "scroll" ? filteredSongs.length : parseInt(3 * previousItemsPerRow * currentPage);
+	const startingSong = displayPage == "scroll" ? 0 : parseInt(3 * previousItemsPerRow * (currentPage - 1));
 
-	filteredSongs.slice(0, maxVisible).forEach(song => {
+	document.querySelectorAll(".pageScrollButtons").forEach(button => {
+		button.disabled = displayPage == "scroll";
+	});
+
+	filteredSongs.slice(startingSong, maxVisible).forEach(song => {
 		const musicElement = createMusicElement(song);
 		if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 		musicElement.addEventListener("click", () => playMusic(song.id, null));
@@ -577,7 +595,7 @@ function createMusicElement(songFile) {
 		backgroundElement.classList.add("background-element");
 		backgroundElement.dataset.bg = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
 		musicElement.appendChild(backgroundElement);
-	} // TODO: placeholder thumbnail?
+	}
 
 	const songNameElement = document.createElement("div");
 	songNameElement.classList.add("song-name");
@@ -1200,15 +1218,11 @@ function setupLazyBackgrounds() {
 }
 
 function handleDropdownChange(option, selectElement) {
-	const selectedValue = option == "displayCount" && selectElement.value == "All" ? 9999999 : Number(selectElement.value);
+	const selectedValue = Number(selectElement.value);
 	console.log("Selected:", selectedValue, "at", option);
 	updateDatabase(option, selectedValue, settingsDb, "settings");
-	if (option == "dividevolume") {
-		dividevolume = selectedValue;
-		if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
-	} else if (option == "displayCount") {
-		displayCount = selectedValue;
-	}
+	dividevolume = selectedValue;
+	if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
 }
 
 function getSongNameById(songId) {

@@ -1,11 +1,8 @@
-## Bugs
-
--   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
--   Youtube gives error 403. Might need to rewrite in Golang (Use my ytpl-ytsr too)
-
 ## Coming Soon App Features
 
--   Page vs scroll in the my music tab
+-   Search is bugged with capitalised letters
+-   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
+-   Youtube gives error 403. Might need to rewrite in Golang (Use my ytpl-ytsr too)
 
 ### Big updates remaining:
 
@@ -20,12 +17,14 @@
 ### Version 1.7.7:
 
 -   Add song to queue
+-   Prevent switching between page and scroll mode moving the music boxes
 -   Make the db saves non-blocking
 -   Make the charts on song listen time instead of song amounts perhaps? or toggle
 -   Most Listened Playlist and other playlist data in Statistics
 -   Add pages to the music tab and a way to navigate between them if using "show x rows".
 -   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)
 -   Make quick search modal shortcut customisable
+-   Compile go & C binaries at github actions and gitignore them
 
 ### Version 1.7.8+:
 
@@ -35,7 +34,6 @@
 -   What if the restart wasnt needed after downloading the assets, we can just force reload the app, or load the missing assets individually
 -   Factory Reset (With options like: only settings, remove all songs/playlists etc.)
 -   Redesign main menu- Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
-
 -   Rework the download modal and three-way modal
 
 ### Planned Features
