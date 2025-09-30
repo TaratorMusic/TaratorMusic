@@ -461,11 +461,6 @@ async function myMusicOnClick() {
 	const displayPageSelect = document.createElement("select");
 	displayPageSelect.id = "display-count";
 
-	// Add two buttons, left and right. Make them disabled if scroll is enabled
-	// Store the page we are at as a global variable.
-	// Same as re-rendering, it needs to come back to the page like we are scrolling back.
-	// Save the preference between scroll-pages in settingsDb
-
 	const buttonLeft = document.createElement("button");
 	const buttonRight = document.createElement("button");
 	buttonLeft.className = "pageScrollButtons";
@@ -544,9 +539,9 @@ function renderMusics() {
 		}))
 		.sort((a, b) => (a.info.song_name || "").toLowerCase().localeCompare((b.info.song_name || "").toLowerCase()));
 
-	let searchValue = document.querySelector("#music-search").value.trim();
+	let searchValue = document.querySelector("#music-search").value.trim().toLowerCase();
 	const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
-	if (exactMatch) searchValue = searchValue.slice(1, -1).toLowerCase();
+	if (exactMatch) searchValue = searchValue.slice(1, -1);
 
 	const filteredSongs = musicFiles.filter(song => {
 		if (!searchValue) return true;

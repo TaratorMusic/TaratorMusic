@@ -1,6 +1,5 @@
 ## Coming Soon App Features
 
--   Search is bugged with capitalised letters
 -   Youtube gives error 403. Use ytdlp compiled 
 -   player file not spawning inside the bin folder
 
