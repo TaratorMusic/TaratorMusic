@@ -1,8 +1,8 @@
 ## Coming Soon App Features
 
 -   Search is bugged with capitalised letters
--   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
--   Youtube gives error 403. Might need to rewrite in Golang (Use my ytpl-ytsr too)
+-   Youtube gives error 403. Use ytdlp compiled 
+-   player file not spawning inside the bin folder
 
 ### Big updates remaining:
 
@@ -14,8 +14,9 @@
 -   Customise bass, treble etc. in the customisation modal, or leave them as generic, or customise them whole in the settings page.
 -   Pause downloads, continue anytime: use localstorage --> It should notify the user when the app is restarted that a download is mid-way.
 
-### Version 1.7.7:
+### Version 1.7.8:
 
+-   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
 -   Add song to queue
 -   Prevent switching between page and scroll mode moving the music boxes
 -   Make the db saves non-blocking
@@ -26,7 +27,7 @@
 -   Make quick search modal shortcut customisable
 -   Compile go & C binaries at github actions and gitignore them
 
-### Version 1.7.8+:
+### Version 1.7.9+:
 
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working
