@@ -1,6 +1,6 @@
 ## Coming Soon App Features
 
--   Youtube gives error 403. Use ytdlp compiled 
+- TODO
 
 ### Big updates remaining:
 

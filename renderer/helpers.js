@@ -89,7 +89,7 @@ function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
 }
 
 async function alertModal(message) {
-    if (message == "") return;
+	if (message == "") return;
 	return confirmModal(message, "Okay", null).then(() => {});
 }
 
@@ -137,6 +137,7 @@ async function loadNewPage(query, info) {
 		if (typeof renderStatistics == "function") renderStatistics(); // "typeof" fixes a console error
 	} else if (query == "downloadModal") {
 		document.getElementById("downloadModal").style.display = "block";
+		document.getElementById("downloadFirstInput").focus();
 	} else if (query == "createAppThumbnailsFolder") {
 		createAppThumbnailsFolder();
 	} else if (query == "shortenSongIdsGoPart") {

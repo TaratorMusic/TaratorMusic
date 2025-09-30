@@ -619,10 +619,8 @@ async function actuallyDownloadTheSong() {
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
 		try {
-			await downloadAudio(firstInput, outputFilePath, (downloaded, total) => {
-				const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-				const totalMB = total ? ` / ${(total / (1024 * 1024)).toFixed(2)} MB` : "";
-				document.getElementById("downloadModalText").innerText = `Downloading: ${downloadedMB} MB${totalMB}`;
+			await downloadAudio(firstInput, outputFilePath, progressMsg => {
+				document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
 			});
 
 			if (stabiliseVolumeToggle == 1) {
@@ -677,6 +675,7 @@ async function actuallyDownloadTheSong() {
 					.run();
 
 				await commitStagedPlaylistAdds();
+				renderMusics();
 			} catch (err) {
 				console.log("Failed to insert song into DB:", err);
 			}
@@ -799,9 +798,8 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
 			try {
-				await downloadAudio(songLink, outputPath, (downloaded, total) => {
-					const downloadedMB = (downloaded / (1024 * 1024)).toFixed(2);
-					document.getElementById("downloadModalText").innerText = `Downloading song ${i + 1} of ${totalSongs}: ${songTitle}. Progress: ${downloadedMB} MB`;
+				await downloadAudio(songLink, outputPath, progressMsg => {
+					document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
 				});
 			} catch (error) {
 				if (error.message.includes("Age confirmation required") || error.message.includes("confirm your age")) {
@@ -891,6 +889,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 			completedDownloads++;
 			document.getElementById("downloadModalText").innerText = `Processed song ${i + 1} of ${totalSongs}.`;
+			renderMusics();
 
 			await sleep(1000);
 		}
@@ -933,59 +932,42 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 	}
 }
 
+function getYtDlpPath() {
+	if (platform == "win32") return path.join(taratorFolder, "bin", "yt-dlp.exe");
+	if (platform == "darwin") return path.join(taratorFolder, "bin", "yt-dlp_macos");
+	if (platform == "linux") return path.join(taratorFolder, "bin", "yt-dlp_linux");
+	return alertModal("Unsupported platform. Please create an issue in github.");
+}
+
 async function downloadAudio(videoUrl, outputFilePath, onProgress) {
-	return new Promise(async (resolve, reject) => {
-		const videoId = (videoUrl.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/) || [])[1] || null;
-		if (!videoId) return reject(new Error("Invalid YouTube URL"));
-
-		try {
-			const stream = ytdl(videoId, { quality: "highestaudio" });
-			const writeStream = fs.createWriteStream(outputFilePath);
-			let downloaded = 0;
-			let total = 0;
-
-			stream.on("error", error => {
-				console.log("Stream error:", error);
-				writeStream.destroy();
-				if (fs.existsSync(outputFilePath)) {
-					try {
-						fs.unlinkSync(outputFilePath);
-					} catch (unlinkError) {
-						console.log("Failed to remove partial file:", unlinkError);
-					}
-				}
-				reject(error);
-			});
-
-			stream.on("response", response => {
-				total = parseInt(response.headers["content-length"], 10);
-				if (onProgress) onProgress(downloaded, total);
-			});
-
-			stream.on("data", chunk => {
-				downloaded += chunk.length;
-				if (onProgress) onProgress(downloaded, total);
-			});
-
-			writeStream.on("finish", () => resolve());
-
-			writeStream.on("error", error => {
-				console.log("Write stream error:", error.message);
-				if (fs.existsSync(outputFilePath)) {
-					try {
-						fs.unlinkSync(outputFilePath);
-					} catch (unlinkError) {
-						console.log("Failed to remove partial file:", unlinkError.message);
-					}
-				}
-				reject(error);
-			});
-
-			stream.pipe(writeStream);
-		} catch (err) {
-			console.log("Synchronous error in downloadAudio:", err.message);
-			reject(err);
+	return new Promise((resolve, reject) => {
+		if (!videoUrl || typeof videoUrl !== "string") {
+			return reject(new Error("Invalid YouTube URL"));
 		}
+
+		const yt = spawn(getYtDlpPath(), ["-x", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl]);
+
+		yt.stdout.on("data", data => {
+			const msg = data.toString();
+            console.log(msg);
+
+			if (msg.includes("ETA")) {
+				const cleanMsg = msg.replace("[download]", "").trim();
+				if (onProgress) onProgress(cleanMsg);
+			}
+		});
+
+		yt.stderr.on("data", data => {
+			const msg = data.toString();
+			console.error(msg);
+		});
+
+		yt.on("error", err => reject(err));
+
+		yt.on("close", code => {
+			if (code === 0 && fs.existsSync(outputFilePath)) resolve();
+			else reject(new Error(`yt-dlp exited with code ${code}`));
+		});
 	});
 }
 
