@@ -1,7 +1,6 @@
 ## Coming Soon App Features
 
 -   Youtube gives error 403. Use ytdlp compiled 
--   player file not spawning inside the bin folder
 
 ### Big updates remaining:
 
