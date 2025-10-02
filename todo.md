@@ -1,12 +1,15 @@
 ## Coming Soon App Features
 
--   Check phone notes for the remaining TODO.
+-   check if empty named songs can be downloaded
+-   "scroll mode" text doesnt fit
+
 -   Use deezer api for similar songs data, and save them to the DB. It will search for top 5 similar songs while downloading. It should work with the ystr(song_link) instead of the song name. We will give points to the similar songs like 5 4 3 2 1, and add up these for all the songs in our library to find the best recommendations.
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
+
+-   add stream function to miniaudio wrapper
+-   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
 -   Directly stream songs without downloading. Add a stream - downloaded toggle in the my music tab, where it will show song recommendations while the search bar is empty, youtube search results if the search bar is full. Make stream / download a database option.
--   Add song to queue
--   Add approximate time remaining for volume stabilisation.
--   Prevent switching between page and scroll mode moving the music boxes
+
 
 ### Big updates remaining:
 
@@ -18,6 +21,10 @@
 
 ### Planned Features
 
+-   Add approximate time remaining for volume stabilisation.
+-   Add song to queue
+-   the app assumes 3 boxes height for each device. Calculate the row amount based on #content height
+-   does the db cleaning truly work?
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
 -   Make the db saves non-blocking
 -   Make the charts on song listen time instead of song amounts perhaps? or toggle

@@ -310,7 +310,7 @@ audio {
 	align-content: flex-start;
 	gap: 10px;
 	padding: 2vh 0;
-	overflow-y: auto;
+	overflow-y: scroll;
     max-height: calc(89vh - 30px);
 }
 
@@ -612,7 +612,7 @@ audio {
 }
 
 .scrollArea {
-	overflow-y: auto !important;
+	overflow-y: scroll !important;
 }
 
 .scrollArea::-webkit-scrollbar

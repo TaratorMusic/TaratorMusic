@@ -482,7 +482,7 @@ async function myMusicOnClick() {
 	availableRowCounts.forEach(rowCount => {
 		const optionElement = document.createElement("option");
 		optionElement.value = rowCount;
-		optionElement.innerText = rowCount == "scroll" ? "Scroll Mode" : "Page Mode";
+		optionElement.innerText = rowCount == "scroll" || rowCount == null ? "Scroll Mode" : "Page Mode";
 		if (rowCount === displayPage) optionElement.selected = true;
 		displayPageSelect.appendChild(optionElement);
 	});
