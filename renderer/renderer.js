@@ -467,6 +467,8 @@ async function myMusicOnClick() {
 	buttonRight.className = "pageScrollButtons";
 	buttonLeft.innerText = "<";
 	buttonRight.innerText = ">";
+	buttonLeft.id = "leftPageButton";
+	buttonRight.id = "rightPageButton";
 
 	buttonLeft.addEventListener("click", () => {
 		if (currentPage != 1) currentPage--;

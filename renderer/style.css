@@ -82,6 +82,11 @@ body {
 	min-height: 100vh;
 }
 
+select:focus {
+	outline: none;
+	box-shadow: none;
+}
+
 .bg-gradient-blue {
 	background: linear-gradient(135deg, #0934b5, #2575fc);
 	background-size: 400% 400%;
@@ -311,7 +316,7 @@ audio {
 	gap: 10px;
 	padding: 2vh 0;
 	overflow-y: scroll;
-    max-height: calc(89vh - 30px);
+	max-height: calc(89vh - 30px);
 }
 
 #music-list-container > * {
@@ -334,24 +339,44 @@ audio {
 }
 
 #display-count {
-	width: 8vw !important;
-	min-width: 8vw !important;
-	max-width: 8vw !important;
+	width: 9vw !important;
+	min-width: 9vw !important;
+	max-width: 9vw !important;
 	height: 3.5vh !important;
 	min-height: 3.5vh !important;
 	max-height: 3.5vh !important;
 	font-size: 2.2vh !important;
-    border-radius: unset !important;
+	border: none !important;
+	text-align: center;
 }
 
 .pageScrollButtons {
-    width: 3.5vh;
-    height: 3.5vh;
-    font-size: 2.2vh;
-    background-color: black;
-    border: 1px solid white;
-    color: white;
-    cursor: pointer;
+	width: 3.5vh;
+	height: 3.5vh;
+	font-size: 2.2vh;
+	background-color: black;
+	color: white;
+	cursor: pointer;
+	outline: none;
+	box-shadow: none;
+	border: none;
+}
+
+.pageScrollButtons:disabled {
+	background-color: grey;
+	cursor: not-allowed;
+}
+
+#leftPageButton {
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+	border: 1px 0 1px 1px solid white;
+}
+
+#rightPageButton {
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+	border: 1px 1px 1px 0 solid white;
 }
 
 #videothumbnailbox {
@@ -615,8 +640,7 @@ audio {
 	overflow-y: scroll !important;
 }
 
-.scrollArea::-webkit-scrollbar
- {
+.scrollArea::-webkit-scrollbar {
 	display: block;
 	width: 12px;
 }
@@ -626,7 +650,7 @@ audio {
 	border-radius: 10px;
 }
 
-.scrollArea::-webkit-scrollbar-thumb{
+.scrollArea::-webkit-scrollbar-thumb {
 	background: #ffcc00;
 	border-radius: 10px;
 	border: 3px solid transparent;
@@ -643,10 +667,8 @@ audio {
 #music-search {
 	padding: 2px 4px;
 	background-color: rgba(0, 0, 0, 0.8);
-	border: 1px solid white;
 	color: white;
 	transition: all 0.5s ease-in-out;
-	border-radius: 5px;
 	cursor: pointer;
 }
 
@@ -1150,6 +1172,8 @@ th {
 	font-size: 2.2vh !important;
 	padding: 2vh 10px !important;
 	cursor: unset !important;
+	border-radius: 5px;
+	border: 1px solid white;
 }
 
 #controlsBar {
