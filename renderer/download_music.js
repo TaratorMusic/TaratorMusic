@@ -156,10 +156,6 @@ async function getPlaylistSongsAndArtists(link) {
 	const playlistThumbnail = imageUrl || path.join(appThumbnailFolder, "placeholder.jpg");
 
 	const songs = await page.evaluate(async container => {
-		function sleep(ms) {
-			return new Promise(r => setTimeout(r, ms));
-		}
-
 		const seen = new Map();
 		let sameCount = 0;
 		let lastRowIndex = 0;
@@ -820,8 +816,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					console.log(`Audio normalization failed for ${songTitle}:`, error);
 				}
 			} else {
-				document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled. Waiting 5 seconds for not overloading the Youtube API...`;
-				await sleep(5000);
+				document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled.`;
 			}
 
 			let duration = 0;
@@ -891,7 +886,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			document.getElementById("downloadModalText").innerText = `Processed song ${i + 1} of ${totalSongs}.`;
 			renderMusics();
 
-			await sleep(1000);
+			await sleep(500);
 		}
 
 		settingsDb

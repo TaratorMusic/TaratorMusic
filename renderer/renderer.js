@@ -6,8 +6,8 @@ const Database = require("better-sqlite3");
 const { spawn } = require("child_process");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
-let settingsDbPath, playlistsDbPath, musicsDbPath;
-let settingsDb, playlistsDb, musicsDb;
+let settingsDbPath, playlistsDbPath, musicsDbPath, recommendationsDbPath;
+let settingsDb, playlistsDb, musicsDb, recommendationsDb;
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
@@ -21,6 +21,7 @@ let settingsDb, playlistsDb, musicsDb;
 	settingsDbPath = path.join(databasesFolder, "settings.db");
 	playlistsDbPath = path.join(databasesFolder, "playlists.db");
 	musicsDbPath = path.join(databasesFolder, "musics.db");
+	recommendationsDbPath = path.join(databasesFolder, "musics.db");
 
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
@@ -29,10 +30,12 @@ let settingsDb, playlistsDb, musicsDb;
 	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
 	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
 	if (!fs.existsSync(musicsDbPath)) fs.writeFileSync(musicsDbPath, "");
+	if (!fs.existsSync(recommendationsDbPath)) fs.writeFileSync(recommendationsDbPath, "");
 
 	settingsDb = new Database(settingsDbPath);
 	playlistsDb = new Database(playlistsDbPath);
 	musicsDb = new Database(musicsDbPath);
+	recommendationsDb = new Database(musicsDbPath);
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");
@@ -295,6 +298,18 @@ function initialiseMusicsDatabase() {
 		{ name: "genre", type: "TEXT" },
 		{ name: "language", type: "TEXT" },
 	];
+   
+    musicsDb
+		.prepare(
+			`CREATE TABLE IF NOT EXISTS recommendations (
+            artist_id INTEGER PRIMARY KEY,
+            artist_name TEXT,
+            artist_fan_amount INTEGER,
+            similar_artists_array TEXT,
+            deezer_songs_array TEXT
+        )`
+		)
+		.run();
 
 	musicsDb
 		.prepare(
@@ -310,7 +325,7 @@ function initialiseMusicsDatabase() {
 	musicsDb
 		.prepare(
 			`CREATE TABLE IF NOT EXISTS songs (
-            ${requiredColumns.map(c => `${c.name} ${c.type}`).join(", ")}
+            ${requiredColumns.map(column => `${column.name} ${column.type}`).join(", ")}
         )`
 		)
 		.run();
