@@ -1,6 +1,13 @@
-function getRecommendations() {}
+function getRecommendations() {
+	// We will give points to every single song that is in our recommendations database except the songs that are already in our database.
+    // The amount of songs the user has from each artist will decide the weight between new artists vs current artists.
+    // We will prioritise songs with more artist fans.
+    // If the user listened to the artists less popular songs, it makes more points.
+    // Since we dont have song popularity numbers, we will give percentages to the songs. Artists 1. song: %100. 100. song: 20-50%
+    // Make sure to have a "not interested" button and a list, which this function will check
+}
 
-async function fetchRecommendationsData() {
+async function fetchRecommendationsData() { // TODO: Similar artist fetch is bugged?
 	const recommendationRows = musicsDb.prepare("SELECT artist_name FROM recommendations").all();
 	const existingArtists = new Set(recommendationRows.map(row => row.artist_name.toLowerCase()));
 
@@ -19,12 +26,12 @@ async function fetchRecommendationsData() {
 			const searchRes = await fetch(searchUrl);
 			const searchData = await searchRes.json();
 
-			if (!searchData.data || searchData.data.length === 0) {
+			if (!searchData.data || searchData.data.length == 0) {
 				console.log(`No results for artist: ${artist}`);
 				continue;
 			}
 
-			const exactMatch = searchData.data.find(a => a.name.toLowerCase() === artist.toLowerCase());
+			const exactMatch = searchData.data.find(a => a.name.toLowerCase() == artist.toLowerCase());
 			if (!exactMatch) {
 				console.log(`Exact Deezer match not found for artist: ${artist}`);
 				continue;
@@ -63,7 +70,7 @@ async function fetchRecommendationsData() {
 			const searchUrl = `https://api.deezer.com/search/artist?q=${encodeURIComponent(artist)}`;
 			const searchRes = await fetch(searchUrl);
 			const searchData = await searchRes.json();
-			const exactMatch = searchData.data.find(a => a.name.toLowerCase() === artist.toLowerCase());
+			const exactMatch = searchData.data.find(a => a.name.toLowerCase() == artist.toLowerCase());
 			if (!exactMatch) continue;
 
 			const artistId = exactMatch.id;

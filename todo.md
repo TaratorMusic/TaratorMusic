@@ -1,14 +1,10 @@
 ## Coming Soon App Features
 
--   Make refresh recommendations function, which will check musics.db and update recommendations.db. Also get the similar artists in the db (but not their similar artists)
 -   Complete recommendations.js
+-   My music tab will have Stream vs Downloaded mode, in Stream mode the search bar will search from youtube and there will be one page of recommendations. The edit button will be changed to download song. The listen data will still be saved to the database, but under youtube link id. When the song is downloaded, we will replace all the link id's to the tarator id. Save to the db if the user prefers downloads or streaming.
 
--   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
-
 -   add stream function to miniaudio wrapper
--   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
--   Directly stream songs without downloading. Add a stream - downloaded toggle in the my music tab, where it will show song recommendations while the search bar is empty, youtube search results if the search bar is full. Make stream / download a database option.
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
 
 ### Big updates remaining:
@@ -21,6 +17,8 @@
 
 ### Planned Features
 
+-   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
+-   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add approximate time remaining for volume stabilisation.
 -   Add an option to toggle volume stabilisation for the song, and pre-set artist-language-genre info in the download options
 -   Add song to queue
