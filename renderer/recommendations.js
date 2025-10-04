@@ -1,13 +1,73 @@
 function getRecommendations() {
+	const artistPreferenceScore = calculateArtistPreference();
+	const recommendedSongs = {};
+
+	getSameArtistSongs(artistPreferenceScore);
+	getNewArtistSongs(10 - artistPreferenceScore);
 	// We will give points to every single song that is in our recommendations database except the songs that are already in our database.
-    // The amount of songs the user has from each artist will decide the weight between new artists vs current artists.
-    // We will prioritise songs with more artist fans.
-    // If the user listened to the artists less popular songs, it makes more points.
-    // Since we dont have song popularity numbers, we will give percentages to the songs. Artists 1. song: %100. 100. song: 20-50%
-    // Make sure to have a "not interested" button and a list, which this function will check
+	// The amount of songs the user has from each artist will decide the weight between new artists vs current artists.
+	// We will prioritise songs with more artist fans.
+	// If the user listened to the artists less popular songs, it makes more points.
+	// Since we dont have song popularity numbers, we will give percentages to the songs. Artists 1. song: %100. 100. song: 20-50%
+	// Make sure to have a "not interested" button and a list, which this function will check
+    // TODO: If no more songs are left from current artist we need to give new artists, but how can we calculate when to pick unpopular songs from known artist vs popular from new ones?
 }
 
-async function fetchRecommendationsData() { // TODO: Similar artist fetch is bugged?
+function calculateArtistPreference() {
+	const songTimes = musicsDb
+		.prepare(
+			`
+            SELECT song_id, SUM(end_time - start_time) AS total_seconds
+            FROM timers
+            GROUP BY song_id
+        `
+		)
+		.all();
+
+	const artistTimes = {};
+	const artistStmt = musicsDb.prepare("SELECT artist FROM songs WHERE song_id = ?");
+	const artistSongCountStmt = musicsDb.prepare("SELECT json_array_length(deezer_songs_array) AS song_count FROM recommendations WHERE artist_name = ?");
+
+	for (const row of songTimes) {
+		const song = artistStmt.get(`tarator-${row.song_id}`);
+		if (!song) continue;
+
+		let songCountRow = artistSongCountStmt.get(song.artist);
+		const totalSongs = songCountRow ? songCountRow.song_count : 1;
+
+		artistTimes[song.artist] = (artistTimes[song.artist] || 0) + row.total_seconds / totalSongs;
+	}
+
+	const totalListenTime = Object.values(artistTimes).reduce((sum, time) => sum + time, 0);
+
+	if (totalListenTime > 0) {
+		const normalizedArtistTimes = {};
+		for (const [artist, time] of Object.entries(artistTimes)) {
+			normalizedArtistTimes[artist] = time / totalListenTime;
+		}
+
+		let entropy = 0;
+		for (const probability of Object.values(normalizedArtistTimes)) {
+			entropy += -probability * Math.log2(probability);
+		}
+
+		const effectiveArtistCount = Math.pow(2, entropy);
+
+		const userArtists = Object.keys(artistTimes).length;
+		const preferenceScore = 10 * (1 - effectiveArtistCount / userArtists);
+
+		return Math.round(preferenceScore);
+	}
+
+	return null;
+}
+
+function getSameArtistSongs(amount) {console.log(amount);}
+
+function getNewArtistSongs(amount) {console.log(amount);}
+
+async function fetchRecommendationsData() {
+	// TODO: Similar artist fetch is bugged?
 	const recommendationRows = musicsDb.prepare("SELECT artist_name FROM recommendations").all();
 	const existingArtists = new Set(recommendationRows.map(row => row.artist_name.toLowerCase()));
 

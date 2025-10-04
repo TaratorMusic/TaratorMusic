@@ -6,6 +6,7 @@
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
 -   add stream function to miniaudio wrapper
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
+-   Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
 
 ### Big updates remaining:
 
