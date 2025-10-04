@@ -1,17 +1,16 @@
 // Make sure to have a "not interested" button and a list, which this function will check. (Also add it to the customise modal)
-// "Existing songs" set not really reliable
 
 // If ytsr() of the song is in our db, fetch new ones
 
-const popularityFactor = 0.1;
-const artistStrengthFactor = 0.1;
-const similarArtistsFactor = 0.6;
-const userPreferenceFactor = 0.1;
-const randomFactor = 0.1;
+const popularityFactor = 0.15;
+const artistStrengthFactor = 0.08;
+const similarArtistsFactor = 0.35;
+const userPreferenceFactor = 0.12;
+const artistListenTimeFactor = 0.15;
+const randomFactor = 0.15;
 
 function getRecommendations() {
 	const artistPreferenceScore = calculateArtistPreference();
-
 	const songMap = new Map();
 	const pointsMap = new Map();
 
@@ -22,58 +21,72 @@ function getRecommendations() {
 			.map(row => row.song_name)
 	);
 
-	const artists = musicsDb.prepare("SELECT artist_name, deezer_songs_array, artist_fan_amount FROM recommendations").all();
+	const existingArtistSet = new Set(
+		musicsDb
+			.prepare("SELECT DISTINCT artist FROM songs")
+			.all()
+			.map(row => row.artist)
+	);
+
+	const listenTimesMap = musicsDb
+		.prepare(
+			`
+            SELECT songs.artist, SUM(end_time - start_time) AS totalListenTime
+            FROM timers
+            JOIN songs ON timers.song_id = songs.song_id
+            GROUP BY songs.artist
+            `
+		)
+		.all()
+		.reduce((acc, row) => {
+			acc[row.artist] = row.totalListenTime || 0;
+			return acc;
+		}, {});
+
+	const maxListenTime = Math.max(...Object.values(listenTimesMap), 1);
+
+	const artists = musicsDb.prepare("SELECT artist_name, deezer_songs_array, similar_artists_array, artist_fan_amount FROM recommendations").all();
 
 	artists.forEach(artist => {
 		const songs = JSON.parse(artist.deezer_songs_array);
-		const total = songs.length;
+		const similarArtists = JSON.parse(artist.similar_artists_array || "[]");
+		const totalSongs = songs.length;
+
 		songs.forEach((song, index) => {
 			if (existingSongsSet.has(song)) return;
 
-			const positionFraction = 1 - index / total;
-			songMap.set(song, [positionFraction, artist.artist_name, artist.artist_fan_amount]);
+			const positionFraction = 1 - index / totalSongs;
+			songMap.set(song, [positionFraction, artist.artist_name, artist.artist_fan_amount, similarArtists]);
 		});
 	});
 
 	songMap.forEach((value, song) => {
-		const [positionFraction, artistName, artistFanAmount] = value;
+		const [positionFraction, artistName, artistFanAmount, similarArtists] = value;
 
 		const popularityPoints = positionFraction * popularityFactor;
+
 		const artistStrengthPoints = (Math.log(artistFanAmount + 1) / 10) * artistStrengthFactor;
 
-		const similarArtistsRow = musicsDb.prepare("SELECT similar_artists_array FROM recommendations WHERE artist_name = ?").get(artistName);
-
 		let similarArtistsPoints = 0;
-		if (similarArtistsRow) {
-			const similarArtistsArray = JSON.parse(similarArtistsRow.similar_artists_array || "[]");
-			if (similarArtistsArray.length > 0) {
-				let totalSimilarScore = 0;
-				similarArtistsArray.forEach(simArtist => {
-					const listenTimeRow = musicsDb
-						.prepare(
-							`
-                            SELECT SUM(end_time - start_time) AS totalListenTime 
-                            FROM timers 
-                            JOIN songs ON timers.song_id = songs.song_id 
-                            WHERE songs.artist = ?
-                        `
-						)
-						.get(simArtist);
+		if (similarArtists.length > 0) {
+			const listenedSimilarArtists = similarArtists.filter(simArtist => listenTimesMap[simArtist] && listenTimesMap[simArtist] > 0);
 
-					const totalListen = listenTimeRow?.totalListenTime || 60;
-					totalSimilarScore += Math.log(1 + totalListen);
-				});
-
-				similarArtistsPoints = (totalSimilarScore / (similarArtistsArray.length + 1)) * similarArtistsFactor;
+			if (listenedSimilarArtists.length > 0) {
+				const totalSimilarScore = listenedSimilarArtists.reduce((acc, simArtist) => {
+					return acc + Math.log(1 + listenTimesMap[simArtist]);
+				}, 0);
+				similarArtistsPoints = (totalSimilarScore / listenedSimilarArtists.length) * similarArtistsFactor;
 			}
 		}
 
-		const isExistingArtist = musicsDb.prepare("SELECT 1 FROM songs WHERE artist = ? LIMIT 1").get(artistName);
-		const userPreferencePoints = isExistingArtist ? artistPreferenceScore * userPreferenceFactor : (1 - artistPreferenceScore) * userPreferenceFactor;
+		const artistListenTime = listenTimesMap[artistName] || 0;
+		const artistListenTimePoints = artistListenTime > 0 ? (Math.log(1 + artistListenTime) / Math.log(1 + maxListenTime)) * artistListenTimeFactor : 0;
+
+		const userPreferencePoints = existingArtistSet.has(artistName) ? artistPreferenceScore * userPreferenceFactor : (1 - artistPreferenceScore) * userPreferenceFactor;
 
 		const randomPoints = Math.random() * randomFactor;
 
-		const totalPoints = popularityPoints + artistStrengthPoints + similarArtistsPoints + userPreferencePoints + randomPoints;
+		const totalPoints = popularityPoints + artistStrengthPoints + similarArtistsPoints + userPreferencePoints + artistListenTimePoints + randomPoints;
 
 		pointsMap.set(song, [artistName, totalPoints]);
 	});
@@ -82,6 +95,7 @@ function getRecommendations() {
 	const sortedPointsMap = new Map(sortedPointsArray);
 
 	console.log(sortedPointsMap);
+	return sortedPointsMap;
 }
 
 function calculateArtistPreference() {
