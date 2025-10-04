@@ -1,16 +1,19 @@
-function getRecommendations() {
-	const artistPreferenceScore = calculateArtistPreference();
-	const recommendedSongs = {};
+// If the user listened to the artists less popular songs, it makes more points.
+// Since we dont have song popularity numbers, we will give percentages to the songs. Artists 1. song: %100. 100. song: 20-50%
 
-	getSameArtistSongs(artistPreferenceScore);
-	getNewArtistSongs(10 - artistPreferenceScore);
-	// We will give points to every single song that is in our recommendations database except the songs that are already in our database.
-	// The amount of songs the user has from each artist will decide the weight between new artists vs current artists.
-	// We will prioritise songs with more artist fans.
-	// If the user listened to the artists less popular songs, it makes more points.
-	// Since we dont have song popularity numbers, we will give percentages to the songs. Artists 1. song: %100. 100. song: 20-50%
-	// Make sure to have a "not interested" button and a list, which this function will check
-    // TODO: If no more songs are left from current artist we need to give new artists, but how can we calculate when to pick unpopular songs from known artist vs popular from new ones?
+// Make sure to have a "not interested" button and a list, which this function will check. (Also add it to the customise modal)
+
+// Create new array: All the songs that are in the recommendations db but not in musicsdb. And their positions in the arrays.
+// Create new map: Artist - Artist fan count - log(artistTotalListenTime)
+// We have: users artists preference (gini)
+// Add a bit of randomness. Like 10%
+
+function getRecommendations() {
+	// const artistPreferenceScore = calculateArtistPreference();
+	// const recommendedSongs = {};
+
+	// getSameArtistSongs(artistPreferenceScore);
+	// getNewArtistSongs(10 - artistPreferenceScore);
 }
 
 function calculateArtistPreference() {
@@ -20,51 +23,29 @@ function calculateArtistPreference() {
             SELECT song_id, SUM(end_time - start_time) AS total_seconds
             FROM timers
             GROUP BY song_id
-        `
+            `
 		)
 		.all();
 
 	const artistTimes = {};
-	const artistStmt = musicsDb.prepare("SELECT artist FROM songs WHERE song_id = ?");
-	const artistSongCountStmt = musicsDb.prepare("SELECT json_array_length(deezer_songs_array) AS song_count FROM recommendations WHERE artist_name = ?");
 
 	for (const row of songTimes) {
-		const song = artistStmt.get(`tarator-${row.song_id}`);
+		const song = musicsDb.prepare("SELECT artist FROM songs WHERE song_id = ?").get(`tarator-${row.song_id}`);
 		if (!song) continue;
-
-		let songCountRow = artistSongCountStmt.get(song.artist);
-		const totalSongs = songCountRow ? songCountRow.song_count : 1;
-
-		artistTimes[song.artist] = (artistTimes[song.artist] || 0) + row.total_seconds / totalSongs;
+		artistTimes[song.artist] = (artistTimes[song.artist] || 0) + row.total_seconds;
 	}
 
-	const totalListenTime = Object.values(artistTimes).reduce((sum, time) => sum + time, 0);
+	const sorted = Object.values(artistTimes)
+		.slice()
+		.sort((a, b) => a - b);
+	const n = sorted.length;
+	const cum = sorted.reduce((acc, v, i) => acc + (i + 1) * v, 0);
+	const total = sorted.reduce((a, b) => a + b, 0);
 
-	if (totalListenTime > 0) {
-		const normalizedArtistTimes = {};
-		for (const [artist, time] of Object.entries(artistTimes)) {
-			normalizedArtistTimes[artist] = time / totalListenTime;
-		}
-
-		let entropy = 0;
-		for (const probability of Object.values(normalizedArtistTimes)) {
-			entropy += -probability * Math.log2(probability);
-		}
-
-		const effectiveArtistCount = Math.pow(2, entropy);
-
-		const userArtists = Object.keys(artistTimes).length;
-		const preferenceScore = 10 * (1 - effectiveArtistCount / userArtists);
-
-		return Math.round(preferenceScore);
-	}
-
-	return null;
+	const giniScore = (2 * cum) / (n * total) - (n + 1) / n;
+	console.log("Gini Coefficient (0 = equal, 1 = concentrated):", giniScore);
+	return giniScore;
 }
-
-function getSameArtistSongs(amount) {console.log(amount);}
-
-function getNewArtistSongs(amount) {console.log(amount);}
 
 async function fetchRecommendationsData() {
 	// TODO: Similar artist fetch is bugged?
