@@ -5,18 +5,25 @@
 const popularityFactor = 0.15; // Ranking each artists songs 1-100, just inside their list
 const artistStrengthFactor = 0.08; // Amount of fans the songs artist has in Deezer
 const similarArtistsFactor = 0.35; // The songs artists similar artists and how much they are liked by the user
-const userPreferenceFactor = 0.12; // If the user prefers to listen to the same artists or likes to explore new ones
-const artistListenTimeFactor = 0.15; // How much the user listened to the artist of the song
+const userPreferenceFactor = 0.17; // If the user prefers to listen to the same artists or likes to explore new ones
+const artistListenTimeFactor = 0.1; // How much the user listened to the artist of the song
 const randomFactor = 0.15; // Randomness to change the recommendations each time
 
 function getRecommendations() {
-	const artistPreferenceScore = calculateArtistPreference(); 
+	const artistPreferenceScore = calculateArtistPreference();
 	const songMap = new Map();
 	const pointsMap = new Map(); // TODO: Substract ignored songs like current songs
 
 	const existingSongsSet = new Set(
 		musicsDb
 			.prepare("SELECT song_name FROM songs")
+			.all()
+			.map(row => row.song_name)
+	);
+
+	const notInterestedSet = new Set(
+		musicsDb
+			.prepare("SELECT song_name FROM not_interested")
 			.all()
 			.map(row => row.song_name)
 	);
@@ -53,7 +60,7 @@ function getRecommendations() {
 		const totalSongs = songs.length;
 
 		songs.forEach((song, index) => {
-			if (existingSongsSet.has(song)) return;
+			if (existingSongsSet.has(song) || notInterestedSet.has(song)) return;
 
 			const positionFraction = 1 - index / totalSongs;
 			songMap.set(song, [positionFraction, artist.artist_name, artist.artist_fan_amount, similarArtists]);

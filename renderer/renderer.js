@@ -326,6 +326,7 @@ function initialiseMusicsDatabase() {
 		.prepare(
 			`CREATE TABLE IF NOT EXISTS not_interested (
                 song_id TEXT,
+                song_name TEXT
             )`
 		)
 		.run();
