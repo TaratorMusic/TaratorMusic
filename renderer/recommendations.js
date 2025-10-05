@@ -2,17 +2,17 @@
 
 // If ytsr() of the song is in our db, fetch new ones
 
-const popularityFactor = 0.15;
-const artistStrengthFactor = 0.08;
-const similarArtistsFactor = 0.35;
-const userPreferenceFactor = 0.12;
-const artistListenTimeFactor = 0.15;
-const randomFactor = 0.15;
+const popularityFactor = 0.15; // Ranking each artists songs 1-100, just inside their list
+const artistStrengthFactor = 0.08; // Amount of fans the songs artist has in Deezer
+const similarArtistsFactor = 0.35; // The songs artists similar artists and how much they are liked by the user
+const userPreferenceFactor = 0.12; // If the user prefers to listen to the same artists or likes to explore new ones
+const artistListenTimeFactor = 0.15; // How much the user listened to the artist of the song
+const randomFactor = 0.15; // Randomness to change the recommendations each time
 
 function getRecommendations() {
-	const artistPreferenceScore = calculateArtistPreference();
+	const artistPreferenceScore = calculateArtistPreference(); 
 	const songMap = new Map();
-	const pointsMap = new Map();
+	const pointsMap = new Map(); // TODO: Substract ignored songs like current songs
 
 	const existingSongsSet = new Set(
 		musicsDb
@@ -94,7 +94,6 @@ function getRecommendations() {
 	const sortedPointsArray = [...pointsMap.entries()].sort((a, b) => b[1][1] - a[1][1]);
 	const sortedPointsMap = new Map(sortedPointsArray);
 
-	console.log(sortedPointsMap);
 	return sortedPointsMap;
 }
 
@@ -125,7 +124,7 @@ function calculateArtistPreference() {
 	const totalDuration = sortedDurations.reduce((sum, duration) => sum + duration, 0);
 
 	const giniCoefficient = (2 * cumulativeWeightedSum) / (numArtists * totalDuration) - (numArtists + 1) / numArtists;
-	console.log("Gini Coefficient (0 = equal, 1 = concentrated):", giniCoefficient);
+	// console.log("Gini Coefficient (0 = equal, 1 = concentrated):", giniCoefficient);
 	return giniCoefficient;
 }
 

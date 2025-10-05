@@ -298,35 +298,43 @@ function initialiseMusicsDatabase() {
 		{ name: "genre", type: "TEXT" },
 		{ name: "language", type: "TEXT" },
 	];
-   
-    musicsDb
+
+	musicsDb
 		.prepare(
 			`CREATE TABLE IF NOT EXISTS recommendations (
-            artist_id INTEGER PRIMARY KEY,
-            artist_name TEXT,
-            artist_fan_amount INTEGER,
-            similar_artists_array TEXT,
-            deezer_songs_array TEXT
-        )`
+                artist_id INTEGER PRIMARY KEY,
+                artist_name TEXT,
+                artist_fan_amount INTEGER,
+                similar_artists_array TEXT,
+                deezer_songs_array TEXT
+            )`
 		)
 		.run();
 
 	musicsDb
 		.prepare(
 			`CREATE TABLE IF NOT EXISTS timers (
-            song_id TEXT,
-            start_time INTEGER,
-            end_time INTEGER
-            playlist TEXT
-        )`
+                song_id TEXT,
+                start_time INTEGER,
+                end_time INTEGER
+                playlist TEXT
+            )`
+		)
+		.run();
+
+	musicsDb
+		.prepare(
+			`CREATE TABLE IF NOT EXISTS not_interested (
+                song_id TEXT,
+            )`
 		)
 		.run();
 
 	musicsDb
 		.prepare(
 			`CREATE TABLE IF NOT EXISTS songs (
-            ${requiredColumns.map(column => `${column.name} ${column.type}`).join(", ")}
-        )`
+                ${requiredColumns.map(column => `${column.name} ${column.type}`).join(", ")}
+            )`
 		)
 		.run();
 
