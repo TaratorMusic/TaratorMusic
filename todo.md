@@ -1,18 +1,19 @@
 ## Coming Soon App Features
 
--   Stream vs offline's db setting, also set stream vs offline and page vs scroll at startup
--   Compile for windows and mac binaries too
--   Learn how to stream using ytdlp binary and miniaudio
--   Make sure the data is saved to the timers table and songs table etc.
--   After each download - song play, check if song has a new artist, if yes grab its similar artists
 -   My music tab will have Stream vs Downloaded mode, in Stream mode the search bar will search from youtube and there will be one page of recommendations. The edit button will be changed to download song. The listen data will still be saved to the database, but under youtube link id. When the song is downloaded, we will replace all the link id's to the tarator id. Save to the db if the user prefers downloads or streaming.
+-   Set stream vs offline at startup
 -   getRecommendations backup songs if there is no data
+-   Add refresh recommendations button
+
+-   Learn how to stream using ytdlp binary and miniaudio
+-   add stream function to miniaudio wrapper
+-   Make sure the data is saved to the timers table and songs table etc.
+-   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
+-   Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
 
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
--   add stream function to miniaudio wrapper
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
--   Add refresh recommendations button
--   Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
+-   Compile for windows and mac binaries too
 
 ### Big updates remaining:
 
@@ -27,6 +28,7 @@
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add approximate time remaining for volume stabilisation.
+-   Need to have full online & full offline modes
 -   Add an option to toggle volume stabilisation for the song, and pre-set artist-language-genre info in the download options
 -   Add song to queue
 -   the app assumes 3 boxes height for each device. Calculate the row amount based on #content height

@@ -99,6 +99,7 @@ let key_Loop;
 let key_randomSong;
 let key_randomPlaylist;
 let dividevolume;
+let displayPage;
 let stabiliseVolumeToggle;
 let current_version;
 
@@ -122,6 +123,7 @@ const defaultSettings = {
 	key_randomPlaylist: "2",
 	dividevolume: 1,
 	displayPage: "scroll",
+    musicMode: "stream",
 	background: "green",
 	stabiliseVolumeToggle: 1,
 	dc_rpc: 0,
@@ -138,7 +140,7 @@ function initialiseSettingsDatabase() {
 	try {
 		const columns = Object.entries(defaultSettings)
 			.map(([key, value]) => {
-				const type = typeof value === "number" ? "INTEGER" : "TEXT";
+				const type = typeof value == "number" ? "INTEGER" : "TEXT";
 				return `${key} ${type}`;
 			})
 			.join(", ");
@@ -190,13 +192,13 @@ function initialiseSettingsDatabase() {
 
 		for (const [key, value] of Object.entries(defaultSettings)) {
 			if (!existingColumns.includes(key)) {
-				const type = typeof value === "number" ? "INTEGER" : "TEXT";
-				const defaultVal = typeof value === "number" ? value : `'${value}'`;
+				const type = typeof value == "number" ? "INTEGER" : "TEXT";
+				const defaultVal = typeof value == "number" ? value : `'${value}'`;
 				settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${type} DEFAULT ${defaultVal}`).run();
 			}
 		}
 
-		if (existingColumns.length === 0) {
+		if (existingColumns.length == 0) {
 			const columns = Object.keys(defaultSettings).join(", ");
 			const placeholders = Object.keys(defaultSettings)
 				.map(() => "?")
@@ -240,6 +242,7 @@ function initialiseSettingsDatabase() {
 	volume = settingsRow.volume / 100;
 	dividevolume = settingsRow.dividevolume;
 	displayPage = settingsRow.displayPage;
+    musicMode = settingsRow.musicMode;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 	current_version = settingsRow.current_version;
 	document.body.className = `bg-gradient-${settingsRow.background}`;
@@ -519,7 +522,7 @@ async function myMusicOnClick() {
 		const optionElement = document.createElement("option");
 		optionElement.value = rowCount;
 		optionElement.innerText = rowCount == "scroll" || rowCount == null ? "Scroll Mode" : "Page Mode";
-		if (rowCount === displayPage) optionElement.selected = true;
+		if (rowCount == displayPage) optionElement.selected = true;
 		displayPageSelect.appendChild(optionElement);
 	});
 
@@ -588,10 +591,10 @@ function renderMusics() {
 		const compare = fieldValue => {
 			if (!fieldValue) return false;
 			const value = fieldValue.toLowerCase();
-			return exactMatch ? value === searchValue : value.includes(searchValue);
+			return exactMatch ? value == searchValue : value.includes(searchValue);
 		};
 
-		return compare(song_name) || (exactMatch ? id === searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
+		return compare(song_name) || (exactMatch ? id == searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
 	});
 
 	const maxVisible = displayPage == "scroll" ? filteredSongs.length : parseInt(3 * previousItemsPerRow * currentPage);
@@ -810,22 +813,22 @@ async function playNextSong() {
 	if (isShuffleActive) {
 		if (currentPlaylist) {
 			const currentSongId = currentPlaylist.songs[currentPlaylistElement];
-			if (currentPlaylist.songs.length === 1) {
+			if (currentPlaylist.songs.length == 1) {
 				nextSongId = currentSongId;
 			} else {
 				let randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
-				while (currentPlaylist.songs[randomIndex] === currentSongId) {
+				while (currentPlaylist.songs[randomIndex] == currentSongId) {
 					randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
 				}
 				nextSongId = currentPlaylist.songs[randomIndex];
 				currentPlaylistElement = randomIndex;
 			}
 		} else {
-			if (sortedSongIds.length === 1) {
+			if (sortedSongIds.length == 1) {
 				nextSongId = sortedSongIds[0];
 			} else {
 				let randomIndex = Math.floor(Math.random() * sortedSongIds.length);
-				while (sortedSongIds[randomIndex] === playingSongsID) {
+				while (sortedSongIds[randomIndex] == playingSongsID) {
 					randomIndex = Math.floor(Math.random() * sortedSongIds.length);
 				}
 				nextSongId = sortedSongIds[randomIndex];
@@ -1162,12 +1165,12 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 });
 
 document.addEventListener("keydown", event => {
-	if (event.key === "Escape") closeModal();
+	if (event.key == "Escape") closeModal();
 	if (event.key == "Tab") event.preventDefault();
 	if (event.key == "Enter" && document.getElementById("downloadModal").style.display == "block") return loadNewPage("download");
 	if (event.key == "Enter" && document.getElementById("searchModal").style.display == "flex") return searchSong();
 
-	if (event.ctrlKey && event.key.toLowerCase() === "f") {
+	if (event.ctrlKey && event.key.toLowerCase() == "f") {
 		event.preventDefault();
 		searchModalInput.classList.remove("red-placeholder");
 		searchModalInput.placeholder = "Type a song name, and press Enter";

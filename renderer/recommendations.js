@@ -152,7 +152,7 @@ async function fetchRecommendationsData() {
 		try {
 			const searchRes = await fetch(`https://api.deezer.com/search/artist?q=${encodeURIComponent(artist)}`);
 			const searchData = await searchRes.json();
-			if (!searchData.data || searchData.data.length === 0) {
+			if (!searchData.data || searchData.data.length == 0) {
 				console.log(`No match found for ${artist}`);
 				continue;
 			}
@@ -190,7 +190,7 @@ async function fetchRecommendationsData() {
 		try {
 			const searchRes = await fetch(`https://api.deezer.com/search/artist?q=${encodeURIComponent(artist)}`);
 			const searchData = await searchRes.json();
-			if (!searchData.data || searchData.data.length === 0) continue;
+			if (!searchData.data || searchData.data.length == 0) continue;
 
 			let exactMatch = searchData.data.find(a => a.name.toLowerCase().includes(artist.toLowerCase()));
 			if (!exactMatch) exactMatch = searchData.data[0];
