@@ -671,20 +671,19 @@ async function actuallyDownloadTheSong() {
 					.run();
 
 				await commitStagedPlaylistAdds();
-				renderMusics();
 			} catch (err) {
 				console.log("Failed to insert song into DB:", err);
 			}
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
-			if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
+			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 			grabAndStoreSongInfo();
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
 			document.getElementById("finalDownloadButton").disabled = false;
-			if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
+			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 		}
 	} else {
 		const playlistName = document.getElementById("playlistTitle0").value.trim();
@@ -884,7 +883,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 			completedDownloads++;
 			document.getElementById("downloadModalText").innerText = `Processed song ${i + 1} of ${totalSongs}.`;
-			renderMusics();
+			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 
 			await sleep(500);
 		}
@@ -916,15 +915,14 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 		}
 
 		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
-		document.getElementById("finalDownloadButton").disabled = false;
-		if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 		await commitStagedPlaylistAdds();
 		grabAndStoreSongInfo();
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
-		document.getElementById("finalDownloadButton").disabled = false;
-		if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
 	}
+    
+	document.getElementById("finalDownloadButton").disabled = false;
+	if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 }
 
 function getYtDlpPath() {
@@ -944,7 +942,7 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 
 		yt.stdout.on("data", data => {
 			const msg = data.toString();
-            console.log(msg);
+			console.log(msg);
 
 			if (msg.includes("ETA")) {
 				const cleanMsg = msg.replace("[download]", "").trim();

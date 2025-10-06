@@ -1131,7 +1131,7 @@ async function removeSong(fileToDelete) {
 	document.getElementById("customiseModal").style.display = "none";
 	const divToRemove = document.querySelector(`div[alt="${fileToDelete}.${row.song_extension}"]`);
 	if (divToRemove) divToRemove.remove();
-	if (document.getElementById("my-music-content").style.display == "block") await myMusicOnClick();
+	if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 }
 
 function searchSong() {
