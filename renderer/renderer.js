@@ -136,6 +136,26 @@ function initialiseSettingsDatabase() {
 	let settingsRow;
 
 	try {
+		const columns = Object.entries(defaultSettings)
+			.map(([key, value]) => {
+				const type = typeof value === "number" ? "INTEGER" : "TEXT";
+				return `${key} ${type}`;
+			})
+			.join(", ");
+
+		settingsDb.prepare(`CREATE TABLE IF NOT EXISTS settings (${columns})`).run();
+		settingsDb
+			.prepare(
+				`CREATE TABLE IF NOT EXISTS statistics (
+                total_time_spent INTEGER,
+                app_install_date INTEGER,
+                playlists_formed INTEGER,
+                songs_downloaded_youtube INTEGER,
+                songs_downloaded_spotify INTEGER
+            )`
+			)
+			.run();
+
 		settingsDb
 			.prepare(
 				`
@@ -149,14 +169,6 @@ function initialiseSettingsDatabase() {
 			)
 			.run();
 
-		const columns = Object.entries(defaultSettings)
-			.map(([key, value]) => {
-				const type = typeof value === "number" ? "INTEGER" : "TEXT";
-				return `${key} ${type}`;
-			})
-			.join(", ");
-
-		settingsDb.prepare(`CREATE TABLE IF NOT EXISTS settings (${columns})`).run();
 		settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
 		statsRow = settingsDb.prepare("SELECT * FROM statistics LIMIT 1").get();
 
@@ -169,9 +181,7 @@ function initialiseSettingsDatabase() {
 			settingsRow = defaultSettings;
 		}
 
-		if (!statsRow) {
-			settingsDb.prepare(`INSERT INTO statistics (total_time_spent, app_install_date, playlists_formed, songs_downloaded_youtube, songs_downloaded_spotify) VALUES (?, ?, ?, ?, ?)`).run(0, Math.floor(Date.now() / 1000), 0, 0, 0);
-		} else if (!statsRow.app_install_date) {
+		if (!statsRow.app_install_date || statsRow.app_install_date == 0) {
 			settingsDb.prepare(`UPDATE statistics SET app_install_date = ?`).run(Math.floor(Date.now() / 1000));
 		}
 
