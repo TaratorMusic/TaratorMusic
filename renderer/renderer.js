@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const Database = require("better-sqlite3");
 const { spawn } = require("child_process");
+const ytdl = require("@distube/ytdl-core");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath, recommendationsDbPath;
@@ -123,7 +124,7 @@ const defaultSettings = {
 	key_randomPlaylist: "2",
 	dividevolume: 1,
 	displayPage: "scroll",
-    musicMode: "stream",
+	musicMode: "discover",
 	background: "green",
 	stabiliseVolumeToggle: 1,
 	dc_rpc: 0,
@@ -242,7 +243,7 @@ function initialiseSettingsDatabase() {
 	volume = settingsRow.volume / 100;
 	dividevolume = settingsRow.dividevolume;
 	displayPage = settingsRow.displayPage;
-    musicMode = settingsRow.musicMode;
+	musicMode = settingsRow.musicMode;
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 	current_version = settingsRow.current_version;
 	document.body.className = `bg-gradient-${settingsRow.background}`;
@@ -498,6 +499,9 @@ async function myMusicOnClick() {
 	const displayPageSelect = document.createElement("select");
 	displayPageSelect.id = "display-count";
 
+	const musicModeSelect = document.createElement("select");
+	musicModeSelect.id = "music-mode-select";
+
 	const buttonLeft = document.createElement("button");
 	const buttonRight = document.createElement("button");
 	buttonLeft.className = "pageScrollButtons";
@@ -506,6 +510,7 @@ async function myMusicOnClick() {
 	buttonRight.innerText = ">";
 	buttonLeft.id = "leftPageButton";
 	buttonRight.id = "rightPageButton";
+	const buttonContainer = document.createElement("div");
 
 	buttonLeft.addEventListener("click", () => {
 		if (currentPage != 1) currentPage--;
@@ -534,15 +539,41 @@ async function myMusicOnClick() {
 		renderMusics();
 	};
 
+	const availableMusicModes = ["offline", "stream", "discover"];
+	availableMusicModes.forEach(mode => {
+		const optionElement = document.createElement("option");
+		optionElement.value = mode;
+		console.log(mode);
+		if (mode == "discover" || mode == null) {
+			optionElement.innerText = "Discover Mode";
+		} else if (mode == "stream") {
+			optionElement.innerText = "Stream Mode";
+		} else {
+			optionElement.innerText = "Offline Mode";
+		}
+		if (mode == musicMode) optionElement.selected = true;
+		musicModeSelect.appendChild(optionElement);
+	});
+
+	musicModeSelect.onchange = () => {
+		const selectedValue = musicModeSelect.value;
+		console.log("Selected:", selectedValue, "at musicMode");
+		updateDatabase("musicMode", selectedValue, settingsDb, "settings");
+		musicMode = selectedValue;
+		renderMusics();
+	};
+
 	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension, song_length FROM songs").all();
 	const songCountElement = document.createElement("div");
 	songCountElement.id = "songCountElement";
 
 	controlsBar.appendChild(musicSearchInput);
 	controlsBar.appendChild(songCountElement);
-	controlsBar.appendChild(buttonLeft);
-	controlsBar.appendChild(displayPageSelect);
-	controlsBar.appendChild(buttonRight);
+	controlsBar.appendChild(musicModeSelect);
+	controlsBar.appendChild(buttonContainer);
+	buttonContainer.appendChild(buttonLeft);
+	buttonContainer.appendChild(displayPageSelect);
+	buttonContainer.appendChild(buttonRight);
 	myMusicContent.appendChild(controlsBar);
 
 	const musicListContainer = document.createElement("div");
@@ -564,6 +595,30 @@ function renderMusics() {
 	container.innerHTML = "";
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 	if (Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) < currentPage) currentPage = Math.ceil(songNameCache.size / (3 * previousItemsPerRow));
+
+	if (musicMode == "offline") {
+		// Current Mode
+	} else if (musicMode == "stream") {
+		// Will show listened but not downloaded songs
+	} else if (musicMode == "discover") {
+		// Will show recommendations
+		const recommendedMusicMap = getRecommendations();
+		const goal = 3 * previousItemsPerRow;
+		let count = 0;
+
+		(async () => {
+			for (const [key, value] of recommendedMusicMap) {
+				console.log(key);
+				const url = await searchInYoutube(key);
+				console.log(url); // If url is in database, dont increase count
+				count++;
+				const info = await ytdl.getInfo(url);
+				const videoTitle = info.videoDetails.title;
+                console.log("Url:",url,"title:",videoTitle);
+				if (count >= goal) break;
+			}
+		})();
+	}
 
 	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension FROM songs").all();
 	document.getElementById("songCountElement").innerText = `${songRows.length} songs.`;
@@ -616,52 +671,55 @@ function renderMusics() {
 }
 
 function createMusicElement(songFile) {
-	const musicElement = document.createElement("div");
-	musicElement.classList.add("music-item");
-	musicElement.setAttribute("alt", songFile.name);
-	musicElement.setAttribute("data-file-name", songFile.name);
+	if (songFile.id.includes("tarator")) {
+		const musicElement = document.createElement("div");
+		musicElement.classList.add("music-item");
+		musicElement.setAttribute("alt", songFile.name);
+		musicElement.setAttribute("data-file-name", songFile.name);
 
-	const fileNameWithoutExtension = path.parse(songFile.name).name;
-	const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + getSongNameCached(fileNameWithoutExtension).thumbnail_extension);
+		const fileNameWithoutExtension = path.parse(songFile.name).name;
+		const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + getSongNameCached(fileNameWithoutExtension).thumbnail_extension);
 
-	if (fs.existsSync(thumbnailPath)) {
-		const backgroundElement = document.createElement("div");
-		backgroundElement.classList.add("background-element");
-		backgroundElement.dataset.bg = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
-		musicElement.appendChild(backgroundElement);
+		if (fs.existsSync(thumbnailPath)) {
+			const backgroundElement = document.createElement("div");
+			backgroundElement.classList.add("background-element");
+			backgroundElement.dataset.bg = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
+			musicElement.appendChild(backgroundElement);
+		}
+
+		const songNameElement = document.createElement("div");
+		songNameElement.classList.add("song-name");
+		songNameElement.innerText = getSongNameCached(fileNameWithoutExtension).song_name;
+
+		const songLengthElement = document.createElement("div");
+		songLengthElement.classList.add("song-length");
+		songLengthElement.innerText = formatTime(songFile.length);
+
+		const customiseButtonElement = document.createElement("button");
+
+		customiseButtonElement.classList.add("customise-button");
+		customiseButtonElement.addEventListener("click", event => {
+			event.stopPropagation();
+			opencustomiseModal(songFile.name);
+		});
+
+		const addToPlaylistButtonElement = document.createElement("button");
+		addToPlaylistButtonElement.classList.add("add-to-playlist-button");
+		addToPlaylistButtonElement.addEventListener("click", event => {
+			event.stopPropagation();
+			openAddToPlaylistModal(fileNameWithoutExtension);
+		});
+
+		customiseButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
+		addToPlaylistButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "addtoplaylist.svg")}" alt="Add To Playlist">`;
+
+		musicElement.appendChild(songLengthElement);
+		musicElement.appendChild(songNameElement);
+		musicElement.appendChild(customiseButtonElement);
+		musicElement.appendChild(addToPlaylistButtonElement);
+		return musicElement;
+	} else {
 	}
-
-	const songNameElement = document.createElement("div");
-	songNameElement.classList.add("song-name");
-	songNameElement.innerText = getSongNameCached(fileNameWithoutExtension).song_name;
-
-	const songLengthElement = document.createElement("div");
-	songLengthElement.classList.add("song-length");
-	songLengthElement.innerText = formatTime(songFile.length);
-
-	const customiseButtonElement = document.createElement("button");
-
-	customiseButtonElement.classList.add("customise-button");
-	customiseButtonElement.addEventListener("click", event => {
-		event.stopPropagation();
-		opencustomiseModal(songFile.name);
-	});
-
-	const addToPlaylistButtonElement = document.createElement("button");
-	addToPlaylistButtonElement.classList.add("add-to-playlist-button");
-	addToPlaylistButtonElement.addEventListener("click", event => {
-		event.stopPropagation();
-		openAddToPlaylistModal(fileNameWithoutExtension);
-	});
-
-	customiseButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
-	addToPlaylistButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "addtoplaylist.svg")}" alt="Add To Playlist">`;
-
-	musicElement.appendChild(songLengthElement);
-	musicElement.appendChild(songNameElement);
-	musicElement.appendChild(customiseButtonElement);
-	musicElement.appendChild(addToPlaylistButtonElement);
-	return musicElement;
 }
 
 async function playMusic(file, playlistId) {
@@ -1135,20 +1193,24 @@ async function removeSong(fileToDelete) {
 }
 
 function searchSong() {
-	const stmt = musicsDb.prepare(`
-        SELECT song_id
-        FROM songs
-        WHERE song_name LIKE ? COLLATE NOCASE
-        ORDER BY LENGTH(song_name)
-        LIMIT 1
-    `);
+	try {
+		const stmt = musicsDb.prepare(`
+            SELECT song_id
+            FROM songs
+            WHERE song_name LIKE ? COLLATE NOCASE
+            ORDER BY LENGTH(song_name)
+            LIMIT 1
+        `);
 
-	const row = stmt.get(`%${searchModalInput.value}%`);
-	searchModalInput.value = "";
-	searchModalInput.classList.add("red-placeholder");
-	searchModalInput.placeholder = "Song not found.";
-	playMusic(row.song_id, null);
-	document.getElementById("searchModal").style.display = "none";
+		const row = stmt.get(`%${searchModalInput.value}%`);
+		searchModalInput.value = "";
+		searchModalInput.classList.add("red-placeholder");
+		searchModalInput.placeholder = "Song not found.";
+		playMusic(row.song_id, null);
+		document.getElementById("searchModal").style.display = "none";
+	} catch {
+		// To prevent console errors
+	}
 }
 
 document.querySelectorAll('input[type="range"]').forEach(range => {

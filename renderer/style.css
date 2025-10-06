@@ -324,9 +324,9 @@ audio {
 }
 
 #songCountElement {
-	width: 15vw !important;
-	min-width: 15vw !important;
-	max-width: 15vw !important;
+	width: 10vw !important;
+	min-width: 10vw !important;
+	max-width: 10vw !important;
 	height: 3.5vh !important;
 	min-height: 3.5vh !important;
 	max-height: 3.5vh !important;
@@ -338,13 +338,9 @@ audio {
 	text-align: center;
 }
 
-#display-count {
-	width: 9vw !important;
-	min-width: 9vw !important;
-	max-width: 9vw !important;
+#display-count, #music-mode-select {
+	width: 11vw !important;
 	height: 3.5vh !important;
-	min-height: 3.5vh !important;
-	max-height: 3.5vh !important;
 	font-size: 2.2vh !important;
 	border: none !important;
 	text-align: center;
@@ -664,6 +660,7 @@ audio {
 
 #settings-content select,
 #display-count,
+#music-mode-select,
 #music-search {
 	padding: 2px 4px;
 	background-color: rgba(0, 0, 0, 0.8);
@@ -1167,7 +1164,7 @@ th {
 }
 
 #music-search {
-	width: 52vw !important;
+	width: 32vw !important;
 	height: 3.5vh !important;
 	font-size: 2.2vh !important;
 	padding: 2vh 10px !important;
@@ -1179,7 +1176,7 @@ th {
 #controlsBar {
 	display: flex;
 	flex-direction: row;
-	justify-content: start;
+	justify-content: space-around;
 	align-items: center;
 	width: 83.75vw !important;
 	height: 4vh;

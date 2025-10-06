@@ -203,3 +203,10 @@ function formatUnixTime(timestamp) {
 		year: "numeric",
 	});
 }
+
+async function searchInYoutube(songName, resultLimit = 1) {
+	const ytsr = require("@distube/ytsr");
+	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
+	searchedSongsUrl = result.items[resultLimit - 1].url;
+	return searchedSongsUrl;
+}

@@ -1,7 +1,5 @@
 // Make sure to have a "not interested" button and a list, which this function will check. (Also add it to the customise modal)
 
-// If ytsr() of the song is in our db, fetch new ones
-
 const popularityFactor = 0.15; // Ranking each artists songs 1-100, just inside their list
 const artistStrengthFactor = 0.08; // Amount of fans the songs artist has in Deezer
 const similarArtistsFactor = 0.35; // The songs artists similar artists and how much they are liked by the user
@@ -12,7 +10,7 @@ const randomFactor = 0.15; // Randomness to change the recommendations each time
 function getRecommendations() {
 	const artistPreferenceScore = calculateArtistPreference();
 	const songMap = new Map();
-	const pointsMap = new Map(); // TODO: Substract ignored songs like current songs
+	const pointsMap = new Map();
 
 	const existingSongsSet = new Set(
 		musicsDb
