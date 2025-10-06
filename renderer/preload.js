@@ -16,7 +16,7 @@ ipcRenderer.on("update-available", (event, releaseNotes) => {
 	document.getElementById("patchNotes").innerHTML = releaseNotes;
 	document.getElementById("version").classList.add("no-animation");
 	document.getElementById("installBtn").disabled = false;
-	if (platform == "win32" || platform == "darwin") {
+	if (process.platform == "win32" || process.platform == "darwin") {
 		document.getElementById("installBtn").innerText = "Go to the latest release page";
 	}
 });

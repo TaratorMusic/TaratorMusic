@@ -1,4 +1,4 @@
-// Make sure to have a "not interested" button and a list, which this function will check. (Also add it to the customise modal)
+// TODO: Make sure to have a "not interested" button and a list, which this function will check. (Also add it to the customise modal, playMusic will check if the song is ignored)
 
 const popularityFactor = 0.15; // Ranking each artists songs 1-100, just inside their list
 const artistStrengthFactor = 0.08; // Amount of fans the songs artist has in Deezer

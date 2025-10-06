@@ -1,5 +1,5 @@
 async function saveKeybinds() {
-	const buttons = Array.from(document.querySelectorAll(".settingsKeybindsButton")).map(button => button.innerText.trim());
+	const buttons = Array.from(document.querySelectorAll(".settingsKeybinds button")).map(button => button.innerText.trim());
 	const test = findDuplicates(buttons);
 
 	if (test.length > 0) {
@@ -30,7 +30,7 @@ async function saveKeybinds() {
 	key_Loop = document.getElementById("settingsLoop").innerHTML;
 }
 
-document.querySelectorAll(".settingsKeybindsButton").forEach(button => {
+document.querySelectorAll(".settingsKeybinds button").forEach(button => {
 	button.addEventListener("click", function () {
 		const currentButton = this;
 		currentButton.innerText = "Press a key...";

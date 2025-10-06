@@ -963,7 +963,7 @@ input:checked + .slider:before {
 	height: 4vh !important;
 }
 
-.settingsKeybindsButton {
+.settingsKeybinds button {
 	width: 7vw;
 	margin-left: 1vw;
 }
