@@ -159,32 +159,43 @@ function initialiseSettingsDatabase() {
 			)
 			.run();
 
-		settingsDb
-			.prepare(
-				`
-                UPDATE statistics SET
-                total_time_spent = IFNULL(total_time_spent, 0),
-                app_install_date = IFNULL(app_install_date, 0),
-                playlists_formed = IFNULL(playlists_formed, 0),
-                songs_downloaded_youtube = IFNULL(songs_downloaded_youtube, 0),
-                songs_downloaded_spotify = IFNULL(songs_downloaded_spotify, 0)
-            `
-			)
-			.run();
+		const statsInfo = settingsDb.prepare("PRAGMA table_info(statistics)").all();
+		const existingStatsColumns = statsInfo.map(col => col.name);
+		const requiredStatsColumns = [
+			{ name: "total_time_spent", type: "INTEGER", defaultVal: 0 },
+			{ name: "app_install_date", type: "INTEGER", defaultVal: 0 },
+			{ name: "playlists_formed", type: "INTEGER", defaultVal: 0 },
+			{ name: "songs_downloaded_youtube", type: "INTEGER", defaultVal: 0 },
+			{ name: "songs_downloaded_spotify", type: "INTEGER", defaultVal: 0 },
+		];
 
-		settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
-		statsRow = settingsDb.prepare("SELECT * FROM statistics LIMIT 1").get();
+		for (const col of requiredStatsColumns) {
+			if (!existingStatsColumns.includes(col.name)) {
+				settingsDb.prepare(`ALTER TABLE statistics ADD COLUMN ${col.name} ${col.type} DEFAULT ${col.defaultVal}`).run();
+			}
+		}
+
+		let settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
+		let statsRow = settingsDb.prepare("SELECT * FROM statistics LIMIT 1").get();
 
 		if (!settingsRow) {
-			const columns = Object.keys(defaultSettings).join(", ");
+			const cols = Object.keys(defaultSettings).join(", ");
 			const placeholders = Object.keys(defaultSettings)
 				.map(() => "?")
 				.join(", ");
-			settingsDb.prepare(`INSERT INTO settings (${columns}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
+			settingsDb.prepare(`INSERT INTO settings (${cols}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
 			settingsRow = defaultSettings;
 		}
 
-		if (!statsRow.app_install_date || statsRow.app_install_date == 0) {
+		if (!statsRow) {
+			settingsDb
+				.prepare(
+					`INSERT INTO statistics (total_time_spent, app_install_date, playlists_formed, songs_downloaded_youtube, songs_downloaded_spotify)
+             VALUES (0, ?, 0, 0, 0)`
+				)
+				.run(Math.floor(Date.now() / 1000));
+			statsRow = settingsDb.prepare("SELECT * FROM statistics LIMIT 1").get();
+		} else if (!statsRow.app_install_date || statsRow.app_install_date == 0) {
 			settingsDb.prepare(`UPDATE statistics SET app_install_date = ?`).run(Math.floor(Date.now() / 1000));
 		}
 
@@ -200,11 +211,11 @@ function initialiseSettingsDatabase() {
 		}
 
 		if (existingColumns.length == 0) {
-			const columns = Object.keys(defaultSettings).join(", ");
+			const cols = Object.keys(defaultSettings).join(", ");
 			const placeholders = Object.keys(defaultSettings)
 				.map(() => "?")
 				.join(", ");
-			settingsDb.prepare(`INSERT INTO settings (${columns}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
+			settingsDb.prepare(`INSERT INTO settings (${cols}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
 		}
 	} catch (err) {
 		console.log("Database error:", err.message);

@@ -2,6 +2,7 @@
 
 -   The stream & recommendations search bar will just YTSR. But you will need to press enter so need a button for that. Will be disabled while in offline mode.
 -   When you swap from recommendations mode while songs are loading, you cant
+-   playlists_formed not working
 -   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
 -   Make edit mode specific to streamed videos (less editing)
 -   Add "not interested" to customise modal. Which should exclude it from playing unless directly played.

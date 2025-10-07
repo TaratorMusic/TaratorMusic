@@ -37,7 +37,8 @@ Github Actions to protect code quality and automatically roll out builds
 
 ## How to develop:
 
--   Firstly, you need NPM, Node.js and Go installed on your computer.
+-   Firstly, you need NPM, Node.js and Go installed on your computer. 
+-   Python might be needed for post-install (for better-sqlite3), preferably below version 3.12 (Needs distutils).
 -   Secondly, you can clone the git repository to a folder of your choice.
 -   Thirdly, use "npm install" to download all the node modules.
 -   Lastly, use "npm start" to run the app.
