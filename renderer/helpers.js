@@ -210,3 +210,8 @@ async function searchInYoutube(songName, resultLimit = 1) {
 	searchedSongsUrl = result.items[resultLimit - 1].url;
 	return searchedSongsUrl;
 }
+
+function getYoutubeID(url) {
+	const match = url.match(/(?:youtube(?:-nocookie)?\.com\/(?:.*[?&]v=|v\/|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+	return match ? match[1] : null;
+}

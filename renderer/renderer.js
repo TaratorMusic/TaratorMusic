@@ -543,7 +543,6 @@ async function myMusicOnClick() {
 	availableMusicModes.forEach(mode => {
 		const optionElement = document.createElement("option");
 		optionElement.value = mode;
-		console.log(mode);
 		if (mode == "discover" || mode == null) {
 			optionElement.innerText = "Discover Mode";
 		} else if (mode == "stream") {
@@ -596,74 +595,103 @@ function renderMusics() {
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 	if (Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) < currentPage) currentPage = Math.ceil(songNameCache.size / (3 * previousItemsPerRow));
 
+	let searchValue = document.querySelector("#music-search").value.trim().toLowerCase();
+	const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
+	if (exactMatch) searchValue = searchValue.slice(1, -1);
+
+	let filteredSongs = {};
+
 	if (musicMode == "offline") {
-		// Current Mode
+		const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension FROM songs").all();
+		document.getElementById("songCountElement").innerText = `${songRows.length} songs.`;
+
+		filteredSongs = songRows
+			.map(row => ({
+				id: row.song_id,
+				name: `${row.song_id}.${row.song_extension}`,
+				thumbnail: `file://${row.song_id}.${row.thumbnail_extension}`,
+				length: row.song_length || 0,
+				info: getSongNameCached(row.song_id),
+			}))
+			.sort((a, b) => (a.info.song_name || "").toLowerCase().localeCompare((b.info.song_name || "").toLowerCase()))
+			.filter(song => {
+				if (!searchValue) return true;
+
+				const { song_name, artist, genre, language } = song.info;
+				const id = song.id.toString();
+
+				const compare = fieldValue => {
+					if (!fieldValue) return false;
+					const value = fieldValue.toLowerCase();
+					return exactMatch ? value == searchValue : value.includes(searchValue);
+				};
+
+				return compare(song_name) || (exactMatch ? id === searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
+			});
+
+		const maxVisible = displayPage == "scroll" ? filteredSongs.length : parseInt(3 * previousItemsPerRow * currentPage);
+		const startingSong = displayPage == "scroll" ? 0 : parseInt(3 * previousItemsPerRow * (currentPage - 1));
+
+		filteredSongs.slice(startingSong, maxVisible).forEach(song => {
+			const musicElement = createMusicElement(song);
+			if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+			musicElement.addEventListener("click", () => playMusic(song.id, null));
+			container.appendChild(musicElement);
+		});
 	} else if (musicMode == "stream") {
-		// Will show listened but not downloaded songs
+		// In songs, all songs are song-id that fits youtube regex
 	} else if (musicMode == "discover") {
-		// Will show recommendations
+		container.innerHTML = "Loading...";
 		const recommendedMusicMap = getRecommendations();
-		const goal = 3 * previousItemsPerRow;
+		const goal = 2 * previousItemsPerRow;
 		let count = 0;
+
+		const results = [];
 
 		(async () => {
 			for (const [key, value] of recommendedMusicMap) {
-				console.log(key);
 				const url = await searchInYoutube(key);
-				console.log(url); // If url is in database, dont increase count
-				count++;
+				const songID = getYoutubeID(url);
+				const exists = !!Object.values(musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url = ?)").get(url))[0];
+				if (exists) {
+					musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
+					continue;
+				}
+
 				const info = await ytdl.getInfo(url);
 				const videoTitle = info.videoDetails.title;
-                console.log("Url:",url,"title:",videoTitle);
+				const thumbnails = info.videoDetails.thumbnails || [];
+				const songLength = info.videoDetails.lengthSeconds;
+				const bestThumbnail = thumbnails.reduce((max, thumb) => {
+					const size = (thumb.width || 0) * (thumb.height || 0);
+					const maxSize = (max.width || 0) * (max.height || 0);
+					return size > maxSize ? thumb : max;
+				}, thumbnails[0] || {});
+
+				const fullSong = {
+					id: songID,
+					name: videoTitle,
+					thumbnail: bestThumbnail,
+					length: songLength,
+				};
+
+				if (count == 0) container.innerHTML = "";
+
+				const musicElement = createMusicElement(fullSong);
+				if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+				musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
+				container.appendChild(musicElement);
+				setupLazyBackgrounds();
+
+				count++;
+
 				if (count >= goal) break;
 			}
 		})();
 	}
 
-	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension FROM songs").all();
-	document.getElementById("songCountElement").innerText = `${songRows.length} songs.`;
-
-	const musicFiles = songRows
-		.map(row => ({
-			id: row.song_id,
-			name: `${row.song_id}.${row.song_extension}`,
-			thumbnail: `file://${row.song_id + "." + row.thumbnail_extension}`,
-			length: row.song_length || 0,
-			info: getSongNameCached(row.song_id),
-		}))
-		.sort((a, b) => (a.info.song_name || "").toLowerCase().localeCompare((b.info.song_name || "").toLowerCase()));
-
-	let searchValue = document.querySelector("#music-search").value.trim().toLowerCase();
-	const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
-	if (exactMatch) searchValue = searchValue.slice(1, -1);
-
-	const filteredSongs = musicFiles.filter(song => {
-		if (!searchValue) return true;
-
-		const { song_name, artist, genre, language } = song.info;
-		const id = song.id.toString();
-
-		const compare = fieldValue => {
-			if (!fieldValue) return false;
-			const value = fieldValue.toLowerCase();
-			return exactMatch ? value == searchValue : value.includes(searchValue);
-		};
-
-		return compare(song_name) || (exactMatch ? id == searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
-	});
-
-	const maxVisible = displayPage == "scroll" ? filteredSongs.length : parseInt(3 * previousItemsPerRow * currentPage);
-	const startingSong = displayPage == "scroll" ? 0 : parseInt(3 * previousItemsPerRow * (currentPage - 1));
-
 	document.querySelectorAll(".pageScrollButtons").forEach(button => {
 		button.disabled = displayPage == "scroll";
-	});
-
-	filteredSongs.slice(startingSong, maxVisible).forEach(song => {
-		const musicElement = createMusicElement(song);
-		if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
-		musicElement.addEventListener("click", () => playMusic(song.id, null));
-		container.appendChild(musicElement);
 	});
 
 	setupLazyBackgrounds();
@@ -671,12 +699,14 @@ function renderMusics() {
 }
 
 function createMusicElement(songFile) {
-	if (songFile.id.includes("tarator")) {
-		const musicElement = document.createElement("div");
-		musicElement.classList.add("music-item");
-		musicElement.setAttribute("alt", songFile.name);
-		musicElement.setAttribute("data-file-name", songFile.name);
+	const musicElement = document.createElement("div");
+	musicElement.classList.add("music-item");
+	musicElement.setAttribute("alt", songFile.name);
+	musicElement.setAttribute("data-file-name", songFile.name);
 
+	const songNameElement = document.createElement("div");
+
+	if (songFile.id.includes("tarator")) {
 		const fileNameWithoutExtension = path.parse(songFile.name).name;
 		const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + getSongNameCached(fileNameWithoutExtension).thumbnail_extension);
 
@@ -687,39 +717,45 @@ function createMusicElement(songFile) {
 			musicElement.appendChild(backgroundElement);
 		}
 
-		const songNameElement = document.createElement("div");
 		songNameElement.classList.add("song-name");
 		songNameElement.innerText = getSongNameCached(fileNameWithoutExtension).song_name;
-
-		const songLengthElement = document.createElement("div");
-		songLengthElement.classList.add("song-length");
-		songLengthElement.innerText = formatTime(songFile.length);
-
-		const customiseButtonElement = document.createElement("button");
-
-		customiseButtonElement.classList.add("customise-button");
-		customiseButtonElement.addEventListener("click", event => {
-			event.stopPropagation();
-			opencustomiseModal(songFile.name);
-		});
-
-		const addToPlaylistButtonElement = document.createElement("button");
-		addToPlaylistButtonElement.classList.add("add-to-playlist-button");
-		addToPlaylistButtonElement.addEventListener("click", event => {
-			event.stopPropagation();
-			openAddToPlaylistModal(fileNameWithoutExtension);
-		});
-
-		customiseButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
-		addToPlaylistButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "addtoplaylist.svg")}" alt="Add To Playlist">`;
-
-		musicElement.appendChild(songLengthElement);
-		musicElement.appendChild(songNameElement);
-		musicElement.appendChild(customiseButtonElement);
-		musicElement.appendChild(addToPlaylistButtonElement);
-		return musicElement;
 	} else {
+		const backgroundElement = document.createElement("div");
+		backgroundElement.classList.add("background-element");
+		backgroundElement.dataset.bg = songFile.thumbnail.url || songFile.thumbnail;
+		musicElement.appendChild(backgroundElement);
+
+		songNameElement.classList.add("song-name");
+		songNameElement.innerText = songFile.name;
 	}
+
+	const songLengthElement = document.createElement("div");
+	songLengthElement.classList.add("song-length");
+	songLengthElement.innerText = formatTime(songFile.length);
+
+	const customiseButtonElement = document.createElement("button");
+
+	customiseButtonElement.classList.add("customise-button");
+	customiseButtonElement.addEventListener("click", event => {
+		event.stopPropagation();
+		opencustomiseModal(songFile.name);
+	});
+
+	const addToPlaylistButtonElement = document.createElement("button");
+	addToPlaylistButtonElement.classList.add("add-to-playlist-button");
+	addToPlaylistButtonElement.addEventListener("click", event => {
+		event.stopPropagation();
+		openAddToPlaylistModal(fileNameWithoutExtension);
+	});
+
+	customiseButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
+	addToPlaylistButtonElement.innerHTML = `<img src="${path.join(appThumbnailFolder, "addtoplaylist.svg")}" alt="Add To Playlist">`;
+
+	musicElement.appendChild(songLengthElement);
+	musicElement.appendChild(songNameElement);
+	musicElement.appendChild(customiseButtonElement);
+	musicElement.appendChild(addToPlaylistButtonElement);
+	return musicElement;
 }
 
 async function playMusic(file, playlistId) {

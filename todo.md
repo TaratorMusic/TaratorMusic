@@ -1,9 +1,15 @@
 ## Coming Soon App Features
 
--   My music tab will have Stream vs Downloaded mode, in Stream mode the search bar will search from youtube and there will be one page of recommendations. The edit button will be changed to download song. The listen data will still be saved to the database, but under youtube link id. When the song is downloaded, we will replace all the link id's to the tarator id. Save to the db if the user prefers downloads or streaming.
--   Set stream vs offline at startup
+-   The stream & recommendations search bar will just YTSR. But you will need to press enter so need a button for that. Will be disabled while in offline mode.
+-   When you swap from recommendations mode while songs are loading, you cant
+-   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
+-   Make edit mode specific to streamed videos (less editing)
+-   Add "not interested" to customise modal. Which should exclude it from playing unless directly played.
+-   Make stream mode in playMusic, it will still save the data
+-   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information
 -   getRecommendations backup songs if there is no data
 -   Add refresh recommendations button
+-   Fix movies popping up on yt searches
 
 -   Learn how to stream using ytdlp binary and miniaudio
 -   add stream function to miniaudio wrapper
