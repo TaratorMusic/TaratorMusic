@@ -1432,7 +1432,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
 	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
 
-	document.querySelectorAll("div[data-tooltip]").forEach(el => {
+	document.querySelectorAll("[data-tooltip]").forEach(el => {
 		el.addEventListener("mouseenter", e => {
 			timeoutId = setTimeout(() => {
 				tooltip.textContent = el.dataset.tooltip;
