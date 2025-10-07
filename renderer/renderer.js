@@ -217,79 +217,79 @@ function initialiseSettingsDatabase() {
 				.join(", ");
 			settingsDb.prepare(`INSERT INTO settings (${cols}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
 		}
+
+		document.getElementById("settingsRewind").innerHTML = settingsRow.key_Rewind;
+		document.getElementById("settingsPrevious").innerHTML = settingsRow.key_Previous;
+		document.getElementById("settingsPlayPause").innerHTML = settingsRow.key_PlayPause;
+		document.getElementById("settingsNext").innerHTML = settingsRow.key_Next;
+		document.getElementById("settingsSkip").innerHTML = settingsRow.key_Skip;
+		document.getElementById("settingsAutoplay").innerHTML = settingsRow.key_Autoplay;
+		document.getElementById("settingsShuffle").innerHTML = settingsRow.key_Shuffle;
+		document.getElementById("settingsMute").innerHTML = settingsRow.key_Mute;
+		document.getElementById("settingsSpeed").innerHTML = settingsRow.key_Speed;
+		document.getElementById("settingsLoop").innerHTML = settingsRow.key_Loop;
+		document.getElementById("settingsRandomSong").innerHTML = settingsRow.key_randomSong;
+		document.getElementById("settingsRandomPlaylist").innerHTML = settingsRow.key_randomPlaylist;
+
+		key_Rewind = settingsRow.key_Rewind;
+		key_Previous = settingsRow.key_Previous;
+		key_PlayPause = settingsRow.key_PlayPause;
+		key_Next = settingsRow.key_Next;
+		key_Skip = settingsRow.key_Skip;
+		key_Autoplay = settingsRow.key_Autoplay;
+		key_Shuffle = settingsRow.key_Shuffle;
+		key_Mute = settingsRow.key_Mute;
+		key_Speed = settingsRow.key_Speed;
+		key_Loop = settingsRow.key_Loop;
+		key_randomSong = settingsRow.key_randomSong;
+		key_randomPlaylist = settingsRow.key_randomPlaylist;
+		rememberautoplay = settingsRow.rememberautoplay;
+		remembershuffle = settingsRow.remembershuffle;
+		rememberloop = settingsRow.rememberloop;
+		rememberspeed = settingsRow.rememberspeed;
+		volume = settingsRow.volume / 100;
+		dividevolume = settingsRow.dividevolume;
+		displayPage = settingsRow.displayPage;
+		musicMode = settingsRow.musicMode;
+		stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
+		current_version = settingsRow.current_version;
+		document.body.className = `bg-gradient-${settingsRow.background}`;
+
+		discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
+		discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
+		document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
+
+		const icons = {
+			backwardButton: "backward.svg",
+			previousSongButton: "previous.svg",
+			playButton: "play.svg",
+			pauseButton: "pause.svg",
+			nextSongButton: "next.svg",
+			forwardButton: "forward.svg",
+			autoplayButton: "redAutoplay.svg",
+			shuffleButton: "redShuffle.svg",
+			muteButton: "mute.svg",
+			speedButton: "speed.svg",
+			loopButton: "redLoop.svg",
+			songSettingsButton: "adjustments.svg",
+		};
+
+		for (const [id, file] of Object.entries(icons)) {
+			const el = document.getElementById(id);
+			if (el) {
+				el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
+			}
+		}
+
+		rememberautoplay && toggleAutoplay();
+		remembershuffle && toggleShuffle();
+		rememberloop && toggleLoop();
+
+		volumeControl.value = volume * 100;
 	} catch (err) {
 		console.log("Database error:", err.message);
 		return;
 	}
-
-	document.getElementById("settingsRewind").innerHTML = settingsRow.key_Rewind;
-	document.getElementById("settingsPrevious").innerHTML = settingsRow.key_Previous;
-	document.getElementById("settingsPlayPause").innerHTML = settingsRow.key_PlayPause;
-	document.getElementById("settingsNext").innerHTML = settingsRow.key_Next;
-	document.getElementById("settingsSkip").innerHTML = settingsRow.key_Skip;
-	document.getElementById("settingsAutoplay").innerHTML = settingsRow.key_Autoplay;
-	document.getElementById("settingsShuffle").innerHTML = settingsRow.key_Shuffle;
-	document.getElementById("settingsMute").innerHTML = settingsRow.key_Mute;
-	document.getElementById("settingsSpeed").innerHTML = settingsRow.key_Speed;
-	document.getElementById("settingsLoop").innerHTML = settingsRow.key_Loop;
-	document.getElementById("settingsRandomSong").innerHTML = settingsRow.key_randomSong;
-	document.getElementById("settingsRandomPlaylist").innerHTML = settingsRow.key_randomPlaylist;
-
-	key_Rewind = settingsRow.key_Rewind;
-	key_Previous = settingsRow.key_Previous;
-	key_PlayPause = settingsRow.key_PlayPause;
-	key_Next = settingsRow.key_Next;
-	key_Skip = settingsRow.key_Skip;
-	key_Autoplay = settingsRow.key_Autoplay;
-	key_Shuffle = settingsRow.key_Shuffle;
-	key_Mute = settingsRow.key_Mute;
-	key_Speed = settingsRow.key_Speed;
-	key_Loop = settingsRow.key_Loop;
-	key_randomSong = settingsRow.key_randomSong;
-	key_randomPlaylist = settingsRow.key_randomPlaylist;
-	rememberautoplay = settingsRow.rememberautoplay;
-	remembershuffle = settingsRow.remembershuffle;
-	rememberloop = settingsRow.rememberloop;
-	rememberspeed = settingsRow.rememberspeed;
-	volume = settingsRow.volume / 100;
-	dividevolume = settingsRow.dividevolume;
-	displayPage = settingsRow.displayPage;
-	musicMode = settingsRow.musicMode;
-	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
-	current_version = settingsRow.current_version;
-	document.body.className = `bg-gradient-${settingsRow.background}`;
-
-	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
-	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
-	document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
-
-	const icons = {
-		backwardButton: "backward.svg",
-		previousSongButton: "previous.svg",
-		playButton: "play.svg",
-		pauseButton: "pause.svg",
-		nextSongButton: "next.svg",
-		forwardButton: "forward.svg",
-		autoplayButton: "redAutoplay.svg",
-		shuffleButton: "redShuffle.svg",
-		muteButton: "mute.svg",
-		speedButton: "speed.svg",
-		loopButton: "redLoop.svg",
-		songSettingsButton: "adjustments.svg",
-	};
-
-	for (const [id, file] of Object.entries(icons)) {
-		const el = document.getElementById(id);
-		if (el) {
-			el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
-		}
-	}
-
-	rememberautoplay && toggleAutoplay();
-	remembershuffle && toggleShuffle();
-	rememberloop && toggleLoop();
-
-	volumeControl.value = volume * 100;
 
 	setupLazyBackgrounds();
 	document.getElementById("main-menu").click();
@@ -506,6 +506,7 @@ async function myMusicOnClick() {
 	musicSearchInput.type = "text";
 	musicSearchInput.id = "music-search";
 	musicSearchInput.placeholder = `Search in ${taratorFolder}...`;
+	musicSearchInput.addEventListener("input", renderMusics);
 
 	const displayPageSelect = document.createElement("select");
 	displayPageSelect.id = "display-count";
@@ -593,8 +594,6 @@ async function myMusicOnClick() {
 
 	myMusicContent.appendChild(musicListContainer);
 
-	musicSearchInput.addEventListener("input", renderMusics);
-
 	renderMusics();
 }
 
@@ -663,7 +662,8 @@ function renderMusics() {
 			for (const [key, value] of recommendedMusicMap) {
 				const url = await searchInYoutube(key);
 				const songID = getYoutubeID(url);
-				const exists = !!Object.values(musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url = ?)").get(url))[0];
+                
+				const exists = !!musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url LIKE ?)").pluck().get(`%${songID}%`);
 				if (exists) {
 					musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
 					continue;
