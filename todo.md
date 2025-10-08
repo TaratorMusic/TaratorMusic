@@ -1,6 +1,8 @@
 ## Coming Soon App Features
 
 -   playlists_formed not working and not in statistics
+-   ytsr breaks so often because of youtube limits, switch to my Go version maybe alongside ytpl
+-   does playlist thumbnail changing work?
 -   The stream & recommendations search bar will just YTSR. But you will need to press enter so need a button for that. Will be disabled while in offline mode.
 -   When you swap from recommendations mode while songs are loading, you cant
 -   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
@@ -10,7 +12,6 @@
 -   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information
 -   getRecommendations backup songs if there is no data
 -   Add refresh recommendations button
--   Fix movies popping up on yt searches
 
 -   Learn how to stream using ytdlp binary and miniaudio
 -   add stream function to miniaudio wrapper

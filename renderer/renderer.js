@@ -660,7 +660,8 @@ function renderMusics() {
 
 		(async () => {
 			for (const [key, value] of recommendedMusicMap) {
-				const url = await searchInYoutube(key);
+                const ytQuery = `${key} by ${value[0]}`;
+				const url = await searchInYoutube(ytQuery);
 				const songID = getYoutubeID(url);
                 
 				const exists = !!musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url LIKE ?)").pluck().get(`%${songID}%`);
