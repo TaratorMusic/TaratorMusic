@@ -22,6 +22,7 @@
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
 -   Compile for windows and mac binaries too
+-   Just jump to 1.8.0 after all of these
 
 ### Big updates remaining:
 
@@ -88,6 +89,7 @@
 -   Disable thumbnails
 -   Change placeholder thumbnail --> if (userPlaceholderThumbnail) else (placeholderThumbnail)
 -   Move app folders
+-   Make splash screen better & cooler
 -   Package Data to Desktop
 -   Could save data online
 -   Add cool animations

@@ -100,6 +100,10 @@ Interested in your listen data? The statistics tab lets you see your favorite so
 
 You will be able to get special song recommendations based on what songs you have listened to, and for how long.
 
+### Stream songs directly without downloading
+
+When you just want to browse, you will be able to quickly listen to your app recommended songs.
+
 ### Immense Playlist Control
 
 When this feature is implemented, you will be able to customise your playlists incredibly easily, by just dragging songs between playlists, cloning playlists, selecting your songs just like you are in a file manager!
@@ -119,10 +123,6 @@ Apple Music URL's will be available in the future just like Spotify URL's.
 ### Automatic Playlist Forming
 
 You will be able to form playlists automatically, depending on songs' names' languages, or song types, using lightweight machine learning.
-
-### Stream songs directly without downloading
-
-When you just want to browse, you will be able to quickly listen to your app recommended songs.
 
 ### File conversions, in-app
 

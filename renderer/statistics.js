@@ -4,9 +4,15 @@ Chart.register(LineController, LineElement, PointElement, PieController, ArcElem
 const statisticsContent = document.getElementById("statistics-content");
 let sortOrder = {};
 
+let songsTable;
+let timersTable;
+
 async function renderStatistics() {
 	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)
 	if (!row) return alertModal("You haven't listened to any songs yet.");
+
+	songsTable = musicsDb.prepare("SELECT song_id, song_name, song_url, song_extension, thumbnail_extension, stabilised, size, speed, bass, treble, midrange, volume, song_length, artist, genre, language FROM songs").all();
+	timersTable = musicsDb.prepare("SELECT song_id, start_time, end_time, playlist FROM timers").all();
 
 	document.getElementById("statistics-content").style.display = "flex";
 	statisticsContent.innerHTML = "";
@@ -119,12 +125,10 @@ async function createPieCharts() {
 	canvasBox3.className = "canvasBox";
 	pieChartBoxes.appendChild(canvasBox3);
 
-	const rows = musicsDb.prepare("SELECT artist, language, genre FROM songs").all();
-
 	const artistCount = {};
 	const genreCount = {};
 	const languageCount = {};
-	for (const row of rows) {
+	for (const row of songsTable) {
 		artistCount[row.artist] = (artistCount[row.artist] || 0) + 1;
 		genreCount[row.genre] = (genreCount[row.genre] || 0) + 1;
 		languageCount[row.language] = (languageCount[row.language] || 0) + 1;
@@ -205,12 +209,10 @@ async function daysHeatMap() {
 	title.innerHTML = "Listening Activity by day and hour";
 	statisticsContent.appendChild(title);
 
-	const rows = musicsDb.prepare("SELECT start_time, end_time FROM timers").all();
-
 	const days = Array.from({ length: 7 }, () => Array(24).fill(0));
 	const counts = Array.from({ length: 7 }, () => Array(24).fill(0));
 
-	for (const row of rows) {
+	for (const row of timersTable) {
 		const duration = row.end_time - row.start_time;
 		const date = new Date(row.start_time * 1000);
 		const day = (date.getDay() + 6) % 7;
@@ -341,18 +343,15 @@ async function generalStatistics() {
 }
 
 async function htmlTableStats(sortedData = null) {
-	const rows = sortedData || musicsDb.prepare("SELECT song_id, song_name, song_length FROM songs").all();
-	const timers = musicsDb.prepare("SELECT song_id, start_time, end_time FROM timers").all();
+	const rows = sortedData || songsTable;
 
 	for (let row of rows) {
 		const songId = row.song_id;
 		const clippedId = songId.replace("tarator-", "");
-
-		const songTimers = timers.filter(t => t.song_id == clippedId);
+		const songTimers = timersTable.filter(t => t.song_id == clippedId);
 		const listenAmount = songTimers.length;
 		const listenLength = songTimers.reduce((sum, t) => sum + (t.end_time - t.start_time), 0);
 		const listenPercentage = findListenPercentage(clippedId) + "%";
-
 		row.listenAmount = listenAmount;
 		row.listenLength = listenLength;
 		row.listenPercentage = listenPercentage;
@@ -377,23 +376,21 @@ async function htmlTableStats(sortedData = null) {
 		listenPercentage: "Listen %",
 	};
 
-	Object.keys(rows[0]).forEach(key => {
+	Object.keys(headerNames).forEach(key => {
 		const th = document.createElement("th");
 		th.style.cursor = "pointer";
 		th.style.userSelect = "none";
 		th.style.position = "relative";
 
 		const textSpan = document.createElement("span");
-		textSpan.textContent = headerNames[key] || key;
+		textSpan.textContent = headerNames[key];
 
 		const arrowSpan = document.createElement("span");
 		arrowSpan.style.position = "absolute";
 		arrowSpan.style.right = "5px";
 		arrowSpan.style.fontSize = "0.8em";
 
-		if (sortOrder[key]) {
-			arrowSpan.textContent = sortOrder[key] === "asc" ? "▲" : "▼";
-		}
+		if (sortOrder[key]) arrowSpan.textContent = sortOrder[key] === "asc" ? "▲" : "▼";
 
 		th.appendChild(textSpan);
 		th.appendChild(arrowSpan);
@@ -402,27 +399,21 @@ async function htmlTableStats(sortedData = null) {
 			Object.keys(sortOrder).forEach(k => {
 				if (k !== key) delete sortOrder[k];
 			});
-
 			const order = sortOrder[key] === "asc" ? "desc" : sortOrder[key] === "desc" ? "asc" : "desc";
 			sortOrder[key] = order;
-
 			const sorted = [...rows].sort((a, b) => {
 				let aVal = a[key];
 				let bVal = b[key];
-
-				if (typeof aVal === "string" && aVal.endsWith("%") && typeof bVal === "string" && bVal.endsWith("%")) {
-					aVal = parseFloat(aVal.replace("%", ""));
-					bVal = parseFloat(bVal.replace("%", ""));
-				} else if (!isNaN(aVal) && !isNaN(bVal)) {
+				if (typeof aVal === "string" && aVal.endsWith("%")) aVal = parseFloat(aVal);
+				if (typeof bVal === "string" && bVal.endsWith("%")) bVal = parseFloat(bVal);
+				if (!isNaN(aVal) && !isNaN(bVal)) {
 					aVal = parseFloat(aVal);
 					bVal = parseFloat(bVal);
 				}
-
 				if (aVal < bVal) return order === "asc" ? -1 : 1;
 				if (aVal > bVal) return order === "asc" ? 1 : -1;
 				return 0;
 			});
-
 			htmlTableStats(sorted);
 		};
 
@@ -435,9 +426,9 @@ async function htmlTableStats(sortedData = null) {
 	const tbody = document.createElement("tbody");
 	rows.forEach(row => {
 		const tr = document.createElement("tr");
-		Object.values(row).forEach(value => {
+		Object.keys(headerNames).forEach(key => {
 			const td = document.createElement("td");
-			td.textContent = value;
+			td.textContent = row[key] ?? "";
 			tr.appendChild(td);
 		});
 		tbody.appendChild(tr);
@@ -450,12 +441,27 @@ async function htmlTableStats(sortedData = null) {
 
 function findListenPercentage(songId) {
 	try {
-		const row = musicsDb.prepare("SELECT song_length FROM songs WHERE song_id = ?").get(`tarator-${songId}`);
-		const stats = musicsDb.prepare("SELECT COUNT(*) AS row_count, SUM(end_time - start_time) AS total_duration FROM timers WHERE song_id = ?").get(songId) || {};
-		const totalLength = (stats.row_count || 0) * row.song_length;
-		const totalListened = stats.total_duration || 0;
-		if (totalLength == 0) return 0;
-		return ((totalListened / totalLength) * 100).toFixed(0);
+		const longId = `tarator-${songId}`;
+		const songsTableMap = songsTable.reduce((songMap, songRecord) => {
+			songMap[songRecord.song_id] = songRecord.song_length;
+			return songMap;
+		}, {});
+
+		const timersTableMap = timersTable.reduce((timerMap, timerRecord) => {
+			if (!timerMap[timerRecord.song_id]) {
+				timerMap[timerRecord.song_id] = { playCount: 0, totalDuration: 0 };
+			}
+			timerMap[timerRecord.song_id].playCount++;
+			timerMap[timerRecord.song_id].totalDuration += timerRecord.end_time - timerRecord.start_time;
+			return timerMap;
+		}, {});
+
+		const songLength = songsTableMap[longId];
+		const timerStats = timersTableMap[songId] || { playCount: 0, totalDuration: 0 };
+		const totalSongLength = timerStats.playCount * songLength;
+
+		if (!songLength || totalSongLength === 0) return 0;
+		return ((timerStats.totalDuration / totalSongLength) * 100).toFixed(0);
 	} catch {
 		return 0;
 	}
