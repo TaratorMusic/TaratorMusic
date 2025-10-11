@@ -557,7 +557,7 @@ async function myMusicOnClick() {
 		const optionElement = document.createElement("option");
 		optionElement.value = mode;
 		if (mode == "discover" || mode == null) {
-			optionElement.innerText = "Discover Mode";
+			optionElement.innerText = "Discovery Mode";
 		} else if (mode == "stream") {
 			optionElement.innerText = "Stream Mode";
 		} else {
@@ -793,6 +793,7 @@ async function playMusic(songId, playlistId) {
 
 		videoProgress.value = 0;
 		songDuration = 0;
+        if (!offlineMode) videoLength.innerText = `00:00 / ${formatTime(recommendedSongsHtmlMap.get(songId)?.length)}`;
 
 		document.getElementById("addToFavoritesButtonBottomRight").style.color = "white";
 		document.getElementById("addToPlaylistButtonBottomRight").style.color = "white";
