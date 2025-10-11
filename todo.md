@@ -10,6 +10,7 @@ Streaming song customisation modal:
 -   Volume (Coming Soon)
 -   Speed (Coming Soon)
 -   Add to Database
+-   Not interested
 -   Download
 ---
 
@@ -28,10 +29,8 @@ Streaming song customisation modal:
 -   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information
 -   getRecommendations backup songs if there is no data
 -   Add refresh recommendations button
-
--   Learn how to stream using ytdlp binary and miniaudio
--   add stream function to miniaudio wrapper
 -   Make sure the data is saved to the timers table and songs table etc.
+-   Implement "not interested" feature everywhere
 
 -   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
 -   Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)

@@ -207,7 +207,6 @@ function closeModal() {
 async function searchInYoutube(songName, resultLimit = 1) {
 	const ytsr = require("@distube/ytsr");
 	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
-	console.log(result);
 	searchedSongsUrl = result.items[resultLimit - 1].url;
 	return searchedSongsUrl;
 }

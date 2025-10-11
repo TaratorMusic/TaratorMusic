@@ -720,11 +720,9 @@ function createMusicElement(songFile) {
 	const musicElement = document.createElement("div");
 	musicElement.classList.add("music-item");
 	musicElement.setAttribute("alt", songFile.name);
-	musicElement.setAttribute("data-file-name", songFile.name);
+	musicElement.setAttribute("data-file-name", songFile.id);
 
 	const songNameElement = document.createElement("div");
-
-	console.log(songFile);
 
 	let fileNameWithoutExtension;
 
@@ -802,7 +800,7 @@ async function playMusic(songId, playlistId) {
 
 		if (!!playlistsDb.prepare("SELECT 1 FROM playlists WHERE name=? AND EXISTS (SELECT 1 FROM json_each(songs) WHERE value=?)").get("Favorites", songId)) {
 			addToFavoritesButtonBottomRight.style.color = "red";
-		} // TODO: Move this to cache
+		} // TODO: Move this to cache, and everything in playlists.js
 
 		const songPath = offlineMode ? path.join(musicFolder, `${playingSongsID}.${getSongNameCached(songId).song_extension}`) : `https://www.youtube.com/watch?v=${songId}`;
 		offlineMode ? audioPlayer.stdin.write(`play ${songPath}\n`) : audioPlayer.stdin.write(`stream ${songPath} \n`);
@@ -831,9 +829,7 @@ async function playMusic(songId, playlistId) {
 
 		document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
 		document.querySelectorAll(".music-item").forEach(musicElement => {
-			if (removeExtensions(musicElement.getAttribute("data-file-name")) == playingSongsID) {
-				musicElement.classList.add("playing");
-			}
+			if (removeExtensions(musicElement.getAttribute("data-file-name")) == playingSongsID) musicElement.classList.add("playing");
 		});
 
 		if (player) {
