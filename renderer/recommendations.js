@@ -2,9 +2,9 @@
 
 const popularityFactor = 0.15; // Ranking each artists songs 1-100, just inside their list
 const artistStrengthFactor = 0.08; // Amount of fans the songs artist has in Deezer
-const similarArtistsFactor = 0.35; // The songs artists similar artists and how much they are liked by the user
+const similarArtistsFactor = 0.20; // The songs artists similar artists and how much they are liked by the user
 const userPreferenceFactor = 0.17; // If the user prefers to listen to the same artists or likes to explore new ones
-const artistListenTimeFactor = 0.1; // How much the user listened to the artist of the song
+const artistListenTimeFactor = 0.25; // How much the user listened to the artist of the song
 const randomFactor = 0.15; // Randomness to change the recommendations each time
 
 function getRecommendations() {

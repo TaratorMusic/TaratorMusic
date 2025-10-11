@@ -37,12 +37,22 @@ events.forEach(eventName => {
 });
 
 function editMPRIS() {
-	const row = musicsDb.prepare("SELECT song_name, song_length, thumbnail_extension, artist FROM songs WHERE song_id = ?").get(playingSongsID);
-	player.metadata = {
-		"mpris:trackid": player.objectPath("track/0"),
-		"mpris:length": row.song_length * 1000000,
-		"mpris:artUrl": path.join(thumbnailFolder, playingSongsID + "." + row.thumbnail_extension),
-		"xesam:title": row.song_name,
-		"xesam:artist": [row.artist],
-	};
+	if (playingSongsID.includes("tarator")) {
+		const row = musicsDb.prepare("SELECT song_name, song_length, thumbnail_extension, artist FROM songs WHERE song_id = ?").get(playingSongsID);
+		player.metadata = {
+			"mpris:trackid": player.objectPath("track/0"),
+			"mpris:length": row.song_length * 1000000,
+			"mpris:artUrl": path.join(thumbnailFolder, playingSongsID + "." + row.thumbnail_extension),
+			"xesam:title": row.song_name,
+			"xesam:artist": [row.artist],
+		};
+	} else {
+		player.metadata = {
+			"mpris:trackid": player.objectPath("track/0"),
+			"mpris:length": recommendedSongsHtmlMap.get(playingSongsID)?.length * 1000000,
+			"mpris:artUrl": recommendedSongsHtmlMap.get(playingSongsID)?.thumbnail.url,
+			"xesam:title": recommendedSongsHtmlMap.get(playingSongsID)?.name,
+			"xesam:artist": "TaratorMusic", // Not doing this
+		};
+	}
 }

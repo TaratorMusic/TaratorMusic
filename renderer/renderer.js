@@ -77,6 +77,7 @@ let isUserSeeking = false;
 let playing = false;
 let previousItemsPerRow;
 let currentPage = 1;
+let recommendedSongsHtmlMap = new Map();
 
 const debounceMap = new Map();
 let songNameCache = new Map();
@@ -659,11 +660,13 @@ function renderMusics() {
 		const results = [];
 
 		(async () => {
+			recommendedSongsHtmlMap = new Map();
+
 			for (const [key, value] of recommendedMusicMap) {
-                const ytQuery = `${key} by ${value[0]}`;
+				const ytQuery = `${key} by ${value[0]}`;
 				const url = await searchInYoutube(ytQuery);
 				const songID = getYoutubeID(url);
-                
+
 				const exists = !!musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url LIKE ?)").pluck().get(`%${songID}%`);
 				if (exists) {
 					musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
@@ -686,6 +689,8 @@ function renderMusics() {
 					thumbnail: bestThumbnail,
 					length: songLength,
 				};
+
+				recommendedSongsHtmlMap.set(songID, fullSong);
 
 				if (count == 0) container.innerHTML = "";
 
@@ -770,17 +775,17 @@ function createMusicElement(songFile) {
 	return musicElement;
 }
 
-async function playMusic(file, playlistId) {
-	await saveUserProgress();
+async function playMusic(songId, playlistId) {
+	await saveUserProgress(); // TODO: Modify this too
 
 	try {
+		const offlineMode = !!songId.includes("tarator");
+
 		const songName = document.getElementById("song-name");
 		songName.setAttribute("data-file-name", playingSongsID);
-		songName.textContent = getSongNameById(file);
-
+		songName.textContent = offlineMode ? getSongNameById(songId) : recommendedSongsHtmlMap.get(songId)?.name;
+		playingSongsID = songId;
 		currentPlaylist = playlistId || null;
-
-		playingSongsID = file;
 
 		videoProgress.value = 0;
 		songDuration = 0;
@@ -789,25 +794,31 @@ async function playMusic(file, playlistId) {
 		document.getElementById("addToPlaylistButtonBottomRight").style.color = "white";
 		document.getElementById("customiseButtonBottomRight").style.color = "white";
 
-		if (!!playlistsDb.prepare("SELECT 1 FROM playlists WHERE name=? AND EXISTS (SELECT 1 FROM json_each(songs) WHERE value=?)").get("Favorites", file)) {
+		if (!!playlistsDb.prepare("SELECT 1 FROM playlists WHERE name=? AND EXISTS (SELECT 1 FROM json_each(songs) WHERE value=?)").get("Favorites", songId)) {
 			addToFavoritesButtonBottomRight.style.color = "red";
-		}
+		} // TODO: Move this to cache
 
-		const songPath = path.join(musicFolder, `${playingSongsID}.${getSongNameCached(file).song_extension}`);
-		audioPlayer.stdin.write(`play ${songPath}\n`);
+		const songPath = offlineMode ? path.join(musicFolder, `${playingSongsID}.${getSongNameCached(songId).song_extension}`) : `https://www.youtube.com/watch?v=${songId}`;
+		offlineMode ? audioPlayer.stdin.write(`play ${songPath}\n`) : audioPlayer.stdin.write(`stream ${songPath} \n`);
 		audioPlayer.stdin.write(`volume ${volume}\n`);
 		audioPlayer.stdin.write(`speed ${rememberspeed}\n`);
 
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
 
-		const thumbnailPath = path.join(thumbnailFolder, `${file}.${getSongNameCached(file).thumbnail_extension}`.replace(/%20/g, " "));
-		let thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
+		let thumbnailUrl;
 
-		if (fs.existsSync(thumbnailPath)) {
-			thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}`;
+		if (offlineMode) {
+			const thumbnailPath = path.join(thumbnailFolder, `${songId}.${getSongNameCached(songId).thumbnail_extension}`.replace(/%20/g, " "));
+			thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
+
+			if (fs.existsSync(thumbnailPath)) {
+				thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}`;
+			} else {
+				console.log("Tried to get thumbnail from", thumbnailPath, "but failed. Used", thumbnailUrl, "instead.");
+			}
 		} else {
-			console.log("Tried to get thumbnail from", thumbnailPath, "but failed. Used", thumbnailUrl, "instead.");
+			thumbnailUrl = recommendedSongsHtmlMap.get(songId)?.thumbnail.url;
 		}
 
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url('${thumbnailUrl}')`;
@@ -1492,7 +1503,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	audioPlayer.stdout.on("data", data => {
 		const output = data.toString();
-
 		const currentMatch = output.match(/Position: ([0-9.]+) sec/);
 		const lengthMatch = output.match(/Length: ([0-9.]+) sec/);
 

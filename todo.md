@@ -1,14 +1,15 @@
 ## Coming Soon App Features
 
--   playlists_formed not working and not in statistics
--   ytsr breaks so often because of youtube limits, switch to my Go version maybe alongside ytpl
--   does playlist thumbnail changing work?
+-   Add enter button & refresh button with no functionality for now.
+-   Stream seeking not working
+-   Search for TODO
+-   Listened songs should get their data in the songs table
 -   The stream & recommendations search bar will just YTSR. But you will need to press enter so need a button for that. Will be disabled while in offline mode.
--   When you swap from recommendations mode while songs are loading, you cant
 -   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
+
+-   When you swap from recommendations mode while songs are loading, you cant
 -   Make edit mode specific to streamed videos (less editing)
 -   Add "not interested" to customise modal. Which should exclude it from playing unless directly played.
--   Make stream mode in playMusic, it will still save the data
 -   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information
 -   getRecommendations backup songs if there is no data
 -   Add refresh recommendations button
@@ -16,9 +17,15 @@
 -   Learn how to stream using ytdlp binary and miniaudio
 -   add stream function to miniaudio wrapper
 -   Make sure the data is saved to the timers table and songs table etc.
+
 -   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
 -   Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
-
+-   playlists_formed not working and not in statistics
+-   ytsr breaks so often because of youtube limits, switch to my Go version maybe alongside ytpl
+-   does playlist thumbnail changing work?
+-   Playing playlist songs are very broken
+-   Do long songs have a skipping problem? (5secs)
+-   Create recommendations cache so it fetches everything once
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
 -   Compile for windows and mac binaries too
@@ -37,6 +44,7 @@
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add approximate time remaining for volume stabilisation.
+-   Hover songs for the full song name?
 -   Need to have full online & full offline modes
 -   Add an option to toggle volume stabilisation for the song, and pre-set artist-language-genre info in the download options
 -   Add song to queue
@@ -89,6 +97,7 @@
 -   Disable thumbnails
 -   Change placeholder thumbnail --> if (userPlaceholderThumbnail) else (placeholderThumbnail)
 -   Move app folders
+-   Set time zone preference
 -   Make splash screen better & cooler
 -   Package Data to Desktop
 -   Could save data online
