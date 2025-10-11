@@ -661,27 +661,28 @@ function renderMusics() {
 
 		(async () => {
 			recommendedSongsHtmlMap = new Map();
+			const ytsr = require("@distube/ytsr");
 
 			for (const [key, value] of recommendedMusicMap) {
 				const ytQuery = `${key} by ${value[0]}`;
-				const url = await searchInYoutube(ytQuery);
-				const songID = getYoutubeID(url);
+				const result = await ytsr(ytQuery, { safeSearch: false, limit: 1 });
+
+				const info = result.items[0];
+				const videoTitle = info.name;
+				const songID = info.id;
+				const thumbnails = info.thumbnails || [];
+				const songLength = parseTimeToSeconds(info.duration);
+				const bestThumbnail = thumbnails.reduce((max, thumb) => {
+					const size = (thumb.width || 0) * (thumb.height || 0);
+					const maxSize = (max.width || 0) * (max.height || 0);
+					return size > maxSize ? thumb : max;
+				}, thumbnails[0] || {});
 
 				const exists = !!musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url LIKE ?)").pluck().get(`%${songID}%`);
 				if (exists) {
 					musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
 					continue;
 				}
-
-				const info = await ytdl.getInfo(url);
-				const videoTitle = info.videoDetails.title;
-				const thumbnails = info.videoDetails.thumbnails || [];
-				const songLength = info.videoDetails.lengthSeconds;
-				const bestThumbnail = thumbnails.reduce((max, thumb) => {
-					const size = (thumb.width || 0) * (thumb.height || 0);
-					const maxSize = (max.width || 0) * (max.height || 0);
-					return size > maxSize ? thumb : max;
-				}, thumbnails[0] || {});
 
 				const fullSong = {
 					id: songID,
@@ -723,8 +724,12 @@ function createMusicElement(songFile) {
 
 	const songNameElement = document.createElement("div");
 
+	console.log(songFile);
+
+	let fileNameWithoutExtension;
+
 	if (songFile.id.includes("tarator")) {
-		const fileNameWithoutExtension = path.parse(songFile.name).name;
+		fileNameWithoutExtension = path.parse(songFile.name).name;
 		const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + getSongNameCached(fileNameWithoutExtension).thumbnail_extension);
 
 		if (fs.existsSync(thumbnailPath)) {
@@ -744,6 +749,7 @@ function createMusicElement(songFile) {
 
 		songNameElement.classList.add("song-name");
 		songNameElement.innerText = songFile.name;
+		fileNameWithoutExtension = songFile.name;
 	}
 
 	const songLengthElement = document.createElement("div");

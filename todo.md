@@ -1,9 +1,24 @@
 ## Coming Soon App Features
+---
+Streaming song customisation modal:
 
+-   Name
+-   Thumbnail
+-   Genre
+-   Artist
+-   Language
+-   Volume (Coming Soon)
+-   Speed (Coming Soon)
+-   Add to Database
+-   Download
+---
+
+-   Make song progress 00:00 when you start a streamed song. Also make the total song time from fullSong.length
 -   Add enter button & refresh button with no functionality for now.
 -   Stream seeking not working
 -   Search for TODO
--   Listened songs should get their data in the songs table
+-   Listened songs should get their data in the songs table --> At playMusic(), if songId not in songs, create a new row
+-   Make an alertModal() for yt rate limits, and in-app rate limits for fetching
 -   The stream & recommendations search bar will just YTSR. But you will need to press enter so need a button for that. Will be disabled while in offline mode.
 -   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
 
