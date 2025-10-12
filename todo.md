@@ -14,6 +14,9 @@ Streaming song customisation modal:
 -   Download
 ---
 
+-   Bypass ffmpeg
+-   Have yt-dlp in daemon mode at discovery mode start
+
 -   Add enter button & refresh button with no functionality for now.
 -   Stream seeking not working
 -   Search for TODO

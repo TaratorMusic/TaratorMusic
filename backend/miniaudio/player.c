@@ -28,7 +28,6 @@ static int is_initialized = 0;
 static int is_loaded = 0;
 static int is_streaming = 0;
 static float current_volume = 1.0f;
-static float stream_length = 0.0f;
 static int stream_playing = 0;
 
 static void stop_stream(void);
@@ -241,7 +240,6 @@ void show_status(void) {
         float seconds = (float)stream_data.frames_read / 44100.0f;
         printf("Playing: %s\n", stream_playing && !stream_data.paused ? "Yes" : "No");
         printf("Position: %.1f sec\n", seconds);
-        printf("Length: %.1f sec\n", stream_length);
         printf("Volume: %.1f%%\n", current_volume * 100);
         fflush(stdout);
         return;
@@ -251,7 +249,6 @@ void show_status(void) {
         printf("No song loaded\n");
         printf("Playing: No\n");
         printf("Position: 0.0 sec\n");
-        printf("Length: 0.0 sec\n");
         printf("Volume: %.1f%%\n", current_volume * 100);
         fflush(stdout);
         return;
@@ -307,42 +304,27 @@ void stream_url(const char *url) {
     const char* ffmpeg = "./node_modules/@ffmpeg-installer/linux-x64/ffmpeg";
 #endif
 
-    char info_cmd[2048];
-#ifdef _WIN32
-    snprintf(info_cmd, sizeof(info_cmd), "%s -j \"%s\" 2>nul", yt_dlp, url);
-#else
-    snprintf(info_cmd, sizeof(info_cmd), "%s -j \"%s\" 2>/dev/null", yt_dlp, url);
-#endif
-    FILE* info_pipe = popen(info_cmd, "r");
-    if (info_pipe) {
-        char json[8192] = {0};
-        size_t bytesRead = fread(json, 1, sizeof(json)-1, info_pipe);
-        (void)bytesRead;
-        pclose(info_pipe);
-        char* dur = strstr(json, "\"duration\":");
-        if (dur) stream_length = atof(dur + 11);
-    } else {
-        stream_length = 0.0f;
-    }
-
 #ifdef _WIN32
     snprintf(cmd, sizeof(cmd),
         "%s -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
-        "--no-warnings --quiet --no-progress | "
+        "--no-playlist --no-cache-dir --geo-bypass "
+        "--no-warnings --quiet --no-progress --no-mtime | "
         "%s -hide_banner -loglevel error -i pipe: "
         "-f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:",
         yt_dlp, url, ffmpeg);
 #elif defined(__APPLE__)
     snprintf(cmd, sizeof(cmd),
         "%s -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
-        "--no-warnings --quiet --no-progress | "
+        "--no-playlist --no-cache-dir --geo-bypass "
+        "--no-warnings --quiet --no-progress --no-mtime | "
         "%s -hide_banner -loglevel error -i pipe:0 "
         "-f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:1",
         yt_dlp, url, ffmpeg);
 #else
     snprintf(cmd, sizeof(cmd),
         "%s -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
-        "--no-warnings --quiet --no-progress | "
+        "--no-playlist --no-cache-dir --geo-bypass "
+        "--no-warnings --quiet --no-progress --no-mtime | "
         "stdbuf -oL -eL %s -hide_banner -loglevel error -i pipe:0 "
         "-f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:1",
         yt_dlp, url, ffmpeg);
@@ -406,7 +388,6 @@ static void stop_stream(void) {
     stream_data.buffer_filled = 0;
     stream_data.buffer_pos = 0;
     stream_playing = 0;
-    stream_length = 0.0f;
     is_streaming = 0;
     printf("Stream stopped\n");
     fflush(stdout);

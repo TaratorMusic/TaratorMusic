@@ -385,10 +385,11 @@ function initialiseMusicsDatabase() {
 		musicsDb.prepare(`ALTER TABLE timers ADD COLUMN playlist TEXT`).run();
 	}
 
-	const rows = musicsDb.prepare("SELECT song_id, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs").all();
+	const rows = musicsDb.prepare("SELECT song_id, song_length, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs").all();
 	for (const row of rows) {
 		songNameCache.set(row.song_id, {
 			song_name: row.song_name,
+            song_length: row.song_length,
 			song_extension: row.song_extension,
 			thumbnail_extension: row.thumbnail_extension,
 			genre: row.genre,
@@ -489,9 +490,9 @@ tabs.forEach(tab => {
 
 function getSongNameCached(songId) {
 	if (!songNameCache.has(songId)) {
-		const stmt = musicsDb.prepare("SELECT song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?");
+		const stmt = musicsDb.prepare("SELECT song_name, song_length ,song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?");
 		const row = stmt.get(songId);
-		songNameCache.set(songId, row || { song_name: null, song_extension: null, thumbnail_extension: null, genre: null, artist: null, language: null });
+		songNameCache.set(songId, row || { song_name: null, song_length: null, song_extension: null, thumbnail_extension: null, genre: null, artist: null, language: null });
 	}
 	return songNameCache.get(songId);
 }
@@ -784,7 +785,6 @@ async function playMusic(songId, playlistId) {
 
 	try {
 		const offlineMode = !!songId.includes("tarator");
-
 		const songName = document.getElementById("song-name");
 		songName.setAttribute("data-file-name", playingSongsID);
 		songName.textContent = offlineMode ? getSongNameById(songId) : recommendedSongsHtmlMap.get(songId)?.name;
@@ -792,8 +792,8 @@ async function playMusic(songId, playlistId) {
 		currentPlaylist = playlistId || null;
 
 		videoProgress.value = 0;
-		songDuration = 0;
-        if (!offlineMode) videoLength.innerText = `00:00 / ${formatTime(recommendedSongsHtmlMap.get(songId)?.length)}`;
+		songDuration = offlineMode ? getSongNameCached(songId).song_length : recommendedSongsHtmlMap.get(songId)?.length;
+		videoLength.innerText = `00:00 / ${formatTime(songDuration)}`;
 
 		document.getElementById("addToFavoritesButtonBottomRight").style.color = "white";
 		document.getElementById("addToPlaylistButtonBottomRight").style.color = "white";
@@ -1507,19 +1507,11 @@ document.addEventListener("DOMContentLoaded", function () {
 	audioPlayer.stdout.on("data", data => {
 		const output = data.toString();
 		const currentMatch = output.match(/Position: ([0-9.]+) sec/);
-		const lengthMatch = output.match(/Length: ([0-9.]+) sec/);
 
-		if (currentMatch && lengthMatch) {
+		if (currentMatch) {
 			const currentTimeSec = parseFloat(currentMatch[1]);
-			const totalDuration = parseFloat(lengthMatch[1]);
-
-			if (!songDuration || Math.abs(songDuration - totalDuration) > 0.1) {
-				songDuration = totalDuration;
-			}
-
 			const currentTime = formatTime(currentTimeSec);
-			const duration = formatTime(songDuration);
-			videoLength.textContent = `${currentTime} / ${duration}`;
+			videoLength.textContent = `${currentTime} / ${formatTime(songDuration)}`;
 
 			if (songDuration > 0) {
 				videoProgress.value = (currentTimeSec / songDuration) * 100;
