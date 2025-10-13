@@ -49,9 +49,9 @@ function editMPRIS() {
 	} else {
 		player.metadata = {
 			"mpris:trackid": player.objectPath("track/0"),
-			"mpris:length": recommendedSongsHtmlMap.get(playingSongsID)?.length * 1000000,
-			"mpris:artUrl": recommendedSongsHtmlMap.get(playingSongsID)?.thumbnail.url,
-			"xesam:title": recommendedSongsHtmlMap.get(playingSongsID)?.name,
+			"mpris:length": streamedSongsHtmlMap.get(playingSongsID)?.length * 1000000,
+			"mpris:artUrl": streamedSongsHtmlMap.get(playingSongsID)?.thumbnail.url,
+			"xesam:title": streamedSongsHtmlMap.get(playingSongsID)?.name,
 			"xesam:artist": "TaratorMusic", // Not doing this
 		};
 	}

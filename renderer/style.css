@@ -162,6 +162,13 @@ body::-webkit-scrollbar {
 	flex-direction: column;
 }
 
+.beatifullyCenteredRow {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
 .sidebar {
 	position: fixed;
 	left: 0;
@@ -338,7 +345,8 @@ audio {
 	text-align: center;
 }
 
-#display-count, #music-mode-select {
+#display-count,
+#music-mode-select {
 	width: 11vw !important;
 	height: 3.5vh !important;
 	font-size: 2.2vh !important;
@@ -661,7 +669,10 @@ audio {
 #settings-content select,
 #display-count,
 #music-mode-select,
-#music-search {
+#music-search,
+#musicSearchInputAmount,
+#musicSearchEnterButton,
+#musicSearchRefreshButton {
 	padding: 2px 4px;
 	background-color: rgba(0, 0, 0, 0.8);
 	color: white;
@@ -1164,13 +1175,22 @@ th {
 }
 
 #music-search {
-	width: 32vw !important;
-	height: 3.5vh !important;
-	font-size: 2.2vh !important;
-	padding: 2vh 10px !important;
+	width: 32vw;
+	height: 3.5vh;
+	font-size: 2.2vh;
+	padding: 2vh 10px;
 	cursor: unset !important;
 	border-radius: 5px;
 	border: 1px solid white;
+}
+
+#musicSearchInputAmount,
+#musicSearchEnterButton,
+#musicSearchRefreshButton {
+    width: 3.5vh !important;
+	height: 3.5vh !important;
+	font-size: 2.2vh;
+	margin-left: 1vh;
 }
 
 #controlsBar {

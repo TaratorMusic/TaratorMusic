@@ -77,7 +77,7 @@ let isUserSeeking = false;
 let playing = false;
 let previousItemsPerRow;
 let currentPage = 1;
-let recommendedSongsHtmlMap = new Map();
+let streamedSongsHtmlMap = new Map();
 let notInterestedSongs;
 
 const debounceMap = new Map();
@@ -392,7 +392,7 @@ function initialiseMusicsDatabase() {
 			song_name: row.song_name,
 			song_length: row.song_length,
 			song_extension: row.song_extension,
-            song_url: row.song_url,
+			song_url: row.song_url,
 			thumbnail_extension: row.thumbnail_extension,
 			genre: row.genre,
 			artist: row.artist,
@@ -508,11 +508,32 @@ async function myMusicOnClick() {
 	const controlsBar = document.createElement("div");
 	controlsBar.id = "controlsBar";
 
+	const musicSearchParts = document.createElement("div");
+	musicSearchParts.className = "beatifullyCenteredRow";
+
 	const musicSearchInput = document.createElement("input");
 	musicSearchInput.type = "text";
 	musicSearchInput.id = "music-search";
 	musicSearchInput.placeholder = `Search in ${taratorFolder}...`;
-	musicSearchInput.addEventListener("input", renderMusics);
+	musicSearchInput.addEventListener("input", () => {
+		musicMode == "offline" && renderMusics();
+	});
+
+	const musicSearchInputAmount = document.createElement("input");
+	musicSearchInputAmount.id = "musicSearchInputAmount";
+	musicSearchInputAmount.value = "4";
+	musicSearchInputAmount.style.cursor = "unset !important";
+	const musicSearchEnterButton = document.createElement("button");
+	musicSearchEnterButton.id = "musicSearchEnterButton";
+	musicSearchEnterButton.innerText = "↵";
+	musicSearchEnterButton.addEventListener("click", searchYoutubeInMusics);
+	const musicSearchRefreshButton = document.createElement("button");
+	musicSearchRefreshButton.id = "musicSearchRefreshButton";
+	musicSearchRefreshButton.style.backgroundImage = `url("file://${path.join(appThumbnailFolder, "refresh.svg").replace(/\\/g, "/")}")`; // TODO: Move to css
+	musicSearchRefreshButton.style.backgroundSize = "cover";
+	musicSearchRefreshButton.style.backgroundRepeat = "no-repeat";
+	musicSearchRefreshButton.style.backgroundPosition = "center";
+	musicSearchRefreshButton.addEventListener("click", renderMusics);
 
 	const displayPageSelect = document.createElement("select");
 	displayPageSelect.id = "display-count";
@@ -584,7 +605,11 @@ async function myMusicOnClick() {
 	const songCountElement = document.createElement("div");
 	songCountElement.id = "songCountElement";
 
-	controlsBar.appendChild(musicSearchInput);
+	musicSearchParts.appendChild(musicSearchInput);
+	musicSearchParts.appendChild(musicSearchInputAmount);
+	musicSearchParts.appendChild(musicSearchEnterButton);
+	musicSearchParts.appendChild(musicSearchRefreshButton);
+	controlsBar.appendChild(musicSearchParts);
 	controlsBar.appendChild(songCountElement);
 	controlsBar.appendChild(musicModeSelect);
 	controlsBar.appendChild(buttonContainer);
@@ -603,15 +628,113 @@ async function myMusicOnClick() {
 	renderMusics();
 }
 
+function changeSearchBar() {
+	const musicSearchInputAmount = document.getElementById("musicSearchInputAmount");
+	const musicSearchEnterButton = document.getElementById("musicSearchEnterButton");
+	const musicSearchRefreshButton = document.getElementById("musicSearchRefreshButton");
+
+	if (musicMode == "offline") {
+		musicSearchInputAmount.disabled = true;
+		musicSearchInputAmount.style.cursor = "not-allowed";
+		musicSearchInputAmount.style.backgroundColor = "rgba(80,80,80,0.95)";
+
+		musicSearchEnterButton.disabled = true;
+		musicSearchEnterButton.style.cursor = "not-allowed";
+		musicSearchEnterButton.style.backgroundColor = "rgba(80,80,80,0.95)";
+
+		musicSearchRefreshButton.disabled = true;
+		musicSearchRefreshButton.style.cursor = "not-allowed";
+		musicSearchRefreshButton.style.backgroundColor = "rgba(80,80,80,0.95)";
+	} else {
+		musicSearchInputAmount.disabled = false;
+		musicSearchInputAmount.style.cursor = "unset";
+		musicSearchInputAmount.style.backgroundColor = "rgba(0,0,0,0.8)";
+
+		musicSearchEnterButton.disabled = false;
+		musicSearchEnterButton.style.cursor = "pointer";
+		musicSearchEnterButton.style.backgroundColor = "rgba(0,0,0,0.8)";
+
+		musicSearchRefreshButton.disabled = false;
+		musicSearchRefreshButton.style.cursor = "pointer";
+		musicSearchRefreshButton.style.backgroundColor = "rgba(0,0,0,0.8)";
+	}
+}
+
+function searchYoutubeInMusics() {
+	const container = document.getElementById("music-list-container");
+	const scrollPos = container.scrollTop;
+	changeSearchBar();
+
+	if (musicMode != "offline" && document.getElementById("music-search").value != "") {
+		container.innerHTML = "Loading...";
+		const searchedThing = document.getElementById("music-search").value;
+		const goal = Number(document.getElementById("musicSearchInputAmount").value);
+
+		(async () => {
+			streamedSongsHtmlMap = new Map();
+			const ytsr = require("@distube/ytsr");
+			const results = await ytsr(searchedThing, { safeSearch: false, limit: goal });
+
+			container.innerHTML = "";
+
+			for (let i = 0; i < results.items.length; i++) {
+				try {
+					const info = results.items[i];
+					const videoTitle = info.name;
+					const songID = info.id;
+					const thumbnails = info.thumbnails || [];
+					const songLength = parseTimeToSeconds(info.duration);
+					const bestThumbnail = thumbnails.reduce((max, thumb) => {
+						const size = (thumb.width || 0) * (thumb.height || 0);
+						const maxSize = (max.width || 0) * (max.height || 0);
+						return size > maxSize ? thumb : max;
+					}, thumbnails[0] || {});
+
+					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
+						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, videoTitle);
+						notInterestedSongs.push({ song_id: songID });
+						continue;
+					}
+
+					const fullSong = {
+						id: songID,
+						name: videoTitle,
+						thumbnail: bestThumbnail,
+						length: songLength,
+					};
+
+					streamedSongsHtmlMap.set(songID, fullSong);
+
+					const musicElement = createMusicElement(fullSong);
+					if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+					musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
+					container.appendChild(musicElement);
+					setupLazyBackgrounds();
+				} catch (error) {
+					console.log(error);
+					await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
+				}
+			}
+		})();
+	}
+	document.querySelectorAll(".pageScrollButtons").forEach(button => {
+		button.disabled = displayPage == "scroll";
+	});
+
+	setupLazyBackgrounds();
+	container.scrollTop = scrollPos;
+}
+
 function renderMusics() {
 	const container = document.getElementById("music-list-container");
 	const scrollPos = container.scrollTop;
+	changeSearchBar();
 
 	container.innerHTML = "";
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 	if (Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) < currentPage) currentPage = Math.ceil(songNameCache.size / (3 * previousItemsPerRow));
 
-	let searchValue = document.querySelector("#music-search").value.trim().toLowerCase();
+	let searchValue = document.getElementById("music-search").value.trim().toLowerCase();
 	const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
 	if (exactMatch) searchValue = searchValue.slice(1, -1);
 
@@ -659,13 +782,13 @@ function renderMusics() {
 	} else if (musicMode == "discover") {
 		container.innerHTML = "Loading...";
 		const recommendedMusicMap = getRecommendations();
-		const goal = 2 * previousItemsPerRow;
+		const goal = document.getElementById("musicSearchInputAmount").value;
 		let count = 0;
 
 		const results = [];
 
 		(async () => {
-			recommendedSongsHtmlMap = new Map();
+			streamedSongsHtmlMap = new Map();
 			const ytsr = require("@distube/ytsr");
 
 			for (const [key, value] of recommendedMusicMap) {
@@ -696,7 +819,7 @@ function renderMusics() {
 						length: songLength,
 					};
 
-					recommendedSongsHtmlMap.set(songID, fullSong);
+					streamedSongsHtmlMap.set(songID, fullSong);
 
 					if (count == 0) container.innerHTML = "";
 
@@ -710,7 +833,7 @@ function renderMusics() {
 
 					if (count >= goal) break;
 				} catch (error) {
-                    console.log(error);
+					console.log(error);
 					await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 				}
 			}
@@ -795,12 +918,12 @@ async function playMusic(songId, playlistId) {
 		const offlineMode = !!songId.includes("tarator");
 		const songName = document.getElementById("song-name");
 		songName.setAttribute("data-file-name", playingSongsID);
-		songName.textContent = offlineMode ? getSongNameById(songId) : recommendedSongsHtmlMap.get(songId)?.name;
+		songName.textContent = offlineMode ? getSongNameById(songId) : streamedSongsHtmlMap.get(songId)?.name;
 		playingSongsID = songId;
 		currentPlaylist = playlistId || null;
 
 		videoProgress.value = 0;
-		songDuration = offlineMode ? getSongNameCached(songId).song_length : recommendedSongsHtmlMap.get(songId)?.length;
+		songDuration = offlineMode ? getSongNameCached(songId).song_length : streamedSongsHtmlMap.get(songId)?.length;
 		videoLength.innerText = `00:00 / ${formatTime(songDuration)}`;
 
 		document.getElementById("addToFavoritesButtonBottomRight").style.color = "white";
@@ -831,7 +954,7 @@ async function playMusic(songId, playlistId) {
 				console.log("Tried to get thumbnail from", thumbnailPath, "but failed. Used", thumbnailUrl, "instead.");
 			}
 		} else {
-			thumbnailUrl = recommendedSongsHtmlMap.get(songId)?.thumbnail.url;
+			thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail.url;
 		}
 
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url('${thumbnailUrl}')`;
@@ -1291,6 +1414,7 @@ document.addEventListener("keydown", event => {
 	if (event.key == "Escape") closeModal();
 	if (event.key == "Tab") event.preventDefault();
 	if (event.key == "Enter" && document.getElementById("downloadModal").style.display == "block") return loadNewPage("download");
+	if (event.key == "Enter" && document.activeElement == document.getElementById("music-search") && musicMode != "offline") searchYoutubeInMusics();
 	if (event.key == "Enter" && document.getElementById("searchModal").style.display == "flex") return searchSong();
 
 	if (event.ctrlKey && event.key.toLowerCase() == "f") {

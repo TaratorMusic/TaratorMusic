@@ -14,12 +14,9 @@ Streaming song customisation modal: (Make this into the normal customisation mod
 -   Download
 ---
 
--   Add enter button & refresh button with no functionality for now.
--   Stream seeking not working
+-   Stream seeking not working, streams stop 1 second before their finishing time (This happens at regular songs too). Some songs silently fail loading (probably age-restricted)
 -   Listened songs should get their data in the songs table --> At playMusic(), if songId not in songs, create a new row
--   The stream & recommendations search bar will just YTSR. But you will need to press enter so need a button for that. Will be disabled while in offline mode.
 -   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
--   Add refresh recommendations button
 -   Add "not interested" to customise modal, and a way to take it out.
 
 -   When you swap from recommendations mode while songs are loading, you cant
