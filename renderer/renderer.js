@@ -682,9 +682,9 @@ function renderMusics() {
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
 
-					const exists = !!musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url LIKE ?)").pluck().get(`%${songID}%`);
-					if (exists) {
+					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
 						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
+						notInterestedSongs.push({ song_id: songID });
 						continue;
 					}
 
