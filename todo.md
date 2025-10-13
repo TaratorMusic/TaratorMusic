@@ -1,6 +1,6 @@
 ## Coming Soon App Features
 ---
-Streaming song customisation modal:
+Streaming song customisation modal: (Make this into the normal customisation modal)
 
 -   Name
 -   Thumbnail
@@ -14,30 +14,22 @@ Streaming song customisation modal:
 -   Download
 ---
 
--   Bypass ffmpeg
--   Have yt-dlp in daemon mode at discovery mode start
-
 -   Add enter button & refresh button with no functionality for now.
 -   Stream seeking not working
--   Search for TODO
 -   Listened songs should get their data in the songs table --> At playMusic(), if songId not in songs, create a new row
--   Make an alertModal() for yt rate limits, and in-app rate limits for fetching
 -   The stream & recommendations search bar will just YTSR. But you will need to press enter so need a button for that. Will be disabled while in offline mode.
 -   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
+-   Add refresh recommendations button
+-   Add "not interested" to customise modal, and a way to take it out.
 
 -   When you swap from recommendations mode while songs are loading, you cant
--   Make edit mode specific to streamed videos (less editing)
--   Add "not interested" to customise modal. Which should exclude it from playing unless directly played.
 -   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information
 -   getRecommendations backup songs if there is no data
--   Add refresh recommendations button
 -   Make sure the data is saved to the timers table and songs table etc.
--   Implement "not interested" feature everywhere, including current customisation modal
 
 -   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
--   Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
+-   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
 -   playlists_formed not working and not in statistics
--   ytsr breaks so often because of youtube limits, switch to my Go version maybe alongside ytpl
 -   does playlist thumbnail changing work?
 -   Playing playlist songs are very broken
 -   Do long songs have a skipping problem? (5secs)
@@ -46,6 +38,7 @@ Streaming song customisation modal:
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
 -   Compile for windows and mac binaries too
 -   Just jump to 1.8.0 after all of these
+-   Update readme with the new features
 
 ### Big updates remaining:
 
@@ -57,6 +50,7 @@ Streaming song customisation modal:
 
 ### Planned Features
 
+-   Move playlists to cache
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add approximate time remaining for volume stabilisation.
@@ -102,6 +96,7 @@ Streaming song customisation modal:
 -   Add "drag and drop" features
 -   Sounds after a download is over --> Toggleable in the settings
 -   Search bar in the settings
+-   Switch to Golang for ytpl&ytsr (ytpl-ytsr-go)
 -   Configure how the songs are played: True Random - Weight to most played songs - Weight to least played songs
 -   Customise the progress and audio bar, both colors and circle icon
 -   More placeholder photos

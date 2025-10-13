@@ -26,11 +26,11 @@ events.forEach(eventName => {
 		} else if (eventName === "play") {
 			console.log("unused function for now:", eventName);
 			playing = true;
-		} // TODO
+		}
 		else if (eventName === "seek" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
 		else if (eventName === "position" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
-		else if (eventName === "open") console.log("unused function for now:", eventName, args); // TODO
-		else if (eventName === "volume") console.log("unused function for now:", eventName, args); // TODO
+		else if (eventName === "open") console.log("unused function for now:", eventName, args);
+		else if (eventName === "volume") console.log("unused function for now:", eventName, args);
 		else if (eventName === "loopStatus") toggleLoop();
 		else if (eventName === "shuffle") toggleShuffle();
 	});

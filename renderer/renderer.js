@@ -72,12 +72,13 @@ let searchedSongsUrl;
 let downloadingStyle;
 let discordRPCstatus;
 let discordDaemon = null;
-let songDuration;
+let songDuration = 0;
 let isUserSeeking = false;
 let playing = false;
 let previousItemsPerRow;
 let currentPage = 1;
 let recommendedSongsHtmlMap = new Map();
+let notInterestedSongs;
 
 const debounceMap = new Map();
 let songNameCache = new Map();
@@ -389,7 +390,7 @@ function initialiseMusicsDatabase() {
 	for (const row of rows) {
 		songNameCache.set(row.song_id, {
 			song_name: row.song_name,
-            song_length: row.song_length,
+			song_length: row.song_length,
 			song_extension: row.song_extension,
 			thumbnail_extension: row.thumbnail_extension,
 			genre: row.genre,
@@ -397,6 +398,8 @@ function initialiseMusicsDatabase() {
 			language: row.language,
 		});
 	}
+
+	notInterestedSongs = musicsDb.prepare("SELECT song_id FROM not_interested").all();
 }
 
 function initialisePlaylistsDatabase() {
@@ -666,45 +669,48 @@ function renderMusics() {
 
 			for (const [key, value] of recommendedMusicMap) {
 				const ytQuery = `${key} by ${value[0]}`;
-				const result = await ytsr(ytQuery, { safeSearch: false, limit: 1 });
+				try {
+					const result = await ytsr(ytQuery, { safeSearch: false, limit: 1 });
+					const info = result.items[0];
+					const videoTitle = info.name;
+					const songID = info.id;
+					const thumbnails = info.thumbnails || [];
+					const songLength = parseTimeToSeconds(info.duration);
+					const bestThumbnail = thumbnails.reduce((max, thumb) => {
+						const size = (thumb.width || 0) * (thumb.height || 0);
+						const maxSize = (max.width || 0) * (max.height || 0);
+						return size > maxSize ? thumb : max;
+					}, thumbnails[0] || {});
 
-				const info = result.items[0];
-				const videoTitle = info.name;
-				const songID = info.id;
-				const thumbnails = info.thumbnails || [];
-				const songLength = parseTimeToSeconds(info.duration);
-				const bestThumbnail = thumbnails.reduce((max, thumb) => {
-					const size = (thumb.width || 0) * (thumb.height || 0);
-					const maxSize = (max.width || 0) * (max.height || 0);
-					return size > maxSize ? thumb : max;
-				}, thumbnails[0] || {});
+					const exists = !!musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url LIKE ?)").pluck().get(`%${songID}%`);
+					if (exists) {
+						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
+						continue;
+					}
 
-				const exists = !!musicsDb.prepare("SELECT EXISTS(SELECT 1 FROM songs WHERE song_url LIKE ?)").pluck().get(`%${songID}%`);
-				if (exists) {
-					musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
-					continue;
+					const fullSong = {
+						id: songID,
+						name: videoTitle,
+						thumbnail: bestThumbnail,
+						length: songLength,
+					};
+
+					recommendedSongsHtmlMap.set(songID, fullSong);
+
+					if (count == 0) container.innerHTML = "";
+
+					const musicElement = createMusicElement(fullSong);
+					if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+					musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
+					container.appendChild(musicElement);
+					setupLazyBackgrounds();
+
+					count++;
+
+					if (count >= goal) break;
+				} catch (error) {
+					await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 				}
-
-				const fullSong = {
-					id: songID,
-					name: videoTitle,
-					thumbnail: bestThumbnail,
-					length: songLength,
-				};
-
-				recommendedSongsHtmlMap.set(songID, fullSong);
-
-				if (count == 0) container.innerHTML = "";
-
-				const musicElement = createMusicElement(fullSong);
-				if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
-				musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
-				container.appendChild(musicElement);
-				setupLazyBackgrounds();
-
-				count++;
-
-				if (count >= goal) break;
 			}
 		})();
 	}
@@ -781,7 +787,7 @@ function createMusicElement(songFile) {
 }
 
 async function playMusic(songId, playlistId) {
-	await saveUserProgress(); // TODO: Modify this too
+	await saveUserProgress();
 
 	try {
 		const offlineMode = !!songId.includes("tarator");
@@ -801,7 +807,7 @@ async function playMusic(songId, playlistId) {
 
 		if (!!playlistsDb.prepare("SELECT 1 FROM playlists WHERE name=? AND EXISTS (SELECT 1 FROM json_each(songs) WHERE value=?)").get("Favorites", songId)) {
 			addToFavoritesButtonBottomRight.style.color = "red";
-		} // TODO: Move this to cache, and everything in playlists.js
+		}
 
 		const songPath = offlineMode ? path.join(musicFolder, `${playingSongsID}.${getSongNameCached(songId).song_extension}`) : `https://www.youtube.com/watch?v=${songId}`;
 		offlineMode ? audioPlayer.stdin.write(`play ${songPath}\n`) : audioPlayer.stdin.write(`stream ${songPath} \n`);
@@ -971,8 +977,74 @@ async function playNextSong() {
 	}
 }
 
+async function playNextSong() {
+	if (!playingSongsID) return;
+	if (isLooping) return playMusic(playingSongsID, null);
+
+	const notInterestedIds = notInterestedSongs.map(s => s.song_id);
+	const sortedSongIds = [...songNameCache.entries()]
+		.filter(([id]) => !notInterestedIds.includes(id))
+		.sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || ""))
+		.map(entry => entry[0]);
+
+	let nextSongId;
+
+	if (isShuffleActive) {
+		if (currentPlaylist) {
+			const validSongs = currentPlaylist.songs.filter(id => !notInterestedIds.includes(id));
+			const currentSongId = currentPlaylist.songs[currentPlaylistElement];
+			if (validSongs.length == 0) return;
+			if (validSongs.length == 1) {
+				nextSongId = validSongs[0];
+			} else {
+				let randomIndex = Math.floor(Math.random() * validSongs.length);
+				while (validSongs[randomIndex] == currentSongId) {
+					randomIndex = Math.floor(Math.random() * validSongs.length);
+				}
+				nextSongId = validSongs[randomIndex];
+				currentPlaylistElement = currentPlaylist.songs.indexOf(nextSongId);
+			}
+		} else {
+			if (sortedSongIds.length == 0) return;
+			if (sortedSongIds.length == 1) {
+				nextSongId = sortedSongIds[0];
+			} else {
+				let randomIndex = Math.floor(Math.random() * sortedSongIds.length);
+				while (sortedSongIds[randomIndex] == playingSongsID) {
+					randomIndex = Math.floor(Math.random() * sortedSongIds.length);
+				}
+				nextSongId = sortedSongIds[randomIndex];
+			}
+		}
+	} else {
+		if (currentPlaylist) {
+			const validSongs = currentPlaylist.songs.filter(id => !notInterestedIds.includes(id));
+			const currentIndex = validSongs.indexOf(currentPlaylist.songs[currentPlaylistElement]);
+			if (currentIndex >= 0 && currentIndex < validSongs.length - 1) {
+				nextSongId = validSongs[currentIndex + 1];
+				currentPlaylistElement = currentPlaylist.songs.indexOf(nextSongId);
+			}
+		} else {
+			const currentIndex = sortedSongIds.indexOf(playingSongsID);
+			const nextIndex = currentIndex < sortedSongIds.length - 1 ? currentIndex + 1 : 0;
+			nextSongId = sortedSongIds[nextIndex];
+		}
+	}
+
+	if (nextSongId) {
+		playMusic(nextSongId, !!currentPlaylist);
+	}
+}
+
 async function randomSongFunctionMainMenu() {
-	const musicItems = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
+	const notInterestedIds = notInterestedSongs.map(s => s.song_id);
+	const musicItems = musicsDb
+		.prepare("SELECT song_id, song_name FROM songs")
+		.all()
+		.filter(song => !notInterestedIds.includes(song.song_id));
+
+	if (musicItems.length == 0) return;
+
 	let randomIndex = Math.floor(Math.random() * musicItems.length);
 
 	if (playingSongsID) {
@@ -982,34 +1054,6 @@ async function randomSongFunctionMainMenu() {
 	}
 
 	playMusic(musicItems[randomIndex].song_id, null);
-}
-
-async function randomPlaylistFunctionMainMenu() {
-	const playlists = playlistsDb.prepare("SELECT id, name, songs FROM playlists").all();
-
-	const nonEmptyPlaylists = playlists
-		.map(pl => ({
-			...pl,
-			songs: JSON.parse(pl.songs),
-		}))
-		.filter(pl => Array.isArray(pl.songs) && pl.songs.length > 0);
-
-	if (nonEmptyPlaylists.length == 0) {
-		console.log("No playlists with songs found.");
-		return;
-	}
-
-	const availablePlaylists = currentPlaylist ? nonEmptyPlaylists.filter(pl => pl.id !== currentPlaylist.id) : nonEmptyPlaylists;
-
-	if (availablePlaylists.length == 0) {
-		console.log("No other playlists available to play.");
-		return;
-	}
-
-	const randomIndex = Math.floor(Math.random() * availablePlaylists.length);
-	const selectedPlaylist = availablePlaylists[randomIndex];
-
-	await playPlaylist(selectedPlaylist, 0);
 }
 
 function playPause() {
