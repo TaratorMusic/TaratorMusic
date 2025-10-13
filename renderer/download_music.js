@@ -22,6 +22,13 @@ function differentiateMediaLinks(url) {
 	}
 }
 
+async function searchInYoutube(songName, resultLimit = 1) {
+	const ytsr = require("@distube/ytsr");
+	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
+	searchedSongsUrl = result.items[resultLimit - 1].url;
+	return searchedSongsUrl;
+}
+
 function checkNameThumbnail(predetermined) {
 	document.getElementById("downloadFirstButton").disabled = true;
 
@@ -911,7 +918,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 	}
-    
+
 	document.getElementById("finalDownloadButton").disabled = false;
 	if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 }

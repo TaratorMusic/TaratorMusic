@@ -386,12 +386,13 @@ function initialiseMusicsDatabase() {
 		musicsDb.prepare(`ALTER TABLE timers ADD COLUMN playlist TEXT`).run();
 	}
 
-	const rows = musicsDb.prepare("SELECT song_id, song_length, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs").all();
+	const rows = musicsDb.prepare("SELECT song_id, song_length, song_url, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs").all();
 	for (const row of rows) {
 		songNameCache.set(row.song_id, {
 			song_name: row.song_name,
 			song_length: row.song_length,
 			song_extension: row.song_extension,
+            song_url: row.song_url,
 			thumbnail_extension: row.thumbnail_extension,
 			genre: row.genre,
 			artist: row.artist,
@@ -493,9 +494,9 @@ tabs.forEach(tab => {
 
 function getSongNameCached(songId) {
 	if (!songNameCache.has(songId)) {
-		const stmt = musicsDb.prepare("SELECT song_name, song_length ,song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?");
+		const stmt = musicsDb.prepare("SELECT song_name, song_length, song_url, song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?");
 		const row = stmt.get(songId);
-		songNameCache.set(songId, row || { song_name: null, song_length: null, song_extension: null, thumbnail_extension: null, genre: null, artist: null, language: null });
+		songNameCache.set(songId, row || { song_name: null, song_length: null, song_url: null, song_extension: null, thumbnail_extension: null, genre: null, artist: null, language: null });
 	}
 	return songNameCache.get(songId);
 }
@@ -709,6 +710,7 @@ function renderMusics() {
 
 					if (count >= goal) break;
 				} catch (error) {
+                    console.log(error);
 					await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 				}
 			}
@@ -766,7 +768,7 @@ function createMusicElement(songFile) {
 	customiseButtonElement.classList.add("customise-button");
 	customiseButtonElement.addEventListener("click", event => {
 		event.stopPropagation();
-		opencustomiseModal(songFile.name);
+		opencustomiseModal(songFile.id);
 	});
 
 	const addToPlaylistButtonElement = document.createElement("button");
@@ -932,56 +934,7 @@ async function playNextSong() {
 	if (!playingSongsID) return;
 	if (isLooping) return playMusic(playingSongsID, null);
 
-	const sortedSongIds = [...songNameCache.entries()].sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || "")).map(entry => entry[0]);
-
-	let nextSongId;
-
-	if (isShuffleActive) {
-		if (currentPlaylist) {
-			const currentSongId = currentPlaylist.songs[currentPlaylistElement];
-			if (currentPlaylist.songs.length == 1) {
-				nextSongId = currentSongId;
-			} else {
-				let randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
-				while (currentPlaylist.songs[randomIndex] == currentSongId) {
-					randomIndex = Math.floor(Math.random() * currentPlaylist.songs.length);
-				}
-				nextSongId = currentPlaylist.songs[randomIndex];
-				currentPlaylistElement = randomIndex;
-			}
-		} else {
-			if (sortedSongIds.length == 1) {
-				nextSongId = sortedSongIds[0];
-			} else {
-				let randomIndex = Math.floor(Math.random() * sortedSongIds.length);
-				while (sortedSongIds[randomIndex] == playingSongsID) {
-					randomIndex = Math.floor(Math.random() * sortedSongIds.length);
-				}
-				nextSongId = sortedSongIds[randomIndex];
-			}
-		}
-	} else {
-		if (currentPlaylist) {
-			if (currentPlaylistElement < currentPlaylist.songs.length - 1) {
-				nextSongId = currentPlaylist.songs[++currentPlaylistElement];
-			}
-		} else {
-			const currentIndex = sortedSongIds.indexOf(playingSongsID);
-			const nextIndex = currentIndex < sortedSongIds.length - 1 ? currentIndex + 1 : 0;
-			nextSongId = sortedSongIds[nextIndex];
-		}
-	}
-
-	if (nextSongId) {
-		playMusic(nextSongId, !!currentPlaylist);
-	}
-}
-
-async function playNextSong() {
-	if (!playingSongsID) return;
-	if (isLooping) return playMusic(playingSongsID, null);
-
-	const notInterestedIds = notInterestedSongs.map(s => s.song_id);
+	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
 	const sortedSongIds = [...songNameCache.entries()]
 		.filter(([id]) => !notInterestedIds.includes(id))
 		.sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || ""))
@@ -1037,7 +990,7 @@ async function playNextSong() {
 }
 
 async function randomSongFunctionMainMenu() {
-	const notInterestedIds = notInterestedSongs.map(s => s.song_id);
+	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
 	const musicItems = musicsDb
 		.prepare("SELECT song_id, song_name FROM songs")
 		.all()
@@ -1166,43 +1119,45 @@ function skipBackward() {
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 }
 
-function opencustomiseModal(songName) {
-	const songNameNoMp3 = removeExtensions(songName);
-	const baseName = getSongNameById(songNameNoMp3);
-	document.getElementById("removeSongButton").dataset.songId = songNameNoMp3;
-	document.getElementById("stabiliseSongButton").dataset.songId = songNameNoMp3;
+function opencustomiseModal(songsId) {
+	let song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url, thumbnailPath;
+	// Have a button to toggle not interested, and having it in the db
+	if (songsId.includes("tarator")) {
+		// The song is downloaded and in our database
+		const stmt = musicsDb.prepare(`
+            SELECT song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url
+            FROM songs
+            WHERE song_id = ?
+        `);
+		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songsId));
+		thumbnailPath = path.join(thumbnailFolder, songsId + "." + thumbnail_extension);
+	} else if (!!musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ? LIMIT 1`).get(songsId)) {
+		// The song is not downloaded but in our database
+	} else {
+		// The song is not downloaded and not in our database
+	}
 
-	const stmt = musicsDb.prepare(`
-		SELECT stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url
-		FROM songs
-		WHERE song_id = ?
-	`);
-
-	const { stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songNameNoMp3);
-
-	const oldThumbnailPath = path.join(thumbnailFolder, songNameNoMp3 + "." + thumbnail_extension);
-
-	document.getElementById("customiseModal").style.display = "block";
-
-	document.getElementById("customiseSongName").value = baseName;
-	document.getElementById("customiseImage").src = oldThumbnailPath;
+	document.getElementById("customiseSongName").value = song_name;
+	document.getElementById("customiseImage").src = thumbnailPath;
 	document.getElementById("customiseSongLink").value = song_url;
 	document.getElementById("customiseSongGenre").value = genre;
 	document.getElementById("customiseSongArtist").value = artist;
 	document.getElementById("customiseSongLanguage").value = language;
-
-	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised == 1}`;
-	document.getElementById("modalFileSize").innerText = `File Size: ${(size / 1048576).toFixed(2)} MBs`;
+	document.getElementById("modalStabilised").innerText = stabilised != null ? `Song Sound Stabilised: ${stabilised == 1}` : "Not downloaded";
+	document.getElementById("modalFileSize").innerText = size != null ? `File Size: ${(size / 1048576).toFixed(2)} MBs` : "Not downloaded";
 	document.getElementById("modalPlaySpeed").innerText = `Play Speed: Coming Soon!`;
 	document.getElementById("modalBass").innerText = `Bass: Coming Soon!`;
 	document.getElementById("modalTreble").innerText = `Treble: Coming Soon!`;
 	document.getElementById("modalMidrange").innerText = `Midrange: Coming Soon!`;
 	document.getElementById("modalVolume").innerText = `Volume: Coming Soon!`;
+	document.getElementById("removeSongButton").dataset.songId = songsId;
+	document.getElementById("stabiliseSongButton").dataset.songId = songsId;
 
+	document.getElementById("customiseModal").style.display = "block";
 	const customiseDiv = document.getElementById("customiseModal");
-	customiseDiv.dataset.oldSongName = baseName;
-	customiseDiv.dataset.oldThumbnailPath = oldThumbnailPath;
-	customiseDiv.dataset.songID = songName;
+	customiseDiv.dataset.oldSongName = song_name;
+	customiseDiv.dataset.oldThumbnailPath = thumbnailPath;
+	customiseDiv.dataset.songID = songsId;
 }
 
 async function saveEditedSong() {
