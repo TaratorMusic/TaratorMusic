@@ -5,6 +5,7 @@ const fs = require("fs");
 const Database = require("better-sqlite3");
 const { spawn } = require("child_process");
 const ytdl = require("@distube/ytdl-core");
+const ytsr = require("@distube/ytsr");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath, recommendationsDbPath;
@@ -672,7 +673,6 @@ function searchYoutubeInMusics() {
 
 		(async () => {
 			streamedSongsHtmlMap = new Map();
-			const ytsr = require("@distube/ytsr");
 			const results = await ytsr(searchedThing, { safeSearch: false, limit: goal });
 
 			container.innerHTML = "";
@@ -789,7 +789,6 @@ function renderMusics() {
 
 		(async () => {
 			streamedSongsHtmlMap = new Map();
-			const ytsr = require("@distube/ytsr");
 
 			for (const [key, value] of recommendedMusicMap) {
 				const ytQuery = `${key} by ${value[0]}`;
@@ -1254,10 +1253,13 @@ function opencustomiseModal(songsId) {
         `);
 		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songsId));
 		thumbnailPath = path.join(thumbnailFolder, songsId + "." + thumbnail_extension);
+        document.getElementById("downloadThisSong").disabled = true;
 	} else if (!!musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ? LIMIT 1`).get(songsId)) {
 		// The song is not downloaded but in our database
+        document.getElementById("downloadThisSong").disabled = false;
 	} else {
 		// The song is not downloaded and not in our database
+        document.getElementById("downloadThisSong").disabled = false;
 	}
 
 	document.getElementById("customiseSongName").value = song_name;
@@ -1266,6 +1268,7 @@ function opencustomiseModal(songsId) {
 	document.getElementById("customiseSongGenre").value = genre;
 	document.getElementById("customiseSongArtist").value = artist;
 	document.getElementById("customiseSongLanguage").value = language;
+
 	document.getElementById("modalStabilised").innerText = stabilised != null ? `Song Sound Stabilised: ${stabilised == 1}` : "Not downloaded";
 	document.getElementById("modalFileSize").innerText = size != null ? `File Size: ${(size / 1048576).toFixed(2)} MBs` : "Not downloaded";
 	document.getElementById("modalPlaySpeed").innerText = `Play Speed: Coming Soon!`;
@@ -1273,6 +1276,7 @@ function opencustomiseModal(songsId) {
 	document.getElementById("modalTreble").innerText = `Treble: Coming Soon!`;
 	document.getElementById("modalMidrange").innerText = `Midrange: Coming Soon!`;
 	document.getElementById("modalVolume").innerText = `Volume: Coming Soon!`;
+    
 	document.getElementById("removeSongButton").dataset.songId = songsId;
 	document.getElementById("stabiliseSongButton").dataset.songId = songsId;
 

@@ -15,6 +15,9 @@ Streaming song customisation modal: (Make this into the normal customisation mod
 ---
 
 -   Stream seeking not working, streams stop 1 second before their finishing time (This happens at regular songs too). Some songs silently fail loading (probably age-restricted)
+-   Search in x/folder --> Search in youtube (input placeholder)
+-   Maybe clean the search bar while swapping modes?
+-   The recommendations return the same thing if no song listen time
 -   Listened songs should get their data in the songs table --> At playMusic(), if songId not in songs, create a new row
 -   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
 -   Add "not interested" to customise modal, and a way to take it out.
