@@ -16,6 +16,7 @@ Streaming song customisation modal: (Make this into the normal customisation mod
 
 -   Stream seeking not working, streams stop 1 second before their finishing time (This happens at regular songs too). Some songs silently fail loading (probably age-restricted)
 -   Search in x/folder --> Search in youtube (input placeholder)
+-   Play previous song without shuffle, bugged?
 -   Maybe clean the search bar while swapping modes?
 -   The recommendations return the same thing if no song listen time
 -   Listened songs should get their data in the songs table --> At playMusic(), if songId not in songs, create a new row
@@ -31,6 +32,7 @@ Streaming song customisation modal: (Make this into the normal customisation mod
 -   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
 -   playlists_formed not working and not in statistics
 -   does playlist thumbnail changing work?
+-   Discord status keeps showing "Paused"
 -   Playing playlist songs are very broken
 -   Do long songs have a skipping problem? (5secs)
 -   Create recommendations cache so it fetches everything once
