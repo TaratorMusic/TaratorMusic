@@ -96,13 +96,17 @@ Interested in your listen data? The statistics tab lets you see your favorite so
 
 ## Upcoming Features:
 
-### Personalised Song Recommendations
+### (COMING VERY SOON) Personalised Song Recommendations
 
 You will be able to get special song recommendations based on what songs you have listened to, and for how long.
 
-### Stream songs directly without downloading
+### (COMING VERY SOON) Stream songs directly without downloading
 
 When you just want to browse, you will be able to quickly listen to your app recommended songs.
+
+### Automatic Playlist Forming
+
+You will be able to form playlists automatically, depending on songs' languages, genres or artists.
 
 ### Immense Playlist Control
 
@@ -119,10 +123,6 @@ You will be able to customise every aspect of a song using FFmpeg in the future.
 ### Apple Music Support
 
 Apple Music URL's will be available in the future just like Spotify URL's.
-
-### Automatic Playlist Forming
-
-You will be able to form playlists automatically, depending on songs' names' languages, or song types, using lightweight machine learning.
 
 ### File conversions, in-app
 
