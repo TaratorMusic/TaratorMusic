@@ -28,9 +28,53 @@ async function searchInYoutube(songName, resultLimit = 1) {
 	return searchedSongsUrl;
 }
 
+function checkNameThumbnail(predetermined) {
+	document.getElementById("downloadFirstButton").disabled = true;
+
+	if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
+
+	const downloadSecondPhase = document.createElement("div");
+	downloadSecondPhase.id = "downloadSecondPhase";
+	document.getElementById("downloadModalContent").appendChild(downloadSecondPhase);
+
+	const downloadModalBottomRow = document.createElement("div");
+	downloadModalBottomRow.id = "downloadModalBottomRow";
+	downloadSecondPhase.appendChild(downloadModalBottomRow);
+
+	const downloadModalText = document.createElement("div");
+	downloadModalText.id = "downloadModalText";
+	downloadModalBottomRow.appendChild(downloadModalText);
+	downloadModalText.innerHTML = "Checking...";
+
+	if (predetermined) return;
+
+	const userInput = document.getElementById("downloadFirstInput").value.trim();
+	if (userInput == "") {
+		downloadModalText.innerHTML = "The input can not be empty.";
+		document.getElementById("downloadFirstButton").disabled = false;
+		return;
+	}
+
+	downloadingStyle = differentiateMediaLinks(userInput);
+
+	if (downloadingStyle == "youtube_video") {
+		processVideoLink(userInput);
+	} else if (downloadingStyle == "youtube_playlist") {
+		fetchPlaylistData(userInput);
+	} else if (downloadingStyle == "spotify_track") {
+		getSpotifySongName(userInput);
+	} else if (downloadingStyle == "spotify_playlist") {
+		getPlaylistSongsAndArtists(userInput);
+	} else {
+		processVideoLink(searchInYoutube(userInput, 1));
+	}
+}
+
 async function createDownloadModalForStreamedSong(songId) {
 	try {
+		document.getElementById("downloadModal").style.display = "block";
 		document.getElementById("downloadFirstButton").disabled = true;
+		document.getElementById("downloadFirstInput").value = `https://www.youtube.com/watch?v=${songId}`;
 
 		if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
 
@@ -109,54 +153,13 @@ async function createDownloadModalForStreamedSong(songId) {
 
 		document.getElementById("downloadFirstButton").disabled = false;
 		document.getElementById("downloadSecondPhase").style.display = "block";
+		downloadingStyle = "youtube_video";
 	} catch (error) {
 		console.log("Error in processVideoLink:", error);
 		document.getElementById("downloadFirstButton").disabled = false;
 		if (error.message.includes("age")) await alertModal("You can't download this song because it is age restricted.");
 		if (error.message.includes("private")) await alertModal("You can't download this song because it is a private video.");
 		if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
-	}
-}
-
-function checkNameThumbnail(predetermined) {
-	document.getElementById("downloadFirstButton").disabled = true;
-
-	if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
-
-	const downloadSecondPhase = document.createElement("div");
-	downloadSecondPhase.id = "downloadSecondPhase";
-	document.getElementById("downloadModalContent").appendChild(downloadSecondPhase);
-
-	const downloadModalBottomRow = document.createElement("div");
-	downloadModalBottomRow.id = "downloadModalBottomRow";
-	downloadSecondPhase.appendChild(downloadModalBottomRow);
-
-	const downloadModalText = document.createElement("div");
-	downloadModalText.id = "downloadModalText";
-	downloadModalBottomRow.appendChild(downloadModalText);
-	downloadModalText.innerHTML = "Checking...";
-
-	if (predetermined) return;
-
-	const userInput = document.getElementById("downloadFirstInput").value.trim();
-	if (userInput == "") {
-		downloadModalText.innerHTML = "The input can not be empty.";
-		document.getElementById("downloadFirstButton").disabled = false;
-		return;
-	}
-
-	downloadingStyle = differentiateMediaLinks(userInput);
-
-	if (downloadingStyle == "youtube_video") {
-		processVideoLink(userInput);
-	} else if (downloadingStyle == "youtube_playlist") {
-		fetchPlaylistData(userInput);
-	} else if (downloadingStyle == "spotify_track") {
-		getSpotifySongName(userInput);
-	} else if (downloadingStyle == "spotify_playlist") {
-		getPlaylistSongsAndArtists(userInput);
-	} else {
-		processVideoLink(searchInYoutube(userInput, 1));
 	}
 }
 

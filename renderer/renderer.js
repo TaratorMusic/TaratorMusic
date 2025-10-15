@@ -1247,7 +1247,6 @@ function opencustomiseModal(songsId) {
 	let ifSongInNotInterested = !!notInterestedSongs.map(song => song.song_id).includes(songsId);
 	document.getElementById("notInterestedToggle").innerText = ifSongInNotInterested ? "Not Interested" : "Interested";
 
-	// Have a button to toggle not interested, and having it in the db
 	if (songsId.includes("tarator")) {
 		// The song is downloaded and in our database
 		const stmt = musicsDb.prepare(`
@@ -1258,23 +1257,51 @@ function opencustomiseModal(songsId) {
 		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songsId));
 		thumbnailPath = path.join(thumbnailFolder, songsId + "." + thumbnail_extension);
 		document.getElementById("downloadThisSong").disabled = true;
+		document.getElementById("stabiliseSongButton").disabled = false;
+		document.getElementById("fetchSongInfoButton").disabled = false;
+		document.getElementById("removeSongButton").disabled = false;
 	} else if (!!musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ? LIMIT 1`).get(songsId)) {
 		// The song is not downloaded but in our database
+		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songsId));
+		thumbnailPath = "TODO"; // TODO
 		document.getElementById("downloadThisSong").disabled = false;
+		document.getElementById("stabiliseSongButton").disabled = true;
+		document.getElementById("fetchSongInfoButton").disabled = false;
+		document.getElementById("removeSongButton").disabled = false; // TODO: Modify this to remove from the new database
 	} else {
 		// The song is not downloaded and not in our database
+		song_name = streamedSongsHtmlMap.get(songsId)?.name;
+		thumbnailPath = streamedSongsHtmlMap.get(songsId)?.thumbnail.url;
+		song_url = `https://www.youtube.com/watch?v=${songsId}`;
+
+		genre = null;
+		artist = null;
+		language = null;
+
+		stabilised = null;
+		size = null;
+		speed = null;
+		bass = null;
+		treble = null;
+		midrange = null;
+		volume = null;
+
 		document.getElementById("downloadThisSong").disabled = false;
+		document.getElementById("stabiliseSongButton").disabled = true;
+		document.getElementById("fetchSongInfoButton").disabled = true;
+		document.getElementById("removeSongButton").disabled = true;
 	}
 
 	document.getElementById("customiseSongName").value = song_name;
 	document.getElementById("customiseImage").src = thumbnailPath;
 	document.getElementById("customiseSongLink").value = song_url;
+
 	document.getElementById("customiseSongGenre").value = genre;
 	document.getElementById("customiseSongArtist").value = artist;
 	document.getElementById("customiseSongLanguage").value = language;
 
-	document.getElementById("modalStabilised").innerText = stabilised != null ? `Song Sound Stabilised: ${stabilised == 1}` : "Not downloaded";
-	document.getElementById("modalFileSize").innerText = size != null ? `File Size: ${(size / 1048576).toFixed(2)} MBs` : "Not downloaded";
+	document.getElementById("modalStabilised").innerText = stabilised != null ? `Song Sound Stabilised: ${stabilised == 1}` : "Song Sound Stabilised: Not downloaded";
+	document.getElementById("modalFileSize").innerText = size != null ? `File Size: ${(size / 1048576).toFixed(2)} MBs` : "File Size: Not downloaded";
 	document.getElementById("modalPlaySpeed").innerText = `Play Speed: Coming Soon!`;
 	document.getElementById("modalBass").innerText = `Bass: Coming Soon!`;
 	document.getElementById("modalTreble").innerText = `Treble: Coming Soon!`;
@@ -1294,6 +1321,7 @@ function opencustomiseModal(songsId) {
 }
 
 async function saveEditedSong() {
+    // TODO: If song not in db, save it to the db
 	const customiseDiv = document.getElementById("customiseModal");
 	const songID = removeExtensions(customiseDiv.dataset.songID);
 
@@ -1590,6 +1618,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
 	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
+	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
 	document.getElementById("notInterestedToggle").addEventListener("click", e => {
 		if (!!notInterestedSongs.map(song => song.song_id).includes(e.currentTarget.dataset.songId)) {
 			notInterestedSongs.splice(
@@ -1599,6 +1628,8 @@ document.addEventListener("DOMContentLoaded", function () {
 			document.getElementById("notInterestedToggle").innerText = "Interested";
 		} else {
 			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
+			musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(e.currentTarget.dataset.songId, document.getElementById("customiseSongName").value);
+
 			document.getElementById("notInterestedToggle").innerText = " Not Interested";
 		}
 	});

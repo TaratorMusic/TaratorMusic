@@ -1,27 +1,15 @@
 ## Coming Soon App Features
----
-Streaming song customisation modal: (Make this into the normal customisation modal)
 
--   Name
--   Thumbnail
--   Genre
--   Artist
--   Language
--   Volume (Coming Soon)
--   Speed (Coming Soon)
--   Add to Database
--   Not interested
--   Download
----
-
+-   Complete customisation modal saving
+-   Maybe get a new table for not downloaded but streamed songs? Which will not have some columns like song_url (We already have song_id), song_extension, thumbnail_extension, stabilised, size, bass, treble, midrange but will have columns like thumbnail_link (also complete the TODO's)
 -   Stream seeking not working, streams stop 1 second before their finishing time (This happens at regular songs too). Some songs silently fail loading (probably age-restricted)
+-   "1 songs will be searched"
+-   Change it so after downloading a song from recommended section, its eventlistener will play the local song
 -   Search in x/folder --> Search in youtube (input placeholder)
 -   Play previous song without shuffle, bugged?
 -   Maybe clean the search bar while swapping modes?
 -   The recommendations return the same thing if no song listen time
 -   Listened songs should get their data in the songs table --> At playMusic(), if songId not in songs, create a new row
--   Make refresh button disabled on stream and offline modes, make page mode select & its buttons disabled while in recommendations mode
--   Add "not interested" to customise modal, and a way to take it out.
 
 -   When you swap from recommendations mode while songs are loading, you cant
 -   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information

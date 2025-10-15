@@ -170,6 +170,9 @@ async function loadNewPage(query, info) {
 		createAppThumbnailsFolder();
 	} else if (query == "shortenSongIdsGoPart") {
 		shortenSongIdsGoPart(info);
+	} else if (query == "downloadStreamedSong") {
+		await loadJSFile("download_music");
+		createDownloadModalForStreamedSong(info);
 	}
 }
 
