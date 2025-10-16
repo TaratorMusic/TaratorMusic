@@ -700,7 +700,14 @@ function searchYoutubeInMusics() {
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
 
-					musicsDb.prepare("INSERT INTO streams (song_id, song_name, thumbnail_url, length) VALUES (?, ?, ?, ?)").run(songID, videoTitle, bestThumbnail, songLength);
+					musicsDb
+						.prepare(
+							`
+                                INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length)
+                                VALUES (?, ?, ?, ?)
+                            `
+						)
+						.run(songID, videoTitle, bestThumbnail.url, songLength);
 
 					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
 						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, videoTitle);
@@ -1270,13 +1277,14 @@ function opencustomiseModal(songsId) {
         `);
 		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songsId));
 		thumbnailPath = path.join(thumbnailFolder, songsId + "." + thumbnail_extension);
+
 		document.getElementById("downloadThisSong").disabled = true;
-		document.getElementById("stabiliseSongButton").disabled = false;
+		document.getElementById("stabiliseSongButton").disabled = stabilised == 1;
 		document.getElementById("fetchSongInfoButton").disabled = false;
 		document.getElementById("removeSongButton").disabled = false;
 	} else {
 		// The song is not downloaded but in our database
-		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url, FROM streams WHERE song_id = ?`);
+		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url FROM streams WHERE song_id = ?`);
 		({ song_name, thumbnail_url } = stmt.get(songsId));
 
 		thumbnailPath = thumbnail_url;
@@ -1628,7 +1636,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
 	document.getElementById("notInterestedToggle").addEventListener("click", e => {
 		if (!!notInterestedSongs.map(song => song.song_id).includes(e.currentTarget.dataset.songId)) {
-            notInterestedSongs = notInterestedSongs.filter(s => s.song_id != e.currentTarget.dataset.songId);
+			notInterestedSongs = notInterestedSongs.filter(s => s.song_id != e.currentTarget.dataset.songId);
 			document.getElementById("notInterestedToggle").innerText = "Interested";
 		} else {
 			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
