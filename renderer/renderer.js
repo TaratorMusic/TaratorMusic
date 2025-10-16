@@ -341,6 +341,17 @@ function initialiseMusicsDatabase() {
 
 	musicsDb
 		.prepare(
+			`CREATE TABLE IF NOT EXISTS streams (
+                song_id TEXT PRIMARY KEY,
+                song_name TEXT,
+                thumbnail_url TEXT,
+                length INTEGER
+            )`
+		)
+		.run();
+
+	musicsDb
+		.prepare(
 			`CREATE TABLE IF NOT EXISTS timers (
                 song_id TEXT,
                 start_time INTEGER,
@@ -452,9 +463,9 @@ setInterval(() => {
 	settingsDb
 		.prepare(
 			`
-            UPDATE statistics
-            SET total_time_spent = total_time_spent + 60
-        `
+                UPDATE statistics
+                SET total_time_spent = total_time_spent + 60
+            `
 		)
 		.run();
 }, 60000);
@@ -602,7 +613,6 @@ async function myMusicOnClick() {
 		renderMusics();
 	};
 
-	const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension, song_length FROM songs").all();
 	const songCountElement = document.createElement("div");
 	songCountElement.id = "songCountElement";
 
@@ -689,6 +699,8 @@ function searchYoutubeInMusics() {
 						const maxSize = (max.width || 0) * (max.height || 0);
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
+
+					musicsDb.prepare("INSERT INTO streams (song_id, song_name, thumbnail_url, length) VALUES (?, ?, ?, ?)").run(songID, videoTitle, bestThumbnail, songLength);
 
 					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
 						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, videoTitle);
@@ -804,6 +816,8 @@ function renderMusics() {
 						const maxSize = (max.width || 0) * (max.height || 0);
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
+
+					musicsDb.prepare("INSERT INTO streams (song_id, song_name, thumbnail_url, length) VALUES (?, ?, ?, ?)").run(songID, videoTitle, bestThumbnail, songLength);
 
 					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
 						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
@@ -1260,18 +1274,12 @@ function opencustomiseModal(songsId) {
 		document.getElementById("stabiliseSongButton").disabled = false;
 		document.getElementById("fetchSongInfoButton").disabled = false;
 		document.getElementById("removeSongButton").disabled = false;
-	} else if (!!musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ? LIMIT 1`).get(songsId)) {
-		// The song is not downloaded but in our database
-		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songsId));
-		thumbnailPath = "TODO"; // TODO
-		document.getElementById("downloadThisSong").disabled = false;
-		document.getElementById("stabiliseSongButton").disabled = true;
-		document.getElementById("fetchSongInfoButton").disabled = false;
-		document.getElementById("removeSongButton").disabled = false; // TODO: Modify this to remove from the new database
 	} else {
-		// The song is not downloaded and not in our database
-		song_name = streamedSongsHtmlMap.get(songsId)?.name;
-		thumbnailPath = streamedSongsHtmlMap.get(songsId)?.thumbnail.url;
+		// The song is not downloaded but in our database
+		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url, FROM streams WHERE song_id = ?`);
+		({ song_name, thumbnail_url } = stmt.get(songsId));
+
+		thumbnailPath = thumbnail_url;
 		song_url = `https://www.youtube.com/watch?v=${songsId}`;
 
 		genre = null;
@@ -1288,7 +1296,7 @@ function opencustomiseModal(songsId) {
 
 		document.getElementById("downloadThisSong").disabled = false;
 		document.getElementById("stabiliseSongButton").disabled = true;
-		document.getElementById("fetchSongInfoButton").disabled = true;
+		document.getElementById("fetchSongInfoButton").disabled = true; // TODO: Make the fetch song function work for streams table too (But it would fetch too many songs)
 		document.getElementById("removeSongButton").disabled = true;
 	}
 
@@ -1321,7 +1329,6 @@ function opencustomiseModal(songsId) {
 }
 
 async function saveEditedSong() {
-    // TODO: If song not in db, save it to the db
 	const customiseDiv = document.getElementById("customiseModal");
 	const songID = removeExtensions(customiseDiv.dataset.songID);
 
@@ -1621,10 +1628,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
 	document.getElementById("notInterestedToggle").addEventListener("click", e => {
 		if (!!notInterestedSongs.map(song => song.song_id).includes(e.currentTarget.dataset.songId)) {
-			notInterestedSongs.splice(
-				notInterestedSongs.findIndex(s => s.song_id == e.currentTarget.dataset.songId),
-				1 // DONT DELETE THIS 1 IT WILL BREAK
-			);
+            notInterestedSongs = notInterestedSongs.filter(s => s.song_id != e.currentTarget.dataset.songId);
 			document.getElementById("notInterestedToggle").innerText = "Interested";
 		} else {
 			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
