@@ -1633,7 +1633,6 @@ document.addEventListener("DOMContentLoaded", function () {
 		} else {
 			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
 			musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(e.currentTarget.dataset.songId, document.getElementById("customiseSongName").value);
-
 			document.getElementById("notInterestedToggle").innerText = " Not Interested";
 		}
 	});
@@ -1696,7 +1695,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			if (songDuration > 0) {
 				videoProgress.value = (currentTimeSec / songDuration) * 100;
 
-				if (currentTimeSec >= songDuration - 0.1) {
+				if (currentTimeSec >= songDuration - 0.51) {
 					if (isAutoplayActive) {
 						playNextSong();
 					} else {

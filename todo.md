@@ -2,7 +2,6 @@
 
 -   Complete customisation modal saving
 -   Stream seeking not working
--   streams stop 1 second before their finishing time (This happens at regular songs too). 
 -   Some songs silently fail loading (probably age-restricted)
 -   "1 songs will be searched"
 -   Change it so after downloading a song from recommended section, its eventlistener will play the local song
