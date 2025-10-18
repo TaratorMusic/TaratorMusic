@@ -1,9 +1,9 @@
 ## Coming Soon App Features
 
+-   Add artist genre lang to the streams
 -   Complete customisation modal saving
 -   Stream seeking not working
 -   Some songs silently fail loading (probably age-restricted)
--   "1 songs will be searched"
 -   Change it so after downloading a song from recommended section, its eventlistener will play the local song
 -   Search in x/folder --> Search in youtube (input placeholder)
 -   Play previous song without shuffle, bugged?
@@ -28,9 +28,8 @@
 -   Create recommendations cache so it fetches everything once
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
--   Compile for windows and mac binaries too
--   Just jump to 1.8.0 after all of these
--   Update readme with the new features
+-   Compile gobuild & cbuild for windows and mac binaries too (Check github actions)
+-   Update readme with the new features and just jump to 1.8.0 after all of these
 
 ### Big updates remaining:
 

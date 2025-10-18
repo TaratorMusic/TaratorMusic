@@ -51,7 +51,7 @@ async function grabAndStoreSongInfo() {
 			return resolve();
 		}
 
-		alertModal(`${songs.length} songs will be searched for information. You can close this window and the action will happen in the background.`);
+		alertModal(`${songs.length} song${songs.length !== 1 ? "s" : ""} will be searched for information. You can close this window and the action will happen in the background.`);
 
 		const proc = spawn(goBinary, songs);
 		const stmt = musicsDb.prepare(`
