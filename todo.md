@@ -1,11 +1,11 @@
 ## Coming Soon App Features
 
--   Add artist genre lang to the streams
 -   Complete customisation modal saving
 -   Stream seeking not working
 -   Some songs silently fail loading (probably age-restricted)
 -   Change it so after downloading a song from recommended section, its eventlistener will play the local song
 -   Search in x/folder --> Search in youtube (input placeholder)
+-   Make "Your listening breakdown" work on time listened instead of song amounts (maybe add switchup)
 -   Play previous song without shuffle, bugged?
 -   Let the user customise their own recommendation weights!
 -   Maybe clean the search bar while swapping modes?

@@ -345,7 +345,10 @@ function initialiseMusicsDatabase() {
                 song_id TEXT PRIMARY KEY,
                 song_name TEXT,
                 thumbnail_url TEXT,
-                length INTEGER
+                length INTEGER,
+                artist TEXT,
+                genre TEXT,
+                language TEXT
             )`
 		)
 		.run();
@@ -703,11 +706,11 @@ function searchYoutubeInMusics() {
 					musicsDb
 						.prepare(
 							`
-                                INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length)
-                                VALUES (?, ?, ?, ?)
+                                INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
                             `
 						)
-						.run(songID, videoTitle, bestThumbnail.url, songLength);
+						.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
 
 					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
 						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, videoTitle);
@@ -824,7 +827,14 @@ function renderMusics() {
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
 
-					musicsDb.prepare("INSERT INTO streams (song_id, song_name, thumbnail_url, length) VALUES (?, ?, ?, ?)").run(songID, videoTitle, bestThumbnail, songLength);
+					musicsDb
+						.prepare(
+							`
+                                INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            `
+						)
+						.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
 
 					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
 						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
@@ -1284,15 +1294,11 @@ function opencustomiseModal(songsId) {
 		document.getElementById("removeSongButton").disabled = false;
 	} else {
 		// The song is not downloaded but in our database
-		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url FROM streams WHERE song_id = ?`);
-		({ song_name, thumbnail_url } = stmt.get(songsId));
+		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?`);
+		({ song_name, thumbnail_url, artist, genre, language } = stmt.get(songsId));
 
 		thumbnailPath = thumbnail_url;
 		song_url = `https://www.youtube.com/watch?v=${songsId}`;
-
-		genre = null;
-		artist = null;
-		language = null;
 
 		stabilised = null;
 		size = null;
