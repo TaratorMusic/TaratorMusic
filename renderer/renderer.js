@@ -529,7 +529,7 @@ async function myMusicOnClick() {
 	const musicSearchInput = document.createElement("input");
 	musicSearchInput.type = "text";
 	musicSearchInput.id = "music-search";
-	musicSearchInput.placeholder = `Search in ${taratorFolder}...`;
+
 	musicSearchInput.addEventListener("input", () => {
 		musicMode == "offline" && renderMusics();
 	});
@@ -748,6 +748,8 @@ function searchYoutubeInMusics() {
 }
 
 function renderMusics() {
+	document.getElementById("music-search").placeholder = `Search in ${musicMode == "offline" ? taratorFolder : "Youtube"}...`;
+
 	const container = document.getElementById("music-list-container");
 	const scrollPos = container.scrollTop;
 	changeSearchBar();
