@@ -334,6 +334,7 @@ async function generalStatistics() {
 	theBigText.innerHTML += `Session Time Spent: ${sessionvalue} ${sessionunit}<br>`;
 	theBigText.innerHTML += `Using TaratorMusic since: ${formatUnixTime(row.app_install_date)}<br>`;
 	theBigText.innerHTML += `First song listened at: ${formatUnixTime(leastListenRow.start_time) || "Never"}<br>`;
+	theBigText.innerHTML += `Amount of playlists formed: ${row.playlists_formed || 0}<br>`;
 	theBigText.innerHTML += `Total amount of songs listened: ${counts.null_count + counts.not_null_count || 0}<br>`;
 	theBigText.innerHTML += `Amount of songs listened inside playlists: ${counts.not_null_count || 0}<br>`;
 	theBigText.innerHTML += `Amount of songs listened outside playlists: ${counts.null_count || 0}<br>`;

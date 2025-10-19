@@ -19,7 +19,6 @@
 
 -   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
 -   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
--   playlists_formed not working and not in statistics
 -   does playlist thumbnail changing work?
 -   Discord status keeps showing "Paused"
 -   Playing playlist songs are very broken

@@ -138,7 +138,7 @@ function displayPlaylists(playlists) {
 async function saveNewPlaylist() {
 	const name = document.getElementById("playlistNameInput").value.trim();
 
-	if (!name) await alertModal("Playlist name required.");
+	if (!name) return await alertModal("Playlist name required.");
 
 	const id = generateId();
 
@@ -161,13 +161,14 @@ async function saveNewPlaylist() {
 	}
 
 	playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run(id, name, JSON.stringify([]), ext);
+	settingsDb.prepare(`UPDATE statistics SET playlists_formed = playlists_formed + 1`).run();
 	fs.copyFileSync(srcPath, dest);
 
 	closeModal();
 
-	if (document.getElementById("playlists-content").style.display == "grid") {
+	if (document.getElementById("playlists-content").style.display == "grid") 
 		document.getElementById("playlists").click();
-	}
+	
 }
 
 async function saveEditedPlaylist() {
