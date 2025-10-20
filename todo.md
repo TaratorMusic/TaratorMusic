@@ -1,27 +1,26 @@
 ## Coming Soon App Features
 
--   Complete customisation modal saving
--   Stream seeking not working
--   Some songs silently fail loading (probably age-restricted)
+-   Not interested song popped up in recommendations
+-   Disable thumbnail picking while editing streamed songs & link editing
+-   Prevent recommendations fetching on screen resize. Introduce a cache
 -   Change it so after downloading a song from recommended section, its eventlistener will play the local song
+
 -   Make "Your listening breakdown" work on time listened instead of song amounts (maybe add switchup)
--   Play previous song without shuffle, bugged?
 -   Let the user customise their own recommendation weights!
 -   Maybe clean the search bar while swapping modes?
 -   The recommendations return the same thing if no song listen time
--   Listened songs should get their data in the songs table --> At playMusic(), if songId not in songs, create a new row
--   Prevent recommendations fetching on screen resize
-
 -   When you swap from recommendations mode while songs are loading, you cant
--   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information
+-   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information, for all musics db tables
 -   getRecommendations backup songs if there is no data
--   Make sure the data is saved to the timers table and songs table etc.
 
 -   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
 -   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
 -   does playlist thumbnail changing work?
 -   Discord status keeps showing "Paused"
 -   Playing playlist songs are very broken
+-   Stream seeking not working
+-   Play previous song without shuffle, bugged?
+-   Some songs silently fail loading (probably age-restricted)
 -   Do long songs have a skipping problem? (5secs)
 -   Create recommendations cache so it fetches everything once
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)

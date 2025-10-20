@@ -1281,7 +1281,6 @@ function opencustomiseModal(songsId) {
 	document.getElementById("notInterestedToggle").innerText = ifSongInNotInterested ? "Not Interested" : "Interested";
 
 	if (songsId.includes("tarator")) {
-		// The song is downloaded and in our database
 		const stmt = musicsDb.prepare(`
             SELECT song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url
             FROM songs
@@ -1295,7 +1294,6 @@ function opencustomiseModal(songsId) {
 		document.getElementById("fetchSongInfoButton").disabled = false;
 		document.getElementById("removeSongButton").disabled = false;
 	} else {
-		// The song is not downloaded but in our database
 		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?`);
 		({ song_name, thumbnail_url, artist, genre, language } = stmt.get(songsId));
 
@@ -1324,13 +1322,13 @@ function opencustomiseModal(songsId) {
 	document.getElementById("customiseSongArtist").value = artist;
 	document.getElementById("customiseSongLanguage").value = language;
 
-	document.getElementById("modalStabilised").innerText = stabilised != null ? `Song Sound Stabilised: ${stabilised == 1}` : "Song Sound Stabilised: Not downloaded";
-	document.getElementById("modalFileSize").innerText = size != null ? `File Size: ${(size / 1048576).toFixed(2)} MBs` : "File Size: Not downloaded";
-	document.getElementById("modalPlaySpeed").innerText = `Play Speed: Coming Soon!`;
-	document.getElementById("modalBass").innerText = `Bass: Coming Soon!`;
-	document.getElementById("modalTreble").innerText = `Treble: Coming Soon!`;
-	document.getElementById("modalMidrange").innerText = `Midrange: Coming Soon!`;
-	document.getElementById("modalVolume").innerText = `Volume: Coming Soon!`;
+	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised != null ? stabilised == 1 : "Not downloaded"}`;
+	document.getElementById("modalFileSize").innerText = `File Size: ${size != null ? (size / 1048576).toFixed(2) + " MBs" : "Not downloaded"}`;
+	// document.getElementById("modalPlaySpeed").innerText = `Play Speed: ${playSpeed != null ? playSpeed + "x" : "Not downloaded"}`;
+	// document.getElementById("modalBass").innerText = `Bass: ${bass != null ? bass : "Not downloaded"}`;
+	// document.getElementById("modalTreble").innerText = `Treble: ${treble != null ? treble : "Not downloaded"}`;
+	// document.getElementById("modalMidrange").innerText = `Midrange: ${midrange != null ? midrange : "Not downloaded"}`;
+	// document.getElementById("modalVolume").innerText = `Volume: ${volume != null ? volume : "Not downloaded"}`;
 
 	document.getElementById("removeSongButton").dataset.songId = songsId;
 	document.getElementById("stabiliseSongButton").dataset.songId = songsId;
@@ -1338,7 +1336,6 @@ function opencustomiseModal(songsId) {
 	document.getElementById("downloadThisSong").dataset.songId = songsId;
 
 	const customiseDiv = document.getElementById("customiseModal");
-	customiseDiv.dataset.oldSongName = song_name;
 	customiseDiv.dataset.oldThumbnailPath = thumbnailPath;
 	customiseDiv.dataset.songID = songsId;
 	customiseDiv.style.display = "block";
@@ -1346,43 +1343,49 @@ function opencustomiseModal(songsId) {
 
 async function saveEditedSong() {
 	const customiseDiv = document.getElementById("customiseModal");
+
 	const songID = removeExtensions(customiseDiv.dataset.songID);
-
 	const newNameInput = document.getElementById("customiseSongName").value.trim();
-
 	const songsUrl = document.getElementById("customiseSongLink").value;
 	const songsGenre = document.getElementById("customiseSongGenre").value;
 	const songsArtist = document.getElementById("customiseSongArtist").value;
 	const songsLanguage = document.getElementById("customiseSongLanguage").value;
 
-	if (newNameInput.length < 1) {
-		await alertModal("Please do not set a song name empty.");
-		return;
+	if (newNameInput.length < 1) return await alertModal("Please do not set a song name empty.");
+
+	let element;
+
+	if (songID.includes("tarator")) {
+		const row = musicsDb.prepare("SELECT thumbnail_extension FROM songs WHERE song_id = ?").get(songID);
+		element = document.querySelector(`.music-item[data-file-name="${songID + "." + row.song_extension}"]`);
+
+		const thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
+		if (document.getElementById("customiseThumbnail").files[0]) fs.writeFileSync(thumbnailPath, fs.readFileSync(newThumbFile.path));
+
+		const updated = musicsDb
+			.prepare(
+				`
+                    UPDATE songs 
+                    SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ?
+                    WHERE song_id = ?
+                    RETURNING song_name, song_extension, thumbnail_extension, genre, artist, language
+                `
+			)
+			.get(newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID);
+
+		songNameCache.set(songID, updated);
+	} else {
+		musicsDb.prepare("UPDATE streams SET song_name = ?, genre = ?, artist = ?, language = ? WHERE song_id = ?").run(newNameInput, songsGenre, songsArtist, songsLanguage, songID);
+		element = document.querySelector(`div[data-file-name="${songID}"] .song-name`);
+		element.innerText = newNameInput;
 	}
-
-	const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(songID);
-
-	const thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
-	const oldName = customiseDiv.dataset.oldSongName;
-
-	const newThumbFile = document.getElementById("customiseThumbnail").files[0];
-	let reloadSrc = `${thumbnailPath}?t=${Date.now()}`;
-
-	if (newThumbFile) {
-		const data = fs.readFileSync(newThumbFile.path);
-		fs.writeFileSync(thumbnailPath, data);
-	}
-
-	musicsDb.prepare("UPDATE songs SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ? WHERE song_id = ?").run(newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID);
-	const updated = musicsDb.prepare("SELECT song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?").get(songID);
-	songNameCache.set(songID, updated);
 
 	document.getElementById("customiseModal").style.display = "none";
 	document.getElementById("my-music").click();
 
 	if (playingSongsID == customiseDiv.dataset.songID) {
 		document.getElementById("song-name").innerText = newNameInput;
-		document.getElementById("videothumbnailbox").style.backgroundImage = `url("${reloadSrc}")`;
+		document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 	}
 
 	new Promise((resolve, reject) => {
@@ -1390,20 +1393,19 @@ async function saveEditedSong() {
 		const timeout = 5000;
 		const start = Date.now();
 		const interval = setInterval(() => {
-			const el = document.querySelector(`.music-item[data-file-name="${songID + "." + row.song_extension}"]`);
-			if (el) {
+			if (element) {
 				clearInterval(interval);
-				resolve(el);
+				resolve(element);
 			} else if (Date.now() - start > timeout) {
 				clearInterval(interval);
 				reject("Element not found in time");
 			}
 		}, 50);
 	})
-		.then(el => {
-			if (newNameInput == removeExtensions(playingSongsID)) el.classList.add("playing");
-			el.querySelector(".song-name").textContent = newNameInput;
-			el.querySelector(".background-element").style.backgroundImage = `url("${reloadSrc}")`;
+		.then(element => {
+			if (newNameInput == removeExtensions(playingSongsID)) element.classList.add("playing");
+			element.querySelector(".song-name").textContent = newNameInput;
+			element.querySelector(".background-element").style.backgroundImage = `url("${reloadSrc}")`;
 		})
 		.catch(console.log);
 }
