@@ -1,6 +1,5 @@
 ## Coming Soon App Features
 
--   Not interested song popped up in recommendations
 -   Disable thumbnail picking while editing streamed songs & link editing
 -   Prevent recommendations fetching on screen resize. Introduce a cache
 -   Change it so after downloading a song from recommended section, its eventlistener will play the local song

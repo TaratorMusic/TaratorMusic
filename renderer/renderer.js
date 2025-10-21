@@ -844,6 +844,8 @@ function renderMusics() {
 						continue;
 					}
 
+                    if (notInterestedSongs.has(key.toLowerCase().trim())) continue;
+
 					const fullSong = {
 						id: songID,
 						name: videoTitle,
