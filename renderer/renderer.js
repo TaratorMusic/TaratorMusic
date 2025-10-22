@@ -1359,61 +1359,88 @@ async function saveEditedSong() {
 
 	if (newNameInput.length < 1) return await alertModal("Please do not set a song name empty.");
 
-	let element;
+	let element, thumbnailPath;
 
 	if (songID.includes("tarator")) {
-		const row = musicsDb.prepare("SELECT thumbnail_extension FROM songs WHERE song_id = ?").get(songID);
-		element = document.querySelector(`.music-item[data-file-name="${songID + "." + row.song_extension}"]`);
+		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(songID);
+		if (!row) return await alertModal("Song not found in database.");
 
-		const thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
-		if (document.getElementById("customiseThumbnail").files[0]) fs.writeFileSync(thumbnailPath, fs.readFileSync(newThumbFile.path));
+		element = document.querySelector(`.music-item[data-file-name="${songID}.${row.song_extension}"]`);
+		if (!element) return await alertModal("Song element not found.");
+
+		thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
+
+		const newThumbFile = document.getElementById("customiseThumbnail").files[0];
+		if (newThumbFile && newThumbFile.path && fs.existsSync(newThumbFile.path)) fs.writeFileSync(thumbnailPath, fs.readFileSync(newThumbFile.path));
 
 		const updated = musicsDb
 			.prepare(
 				`
-                    UPDATE songs 
-                    SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ?
-                    WHERE song_id = ?
-                    RETURNING song_name, song_extension, thumbnail_extension, genre, artist, language
-                `
+                UPDATE songs 
+                SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ?
+                WHERE song_id = ?
+                RETURNING song_name, song_extension, thumbnail_extension, genre, artist, language
+            `
 			)
 			.get(newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID);
 
-		songNameCache.set(songID, updated);
+		if (updated) songNameCache.set(songID, updated);
 	} else {
-		musicsDb.prepare("UPDATE streams SET song_name = ?, genre = ?, artist = ?, language = ? WHERE song_id = ?").run(newNameInput, songsGenre, songsArtist, songsLanguage, songID);
-		element = document.querySelector(`div[data-file-name="${songID}"] .song-name`);
-		element.innerText = newNameInput;
+		musicsDb
+			.prepare(
+				`
+                UPDATE streams 
+                SET song_name = ?, genre = ?, artist = ?, language = ? 
+                WHERE song_id = ?
+            `
+			)
+			.run(newNameInput, songsGenre, songsArtist, songsLanguage, songID);
+
+		element = document.querySelector(`div[data-file-name="${songID}"]`);
+		if (element) {
+			const nameEl = element.querySelector(".song-name");
+			if (nameEl) nameEl.textContent = newNameInput;
+		}
 	}
 
-	document.getElementById("customiseModal").style.display = "none";
+	customiseDiv.style.display = "none";
 	document.getElementById("my-music").click();
 
-	if (playingSongsID == customiseDiv.dataset.songID) {
-		document.getElementById("song-name").innerText = newNameInput;
-		document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
-	}
+	if (playingSongsID === customiseDiv.dataset.songID) document.getElementById("song-name").innerText = newNameInput;
 
-	new Promise((resolve, reject) => {
-		// When the new box in the new menu gets initialised, this will run, aims to add "Playing" text on the playing song
-		const timeout = 5000;
-		const start = Date.now();
-		const interval = setInterval(() => {
-			if (element) {
-				clearInterval(interval);
-				resolve(element);
-			} else if (Date.now() - start > timeout) {
-				clearInterval(interval);
-				reject("Element not found in time");
-			}
-		}, 50);
-	})
-		.then(element => {
-			if (newNameInput == removeExtensions(playingSongsID)) element.classList.add("playing");
-			element.querySelector(".song-name").textContent = newNameInput;
-			element.querySelector(".background-element").style.backgroundImage = `url("${reloadSrc}")`;
-		})
-		.catch(console.log);
+	try {
+		const updatedElement = await new Promise((resolve, reject) => {
+			// TODO: Get rid of this
+			// When the new box in the new menu gets initialised, this will run, aims to add "Playing" text on the playing song
+			const timeout = 5000;
+			const start = Date.now();
+			const interval = setInterval(() => {
+				if (element) {
+					clearInterval(interval);
+					resolve(element);
+				} else if (Date.now() - start > timeout) {
+					clearInterval(interval);
+					reject(new Error("Element not found in time"));
+				}
+			}, 50);
+		});
+
+		if (newNameInput === removeExtensions(playingSongsID)) {
+			updatedElement.classList.add("playing");
+		}
+
+		const nameEl = updatedElement.querySelector(".song-name");
+		if (nameEl) nameEl.textContent = newNameInput;
+
+		if (songID.includes("tarator")) {
+			const bgUrl = `url("${thumbnailPath}?t=${Date.now()}")`;
+			document.getElementById("videothumbnailbox").style.backgroundImage = bgUrl;
+			const bgEl = updatedElement.querySelector(".background-element");
+			if (bgEl) bgEl.style.backgroundImage = bgUrl;
+		}
+	} catch (err) {
+		console.log(err);
+	}
 }
 
 async function removeSong(fileToDelete) {
