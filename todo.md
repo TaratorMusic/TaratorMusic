@@ -1,7 +1,6 @@
 ## Coming Soon App Features
 
--   Disable thumbnail picking while editing streamed songs & link editing
--   Prevent recommendations fetching on screen resize. Introduce a cache
+-   Prevent recommendations fetching on screen resize. Introduce a cache, use localStorage
 -   Change it so after downloading a song from recommended section, its eventlistener will play the local song
 
 -   Make "Your listening breakdown" work on time listened instead of song amounts (maybe add switchup)

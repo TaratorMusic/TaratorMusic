@@ -844,7 +844,7 @@ function renderMusics() {
 						continue;
 					}
 
-                    if (notInterestedSongs.has(key.toLowerCase().trim())) continue;
+					if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() === key.toLowerCase().trim())) continue;
 
 					const fullSong = {
 						id: songID,
@@ -1295,6 +1295,8 @@ function opencustomiseModal(songsId) {
 		document.getElementById("stabiliseSongButton").disabled = stabilised == 1;
 		document.getElementById("fetchSongInfoButton").disabled = false;
 		document.getElementById("removeSongButton").disabled = false;
+		document.getElementById("customiseSongLink").disabled = false;
+		document.getElementById("customiseThumbnail").disabled = false;
 	} else {
 		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?`);
 		({ song_name, thumbnail_url, artist, genre, language } = stmt.get(songsId));
@@ -1314,6 +1316,8 @@ function opencustomiseModal(songsId) {
 		document.getElementById("stabiliseSongButton").disabled = true;
 		document.getElementById("fetchSongInfoButton").disabled = true; // TODO: Make the fetch song function work for streams table too (But it would fetch too many songs)
 		document.getElementById("removeSongButton").disabled = true;
+		document.getElementById("customiseSongLink").disabled = true;
+		document.getElementById("customiseThumbnail").disabled = true;
 	}
 
 	document.getElementById("customiseSongName").value = song_name;
