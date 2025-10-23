@@ -93,61 +93,60 @@ async function createMostListenedSongBox() {
 
 async function createPieCharts() {
 	function colorFromName(name, index = 0) {
-		let hash = 0;
-		for (let i = 0; i < name.length; i++) {
-			hash = name.charCodeAt(i) + ((hash << 5) - hash);
+		let hashValue = 0;
+		for (let charIndex = 0; charIndex < name.length; charIndex++) {
+			hashValue = name.charCodeAt(charIndex) + ((hashValue << 5) - hashValue);
 		}
-		const baseHue = Math.abs(hash) % 360;
+		const baseHue = Math.abs(hashValue) % 360;
 		const hue = (baseHue + (index % 5) * 72) % 360;
 		return `hsl(${hue},70%,50%)`;
 	}
 
-	const pieChartPart = document.createElement("div");
-	pieChartPart.id = "pieChartPart";
-	statisticsContent.appendChild(pieChartPart);
+	const pieChartContainer = document.createElement("div");
+	pieChartContainer.id = "pieChartPart";
+	statisticsContent.appendChild(pieChartContainer);
 
 	const pieChartTitle = document.createElement("h1");
 	pieChartTitle.id = "pieChartPartTitle";
 	pieChartTitle.innerHTML = "Your Listening Breakdown";
-	pieChartPart.appendChild(pieChartTitle);
+	pieChartContainer.appendChild(pieChartTitle);
 
-	const pieChartBoxes = document.createElement("div");
-	pieChartBoxes.id = "pieChartPartBoxes";
-	pieChartPart.appendChild(pieChartBoxes);
+	const pieChartBoxesContainer = document.createElement("div");
+	pieChartBoxesContainer.id = "pieChartPartBoxes";
+	pieChartContainer.appendChild(pieChartBoxesContainer);
 
-	const canvasBox1 = document.createElement("div");
-	canvasBox1.className = "canvasBox";
-	pieChartBoxes.appendChild(canvasBox1);
-	const canvasBox2 = document.createElement("div");
-	canvasBox2.className = "canvasBox";
-	pieChartBoxes.appendChild(canvasBox2);
-	const canvasBox3 = document.createElement("div");
-	canvasBox3.className = "canvasBox";
-	pieChartBoxes.appendChild(canvasBox3);
-
-	const artistCount = {};
-	const genreCount = {};
-	const languageCount = {};
-	for (const row of songsTable) {
-		artistCount[row.artist] = (artistCount[row.artist] || 0) + 1;
-		genreCount[row.genre] = (genreCount[row.genre] || 0) + 1;
-		languageCount[row.language] = (languageCount[row.language] || 0) + 1;
+	const canvasBoxes = [];
+	for (let boxIndex = 0; boxIndex < 6; boxIndex++) {
+		const canvasBox = document.createElement("div");
+		canvasBox.className = "canvasBox";
+		pieChartBoxesContainer.appendChild(canvasBox);
+		canvasBoxes.push(canvasBox);
 	}
 
-	function buildChart(canvasId, counts, topLabelsCount = 5) {
-		const labels = Object.keys(counts);
-		const data = Object.values(counts);
+	const artistCountMap = {};
+	const genreCountMap = {};
+	const languageCountMap = {};
+
+	for (const song of songsTable) {
+		artistCountMap[song.artist] = (artistCountMap[song.artist] || 0) + 1;
+		genreCountMap[song.genre] = (genreCountMap[song.genre] || 0) + 1;
+		languageCountMap[song.language] = (languageCountMap[song.language] || 0) + 1;
+	}
+
+	function buildChart(canvasId, dataMap, topLabelsCount = 5) {
+		const labels = Object.keys(dataMap);
+		const dataValues = Object.values(dataMap);
 
 		const sortedItems = labels
-			.map((l, i) => ({ label: l, value: data[i] }))
+			.map((label, index) => ({ label, value: dataValues[index] }))
 			.sort((a, b) => b.value - a.value)
 			.slice(0, topLabelsCount);
 
-		const sortedLabels = sortedItems.map(i => i.label);
+		const topLabels = sortedItems.map(item => item.label);
 
-		const colors = labels.map((l, i) => {
-			const topIndex = sortedLabels.indexOf(l);
-			return topIndex >= 0 ? colorFromName(l, topIndex) : colorFromName(l);
+		const colors = labels.map(label => {
+			const topIndex = topLabels.indexOf(label);
+			return topIndex >= 0 ? colorFromName(label, topIndex) : colorFromName(label);
 		});
 
 		new Chart(document.getElementById(canvasId).getContext("2d"), {
@@ -156,7 +155,7 @@ async function createPieCharts() {
 				labels: labels,
 				datasets: [
 					{
-						data: data,
+						data: dataValues,
 						backgroundColor: colors,
 					},
 				],
@@ -167,7 +166,17 @@ async function createPieCharts() {
 						display: true,
 						labels: {
 							color: "white",
-							filter: item => sortedLabels.includes(item.text),
+							filter: legendItem => topLabels.includes(legendItem.text),
+						},
+					},
+					tooltip: {
+						callbacks: {
+							label: function (context) {
+								const value = context.raw;
+								const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+								const percentage = ((value / total) * 100).toFixed(2);
+								return `${value} (${percentage}%)`;
+							},
 						},
 					},
 				},
@@ -175,32 +184,42 @@ async function createPieCharts() {
 		});
 	}
 
-	const canvas1 = document.createElement("canvas");
-	canvas1.id = "artistPieChart";
-	canvas1.className = "pieChart";
-	canvasBox1.appendChild(canvas1);
-	const canvas1description = document.createElement("p");
-	canvas1description.innerHTML = "Favorite Artists";
-	canvasBox1.appendChild(canvas1description);
-	buildChart("artistPieChart", artistCount);
+	const artistTimeMap = {};
+	const genreTimeMap = {};
+	const languageTimeMap = {};
 
-	const canvas2 = document.createElement("canvas");
-	canvas2.id = "genrePieChart";
-	canvas2.className = "pieChart";
-	canvasBox2.appendChild(canvas2);
-	const canvas2description = document.createElement("p");
-	canvas2description.innerHTML = "Favorite Genres";
-	canvasBox2.appendChild(canvas2description);
-	buildChart("genrePieChart", genreCount);
+	for (const timer of timersTable) {
+		const fullSongId = "tarator-" + timer.song_id;
+		const matchedSong = songsTable.find(song => song.song_id === fullSongId);
+		if (!matchedSong || !timer.start_time || !timer.end_time) continue;
+		const listenDuration = Math.max(0, timer.end_time - timer.start_time);
 
-	const canvas3 = document.createElement("canvas");
-	canvas3.id = "languagePieChart";
-	canvas3.className = "pieChart";
-	canvasBox3.appendChild(canvas3);
-	const canvas3description = document.createElement("p");
-	canvas3description.innerHTML = "Favorite Languages";
-	canvasBox3.appendChild(canvas3description);
-	buildChart("languagePieChart", languageCount);
+		artistTimeMap[matchedSong.artist] = (artistTimeMap[matchedSong.artist] || 0) + listenDuration;
+		genreTimeMap[matchedSong.genre] = (genreTimeMap[matchedSong.genre] || 0) + listenDuration;
+		languageTimeMap[matchedSong.language] = (languageTimeMap[matchedSong.language] || 0) + listenDuration;
+	}
+
+	const chartDefinitions = [
+		{ id: "artistPieChart", box: canvasBoxes[0], title: "Favorite Artists (Song Amount)", dataMap: artistCountMap },
+		{ id: "genrePieChart", box: canvasBoxes[1], title: "Favorite Genres (Song Amount)", dataMap: genreCountMap },
+		{ id: "languagePieChart", box: canvasBoxes[2], title: "Favorite Languages (Song Amount)", dataMap: languageCountMap },
+		{ id: "artistTimePieChart", box: canvasBoxes[3], title: "Favorite Artists (Seconds Listened)", dataMap: artistTimeMap },
+		{ id: "genreTimePieChart", box: canvasBoxes[4], title: "Favorite Genres (Seconds Listened)", dataMap: genreTimeMap },
+		{ id: "languageTimePieChart", box: canvasBoxes[5], title: "Favorite Languages (Seconds Listened)", dataMap: languageTimeMap },
+	];
+
+	for (const chartDef of chartDefinitions) {
+		const canvasElement = document.createElement("canvas");
+		canvasElement.id = chartDef.id;
+		canvasElement.className = "pieChart";
+		chartDef.box.appendChild(canvasElement);
+
+		const chartDescription = document.createElement("p");
+		chartDescription.innerHTML = chartDef.title;
+		chartDef.box.appendChild(chartDescription);
+
+		buildChart(chartDef.id, chartDef.dataMap);
+	}
 }
 
 async function daysHeatMap() {
