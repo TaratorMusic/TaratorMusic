@@ -1365,7 +1365,7 @@ async function saveEditedSong() {
 		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(songID);
 		if (!row) return await alertModal("Song not found in database.");
 
-		element = document.querySelector(`.music-item[data-file-name="${songID}.${row.song_extension}"]`);
+		element = document.querySelector(`.music-item[data-file-name="${songID}"]`);
 		if (!element) return await alertModal("Song element not found.");
 
 		thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
@@ -1425,19 +1425,22 @@ async function saveEditedSong() {
 			}, 50);
 		});
 
-		if (newNameInput === removeExtensions(playingSongsID)) {
+		if (newNameInput == removeExtensions(playingSongsID)) {
 			updatedElement.classList.add("playing");
+			if (songID.includes("tarator")) {
+				const bgUrl = `url("${thumbnailPath}?t=${Date.now()}")`;
+				document.getElementById("videothumbnailbox").style.backgroundImage = bgUrl;
+			}
 		}
 
 		const nameEl = updatedElement.querySelector(".song-name");
 		if (nameEl) nameEl.textContent = newNameInput;
 
 		if (songID.includes("tarator")) {
-			const bgUrl = `url("${thumbnailPath}?t=${Date.now()}")`;
-			document.getElementById("videothumbnailbox").style.backgroundImage = bgUrl;
 			const bgEl = updatedElement.querySelector(".background-element");
 			if (bgEl) bgEl.style.backgroundImage = bgUrl;
 		}
+        
 	} catch (err) {
 		console.log(err);
 	}
