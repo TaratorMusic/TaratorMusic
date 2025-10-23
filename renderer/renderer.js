@@ -1376,11 +1376,11 @@ async function saveEditedSong() {
 		const updated = musicsDb
 			.prepare(
 				`
-                UPDATE songs 
-                SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ?
-                WHERE song_id = ?
-                RETURNING song_name, song_extension, thumbnail_extension, genre, artist, language
-            `
+                    UPDATE songs 
+                    SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ?
+                    WHERE song_id = ?
+                    RETURNING song_name, song_extension, song_length, song_url, thumbnail_extension, genre, artist, language
+                `
 			)
 			.get(newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID);
 
@@ -1427,10 +1427,7 @@ async function saveEditedSong() {
 
 		if (newNameInput == removeExtensions(playingSongsID)) {
 			updatedElement.classList.add("playing");
-			if (songID.includes("tarator")) {
-				const bgUrl = `url("${thumbnailPath}?t=${Date.now()}")`;
-				document.getElementById("videothumbnailbox").style.backgroundImage = bgUrl;
-			}
+			if (songID.includes("tarator")) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 		}
 
 		const nameEl = updatedElement.querySelector(".song-name");
@@ -1438,9 +1435,8 @@ async function saveEditedSong() {
 
 		if (songID.includes("tarator")) {
 			const bgEl = updatedElement.querySelector(".background-element");
-			if (bgEl) bgEl.style.backgroundImage = bgUrl;
+			if (bgEl) bgEl.style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 		}
-        
 	} catch (err) {
 		console.log(err);
 	}

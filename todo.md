@@ -4,7 +4,6 @@
 -   Prevent recommendations fetching on screen resize. Introduce a cache, use localStorage
 -   Change it so after downloading a song from recommended section, its eventlistener will play the local song
 
--   Make "Your listening breakdown" work on time listened instead of song amounts (maybe add switchup)
 -   Let the user customise their own recommendation weights!
 -   Maybe clean the search bar while swapping modes?
 -   The recommendations return the same thing if no song listen time
