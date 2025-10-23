@@ -330,21 +330,6 @@ audio {
 	flex: 0 0 200px;
 }
 
-#songCountElement {
-	width: 10vw !important;
-	min-width: 10vw !important;
-	max-width: 10vw !important;
-	height: 3.5vh !important;
-	min-height: 3.5vh !important;
-	max-height: 3.5vh !important;
-	font-size: 2.2vh !important;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-direction: row;
-	text-align: center;
-}
-
 #display-count,
 #music-mode-select {
 	width: 11vw !important;

@@ -616,15 +616,11 @@ async function myMusicOnClick() {
 		renderMusics();
 	};
 
-	const songCountElement = document.createElement("div");
-	songCountElement.id = "songCountElement";
-
 	musicSearchParts.appendChild(musicSearchInput);
 	musicSearchParts.appendChild(musicSearchInputAmount);
 	musicSearchParts.appendChild(musicSearchEnterButton);
 	musicSearchParts.appendChild(musicSearchRefreshButton);
 	controlsBar.appendChild(musicSearchParts);
-	controlsBar.appendChild(songCountElement);
 	controlsBar.appendChild(musicModeSelect);
 	controlsBar.appendChild(buttonContainer);
 	buttonContainer.appendChild(buttonLeft);
@@ -748,8 +744,6 @@ function searchYoutubeInMusics() {
 }
 
 function renderMusics() {
-	document.getElementById("music-search").placeholder = `Search in ${musicMode == "offline" ? taratorFolder : "Youtube"}...`;
-
 	const container = document.getElementById("music-list-container");
 	const scrollPos = container.scrollTop;
 	changeSearchBar();
@@ -766,7 +760,7 @@ function renderMusics() {
 
 	if (musicMode == "offline") {
 		const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension FROM songs").all();
-		document.getElementById("songCountElement").innerText = `${songRows.length} songs.`;
+		document.getElementById("music-search").placeholder = `Search of ${songRows.length} songs in ${taratorFolder}...`;
 
 		filteredSongs = songRows
 			.map(row => ({
@@ -802,8 +796,10 @@ function renderMusics() {
 			container.appendChild(musicElement);
 		});
 	} else if (musicMode == "stream") {
+		document.getElementById("music-search").placeholder = `Search in already streamed songs or Youtube...`;
 		// In songs, all songs are song-id that fits youtube regex
 	} else if (musicMode == "discover") {
+		document.getElementById("music-search").placeholder = `Search in Youtube...`;
 		container.innerHTML = "Loading...";
 		const recommendedMusicMap = getRecommendations();
 		const goal = document.getElementById("musicSearchInputAmount").value;
@@ -838,7 +834,7 @@ function renderMusics() {
 						)
 						.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
 
-					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
+					if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
 						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
 						notInterestedSongs.push({ song_id: songID });
 						continue;
