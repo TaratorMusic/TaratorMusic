@@ -613,6 +613,7 @@ async function myMusicOnClick() {
 		console.log("Selected:", selectedValue, "at musicMode");
 		updateDatabase("musicMode", selectedValue, settingsDb, "settings");
 		musicMode = selectedValue;
+		changeSearchBar();
 		renderMusics();
 	};
 
@@ -642,6 +643,7 @@ function changeSearchBar() {
 	const musicSearchInputAmount = document.getElementById("musicSearchInputAmount");
 	const musicSearchEnterButton = document.getElementById("musicSearchEnterButton");
 	const musicSearchRefreshButton = document.getElementById("musicSearchRefreshButton");
+	document.getElementById("music-search").value = "";
 
 	if (musicMode == "offline") {
 		musicSearchInputAmount.disabled = true;
@@ -673,7 +675,6 @@ function changeSearchBar() {
 function searchYoutubeInMusics() {
 	const container = document.getElementById("music-list-container");
 	const scrollPos = container.scrollTop;
-	changeSearchBar();
 
 	if (musicMode != "offline" && document.getElementById("music-search").value != "") {
 		container.innerHTML = "Loading...";
@@ -746,15 +747,10 @@ function searchYoutubeInMusics() {
 function renderMusics() {
 	const container = document.getElementById("music-list-container");
 	const scrollPos = container.scrollTop;
-	changeSearchBar();
 
 	container.innerHTML = "";
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 	if (Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) < currentPage) currentPage = Math.ceil(songNameCache.size / (3 * previousItemsPerRow));
-
-	let searchValue = document.getElementById("music-search").value.trim().toLowerCase();
-	const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
-	if (exactMatch) searchValue = searchValue.slice(1, -1);
 
 	let filteredSongs = {};
 
@@ -772,6 +768,9 @@ function renderMusics() {
 			}))
 			.sort((a, b) => (a.info.song_name || "").toLowerCase().localeCompare((b.info.song_name || "").toLowerCase()))
 			.filter(song => {
+				let searchValue = document.getElementById("music-search").value.trim().toLowerCase();
+				const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
+				if (exactMatch) searchValue = searchValue.slice(1, -1);
 				if (!searchValue) return true;
 
 				const { song_name, artist, genre, language } = song.info;
@@ -796,8 +795,8 @@ function renderMusics() {
 			container.appendChild(musicElement);
 		});
 	} else if (musicMode == "stream") {
-		document.getElementById("music-search").placeholder = `Search in already streamed songs or Youtube...`;
-		// In songs, all songs are song-id that fits youtube regex
+		document.getElementById("music-search").placeholder = `Search in Youtube or already streamed songs...`;
+		// Get all songs from "streams" table
 	} else if (musicMode == "discover") {
 		document.getElementById("music-search").placeholder = `Search in Youtube...`;
 		container.innerHTML = "Loading...";

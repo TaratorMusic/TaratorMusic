@@ -5,7 +5,6 @@
 -   Change it so after downloading a song from recommended section, its eventlistener will play the local song
 
 -   Let the user customise their own recommendation weights!
--   Maybe clean the search bar while swapping modes?
 -   The recommendations return the same thing if no song listen time
 -   When you swap from recommendations mode while songs are loading, you cant
 -   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information, for all musics db tables
