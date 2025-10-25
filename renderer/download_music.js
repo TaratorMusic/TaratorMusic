@@ -742,11 +742,16 @@ async function actuallyDownloadTheSong() {
 
 			if (oldId) {
 				document.querySelectorAll(".music-item").forEach(musicElement => {
-					if (removeExtensions(musicElement.getAttribute("data-file-name")) == oldId) musicElement.setAttribute("data-file-name", songID);
+					if (removeExtensions(musicElement.getAttribute("data-file-name")) == oldId) {
+						musicElement.setAttribute("data-file-name", songID);
+						const newElement = musicElement.cloneNode(true);
+						newElement.addEventListener("click", () => playMusic(songID, null));
+						musicElement.replaceWith(newElement);
+					}
 				});
 
 				musicsDb.prepare("DELETE FROM streams WHERE song_id = ?").run(songID);
-                musicsDb.prepare("UPDATE timers SET song_id = ? WHERE song_id = ?").run(songID, oldId);
+				musicsDb.prepare("UPDATE timers SET song_id = ? WHERE song_id = ?").run(songID, oldId);
 			}
 
 			try {

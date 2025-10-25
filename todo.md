@@ -1,6 +1,5 @@
 ## Coming Soon App Features
 
--   Streaming not working????
 -   Prevent recommendations fetching on screen resize. Introduce a cache, use localStorage
 
 -   Are we adding the song to our cache after download?
