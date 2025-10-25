@@ -2,12 +2,12 @@
 
 -   Streaming not working????
 -   Prevent recommendations fetching on screen resize. Introduce a cache, use localStorage
--   Change it so after downloading a song from recommended section, its eventlistener will play the local song
+
+-   Are we adding the song to our cache after download?
 
 -   Let the user customise their own recommendation weights!
 -   The recommendations return the same thing if no song listen time
 -   When you swap from recommendations mode while songs are loading, you cant
--   When a song is downloaded, check if the DB has its link as an id, if there is, just overwrite the information, for all musics db tables
 -   getRecommendations backup songs if there is no data
 
 -   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)

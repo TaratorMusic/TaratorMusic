@@ -145,6 +145,7 @@ async function createDownloadModalForStreamedSong(songId) {
 
 		const finalDownloadButton = document.createElement("button");
 		finalDownloadButton.id = "finalDownloadButton";
+		finalDownloadButton.setAttribute("data-file-name", songId);
 		finalDownloadButton.onclick = function () {
 			actuallyDownloadTheSong();
 		};
@@ -685,6 +686,7 @@ async function actuallyDownloadTheSong() {
 
 	if (downloadingStyle == "youtube_video" || downloadingStyle == "spotify_track" || downloadingStyle == "search") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
+		const oldId = document.getElementById("finalDownloadButton").getAttribute("data-file-name");
 		const songID = generateId();
 		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
 		const img = document.getElementById("thumbnailImage");
@@ -737,6 +739,15 @@ async function actuallyDownloadTheSong() {
 			const fileSize = fs.statSync(outputFilePath).size;
 
 			await processThumbnail(img.src, songID);
+
+			if (oldId) {
+				document.querySelectorAll(".music-item").forEach(musicElement => {
+					if (removeExtensions(musicElement.getAttribute("data-file-name")) == oldId) musicElement.setAttribute("data-file-name", songID);
+				});
+
+				musicsDb.prepare("DELETE FROM streams WHERE song_id = ?").run(songID);
+                musicsDb.prepare("UPDATE timers SET song_id = ? WHERE song_id = ?").run(songID, oldId);
+			}
 
 			try {
 				musicsDb
