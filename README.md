@@ -17,6 +17,8 @@
 
 HTML & CSS & JavaScript for the Front-end, Node.js and Go for the Back-end
 
+C and its miniaudio library for playing audio
+
 Electron to make it a cross platform desktop app, electron-updater to detect new versions and give the user the option to update
 
 @distube/ytdl-core and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists. @distube/ytsr for searching videos in youtube
@@ -29,7 +31,7 @@ Chart.js to show user stats in the statistics tab
 
 MusicBrainz API to fetch song genre, artist and language information
 
-FFmpeg and FFprobe to automatically stabilise audio levels,
+FFmpeg and FFprobe to automatically stabilise audio levels
 
 Discord Rich Presence to momentarily share listened songs in Discord
 

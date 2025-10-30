@@ -1,8 +1,11 @@
 ## Coming Soon App Features
 
 -   Prevent recommendations fetching on screen resize. Introduce a cache, use localStorage
+-   Add artist genre language customsation in download modal
+-   Long link broke the downloads
 
 -   Are we adding the song to our cache after download?
+-   TypeError: id.trim is not a function
 
 -   Let the user customise their own recommendation weights!
 -   The recommendations return the same thing if no song listen time
@@ -16,7 +19,6 @@
 -   Playing playlist songs are very broken
 -   Stream seeking not working
 -   Play previous song without shuffle, bugged?
--   Some songs silently fail loading (probably age-restricted)
 -   Do long songs have a skipping problem? (5secs)
 -   Create recommendations cache so it fetches everything once
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
@@ -35,6 +37,10 @@
 ### Planned Features
 
 -   Move playlists to cache
+-   A key + right click to do stuff with songs (add to favorites, delete, etc.)
+-   Some songs silently fail loading (probably age-restricted)
+-   Have an option to update ytdlp internally
+-   Customisable queue list with drag and drop (similar to youtube)
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add approximate time remaining for volume stabilisation.
