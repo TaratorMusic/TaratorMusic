@@ -1,6 +1,5 @@
 ## Coming Soon App Features
 
--   Prevent recommendations fetching on screen resize. Introduce a cache, use localStorage
 -   Add artist genre language customsation in download modal
 
 -   Are we adding the song to our cache after download?
@@ -21,6 +20,7 @@
 -   Create recommendations cache so it fetches everything once
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
+
 -   Compile gobuild & cbuild for windows and mac binaries too (Check github actions)
 -   Update readme with the new features and just jump to 1.8.0 after all of these
 

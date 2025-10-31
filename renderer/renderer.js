@@ -9,7 +9,7 @@ const ytsr = require("@distube/ytsr");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath, recommendationsDbPath;
-let settingsDb, playlistsDb, musicsDb, recommendationsDb;
+let settingsDb, playlistsDb, musicsDb, recommendationsDb, recommendationsCache;
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
@@ -38,6 +38,7 @@ let settingsDb, playlistsDb, musicsDb, recommendationsDb;
 	playlistsDb = new Database(playlistsDbPath);
 	musicsDb = new Database(musicsDbPath);
 	recommendationsDb = new Database(musicsDbPath);
+	recommendationsCache = localStorage.getItem("recommendationsCache") || null;
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");
@@ -548,7 +549,10 @@ async function myMusicOnClick() {
 	musicSearchRefreshButton.style.backgroundSize = "cover";
 	musicSearchRefreshButton.style.backgroundRepeat = "no-repeat";
 	musicSearchRefreshButton.style.backgroundPosition = "center";
-	musicSearchRefreshButton.addEventListener("click", renderMusics);
+	musicSearchRefreshButton.addEventListener("click", () => {
+		localStorage.setItem("recommendationsCache", null);
+		renderMusics();
+	});
 
 	const displayPageSelect = document.createElement("select");
 	displayPageSelect.id = "display-count";
@@ -800,73 +804,25 @@ function renderMusics() {
 	} else if (musicMode == "discover") {
 		document.getElementById("music-search").placeholder = `Search in Youtube...`;
 		container.innerHTML = "Loading...";
-		const recommendedMusicMap = getRecommendations();
-		const goal = document.getElementById("musicSearchInputAmount").value;
-		let count = 0;
 
-		const results = [];
+		const recommendationsCache = localStorage.getItem("recommendationsCache");
 
-		(async () => {
-			streamedSongsHtmlMap = new Map();
+		if (recommendationsCache != 'null') {
+			const cachedMap = new Map(JSON.parse(recommendationsCache));
+			streamedSongsHtmlMap = cachedMap;
+			container.innerHTML = "";
 
-			for (const [key, value] of recommendedMusicMap) {
-				const ytQuery = `${key} by ${value[0]}`;
-				try {
-					const result = await ytsr(ytQuery, { safeSearch: false, limit: 1 });
-					const info = result.items[0];
-					const videoTitle = info.name;
-					const songID = info.id;
-					const thumbnails = info.thumbnails || [];
-					const songLength = parseTimeToSeconds(info.duration);
-					const bestThumbnail = thumbnails.reduce((max, thumb) => {
-						const size = (thumb.width || 0) * (thumb.height || 0);
-						const maxSize = (max.width || 0) * (max.height || 0);
-						return size > maxSize ? thumb : max;
-					}, thumbnails[0] || {});
-
-					musicsDb
-						.prepare(
-							`
-                                INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language)
-                                VALUES (?, ?, ?, ?, ?, ?, ?)
-                            `
-						)
-						.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
-
-					if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
-						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
-						notInterestedSongs.push({ song_id: songID });
-						continue;
-					}
-
-					if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() === key.toLowerCase().trim())) continue;
-
-					const fullSong = {
-						id: songID,
-						name: videoTitle,
-						thumbnail: bestThumbnail,
-						length: songLength,
-					};
-
-					streamedSongsHtmlMap.set(songID, fullSong);
-
-					if (count == 0) container.innerHTML = "";
-
-					const musicElement = createMusicElement(fullSong);
-					if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
-					musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
-					container.appendChild(musicElement);
-					setupLazyBackgrounds();
-
-					count++;
-
-					if (count >= goal) break;
-				} catch (error) {
-					console.log(error);
-					await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
-				}
+			for (const [id, song] of cachedMap) {
+				const musicElement = createMusicElement(song);
+				if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+				musicElement.addEventListener("click", () => playMusic(song.id, null));
+				container.appendChild(musicElement);
 			}
-		})();
+
+			setupLazyBackgrounds();
+		} else {
+			refreshRecommendations();
+		}
 	}
 
 	document.querySelectorAll(".pageScrollButtons").forEach(button => {
@@ -875,6 +831,75 @@ function renderMusics() {
 
 	setupLazyBackgrounds();
 	container.scrollTop = scrollPos;
+}
+
+function refreshRecommendations() {
+	const container = document.getElementById("music-list-container");
+	const recommendedMusicMap = getRecommendations();
+	const goal = document.getElementById("musicSearchInputAmount").value;
+	let count = 0;
+
+	(async () => {
+		streamedSongsHtmlMap = new Map();
+
+		for (const [key, value] of recommendedMusicMap) {
+			const ytQuery = `${key} by ${value[0]}`;
+			try {
+				const result = await ytsr(ytQuery, { safeSearch: false, limit: 1 });
+				const info = result.items[0];
+				const videoTitle = info.name;
+				const songID = info.id;
+				const thumbnails = info.thumbnails || [];
+				const songLength = parseTimeToSeconds(info.duration);
+				const bestThumbnail = thumbnails.reduce((max, thumb) => {
+					const size = (thumb.width || 0) * (thumb.height || 0);
+					const maxSize = (max.width || 0) * (max.height || 0);
+					return size > maxSize ? thumb : max;
+				}, thumbnails[0] || {});
+
+				musicsDb
+					.prepare(
+						`
+                            INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        `
+					)
+					.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
+
+				if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
+					musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
+					notInterestedSongs.push({ song_id: songID });
+					continue;
+				}
+
+				if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() === key.toLowerCase().trim())) continue;
+
+				const fullSong = {
+					id: songID,
+					name: videoTitle,
+					thumbnail: bestThumbnail,
+					length: songLength,
+				};
+
+				streamedSongsHtmlMap.set(songID, fullSong);
+
+				if (count == 0) container.innerHTML = "";
+
+				const musicElement = createMusicElement(fullSong);
+				if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+				musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
+				container.appendChild(musicElement);
+				setupLazyBackgrounds();
+
+				count++;
+				localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
+				if (count >= goal) break;
+			} catch (error) {
+				console.log(error);
+				await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
+			}
+		}
+	})();
 }
 
 function createMusicElement(songFile) {
