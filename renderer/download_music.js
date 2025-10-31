@@ -24,11 +24,10 @@ function differentiateMediaLinks(url) {
 
 async function searchInYoutube(songName, resultLimit = 1) {
 	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
-	searchedSongsUrl = result.items[resultLimit - 1].url;
-	return searchedSongsUrl;
+	return result.items[resultLimit - 1].url;
 }
 
-function checkNameThumbnail(predetermined) {
+async function checkNameThumbnail(predetermined) {
 	document.getElementById("downloadFirstButton").disabled = true;
 
 	if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
@@ -66,7 +65,7 @@ function checkNameThumbnail(predetermined) {
 	} else if (downloadingStyle == "spotify_playlist") {
 		getPlaylistSongsAndArtists(userInput);
 	} else {
-		processVideoLink(searchInYoutube(userInput, 1));
+		processVideoLink(await searchInYoutube(userInput, 1));
 	}
 }
 
@@ -181,7 +180,7 @@ async function getSpotifySongName(link) {
 
 	const title = $("title").text();
 	const name = title.replace(" song and lyrics by", "").replace("| Spotify", "").trim();
-	processVideoLink(searchInYoutube(name, 1));
+	processVideoLink(await searchInYoutube(name, 1));
 }
 
 async function getPlaylistSongsAndArtists(link) {
@@ -353,8 +352,11 @@ async function getPlaylistSongsAndArtists(link) {
 
 async function processVideoLink(videoUrl) {
 	try {
+        console.log(videoUrl);
 		const info = await ytdl.getInfo(videoUrl);
+        console.log(info);
 		const videoTitle = info.videoDetails.title;
+        console.log(videoTitle);
 
 		const thumbnails = info.videoDetails.thumbnails || [];
 		const bestThumbnail = thumbnails.reduce((max, thumb) => {

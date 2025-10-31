@@ -2,10 +2,8 @@
 
 -   Prevent recommendations fetching on screen resize. Introduce a cache, use localStorage
 -   Add artist genre language customsation in download modal
--   Long link broke the downloads
 
 -   Are we adding the song to our cache after download?
--   TypeError: id.trim is not a function
 
 -   Let the user customise their own recommendation weights!
 -   The recommendations return the same thing if no song listen time
