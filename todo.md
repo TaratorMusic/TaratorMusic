@@ -1,8 +1,7 @@
 ## Coming Soon App Features
 
 -   Add artist genre language customsation in download modal
-
--   Are we adding the song to our cache after download?
+-   Create one-time-run song info fetcher function
 
 -   Let the user customise their own recommendation weights!
 -   The recommendations return the same thing if no song listen time

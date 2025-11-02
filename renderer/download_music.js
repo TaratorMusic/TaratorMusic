@@ -352,11 +352,11 @@ async function getPlaylistSongsAndArtists(link) {
 
 async function processVideoLink(videoUrl) {
 	try {
-        console.log(videoUrl);
+		console.log(videoUrl);
 		const info = await ytdl.getInfo(videoUrl);
-        console.log(info);
+		console.log(info);
 		const videoTitle = info.videoDetails.title;
-        console.log(videoTitle);
+		console.log(videoTitle);
 
 		const thumbnails = info.videoDetails.thumbnails || [];
 		const bestThumbnail = thumbnails.reduce((max, thumb) => {
@@ -692,6 +692,10 @@ async function actuallyDownloadTheSong() {
 		const songID = generateId();
 		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
 		const img = document.getElementById("thumbnailImage");
+		// TODO
+		const artist = null;
+		const genre = null;
+		const language = null;
 
 		const existingPlaylists = pendingPlaylistAddsWithIds.get("songAndThumbnail") || [];
 		pendingPlaylistAddsWithIds.delete("songAndThumbnail");
@@ -774,6 +778,17 @@ async function actuallyDownloadTheSong() {
                         ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + 1`
 					)
 					.run();
+
+				songNameCache.set(songID, {
+					song_name: secondInput,
+					song_length: duration,
+					song_extension: "mp3",
+					song_url: firstInput,
+					thumbnail_extension: "jpg",
+					genre: genre,
+					artist: artist,
+					language: language,
+				});
 
 				await commitStagedPlaylistAdds();
 			} catch (err) {
@@ -885,6 +900,11 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			}
 		}
 
+        // TODO: Get these from html
+		const artists = [];
+		const genres = [];
+        const languages = [];
+
 		for (let i = 0; i < totalSongs; i++) {
 			const songTitle = songTitles[i];
 			const songLink = songLinks[i];
@@ -974,6 +994,17 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 						)
 						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", null, null, null);
+
+					songNameCache.set(songId, {
+						song_name: songTitle,
+						song_length: duration,
+						song_extension: "mp3",
+						song_url: songLink,
+						thumbnail_extension: "jpg",
+						genre: genres[i],
+						artist: artists[i],
+						language: languages[i],
+					});
 				} catch (err) {
 					console.log(`DB insert failed for ${songTitle}: ${err.message}`);
 				}
