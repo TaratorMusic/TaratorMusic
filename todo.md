@@ -1,7 +1,7 @@
 ## Coming Soon App Features
 
 -   Add artist genre language customsation in download modal
--   Create one-time-run song info fetcher function
+-   Use one-time fetcher function in places like downloading & customisation modal, use all fetch on startup
 
 -   Let the user customise their own recommendation weights!
 -   The recommendations return the same thing if no song listen time

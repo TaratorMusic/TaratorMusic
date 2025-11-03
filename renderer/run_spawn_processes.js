@@ -33,25 +33,34 @@ function shortenSongIdsGoPart(queryArray) {
 	});
 }
 
-async function grabAndStoreSongInfo() {
+async function grabAndStoreSongInfo(songName) {
 	return new Promise((resolve, reject) => {
 		const goBinary = path.join(backendFolder, "musicbrainz_fetch");
-		const songs = musicsDb
-			.prepare(
-				`
-                SELECT song_name FROM songs
-                WHERE artist IS NULL OR genre IS NULL OR language IS NULL
-            `
-			)
-			.all()
-			.map(r => r.song_name);
+		let songs;
 
-		if (!songs.length) {
-			alertModal("No songs with missing information.");
-			return resolve();
+		if (songName) {
+			const row = musicsDb.prepare(`SELECT song_name FROM songs WHERE song_name = ?`).get(songName);
+			if (!row) {
+				alertModal("Song not found in database.");
+				return resolve();
+			}
+			songs = [row.song_name];
+		} else {
+			songs = musicsDb
+				.prepare(
+					`
+                    SELECT song_name FROM songs
+                    WHERE artist IS NULL OR genre IS NULL OR language IS NULL
+                `
+				)
+				.all()
+				.map(r => r.song_name);
+			if (!songs.length) {
+				alertModal("No songs with missing information.");
+				return resolve();
+			}
+			alertModal(`${songs.length} song${songs.length !== 1 ? "s" : ""} will be searched for information. You can close this window and the action will happen in the background.`);
 		}
-
-		alertModal(`${songs.length} song${songs.length !== 1 ? "s" : ""} will be searched for information. You can close this window and the action will happen in the background.`);
 
 		const proc = spawn(goBinary, songs);
 		const stmt = musicsDb.prepare(`
