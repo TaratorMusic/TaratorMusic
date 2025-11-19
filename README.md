@@ -1,7 +1,14 @@
 # TaratorMusic
 
 ![tarator512_icon](https://github.com/user-attachments/assets/beb57a59-adab-411e-b2ef-723fd4d97997)
-[![Star History Chart](https://api.star-history.com/svg?repos=TaratorMusic/TaratorMusic&type=date&legend=top-left)](https://www.star-history.com/#TaratorMusic/TaratorMusic&type=date&legend=top-left)
+
+<a href="https://www.star-history.com/#TaratorMusic/TaratorMusic&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=TaratorMusic/TaratorMusic&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=TaratorMusic/TaratorMusic&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=TaratorMusic/TaratorMusic&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## Why TaratorMusic?
 
