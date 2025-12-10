@@ -294,7 +294,25 @@
 					<h2>Debug Mode</h2>
 					<button id="debugButton">Toggle</button>
 				</div>
-				<h5>Enter debug mode to see the errors and the logs.</h5>
+				<h3>Enter debug mode to see the errors and the logs.</h5>
+				<h1 class="underline-text">Recommendations Weights</h1>
+				<h2 style="margin-top: -3vh;">Consider them as percentages, the total needs to be equal to 100.</h2>
+				<div class="settingsflexrow">Popularity Factor <input type="number" id="weight1" min="0" max="100" /></div>
+				<h5>Higher the value, more chance the user gets a more popular song from the desired artists.</h5>
+				<div class="settingsflexrow">Artist Strength Factor <input type="number" id="weight2" min="0" max="100" /></div>
+				<h5>The importance given to the amount of fans the songs artist has in Deezer.</h5>
+				<div class="settingsflexrow">Similar Artists Factor <input type="number" id="weight3" min="0" max="100" /></div>
+				<h5>The songs artists similar artists and how much they are listened to by the user.</h5>
+				<div class="settingsflexrow">User Preference Factor <input type="number" id="weight4" min="0" max="100" /></div>
+				<h5>If the user prefers to listen to the same artists or likes to explore new ones.</h5>
+				<div class="settingsflexrow">Artist Listen Time Factor <input type="number" id="weight5" min="0" max="100" /></div>
+				<h5>How much the user listened to the artist of the song.</h5>
+				<div class="settingsflexrow">Random Factor <input type="number" id="weight6" min="0" max="100" /></div>
+				<h5>Randomness to change the recommendations each time.</h5>
+				<div class="settingsflexrow">
+					<button onclick="saveRecommendationWeights()">Save Weights</button>
+					<button onclick="resetRecommendationWeights()">Reset Weights</button>
+				</div>
 			</div>
 			<div id="statistics-content" class="scrollArea hidden tab-content"></div>
 		</div>

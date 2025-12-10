@@ -163,10 +163,10 @@ body::-webkit-scrollbar {
 }
 
 .beatifullyCenteredRow {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
 }
 
 .sidebar {
@@ -603,8 +603,6 @@ audio {
 	display: none;
 	text-align: left;
 	align-items: flex-start;
-	padding-top: 0 !important;
-	padding-bottom: 0 !important;
 }
 
 #settings-content div {
@@ -1172,11 +1170,11 @@ th {
 #musicSearchInputAmount,
 #musicSearchEnterButton,
 #musicSearchRefreshButton {
-    width: 3.5vh !important;
+	width: 3.5vh !important;
 	height: 3.5vh !important;
 	font-size: 2.2vh;
 	margin-left: 1vh;
-    text-align: center;
+	text-align: center;
 }
 
 #controlsBar {

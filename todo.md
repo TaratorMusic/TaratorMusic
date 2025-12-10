@@ -3,7 +3,6 @@
 -   Add artist genre language customsation in download modal
 -   Use one-time fetcher function in places like downloading & customisation modal, use all fetch on startup
 
--   Let the user customise their own recommendation weights!
 -   The recommendations return the same thing if no song listen time
 -   When you swap from recommendations mode while songs are loading, you cant
 -   getRecommendations backup songs if there is no data
@@ -19,6 +18,7 @@
 -   Create recommendations cache so it fetches everything once
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
 -   to stats db: last time recommendations db is refreshed (refresh it each month)
+-   Ctrl + F breaks stuff while another modal is already on
 
 -   Compile gobuild & cbuild for windows and mac binaries too (Check github actions)
 -   Update readme with the new features and just jump to 1.8.0 after all of these

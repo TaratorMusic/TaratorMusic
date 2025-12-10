@@ -108,6 +108,13 @@ let displayPage;
 let stabiliseVolumeToggle;
 let current_version;
 
+let popularityFactor;
+let artistStrengthFactor;
+let similarArtistsFactor;
+let userPreferenceFactor;
+let artistListenTimeFactor;
+let randomFactor;
+
 const defaultSettings = {
 	volume: 50,
 	rememberautoplay: 1,
@@ -137,6 +144,12 @@ const defaultSettings = {
 	dc_channel_id: null,
 	dc_guild_id: null,
 	current_version: null,
+	popularityFactor: 15,
+	artistStrengthFactor: 8,
+	similarArtistsFactor: 20,
+	userPreferenceFactor: 17,
+	artistListenTimeFactor: 25,
+	randomFactor: 15,
 };
 
 function initialiseSettingsDatabase() {
@@ -258,10 +271,22 @@ function initialiseSettingsDatabase() {
 		stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 		current_version = settingsRow.current_version;
 		document.body.className = `bg-gradient-${settingsRow.background}`;
+		popularityFactor = settingsRow.popularityFactor;
+		artistStrengthFactor = settingsRow.artistStrengthFactor;
+		similarArtistsFactor = settingsRow.similarArtistsFactor;
+		userPreferenceFactor = settingsRow.userPreferenceFactor;
+		artistListenTimeFactor = settingsRow.artistListenTimeFactor;
+		randomFactor = settingsRow.randomFactor;
 
 		discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
 		discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
 		document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
+		document.getElementById("weight1").value = popularityFactor;
+		document.getElementById("weight2").value = artistStrengthFactor;
+		document.getElementById("weight3").value = similarArtistsFactor;
+		document.getElementById("weight4").value = userPreferenceFactor;
+		document.getElementById("weight5").value = artistListenTimeFactor;
+		document.getElementById("weight6").value = randomFactor;
 
 		const icons = {
 			backwardButton: "backward.svg",
@@ -807,7 +832,7 @@ function renderMusics() {
 
 		const recommendationsCache = localStorage.getItem("recommendationsCache");
 
-		if (recommendationsCache != 'null') {
+		if (recommendationsCache != "null") {
 			const cachedMap = new Map(JSON.parse(recommendationsCache));
 			streamedSongsHtmlMap = cachedMap;
 			container.innerHTML = "";

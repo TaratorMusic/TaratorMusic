@@ -139,3 +139,60 @@ async function updateThumbnailImage(event, mode) {
 		await alertModal("Please select a valid JPG image.");
 	}
 }
+
+async function saveRecommendationWeights() {
+	let total = 0;
+
+	for (let i = 1; i <= 6; i++) {
+		let theValue = Number(document.getElementById(`weight${i}`).value);
+		if (!Number.isFinite(theValue)) return await alertModal("One of the weights is not a number.");
+		if (theValue > 100) return await alertModal("A weight can not be over 100.");
+		if (theValue < 0) return await alertModal("A weight can not be negative.");
+		total += theValue;
+	}
+
+	if (total != 100) return await alertModal("The total of all weights must equal to 100. ");
+
+	popularityFactor = document.getElementById("weight1").value;
+	artistStrengthFactor = document.getElementById("weight2").value;
+	similarArtistsFactor = document.getElementById("weight3").value;
+	userPreferenceFactor = document.getElementById("weight4").value;
+	artistListenTimeFactor = document.getElementById("weight5").value;
+	randomFactor = document.getElementById("weight6").value;
+
+	updateDatabase("popularityFactor", popularityFactor, settingsDb, "settings");
+	updateDatabase("artistStrengthFactor", artistStrengthFactor, settingsDb, "settings");
+	updateDatabase("similarArtistsFactor", similarArtistsFactor, settingsDb, "settings");
+	updateDatabase("userPreferenceFactor", userPreferenceFactor, settingsDb, "settings");
+	updateDatabase("artistListenTimeFactor", artistListenTimeFactor, settingsDb, "settings");
+	updateDatabase("randomFactor", randomFactor, settingsDb, "settings");
+
+	alertModal("Success!");
+}
+
+async function resetRecommendationWeights() {
+	if (await confirmModal("Are you sure you would like to reset your recommendation weights?", "Yes", "No")) {
+		popularityFactor = 15;
+		artistStrengthFactor = 8;
+		similarArtistsFactor = 20;
+		userPreferenceFactor = 17;
+		artistListenTimeFactor = 25;
+		randomFactor = 15;
+
+		document.getElementById("weight1").value = 15;
+		document.getElementById("weight2").value = 8;
+		document.getElementById("weight3").value = 20;
+		document.getElementById("weight4").value = 17;
+		document.getElementById("weight5").value = 25;
+		document.getElementById("weight6").value = 15;
+
+		updateDatabase("popularityFactor", popularityFactor, settingsDb, "settings");
+		updateDatabase("artistStrengthFactor", artistStrengthFactor, settingsDb, "settings");
+		updateDatabase("similarArtistsFactor", similarArtistsFactor, settingsDb, "settings");
+		updateDatabase("userPreferenceFactor", userPreferenceFactor, settingsDb, "settings");
+		updateDatabase("artistListenTimeFactor", artistListenTimeFactor, settingsDb, "settings");
+		updateDatabase("randomFactor", randomFactor, settingsDb, "settings");
+
+		await alertModal("Success!");
+	}
+}
