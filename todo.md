@@ -38,6 +38,7 @@
 -   Some songs silently fail loading (probably age-restricted)
 -   Have an option to update ytdlp internally
 -   Customisable queue list with drag and drop (similar to youtube)
+-   Add a window, where in the left side you can see your songs and you can filter them via a search bar and sort them, on the right side there will be the playlists, and the users will be able to drag and drop all the songs to the playlists they desire.
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add approximate time remaining for volume stabilisation.
@@ -80,7 +81,6 @@
 -   Use CSS Clamp in the controls bar for preventing overlapping
 -   Multi select in the music tab for customising multiple songs
 -   Hidden icon
--   Add "drag and drop" features
 -   Sounds after a download is over --> Toggleable in the settings
 -   Search bar in the settings
 -   Switch to Golang for ytpl&ytsr (ytpl-ytsr-go)
