@@ -6,6 +6,8 @@
 -   The recommendations return the same thing if no song listen time
 -   When you swap from recommendations mode while songs are loading, you cant
 -   getRecommendations backup songs if there is no data
+-   Border radius difference between my music and playlist searchbars
+-   Bug: searching using song characteristics doesn't work for new songs, needs app restart
 
 -   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
 -   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
