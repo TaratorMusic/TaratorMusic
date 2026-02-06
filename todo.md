@@ -5,7 +5,6 @@
 -   Border radius difference between my music and playlist searchbars
 -   does playlist thumbnail changing work?
 -   Playing playlist songs are very broken
--   Discord status keeps showing "Paused"
 -   Stream seeking not working
 -   Play previous song without shuffle, bugged?
 -   Do long songs have a skipping problem? (5secs)

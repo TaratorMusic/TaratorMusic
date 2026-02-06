@@ -95,7 +95,7 @@ function updateDiscordPresence() {
     
     const songData = artistName ? `${songName}|||${artistName}` : songName;
     
-    sendCommandToDaemon("update", [songData, currentSec.toString(), totalSec.toString(), playing.toString(), isIdle.toString()]);
+    sendCommandToDaemon("update", [songData, currentSec.toString(), totalSec.toString(), !playing.toString(), isIdle.toString()]);
 }
 
 function stopDaemon() {
