@@ -33,41 +33,42 @@ function shortenSongIdsGoPart(queryArray) {
 	});
 }
 
-async function grabAndStoreSongInfo(songName) {
+async function grabAndStoreSongInfo(songId) {
+	if (songId == "html") songId = document.getElementById("customiseModal").dataset.songID;
+
 	return new Promise((resolve, reject) => {
 		const goBinary = path.join(backendFolder, "musicbrainz_fetch");
 		let songs;
 
-		if (songName) {
-			const row = musicsDb.prepare(`SELECT song_name FROM songs WHERE song_name = ?`).get(songName);
+		if (songId) {
+			const row = musicsDb.prepare(`SELECT song_name FROM songs WHERE song_id = ?`).get(songId);
 			if (!row) {
 				alertModal("Song not found in database.");
 				return resolve();
+			} else {
+				alertModal("Checking for song info... You can close this window.");
 			}
 			songs = [row.song_name];
 		} else {
 			songs = musicsDb
 				.prepare(
 					`
-                    SELECT song_name FROM songs
-                    WHERE artist IS NULL OR genre IS NULL OR language IS NULL
-                `
+                        SELECT song_name FROM songs
+                        WHERE artist IS NULL OR genre IS NULL OR language IS NULL
+                    `,
 				)
 				.all()
-				.map(r => r.song_name);
+				.map(row => row.song_name);
+
 			if (!songs.length) {
 				alertModal("No songs with missing information.");
 				return resolve();
+			} else {
+				alertModal(`${songs.length} song${songs.length != 1 ? "s" : ""} will be searched for information. You can close this window and the action will happen in the background.`);
 			}
-			alertModal(`${songs.length} song${songs.length !== 1 ? "s" : ""} will be searched for information. You can close this window and the action will happen in the background.`);
 		}
 
 		const proc = spawn(goBinary, songs);
-		const stmt = musicsDb.prepare(`
-            UPDATE songs
-            SET artist = ?, genre = ?, language = ?
-            WHERE song_name = ?
-        `);
 
 		let buffer = "";
 		proc.stdout.on("data", chunk => {
@@ -79,17 +80,41 @@ async function grabAndStoreSongInfo(songName) {
 				if (!line) continue;
 				try {
 					const meta = JSON.parse(line);
-					console.log("New song:", meta.artist, meta.genre, meta.language, meta.title);
-					stmt.run(meta.artist, meta.genre, meta.language, meta.title);
-				} catch (e) {
-					console.error("Bad JSON:", e);
+					musicsDb
+						.prepare(
+							`
+                                UPDATE songs
+                                SET
+                                    artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END,
+                                    genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END,
+                                    language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END
+                                WHERE song_name = ?
+                            `,
+						)
+						.run(meta.artist, meta.genre, meta.language, meta.title);
+
+					const cached = songNameCache.get(songId);
+
+					if (cached) {
+						if (cached.artist == null || cached.artist === "") cached.artist = meta.artist;
+						if (cached.genre == null || cached.genre === "") cached.genre = meta.genre;
+						if (cached.language == null || cached.language === "") cached.language = meta.language;
+
+						if (document.getElementById("customiseModal").style.display == "block" && songId == document.getElementById("customiseModal").dataset.songID) {
+							document.getElementById("customiseSongGenre").value = meta.genre;
+							document.getElementById("customiseSongArtist").value = meta.artist;
+							document.getElementById("customiseSongLanguage").value = meta.language;
+						}
+					}
+				} catch (error) {
+					console.error("Bad JSON:", error);
 				}
 			}
 		});
 
-		proc.stderr.on("data", e => console.error(e.toString()));
+		proc.stderr.on("data", error => console.error(error.toString()));
 		proc.on("error", reject);
-		proc.on("close", code => (code === 0 ? resolve() : reject(new Error(`Go exited ${code}`))));
+		proc.on("close", code => (code == 0 ? resolve() : reject(new Error(`Go exited ${code}`))));
 	});
 }
 

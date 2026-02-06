@@ -1,7 +1,6 @@
 ## Coming Soon App Features
 
--   Add artist genre language customisation in download modal
--   Use one-time fetcher function in places like downloading & customisation modal, use all fetch on startup
+-   playlist artist customisation
 
 -   The recommendations return the same thing if no song listen time
 -   When you swap from recommendations mode while songs are loading, you cant
@@ -37,6 +36,7 @@
 ### Planned Features
 
 -   Move playlists to cache
+-   initialiseSettingsDatabase has duplicate code
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
 -   Some songs silently fail loading (probably age-restricted)
 -   Have an option to update ytdlp internally

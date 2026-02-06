@@ -24,7 +24,8 @@ function differentiateMediaLinks(url) {
 
 async function searchInYoutube(songName, resultLimit = 1) {
 	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
-	return result.items[resultLimit - 1].url;
+	searchedSongsUrl = result.items[resultLimit - 1].url;
+	return searchedSongsUrl;
 }
 
 async function checkNameThumbnail(predetermined) {
@@ -414,6 +415,26 @@ async function processVideoLink(videoUrl) {
 		addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging("songAndThumbnail");
 		exampleDownloadColumn.appendChild(addToPlaylistBtn);
 
+		const songInfoInputsDiv = document.createElement("div");
+		songInfoInputsDiv.style = "display: flex; flex-direction: row;";
+		exampleDownloadColumn.appendChild(songInfoInputsDiv);
+
+		const artistInput = document.createElement("input");
+		const languageInput = document.createElement("input");
+		const genreInput = document.createElement("input");
+
+		artistInput.placeholder = "Artist name here, or leave it empty for auto-fetch.";
+		languageInput.placeholder = "Language here, or leave it empty for auto-fetch.";
+		genreInput.placeholder = "Genre here, or leave it empty for auto-fetch.";
+
+		artistInput.id = "artistInput";
+		languageInput.id = "languageInput";
+		genreInput.id = "genreInput";
+
+		songInfoInputsDiv.appendChild(artistInput);
+		songInfoInputsDiv.appendChild(languageInput);
+		songInfoInputsDiv.appendChild(genreInput);
+
 		document.getElementById("downloadModalText").innerHTML = "";
 
 		const finalDownloadButton = document.createElement("button");
@@ -692,10 +713,10 @@ async function actuallyDownloadTheSong() {
 		const songID = generateId();
 		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
 		const img = document.getElementById("thumbnailImage");
-		// TODO
-		const artist = null;
-		const genre = null;
-		const language = null;
+
+		const artist = document.getElementById("artistInput").value;
+		const genre = document.getElementById("genreInput").value;
+		const language = document.getElementById("languageInput").value;
 
 		const existingPlaylists = pendingPlaylistAddsWithIds.get("songAndThumbnail") || [];
 		pendingPlaylistAddsWithIds.delete("songAndThumbnail");
@@ -767,15 +788,15 @@ async function actuallyDownloadTheSong() {
 							song_id, song_name, song_url,
 							song_length, seconds_played, times_listened, stabilised,
 							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 					)
-					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", null, null, null);
+					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", artist, genre, language);
 
 				settingsDb
 					.prepare(
 						`UPDATE statistics SET
                         ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} =
-                        ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + 1`
+                        ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + 1`,
 					)
 					.run();
 
@@ -798,7 +819,7 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
-			grabAndStoreSongInfo();
+			grabAndStoreSongInfo(songID);
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
@@ -900,10 +921,10 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			}
 		}
 
-        // TODO: Get these from html
+		// TODO: Get these from html
 		const artists = [];
 		const genres = [];
-        const languages = [];
+		const languages = [];
 
 		for (let i = 0; i < totalSongs; i++) {
 			const songTitle = songTitles[i];
@@ -991,7 +1012,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 							song_id, song_name, song_url,
 							song_length, seconds_played, times_listened, stabilised,
 							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 						)
 						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", null, null, null);
 
@@ -1028,7 +1049,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			.prepare(
 				`UPDATE statistics SET
                 ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} =
-                ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${totalSongs}`
+                ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${totalSongs}`,
 			)
 			.run();
 
@@ -1042,7 +1063,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 						`
 						INSERT INTO playlists (id, name, songs, thumbnail_extension)
 						VALUES (?, ?, ?, ?)
-					`
+					`,
 					)
 					.run(playlistID, playlistName, songsJson, "jpg");
 			} catch (err) {
