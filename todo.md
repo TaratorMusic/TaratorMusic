@@ -1,6 +1,6 @@
 ## Coming Soon App Features
 
--   Add artist genre language customsation in download modal
+-   Add artist genre language customisation in download modal
 -   Use one-time fetcher function in places like downloading & customisation modal, use all fetch on startup
 
 -   The recommendations return the same thing if no song listen time
@@ -23,6 +23,7 @@
 -   Ctrl + F breaks stuff while another modal is already on
 
 -   Compile gobuild & cbuild for windows and mac binaries too (Check github actions)
+-   Update yt-dlp for windows and mac also. Or, even better, while compiling take yt-dlp from the source. Also, if the dev doesnt have it there should be a command for it.
 -   Update readme with the new features and just jump to 1.8.0 after all of these
 
 ### Big updates remaining:
