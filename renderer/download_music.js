@@ -565,6 +565,26 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 				songAndThumbnail.dataset.link = videoLinks[i - 1];
 				songAndThumbnail.dataset.thumbnail = playlistThumbnails[i];
 			}
+
+			const songInfoInputsDiv = document.createElement("div");
+			songInfoInputsDiv.style = "display: flex; flex-direction: row;";
+			exampleDownloadColumn.appendChild(songInfoInputsDiv);
+
+			const artistInput = document.createElement("input");
+			const languageInput = document.createElement("input");
+			const genreInput = document.createElement("input");
+
+			artistInput.placeholder = "Artist name here, or leave it empty for auto-fetch.";
+			languageInput.placeholder = "Language here, or leave it empty for auto-fetch.";
+			genreInput.placeholder = "Genre here, or leave it empty for auto-fetch.";
+
+			artistInput.id = `artistInput${i}`;
+			languageInput.id = `languageInput${i}`;
+			genreInput.id = `genreInput${i}`;
+
+			songInfoInputsDiv.appendChild(artistInput);
+			songInfoInputsDiv.appendChild(languageInput);
+			songInfoInputsDiv.appendChild(genreInput);
 		}
 		thumbnailDiv.alt = "";
 		songAndThumbnail.appendChild(thumbnailDiv);
@@ -921,15 +941,18 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			}
 		}
 
-		// TODO: Get these from html
-		const artists = [];
-		const genres = [];
-		const languages = [];
+		let artists = [];
+		let genres = [];
+		let languages = [];
 
 		for (let i = 0; i < totalSongs; i++) {
 			const songTitle = songTitles[i];
 			const songLink = songLinks[i];
 			const songId = songIds[i];
+
+			artists[i] = document.getElementById(`artistInput${i + 1}`).value;
+			genres[i] = document.getElementById(`genreInput${i + 1}`).value;
+			languages[i] = document.getElementById(`languageInput${i + 1}`).value;
 
 			if (!songTitle || !songLink || !songId) {
 				console.log(`Skipping index ${i}: missing title/link/id`);
@@ -1014,7 +1037,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 						)
-						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", null, null, null);
+						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", genres[i], artists[i], languages[i]);
 
 					songNameCache.set(songId, {
 						song_name: songTitle,
@@ -1073,7 +1096,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
 		await commitStagedPlaylistAdds();
-		grabAndStoreSongInfo();
+		grabAndStoreSongInfo(songIds);
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 	}

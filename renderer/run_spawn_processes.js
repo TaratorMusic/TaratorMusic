@@ -37,19 +37,26 @@ async function grabAndStoreSongInfo(songId) {
 	if (songId == "html") songId = document.getElementById("customiseModal").dataset.songID;
 
 	return new Promise((resolve, reject) => {
-		const goBinary = path.join(backendFolder, "musicbrainz_fetch");
-		let songs;
+		let songs = [];
 
 		if (songId) {
-			const row = musicsDb.prepare(`SELECT song_name FROM songs WHERE song_id = ?`).get(songId);
-			if (!row) {
-				alertModal("Song not found in database.");
-				return resolve();
+			if (Array.isArray(songId)) {
+				for (let i = 0; i < songId.length; i++) {
+					songs[i] = getSongNameById(songId[i]);
+				}
 			} else {
-				alertModal("Checking for song info... You can close this window.");
+				const row = musicsDb.prepare(`SELECT song_name FROM songs WHERE song_id = ?`).get(songId);
+				if (!row) {
+					alertModal("Song not found in database.");
+					return resolve();
+				} else {
+					songs = [row.song_name];
+				}
 			}
-			songs = [row.song_name];
+
+			alertModal("Checking for song info... You can close this window.");
 		} else {
+			// This part checks all songs (no songId provided)
 			songs = musicsDb
 				.prepare(
 					`
@@ -68,18 +75,22 @@ async function grabAndStoreSongInfo(songId) {
 			}
 		}
 
+		const goBinary = path.join(backendFolder, "musicbrainz_fetch");
 		const proc = spawn(goBinary, songs);
 
 		let buffer = "";
+		let count = 0;
 		proc.stdout.on("data", chunk => {
 			buffer += chunk.toString();
-			let idx;
-			while ((idx = buffer.indexOf("\n")) >= 0) {
-				const line = buffer.slice(0, idx).trim();
-				buffer = buffer.slice(idx + 1);
+			for (let i = buffer.indexOf("\n"); i >= 0; i = buffer.indexOf("\n")) {
+				const line = buffer.slice(0, i).trim();
+				buffer = buffer.slice(i + 1);
 				if (!line) continue;
+
 				try {
 					const meta = JSON.parse(line);
+					const songIdUsed = Array.isArray(songId) ? songId[count] : songId;
+
 					musicsDb
 						.prepare(
 							`
@@ -88,10 +99,12 @@ async function grabAndStoreSongInfo(songId) {
                                     artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END,
                                     genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END,
                                     language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END
-                                WHERE song_name = ?
+                                WHERE song_id = ?
                             `,
 						)
-						.run(meta.artist, meta.genre, meta.language, meta.title);
+						.run(meta.artist, meta.genre, meta.language, songIdUsed);
+
+					console.log(meta.artist, meta.genre, meta.language, songIdUsed);
 
 					const cached = songNameCache.get(songId);
 
@@ -106,6 +119,8 @@ async function grabAndStoreSongInfo(songId) {
 							document.getElementById("customiseSongLanguage").value = meta.language;
 						}
 					}
+
+					count++;
 				} catch (error) {
 					console.error("Bad JSON:", error);
 				}

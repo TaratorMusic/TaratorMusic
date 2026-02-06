@@ -1,28 +1,32 @@
 ## Coming Soon App Features
 
--   playlist artist customisation
+### bugs
 
--   The recommendations return the same thing if no song listen time
--   When you swap from recommendations mode while songs are loading, you cant
--   getRecommendations backup songs if there is no data
 -   Border radius difference between my music and playlist searchbars
--   Bug: searching using song characteristics doesn't work for new songs, needs app restart
-
--   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
--   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
 -   does playlist thumbnail changing work?
--   Discord status keeps showing "Paused"
 -   Playing playlist songs are very broken
+-   Discord status keeps showing "Paused"
 -   Stream seeking not working
 -   Play previous song without shuffle, bugged?
 -   Do long songs have a skipping problem? (5secs)
--   Create recommendations cache so it fetches everything once
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
--   to stats db: last time recommendations db is refreshed (refresh it each month)
+-   to stats db: last time recommendations db is refreshed AND last time ytdlp updated
 -   Ctrl + F breaks stuff while another modal is already on
-
 -   Compile gobuild & cbuild for windows and mac binaries too (Check github actions)
--   Update yt-dlp for windows and mac also. Or, even better, while compiling take yt-dlp from the source. Also, if the dev doesnt have it there should be a command for it.
+-   While compiling take yt-dlp from the source. Also, if the dev doesnt have it there should be a command for it.
+
+### recommendations
+
+-   The recommendations return the same thing if no song listen time
+-   When you swap from recommendations mode while songs are loading, you cant --> If mode is different: stop
+-   create getRecommendations backup songs if there is no data
+-   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
+-   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
+-   Create recommendations cache so it fetches everything once
+-   refresh recommendations table each month
+
+
+
 -   Update readme with the new features and just jump to 1.8.0 after all of these
 
 ### Big updates remaining:

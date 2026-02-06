@@ -172,7 +172,7 @@ function initialiseSettingsDatabase() {
                 playlists_formed INTEGER,
                 songs_downloaded_youtube INTEGER,
                 songs_downloaded_spotify INTEGER
-            )`
+            )`,
 			)
 			.run();
 
@@ -208,7 +208,7 @@ function initialiseSettingsDatabase() {
 			settingsDb
 				.prepare(
 					`INSERT INTO statistics (total_time_spent, app_install_date, playlists_formed, songs_downloaded_youtube, songs_downloaded_spotify)
-             VALUES (0, ?, 0, 0, 0)`
+             VALUES (0, ?, 0, 0, 0)`,
 				)
 				.run(Math.floor(Date.now() / 1000));
 			statsRow = settingsDb.prepare("SELECT * FROM statistics LIMIT 1").get();
@@ -361,7 +361,7 @@ function initialiseMusicsDatabase() {
                 artist_fan_amount INTEGER,
                 similar_artists_array TEXT,
                 deezer_songs_array TEXT
-            )`
+            )`,
 		)
 		.run();
 
@@ -375,7 +375,7 @@ function initialiseMusicsDatabase() {
                 artist TEXT,
                 genre TEXT,
                 language TEXT
-            )`
+            )`,
 		)
 		.run();
 
@@ -386,7 +386,7 @@ function initialiseMusicsDatabase() {
                 start_time INTEGER,
                 end_time INTEGER
                 playlist TEXT
-            )`
+            )`,
 		)
 		.run();
 
@@ -395,7 +395,7 @@ function initialiseMusicsDatabase() {
 			`CREATE TABLE IF NOT EXISTS not_interested (
                 song_id TEXT,
                 song_name TEXT
-            )`
+            )`,
 		)
 		.run();
 
@@ -403,7 +403,7 @@ function initialiseMusicsDatabase() {
 		.prepare(
 			`CREATE TABLE IF NOT EXISTS songs (
                 ${requiredColumns.map(column => `${column.name} ${column.type}`).join(", ")}
-            )`
+            )`,
 		)
 		.run();
 
@@ -455,7 +455,7 @@ function initialisePlaylistsDatabase() {
 				songs TEXT,
 				thumbnail_extension TEXT
 			)
-		`
+		`,
 			)
 			.run();
 
@@ -494,7 +494,7 @@ setInterval(() => {
 			`
                 UPDATE statistics
                 SET total_time_spent = total_time_spent + 60
-            `
+            `,
 		)
 		.run();
 }, 60000);
@@ -734,7 +734,7 @@ function searchYoutubeInMusics() {
 							`
                                 INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language)
                                 VALUES (?, ?, ?, ?, ?, ?, ?)
-                            `
+                            `,
 						)
 						.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
 
@@ -807,7 +807,7 @@ function renderMusics() {
 
 				const compare = fieldValue => {
 					if (!fieldValue) return false;
-					const value = fieldValue.toLowerCase();
+					const value = String(fieldValue).toLowerCase();
 					return exactMatch ? value == searchValue : value.includes(searchValue);
 				};
 
@@ -887,7 +887,7 @@ function refreshRecommendations() {
 						`
                             INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language)
                             VALUES (?, ?, ?, ?, ?, ?, ?)
-                        `
+                        `,
 					)
 					.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
 
@@ -1425,7 +1425,7 @@ async function saveEditedSong() {
                     SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ?
                     WHERE song_id = ?
                     RETURNING song_name, song_extension, song_length, song_url, thumbnail_extension, genre, artist, language
-                `
+                `,
 			)
 			.get(newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID);
 
@@ -1437,7 +1437,7 @@ async function saveEditedSong() {
                 UPDATE streams 
                 SET song_name = ?, genre = ?, artist = ?, language = ? 
                 WHERE song_id = ?
-            `
+            `,
 			)
 			.run(newNameInput, songsGenre, songsArtist, songsLanguage, songID);
 
@@ -1546,7 +1546,7 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 		},
-		true
+		true,
 	);
 });
 
@@ -1623,7 +1623,7 @@ function setupLazyBackgrounds() {
 			},
 			{
 				rootMargin: margin,
-			}
+			},
 		);
 
 		bgElements.forEach(el => observer.observe(el));
