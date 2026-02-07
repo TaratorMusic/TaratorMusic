@@ -2,7 +2,6 @@
 
 ### bugs
 
--   Border radius difference between my music and playlist searchbars
 -   does playlist thumbnail changing work?
 -   Playing playlist songs are very broken
 -   Stream seeking not working
