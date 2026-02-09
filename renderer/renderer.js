@@ -59,10 +59,10 @@ let playingSongsID = "";
 let currentPlaylist = null;
 let currentPlaylistElement = null;
 let playlistPlayedSongs = [];
+let playedSongs = [];
 let isShuffleActive = false;
 let isAutoplayActive = false;
 let isLooping = false;
-let playedSongs = [];
 let newPlaylistID = null;
 let disableKeyPresses = 0;
 let songStartTime = null;
@@ -1050,18 +1050,16 @@ async function playMusic(songId, playlistId) {
 
 		playing = true;
 
-		if (isShuffleActive) {
-			if (playlistId) {
-				if (newPlaylistID != playlistId.id) {
-					newPlaylistID = playlistId.id;
-					playlistPlayedSongs.splice(0, 9999);
-				}
-				playlistPlayedSongs.unshift(playingSongsID);
-				if (playlistPlayedSongs.length > 9999) playlistPlayedSongs.pop();
-			} else {
-				playedSongs.unshift(playingSongsID);
-				if (playedSongs.length > 9999) playedSongs.pop();
+		if (playlistId) {
+			if (newPlaylistID != playlistId.id) {
+				newPlaylistID = playlistId.id;
+				playlistPlayedSongs.splice(0, 9999);
 			}
+			playlistPlayedSongs.unshift(playingSongsID);
+			if (playlistPlayedSongs.length > 9999) playlistPlayedSongs.pop();
+		} else {
+			playedSongs.unshift(playingSongsID);
+			if (playedSongs.length > 9999) playedSongs.pop();
 		}
 	} catch (error) {
 		console.log("Error:", error);
@@ -1121,8 +1119,8 @@ async function playPreviousSong() {
 			}
 		} else {
 			const currentFileName = getSongNameById(playingSongsID);
+			const currentIndex = sortedSongIds.indexOf(playingSongsID);
 
-			const currentIndex = sortedSongIds.indexOf(currentFileName);
 			if (currentIndex == -1) return;
 
 			const previousIndex = currentIndex > 0 ? currentIndex - 1 : sortedSongIds.length - 1;
