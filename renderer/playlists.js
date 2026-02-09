@@ -58,7 +58,7 @@ function displayPlaylists(playlists) {
 		playlistElement.className = "playlist";
 		playlistElement.setAttribute("data-playlist-id", playlist.id);
 
-		const thumbnailPath = path.join(thumbnailFolder, `${playlist.id}.${playlist.thumbnail_extension}`);
+		const thumbnailPath = path.join(thumbnailFolder, `${playlist.id}playlist.${playlist.thumbnail_extension}`);
 		let thumbnailSrc = "";
 
 		if (playlist.id == "Favorites") {
@@ -137,7 +137,6 @@ function displayPlaylists(playlists) {
 
 async function saveNewPlaylist() {
 	const name = document.getElementById("playlistNameInput").value.trim();
-
 	if (!name) return await alertModal("Playlist name required.");
 
 	const id = generateId();
@@ -146,14 +145,14 @@ async function saveNewPlaylist() {
 	let srcPath, ext;
 
 	if (fileInput) {
-		srcPath = fileInput.path;
+		srcPath = `${fileInput.path}playlist`;
 		ext = path.extname(fileInput.name).slice(1);
 	} else {
 		srcPath = path.join(appThumbnailFolder, "placeholder.jpg");
 		ext = path.extname(srcPath).slice(1);
 	}
 
-	const dest = path.join(thumbnailFolder, `${id}.${ext}`);
+	const dest = path.join(thumbnailFolder, `${id}playlist.${ext}`);
 	const existing = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get(name);
 
 	if (existing) {
@@ -166,9 +165,7 @@ async function saveNewPlaylist() {
 
 	closeModal();
 
-	if (document.getElementById("playlists-content").style.display == "grid") 
-		document.getElementById("playlists").click();
-	
+	if (document.getElementById("playlists-content").style.display == "grid") document.getElementById("playlists").click();
 }
 
 async function saveEditedPlaylist() {
@@ -184,13 +181,11 @@ async function saveEditedPlaylist() {
 		const mimeMatch = newThumbnail.match(/^data:image\/(\w+);base64,/);
 		if (mimeMatch) {
 			newThumbnailExtension = mimeMatch[1];
-			if (newThumbnailExtension === "jpeg") {
-				newThumbnailExtension = "jpg";
-			}
+			if (newThumbnailExtension == "jpeg") newThumbnailExtension = "jpg";
 		}
 	}
 
-	let thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${playlistThumbnailExtension}`);
+	let thumbnailPath = path.join(thumbnailFolder, `${playlistID}playlist.${newThumbnailExtension}`);
 	const writeOrRenameThumbnailPromise = new Promise((resolve, reject) => {
 		if (newThumbnail.startsWith("data:image")) {
 			const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
@@ -330,7 +325,7 @@ async function deletePlaylist() {
 	const playlistName = document.getElementById("editInvisibleName").value;
 	const playlistID = document.getElementById("editInvisibleId").value;
 	const playlistThumbnailExtension = document.getElementById("editInvisibleExtension").value;
-	const thumbnailPath = path.join(thumbnailFolder, playlistID + "." + playlistThumbnailExtension);
+	const thumbnailPath = path.join(thumbnailFolder, playlistID + "playlist." + playlistThumbnailExtension);
 
 	fs.unlink(thumbnailPath, err => {
 		if (err) {

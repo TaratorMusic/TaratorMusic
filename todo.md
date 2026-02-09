@@ -2,11 +2,9 @@
 
 ### bugs
 
--   does playlist thumbnail changing work?
 -   Playing playlist songs are very broken
 -   Stream seeking not working
 -   Play previous song without shuffle, bugged?
--   Do long songs have a skipping problem? (5secs)
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
 -   to stats db: last time recommendations db is refreshed AND last time ytdlp updated
 -   Ctrl + F breaks stuff while another modal is already on

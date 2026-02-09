@@ -1516,6 +1516,24 @@ async function removeSong(fileToDelete) {
 	if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 }
 
+async function updateThumbnailImage(event, mode) {
+	try {
+		const file = event.target.files[0];
+		const reader = new FileReader();
+		reader.onload = e => {
+			if (typeof mode == "number") {
+				const id = mode == 1 ? "customiseImage" : mode == 2 ? "editPlaylistThumbnail" : mode == 3 ? "thumbnailImage" : null;
+				if (id) document.getElementById(id).src = e.target.result;
+			} else if (mode instanceof HTMLElement) {
+				mode.style.backgroundImage = `url(${e.target.result})`;
+			}
+		};
+		reader.readAsDataURL(file);
+	} catch (error) {
+		await alertModal("Error changing thumbnail:", error);
+	}
+}
+
 function searchSong() {
 	try {
 		const stmt = musicsDb.prepare(`

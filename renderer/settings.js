@@ -122,24 +122,6 @@ function stabiliseVolumeToggleTogglerFunction() {
 	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb, "settings");
 }
 
-async function updateThumbnailImage(event, mode) {
-	const file = event.target.files[0];
-	if (file && file.type == "image/jpeg") {
-		const reader = new FileReader();
-		reader.onload = e => {
-			if (typeof mode == "number") {
-				const id = mode == 1 ? "customiseImage" : mode == 2 ? "editPlaylistThumbnail" : mode == 3 ? "thumbnailImage" : null;
-				if (id) document.getElementById(id).src = e.target.result;
-			} else if (mode instanceof HTMLElement) {
-				mode.style.backgroundImage = `url(${e.target.result})`;
-			}
-		};
-		reader.readAsDataURL(file);
-	} else {
-		await alertModal("Please select a valid JPG image.");
-	}
-}
-
 async function saveRecommendationWeights() {
 	let total = 0;
 

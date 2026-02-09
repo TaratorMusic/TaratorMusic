@@ -58,16 +58,29 @@ func main() {
 
 	thumbMap := make(map[string]string)
 	filepath.WalkDir(thumbnailFolder, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil {
 			return nil
 		}
-		ext := filepath.Ext(d.Name())
-		id := strings.TrimSuffix(d.Name(), ext)
+
+		if d.IsDir() {
+			return nil
+		}
+
+		name := d.Name()
+
+		if strings.Contains(strings.ToLower(name), "playlist") {
+			return nil
+		}
+
+		ext := filepath.Ext(name)
+		id := strings.TrimSuffix(name, ext)
+
 		if _, ok := musicMap[id]; ok {
 			thumbMap[id] = ext
 		} else {
-			os.Remove(path)
+			_ = os.Remove(path) 
 		}
+
 		return nil
 	})
 
