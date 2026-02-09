@@ -264,7 +264,7 @@ function initialiseSettingsDatabase() {
 		remembershuffle = settingsRow.remembershuffle;
 		rememberloop = settingsRow.rememberloop;
 		rememberspeed = settingsRow.rememberspeed;
-		volume = settingsRow.volume / 100;
+		volume = settingsRow.volume / 100 / settingsRow.dividevolume;
 		dividevolume = settingsRow.dividevolume;
 		displayPage = settingsRow.displayPage;
 		musicMode = settingsRow.musicMode;
@@ -314,7 +314,7 @@ function initialiseSettingsDatabase() {
 		remembershuffle && toggleShuffle();
 		rememberloop && toggleLoop();
 
-		volumeControl.value = volume * 100;
+		volumeControl.value = volume * 100 * dividevolume;
 	} catch (err) {
 		console.log("Database error:", err.message);
 		return;

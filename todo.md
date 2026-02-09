@@ -39,6 +39,8 @@
 
 -   Move playlists to cache
 -   initialiseSettingsDatabase has duplicate code
+-   Add auto-update to ytdlp, using the command execution
+-   Add search queries like || && ! ""
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
 -   Some songs silently fail loading (probably age-restricted)
 -   Have an option to update ytdlp internally
