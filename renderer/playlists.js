@@ -1,25 +1,38 @@
-function getPlaylists() {
+function getPlaylists(displaying) {
 	try {
 		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
 
-		if (!playlists || playlists.length == 0) {
+		playlistsMap.clear();
+
+		if (!playlists || playlists.length === 0) {
 			console.log("No playlists found in the database.");
-			displayPlaylists([]);
+			if (displaying) displayPlaylists([]);
 			return;
 		}
 
-		const playlistsWithParsedSongs = playlists.map(playlist => {
+		for (const playlist of playlists) {
 			let parsedSongs = [];
-			if (playlist.songs) {
-				parsedSongs = JSON.parse(playlist.songs);
-			}
-			return { ...playlist, songs: parsedSongs };
-		});
 
-		displayPlaylists(playlistsWithParsedSongs);
+			if (playlist.songs) {
+				try {
+					parsedSongs = JSON.parse(playlist.songs);
+				} catch (e) {
+					console.warn(`Invalid songs JSON for playlist ${playlist.id}`);
+				}
+			}
+
+			playlistsMap.set(playlist.id, {
+				id: playlist.id,
+				name: playlist.name,
+				songs: parsedSongs,
+				thumbnail_extension: playlist.thumbnail_extension,
+			});
+		}
+
+		if (displaying) displayPlaylists([...playlistsMap.values()]);
 	} catch (err) {
 		console.log("Error fetching playlists from the database:", err);
-		displayPlaylists([]);
+		if (displaying) displayPlaylists([]);
 	}
 }
 
@@ -313,7 +326,7 @@ function addToSelectedPlaylists(songName) {
 		});
 		closeModal();
 
-		if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists();
+		if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
 	} catch (err) {
 		console.log("Error updating playlists in the database:", err);
 	}

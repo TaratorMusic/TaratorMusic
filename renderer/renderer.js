@@ -56,8 +56,9 @@ let audioPlayer;
 let player = null;
 
 let playingSongsID = "";
-let currentPlaylist = null;
-let currentPlaylistElement = null;
+let currentPlaylist = null; // Currently playing playlist's ID
+let currentPlaylistElement = null; // The order of the currently playing song in the playlist its in
+let playlistsMap = new Map(); // Full playlists cache
 let playlistPlayedSongs = [];
 let playedSongs = [];
 let isShuffleActive = false;
@@ -1068,21 +1069,11 @@ async function playMusic(songId, playlistId) {
 
 async function playPlaylist(playlist, startingIndex = 0) {
 	if (!playlist.songs || playlist.songs.length == 0) {
-		console.log(`Playlist ${playlist.name} is empty.`);
-		return;
+		return console.log(`Playlist ${playlist.name} is empty.`);
 	}
 
-	for (let i = startingIndex; i < playlist.songs.length; i++) {
-		currentPlaylistElement = i;
-		await playMusic(playlist.songs[i], playlist);
-		if (!isAutoplayActive) {
-			break;
-		}
-		if (isShuffleActive) {
-			await playNextSong();
-			break;
-		}
-	}
+	currentPlaylistElement = startingIndex;
+	await playMusic(playlist.songs[startingIndex], playlist);
 }
 
 async function playPreviousSong() {
@@ -1146,6 +1137,7 @@ async function playNextSong() {
 		if (currentPlaylist) {
 			const validSongs = currentPlaylist.songs.filter(id => !notInterestedIds.includes(id));
 			const currentSongId = currentPlaylist.songs[currentPlaylistElement];
+
 			if (validSongs.length == 0) return;
 			if (validSongs.length == 1) {
 				nextSongId = validSongs[0];
@@ -1185,7 +1177,7 @@ async function playNextSong() {
 	}
 
 	if (nextSongId) {
-		playMusic(nextSongId, !!currentPlaylist);
+		playMusic(nextSongId, currentPlaylist);
 	}
 }
 
@@ -1682,7 +1674,7 @@ function bottomRightFunctions(input) {
 			songs.push(playingSongsID);
 			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(songs), "Favorites");
 
-			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists();
+			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
 			addToFavoritesButtonBottomRight.style.color = "red";
 		}
 	} else if (input == "customise") {
@@ -1871,4 +1863,5 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
+	getPlaylists(false);
 });
