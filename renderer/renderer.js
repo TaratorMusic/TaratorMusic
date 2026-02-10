@@ -172,7 +172,9 @@ function initialiseSettingsDatabase() {
                 app_install_date INTEGER,
                 playlists_formed INTEGER,
                 songs_downloaded_youtube INTEGER,
-                songs_downloaded_spotify INTEGER
+                songs_downloaded_spotify INTEGER,
+                ytdlp_last_update_date INTEGER,
+                recommendations_last_refresh INTEGER
             )`,
 			)
 			.run();
@@ -185,6 +187,8 @@ function initialiseSettingsDatabase() {
 			{ name: "playlists_formed", type: "INTEGER", defaultVal: 0 },
 			{ name: "songs_downloaded_youtube", type: "INTEGER", defaultVal: 0 },
 			{ name: "songs_downloaded_spotify", type: "INTEGER", defaultVal: 0 },
+			{ name: "ytdlp_last_update_date", type: "INTEGER", defaultVal: Date.now() },
+			{ name: "recommendations_last_refresh", type: "INTEGER", defaultVal: 0 },
 		];
 
 		for (const col of requiredStatsColumns) {

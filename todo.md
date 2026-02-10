@@ -3,7 +3,6 @@
 ### bugs
 
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
--   to stats db: last time recommendations db is refreshed AND last time ytdlp updated
 -   Ctrl + F breaks stuff while another modal is already on
 -   Compile gobuild & cbuild for windows and mac binaries too (Check github actions)
 -   While compiling take yt-dlp from the source. Also, if the dev doesnt have it there should be a command for it.
@@ -35,11 +34,10 @@
 -   download streamed songs gives an error
 -   Stream seeking not working
 -   initialiseSettingsDatabase has duplicate code
--   Add auto-update to ytdlp, using the command execution
+-   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Add search queries like || && ! ""
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
 -   Some songs silently fail loading (probably age-restricted)
--   Have an option to update ytdlp internally
 -   Customisable queue list with drag and drop (similar to youtube)
 -   Add a window, where in the left side you can see your songs and you can filter them via a search bar and sort them, on the right side there will be the playlists, and the users will be able to drag and drop all the songs to the playlists they desire.
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
