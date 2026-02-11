@@ -128,7 +128,12 @@ async function fetchRecommendationsData(input) {
 	const recommendationRows = musicsDb.prepare("SELECT artist_name FROM recommendations").all();
 	const existingArtists = new Set(recommendationRows.map(row => row.artist_name.toLowerCase()));
 
-	const artists = input ?? musicsDb.prepare("SELECT DISTINCT artist FROM songs").all().map(row => row.artist);
+	const artists =
+		input ??
+		musicsDb
+			.prepare("SELECT DISTINCT artist FROM songs")
+			.all()
+			.map(row => row.artist);
 	const artistsToProcess = artists.filter(artist => artist && !existingArtists.has(artist.toLowerCase()));
 
 	console.log(`Processing ${artistsToProcess.length} new artists (${existingArtists.size} already in db)`);
@@ -212,7 +217,10 @@ async function fetchRecommendationsData(input) {
             (artist_id, artist_name, artist_fan_amount, similar_artists_array, deezer_songs_array) 
             VALUES (?, ?, ?, ?, ?)`);
 		musicsDb.transaction(artists => {
-			for (const a of artists) insertStmt.run(a.artist_id, a.artist_name, a.artist_fan_amount, JSON.stringify(a.similar_artists_array), JSON.stringify(a.deezer_songs_array));
+			for (const artist of artists) {
+				insertStmt.run(artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array));
+				console.log("Inserted: ", artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array));
+			}
 		})(artistsData);
 
 		console.log(`Saved ${artistsData.length} artists to recommendations table`);

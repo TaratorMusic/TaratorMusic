@@ -1,15 +1,15 @@
 ## Coming Soon App Features
 
+-   Test if fetch recommendation data works on downloads
+
 ### recommendations
 
 -   The recommendations return the same thing if no song listen time
--   When you swap from recommendations mode while songs are loading, you cant --> If mode is different: stop
+-   When you swap from recommendations mode while songs are loading, you cant --> If mode is different: stop (return)
 -   create getRecommendations backup songs if there is no data
--   After each download - song play, check if song has a new artist, if yes grab its similar artists (run getRecommendations time to time)
 -   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
 -   Create recommendations cache so it fetches everything once
--   refresh recommendations table each month
-
+-   refresh recommendations table each month (Needs to re-do all rows)
 
 
 -   Update readme with the new features and just jump to 1.8.0 after all of these
@@ -60,7 +60,6 @@
 -   Redesign main menu- Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
 -   Rework the download modal and three-way modal
 
--   Rewrite downloading sections in Go
 -   Customise Discord Rich Presence box in the settings
 -   Edit app font
 -   If currently listening to a music outside a playlist, enter a playlist that the song is in without changing the song / its progress

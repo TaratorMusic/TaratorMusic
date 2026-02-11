@@ -743,7 +743,7 @@ async function actuallyDownloadTheSong() {
 		pendingPlaylistAddsWithIds.set(songID, existingPlaylists);
 
 		if (secondInput.length > 100) {
-			document.getElementById("downloadModalText").innerText = "Invalid filename. The file must be shorter than 100 characters.";
+			document.getElementById("downloadModalText").innerText = "Invalid song name. The name must be shorter than 100 characters.";
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
 		}
@@ -754,6 +754,9 @@ async function actuallyDownloadTheSong() {
 			await downloadAudio(firstInput, outputFilePath, progressMsg => {
 				document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
 			});
+
+			document.getElementById("downloadModalText").innerText = `Fetching recommendations for ${secondInput}...`;
+			await fetchRecommendationsData(artist);
 
 			if (stabiliseVolumeToggle == 1) {
 				try {
@@ -974,6 +977,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					throw error;
 				}
 			}
+
+			document.getElementById("downloadModalText").innerText = `Fetching recommendations for ${songTitle}...`;
+			await fetchRecommendationsData(artists[i]);
 
 			if (stabiliseVolumeToggle == 1) {
 				try {
