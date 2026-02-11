@@ -2,11 +2,11 @@
 
 -   Test if fetch recommendation data works on downloads
 -   Random playlist function main menu has disappeared idk where
+-   Check if swap while recommendations are loading thing is fixed.
 
 ### recommendations
 
 -   The recommendations return the same thing if no song listen time
--   When you swap from recommendations mode while songs are loading, you cant --> If mode is different: stop (return)
 -   create getRecommendations backup songs if there is no data
 -   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
 -   Create recommendations cache so it fetches everything once

@@ -762,7 +762,11 @@ function searchYoutubeInMusics() {
 					const musicElement = createMusicElement(fullSong);
 					if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 					musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
-					container.appendChild(musicElement);
+					if (musicMode == "stream") {
+						container.appendChild(musicElement);
+					} else {
+						return;
+					}
 					setupLazyBackgrounds();
 				} catch (error) {
 					console.log(error);
@@ -847,7 +851,12 @@ function renderMusics() {
 				const musicElement = createMusicElement(song);
 				if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 				musicElement.addEventListener("click", () => playMusic(song.id, null));
-				container.appendChild(musicElement);
+
+				if (musicMode == "discover") {
+					container.appendChild(musicElement);
+				} else {
+					return;
+				}
 			}
 
 			setupLazyBackgrounds();
@@ -919,7 +928,13 @@ function refreshRecommendations() {
 				const musicElement = createMusicElement(fullSong);
 				if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 				musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
-				container.appendChild(musicElement);
+
+				if (musicMode == "discover") {
+					container.appendChild(musicElement);
+				} else {
+					return;
+				}
+
 				setupLazyBackgrounds();
 
 				count++;
