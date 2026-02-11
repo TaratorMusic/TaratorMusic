@@ -1,9 +1,5 @@
 ## Coming Soon App Features
 
-### bugs
-
--   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
-
 ### recommendations
 
 -   The recommendations return the same thing if no song listen time

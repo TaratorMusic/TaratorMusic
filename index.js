@@ -3,38 +3,41 @@ const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 
-let appDir;
-let platformBinaries = [];
+function copyBinariesOutside() {
+	let appDir;
+	let platformBinaries = [];
 
-if (process.env.APPIMAGE) {
-	appDir = path.dirname(process.env.APPIMAGE);
-	platformBinaries = ["yt-dlp_linux"];
-} else if (process.platform == "darwin") {
-	appDir = path.resolve(__dirname, "..");
-	platformBinaries = ["yt-dlp_macos"];
-} else if (process.platform == "win32") {
-	appDir = __dirname;
-	platformBinaries = ["yt-dlp.exe"];
-} else if (process.platform == "linux") {
-	appDir = __dirname;
-	platformBinaries = ["yt-dlp_linux"];
+	if (process.env.APPIMAGE) {
+		appDir = path.dirname(process.env.APPIMAGE);
+		platformBinaries = ["yt-dlp_linux"];
+	} else if (process.platform == "darwin") {
+		appDir = path.resolve(__dirname, "..");
+		platformBinaries = ["yt-dlp_macos"];
+	} else if (process.platform == "win32") {
+		appDir = __dirname;
+		platformBinaries = ["yt-dlp.exe"];
+	} else if (process.platform == "linux") {
+		appDir = __dirname;
+		platformBinaries = ["yt-dlp_linux"];
+	}
+
+	const binFolder = path.join(appDir, "bin");
+	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
+
+	const backendBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", "ytdlp_fetch", ...platformBinaries];
+
+	backendBinaries.forEach(bin => {
+		const targetPath = path.join(binFolder, bin);
+		if (!fs.existsSync(targetPath)) {
+			const sourceBinary = path.join(__dirname, "bin", bin);
+			if (!fs.existsSync(sourceBinary)) throw new Error(`Binary not found at ${sourceBinary}`);
+			fs.copyFileSync(sourceBinary, targetPath);
+			if (process.platform !== "win32") fs.chmodSync(targetPath, 0o755);
+		}
+	});
 }
 
-const binFolder = path.join(appDir, "bin");
-if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
-
-const backendBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", ...platformBinaries];
-
-backendBinaries.forEach(bin => {
-	const targetPath = path.join(binFolder, bin);
-	if (!fs.existsSync(targetPath)) {
-		const sourceBinary = path.join(__dirname, "bin", bin);
-		if (!fs.existsSync(sourceBinary)) throw new Error(`Binary not found at ${sourceBinary}`);
-		fs.copyFileSync(sourceBinary, targetPath);
-		if (process.platform !== "win32") fs.chmodSync(targetPath, 0o755);
-	}
-});
-
+copyBinariesOutside();
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
 
@@ -86,6 +89,10 @@ function createWindow() {
 	});
 
 	mainWindow.loadFile("renderer/index.html");
+
+	ipcMain.on("copy-binaries", () => {
+		copyBinariesOutside();
+	});
 
 	ipcMain.handle("get-app-version", () => app.getVersion());
 

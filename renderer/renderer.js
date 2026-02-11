@@ -329,7 +329,11 @@ function initialiseSettingsDatabase() {
 	document.getElementById("main-menu").click();
 
 	ipcRenderer.invoke("get-app-version").then(async version => {
-		// if (version != current_version) await loadNewPage(`legacy`, current_version);
+		if (version != current_version) {
+			ipcRenderer.send("copy-binaries");
+			alertModal("Version change detected. Binaries being rebuilt...");
+		}
+
 		current_version = version;
 		updateDatabase("current_version", current_version, settingsDb, "settings");
 		document.getElementById("version").textContent = `Version: ${version}`;
