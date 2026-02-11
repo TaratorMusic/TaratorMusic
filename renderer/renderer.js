@@ -8,8 +8,8 @@ const ytdl = require("@distube/ytdl-core");
 const ytsr = require("@distube/ytsr");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
-let settingsDbPath, playlistsDbPath, musicsDbPath, recommendationsDbPath;
-let settingsDb, playlistsDb, musicsDb, recommendationsDb, recommendationsCache;
+let settingsDbPath, playlistsDbPath, musicsDbPath;
+let settingsDb, playlistsDb, musicsDb, recommendationsCache;
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
@@ -23,7 +23,6 @@ let settingsDb, playlistsDb, musicsDb, recommendationsDb, recommendationsCache;
 	settingsDbPath = path.join(databasesFolder, "settings.db");
 	playlistsDbPath = path.join(databasesFolder, "playlists.db");
 	musicsDbPath = path.join(databasesFolder, "musics.db");
-	recommendationsDbPath = path.join(databasesFolder, "musics.db");
 
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
@@ -32,12 +31,10 @@ let settingsDb, playlistsDb, musicsDb, recommendationsDb, recommendationsCache;
 	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
 	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
 	if (!fs.existsSync(musicsDbPath)) fs.writeFileSync(musicsDbPath, "");
-	if (!fs.existsSync(recommendationsDbPath)) fs.writeFileSync(recommendationsDbPath, "");
 
 	settingsDb = new Database(settingsDbPath);
 	playlistsDb = new Database(playlistsDbPath);
 	musicsDb = new Database(musicsDbPath);
-	recommendationsDb = new Database(musicsDbPath);
 	recommendationsCache = localStorage.getItem("recommendationsCache") || null;
 })();
 
