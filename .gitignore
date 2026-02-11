@@ -1,15 +1,15 @@
 node_modules/
 .vscode/
 
-musics/
-thumbnails/
-databases/
+/musics/
+/thumbnails/
+/databases/
 
-dist/
-bin/
-build/
-cache/
-config/
+/dist/
+/bin/
+/build/
+/cache/
+/config/
 
 *.db
 *.db-journal
