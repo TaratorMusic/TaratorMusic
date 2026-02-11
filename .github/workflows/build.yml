@@ -45,12 +45,23 @@ jobs:
             - uses: actions/setup-node@v3
               with:
                   node-version: 20.18.1
-            - run: npm ci
-            - run: npm run postinstall
             - name: Install Go
               uses: actions/setup-go@v4
               with:
                   go-version: 1.21
+            - name: Setup MinGW
+              uses: msys2/setup-msys2@v2
+              with:
+                  msystem: MINGW64
+                  update: true
+                  install: >-
+                      mingw-w64-x86_64-gcc
+            - name: npm clean install
+              run: npm ci
+            - name: build binaries
+              run: npm run build
+            - name: npm postinstall for better-sqlite3
+              run: npm run postinstall
             - name: Build
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -76,8 +87,12 @@ jobs:
             - uses: actions/setup-go@v4
               with:
                   go-version: 1.21
-            - run: npm ci
-            - run: npm run postinstall
+            - name: npm clean install
+              run: npm ci
+            - name: build binaries
+              run: npm run build
+            - name: npm postinstall for better-sqlite3
+              run: npm run postinstall
             - name: Build
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -99,8 +114,12 @@ jobs:
             - uses: actions/setup-go@v4
               with:
                   go-version: 1.21
-            - run: npm ci
-            - run: npm run postinstall
+            - name: npm clean install
+              run: npm ci
+            - name: build binaries
+              run: npm run build
+            - name: npm postinstall for better-sqlite3
+              run: npm run postinstall
             - name: Build
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

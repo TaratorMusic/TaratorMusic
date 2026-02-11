@@ -3,8 +3,6 @@
 ### bugs
 
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
--   Compile gobuild & cbuild for windows and mac binaries too (Check github actions)
--   While compiling take yt-dlp from the source. Also, if the dev doesnt have it there should be a command for it.
 
 ### recommendations
 
