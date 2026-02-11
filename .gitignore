@@ -6,6 +6,7 @@ thumbnails/
 databases/
 
 dist/
+bin/
 build/
 cache/
 config/

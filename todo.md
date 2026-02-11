@@ -3,7 +3,6 @@
 ### bugs
 
 -   If the user freshly installed an update, make sure to refresh the bin folder (use commented version change line in renderer)
--   Ctrl + F breaks stuff while another modal is already on
 -   Compile gobuild & cbuild for windows and mac binaries too (Check github actions)
 -   While compiling take yt-dlp from the source. Also, if the dev doesnt have it there should be a command for it.
 
@@ -34,6 +33,7 @@
 -   download streamed songs gives an error
 -   Stream seeking not working
 -   initialiseSettingsDatabase has duplicate code
+-   The "x" button in modals should close that modal, not the modal with the highest z-index
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Add search queries like || && ! ""
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
