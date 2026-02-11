@@ -7,21 +7,21 @@ function getRecommendations() {
 		musicsDb
 			.prepare("SELECT song_name FROM songs")
 			.all()
-			.map(row => row.song_name)
+			.map(row => row.song_name),
 	);
 
 	const notInterestedSet = new Set(
 		musicsDb
 			.prepare("SELECT song_name FROM not_interested")
 			.all()
-			.map(row => row.song_name)
+			.map(row => row.song_name),
 	);
 
 	const existingArtistSet = new Set(
 		musicsDb
 			.prepare("SELECT DISTINCT artist FROM songs")
 			.all()
-			.map(row => row.artist)
+			.map(row => row.artist),
 	);
 
 	const listenTimesMap = musicsDb
@@ -31,7 +31,7 @@ function getRecommendations() {
             FROM timers
             JOIN songs ON timers.song_id = songs.song_id
             GROUP BY songs.artist
-            `
+            `,
 		)
 		.all()
 		.reduce((acc, row) => {
@@ -100,7 +100,7 @@ function calculateArtistPreference() {
             SELECT song_id, SUM(end_time - start_time) AS total_seconds
             FROM timers
             GROUP BY song_id
-            `
+            `,
 		)
 		.all();
 
@@ -120,17 +120,16 @@ function calculateArtistPreference() {
 	const totalDuration = sortedDurations.reduce((sum, duration) => sum + duration, 0);
 
 	const giniCoefficient = (2 * cumulativeWeightedSum) / (numArtists * totalDuration) - (numArtists + 1) / numArtists;
-	// console.log("Gini Coefficient (0 = equal, 1 = concentrated):", giniCoefficient);
+	console.log("Gini Coefficient (0 = equal, 1 = concentrated):", giniCoefficient);
 	return giniCoefficient;
 }
 
-async function fetchRecommendationsData() {
+async function fetchRecommendationsData(input) {
 	const recommendationRows = musicsDb.prepare("SELECT artist_name FROM recommendations").all();
-	const existingArtists = new Set(recommendationRows.map(r => r.artist_name.toLowerCase()));
+	const existingArtists = new Set(recommendationRows.map(row => row.artist_name.toLowerCase()));
 
-	const rows = musicsDb.prepare("SELECT DISTINCT artist FROM songs").all();
-	const artists = rows.map(r => r.artist);
-	const artistsToProcess = artists.filter(a => !existingArtists.has(a.toLowerCase()));
+	const artists = input ?? musicsDb.prepare("SELECT DISTINCT artist FROM songs").all().map(row => row.artist);
+	const artistsToProcess = artists.filter(artist => artist && !existingArtists.has(artist.toLowerCase()));
 
 	console.log(`Processing ${artistsToProcess.length} new artists (${existingArtists.size} already in db)`);
 
@@ -146,13 +145,13 @@ async function fetchRecommendationsData() {
 				continue;
 			}
 
-			let exactMatch = searchData.data.find(a => a.name.toLowerCase().includes(artist.toLowerCase()));
+			let exactMatch = searchData.data.find(art => art.name.toLowerCase().includes(artist.toLowerCase()));
 			if (!exactMatch) exactMatch = searchData.data[0];
 
 			const relatedRes = await fetch(`https://api.deezer.com/artist/${exactMatch.id}/related`);
 			const relatedData = await relatedRes.json();
 			const similarArtists = relatedData.error ? [] : (relatedData.data || []).map(a => a.name);
-			similarArtists.forEach(a => similarArtistsSet.add(a));
+			similarArtists.forEach(art => similarArtistsSet.add(art));
 
 			const tracksRes = await fetch(`https://api.deezer.com/artist/${exactMatch.id}/top?limit=100`);
 			const tracksData = await tracksRes.json();
@@ -173,7 +172,7 @@ async function fetchRecommendationsData() {
 		}
 	}
 
-	const newSimilarArtists = Array.from(similarArtistsSet).filter(a => !existingArtists.has(a.toLowerCase()));
+	const newSimilarArtists = Array.from(similarArtistsSet).filter(artist => !existingArtists.has(artist.toLowerCase()));
 
 	for (const artist of newSimilarArtists) {
 		try {

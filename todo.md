@@ -24,12 +24,12 @@
 
 ### Planned Features
 
--   download streamed songs gives an error
+-   downloading streamed songs gives an error
 -   Stream seeking not working
 -   initialiseSettingsDatabase has duplicate code
 -   The "x" button in modals should close that modal, not the modal with the highest z-index
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
--   Add search queries like || && ! ""
+-   Add search queries like || && ! "" + ,
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
 -   Some songs silently fail loading (probably age-restricted)
 -   Customisable queue list with drag and drop (similar to youtube)
