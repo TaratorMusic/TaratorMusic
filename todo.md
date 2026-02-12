@@ -2,7 +2,6 @@
 
 -   Test if fetch recommendation data works on downloads
 -   Random playlist function main menu has disappeared idk where
--   Check if swap while recommendations are loading thing is fixed.
 
 ### recommendations
 
