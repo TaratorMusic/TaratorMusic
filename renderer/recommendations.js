@@ -128,12 +128,15 @@ async function fetchRecommendationsData(input) {
 	const recommendationRows = musicsDb.prepare("SELECT artist_name FROM recommendations").all();
 	const existingArtists = new Set(recommendationRows.map(row => row.artist_name.toLowerCase()));
 
-	const artists =
-		input ??
-		musicsDb
-			.prepare("SELECT DISTINCT artist FROM songs")
-			.all()
-			.map(row => row.artist);
+	const artists = Array.isArray(input)
+		? input
+		: input
+			? [input]
+			: musicsDb
+					.prepare("SELECT DISTINCT artist FROM songs")
+					.all()
+					.map(row => row.artist);
+
 	const artistsToProcess = artists.filter(artist => artist && !existingArtists.has(artist.toLowerCase()));
 
 	console.log(`Processing ${artistsToProcess.length} new artists (${existingArtists.size} already in db)`);

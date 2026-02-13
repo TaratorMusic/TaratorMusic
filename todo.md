@@ -1,6 +1,5 @@
 ## Coming Soon App Features
 
--   Test if fetch recommendation data works on downloads
 -   Random playlist function main menu has disappeared idk where
 
 ### recommendations
