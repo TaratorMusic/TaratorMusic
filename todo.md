@@ -1,7 +1,5 @@
 ## Coming Soon App Features
 
--   Random playlist function main menu has disappeared idk where
-
 ### recommendations
 
 -   The recommendations return the same thing if no song listen time

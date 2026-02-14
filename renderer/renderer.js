@@ -1206,7 +1206,7 @@ async function randomSongFunctionMainMenu() {
 	const musicItems = musicsDb
 		.prepare("SELECT song_id, song_name FROM songs")
 		.all()
-		.filter(song => !notInterestedIds.includes(song.song_id));
+		.filter(song => !notInterestedIds.includes(song.song_id)); // TODO: Dont call the db here
 
 	if (musicItems.length == 0) return;
 
@@ -1219,6 +1219,20 @@ async function randomSongFunctionMainMenu() {
 	}
 
 	playMusic(musicItems[randomIndex].song_id, null);
+}
+
+async function randomPlaylistFunctionMainMenu() {
+	const playlistsList = Array.from(playlistsMap.keys());
+
+	if (playlistsList.length == 0) return;
+
+	let randomIndex = Math.floor(Math.random() * playlistsList.length);
+
+	while (currentPlaylist == playlistsList[randomIndex] || playlistsMap.get(playlistsList[randomIndex]).songs.length == 0) {
+		randomIndex = Math.floor(Math.random() * playlistsList.length);
+	}
+
+	playPlaylist(playlistsMap.get(playlistsList[randomIndex]), 0);
 }
 
 function playPause() {
