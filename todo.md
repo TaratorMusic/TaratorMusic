@@ -19,6 +19,7 @@
 ### Planned Features
 
 -   downloading streamed songs gives an error
+-   Search code for TODO'S
 -   Stream seeking not working
 -   refresh recommendations table each month (Needs to re-do all rows)
 -   initialiseSettingsDatabase has duplicate code

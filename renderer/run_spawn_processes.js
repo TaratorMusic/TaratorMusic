@@ -280,6 +280,7 @@ async function foundNewSongs(folderSongs, databaseSongs) {
 		const stats = fs.statSync(fullPath);
 		const fileSize = stats.size;
 
+        // TODO: Mass Insert
 		const insertQuery = `
             INSERT INTO songs (
                 song_id, song_name, song_url, song_length, seconds_played,
@@ -288,7 +289,7 @@ async function foundNewSongs(folderSongs, databaseSongs) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-		musicsDb.prepare(insertQuery).run(songName, fileName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, folderOnly[fileName].song_extension, folderOnly[fileName].thumbnail_extension, null, null, null);
+		musicsDb.prepare(insertQuery).run(songName, fileName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, folderOnly[fileName]?.song_extension?.replace(".", "") ?? null, folderOnly[fileName]?.thumbnail_extension?.replace(".", "") ?? null, null, null, null);
 	}
 
 	await alertModal(promptUserOnSongs(Object.keys(databaseOnly).length));
