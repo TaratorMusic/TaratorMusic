@@ -60,6 +60,8 @@ jobs:
               run: npm ci
             - name: build binaries
               run: npm run build
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             - name: npm postinstall for better-sqlite3
               run: npm run postinstall
             - name: Build
@@ -91,6 +93,8 @@ jobs:
               run: npm ci
             - name: build binaries
               run: npm run build
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             - name: npm postinstall for better-sqlite3
               run: npm run postinstall
             - name: Build
@@ -118,6 +122,8 @@ jobs:
               run: npm ci
             - name: build binaries
               run: npm run build
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             - name: npm postinstall for better-sqlite3
               run: npm run postinstall
             - name: Build

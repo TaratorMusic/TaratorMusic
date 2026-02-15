@@ -39,6 +39,8 @@ Chart.js to show user stats in the statistics tab
 
 MusicBrainz API to fetch song genre, artist and language information
 
+Deezer API for song data and recommendations  
+
 FFmpeg and FFprobe to automatically stabilise audio levels
 
 Discord Rich Presence to momentarily share listened songs in Discord
