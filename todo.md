@@ -4,9 +4,6 @@
 
 -   The recommendations return the same thing if no song listen time
 -   create getRecommendations backup songs if there is no data
--   !! Fetch recommendations data function currently never ran. Make it run if the table doesnt exist (but need to prevent early closing somehow)
--   Create recommendations cache so it fetches everything once
--   refresh recommendations table each month (Needs to re-do all rows)
 
 
 -   Update readme with the new features and just jump to 1.8.0 after all of these
@@ -23,6 +20,7 @@
 
 -   downloading streamed songs gives an error
 -   Stream seeking not working
+-   refresh recommendations table each month (Needs to re-do all rows)
 -   initialiseSettingsDatabase has duplicate code
 -   The "x" button in modals should close that modal, not the modal with the highest z-index
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB

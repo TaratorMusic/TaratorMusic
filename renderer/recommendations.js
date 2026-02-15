@@ -125,6 +125,7 @@ function calculateArtistPreference() {
 }
 
 async function fetchRecommendationsData(input) {
+	if (!input) alertModal("Checking all songs for recommendations... You can close this modal.");
 	const recommendationRows = musicsDb.prepare("SELECT artist_name FROM recommendations").all();
 	const existingArtists = new Set(recommendationRows.map(row => row.artist_name.toLowerCase()));
 
@@ -227,5 +228,8 @@ async function fetchRecommendationsData(input) {
 		})(artistsData);
 
 		console.log(`Saved ${artistsData.length} artists to recommendations table`);
+		if (!input) alertModal(`Saved ${artistsData.length} artists to recommendations table`);
+	} else {
+		if (!input) alertModal(`Fetch of recommendations done, no new artists found.`);
 	}
 }
