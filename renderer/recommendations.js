@@ -1,5 +1,6 @@
 function getRecommendations() {
 	const artistPreferenceScore = calculateArtistPreference();
+    if (artistPreferenceScore == 999) return alertModal("No songs listened yet to give recommendations of.")
 	const songMap = new Map();
 	const pointsMap = new Map();
 
@@ -121,7 +122,7 @@ function calculateArtistPreference() {
 
 	const giniCoefficient = (2 * cumulativeWeightedSum) / (numArtists * totalDuration) - (numArtists + 1) / numArtists;
 	console.log("Gini Coefficient (0 = equal, 1 = concentrated):", giniCoefficient);
-	return giniCoefficient;
+	return Number.isNaN(giniCoefficient) ? 999 : giniCoefficient;
 }
 
 async function fetchRecommendationsData(input) {
