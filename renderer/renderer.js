@@ -133,7 +133,7 @@ const defaultSettings = {
 	key_randomPlaylist: "2",
 	dividevolume: 1,
 	displayPage: "scroll",
-	musicMode: "discover",
+	musicMode: "offline",
 	background: "green",
 	stabiliseVolumeToggle: 1,
 	dc_rpc: 0,
@@ -632,12 +632,12 @@ async function myMusicOnClick() {
 	availableMusicModes.forEach(mode => {
 		const optionElement = document.createElement("option");
 		optionElement.value = mode;
-		if (mode == "discover" || mode == null) {
-			optionElement.innerText = "Discovery Mode";
+		if (mode == "offline" || mode == null) {
+			optionElement.innerText = "Offline Mode";
 		} else if (mode == "stream") {
 			optionElement.innerText = "Stream Mode";
 		} else {
-			optionElement.innerText = "Offline Mode";
+			optionElement.innerText = "Discovery Mode";
 		}
 		if (mode == musicMode) optionElement.selected = true;
 		musicModeSelect.appendChild(optionElement);
@@ -876,6 +876,7 @@ function renderMusics() {
 function refreshRecommendations() {
 	const container = document.getElementById("music-list-container");
 	const recommendedMusicMap = getRecommendations();
+	if (recommendedMusicMap == 999) return alertModal("No songs listened yet to give recommendations of."); // TODO: Probably a problem here
 	const goal = document.getElementById("musicSearchInputAmount").value;
 	let count = 0;
 

@@ -104,15 +104,15 @@ Thought of a song, but too bothered to go to the musics tab, search and play it?
 
 Interested in your listen data? The statistics tab lets you see your favorite song, favorite genres, artists and languages in pie charts, weekly and hourly listen data in heatmaps, and many more other statistics!
 
-## Upcoming Features:
-
-### (COMING VERY SOON) Personalised Song Recommendations
+### Personalised Song Recommendations
 
 You will be able to get special song recommendations based on what songs you have listened to, and for how long.
 
-### (COMING VERY SOON) Stream songs directly without downloading
+### Stream songs directly without downloading
 
 When you just want to browse, you will be able to quickly listen to your app recommended songs.
+
+## Upcoming Features:
 
 ### Automatic Playlist Forming
 

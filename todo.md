@@ -1,6 +1,6 @@
 ## Coming Soon App Features
 
--   Update readme with the new features and just jump to 1.8.0 after all of these
+new readme images
 
 ### Big updates remaining:
 
