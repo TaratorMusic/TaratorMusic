@@ -42,15 +42,26 @@ func main() {
 	}
 
 	outputPath := filepath.Join(binDir, outputName)
-
 	if _, err := os.Stat(outputPath); err == nil {
 		fmt.Printf("yt-dlp binary already exists at %s, skipping download\n", outputPath)
 		return
 	}
 
 	fmt.Printf("Fetching latest yt-dlp release for %s...\n", runtime.GOOS)
-
-	resp, err := http.Get(githubAPI)
+	
+	req, err := http.NewRequest("GET", githubAPI, nil)
+	if err != nil {
+		fmt.Printf("Error creating request: %v\n", err)
+		os.Exit(1)
+	}
+	
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+		fmt.Println("Using authenticated GitHub API request")
+	}
+	
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("Error fetching release info: %v\n", err)
 		os.Exit(1)
@@ -82,7 +93,6 @@ func main() {
 	}
 
 	fmt.Printf("Downloading yt-dlp %s from %s...\n", release.TagName, downloadURL)
-
 	dlResp, err := http.Get(downloadURL)
 	if err != nil {
 		fmt.Printf("Error downloading binary: %v\n", err)
@@ -113,7 +123,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Make executable on Unix systems
 	if runtime.GOOS != "windows" {
 		if err := os.Chmod(outputPath, 0755); err != nil {
 			fmt.Printf("Error setting executable permission: %v\n", err)
