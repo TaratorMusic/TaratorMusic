@@ -744,7 +744,7 @@ function searchYoutubeInMusics() {
 						)
 						.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
 
-					if (Array.from(songNameCache.values()).some(song => song.song_url.includes(songID))) {
+					if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
 						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, videoTitle);
 						notInterestedSongs.push({ song_id: songID });
 						continue;

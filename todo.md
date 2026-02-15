@@ -1,11 +1,5 @@
 ## Coming Soon App Features
 
-### recommendations
-
--   The recommendations return the same thing if no song listen time
--   create getRecommendations backup songs if there is no data
-
-
 -   Update readme with the new features and just jump to 1.8.0 after all of these
 
 ### Big updates remaining:
