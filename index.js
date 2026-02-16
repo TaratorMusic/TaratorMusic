@@ -4,35 +4,39 @@ const path = require("path");
 const fs = require("fs");
 
 function copyBinariesOutside() {
-	let appDir;
+	const isWin = process.platform == "win32";
+	const isMac = process.platform == "darwin";
+
+	const appDir = app.getPath("userData");
+	const binFolder = path.join(appDir, "bin");
+
+	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
+
+	const baseBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", "ytdlp_fetch"];
 	let platformBinaries = [];
 
-	if (process.env.APPIMAGE) {
-		appDir = path.dirname(process.env.APPIMAGE);
-		platformBinaries = ["yt-dlp_linux"];
-	} else if (process.platform == "darwin") {
-		appDir = path.resolve(__dirname, "..");
-		platformBinaries = ["yt-dlp_macos"];
-	} else if (process.platform == "win32") {
-		appDir = __dirname;
+	if (isWin) {
 		platformBinaries = ["yt-dlp.exe"];
-	} else if (process.platform == "linux") {
-		appDir = __dirname;
+	} else if (isMac) {
+		platformBinaries = ["yt-dlp_macos"];
+	} else {
 		platformBinaries = ["yt-dlp_linux"];
 	}
 
-	const binFolder = path.join(appDir, "bin");
-	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
-
-	const backendBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", "ytdlp_fetch", ...platformBinaries];
+	const backendBinaries = [...baseBinaries.map(b => (isWin ? `${b}.exe` : b)), ...platformBinaries];
 
 	backendBinaries.forEach(bin => {
+		const sourceBinary = path.join(process.resourcesPath, "bin", bin);
 		const targetPath = path.join(binFolder, bin);
-		if (!fs.existsSync(targetPath)) {
-			const sourceBinary = path.join(__dirname, "bin", bin);
-			if (!fs.existsSync(sourceBinary)) throw new Error(`Binary not found at ${sourceBinary}`);
-			fs.copyFileSync(sourceBinary, targetPath);
-			if (process.platform !== "win32") fs.chmodSync(targetPath, 0o755);
+
+		if (!fs.existsSync(sourceBinary)) {
+			throw new Error(`Binary not found at ${sourceBinary}`);
+		}
+
+		fs.copyFileSync(sourceBinary, targetPath);
+
+		if (!isWin) {
+			fs.chmodSync(targetPath, 0o755);
 		}
 	});
 }
