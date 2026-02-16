@@ -14,7 +14,7 @@
 		"gobuild": "find ./backend -type f -name main.go -exec sh -c 'for f; do name=$(basename $(dirname \"$f\")); CGO_ENABLED=0 go build -o ./bin/$name \"$f\"; done' sh {} +",
 		"cbuild": "node -e \"require('child_process').execSync(process.platform == 'win32' ? 'gcc -O2 ./backend/miniaudio/player.c ./backend/miniaudio/miniaudio.c -o ./bin/player.exe -lpthread' : 'gcc -O2 ./backend/miniaudio/player.c ./backend/miniaudio/miniaudio.c -o ./bin/player -ldl -lpthread -lm', {stdio: 'inherit'})\"",
 		"postinstall": "electron-builder install-app-deps",
-		"ytdlp_fetch": "node -e \"require('child_process').execSync(process.platform == 'win32' ? 'bin\\\\ytdlp_fetch.exe' : './bin/ytdlp_fetch', {stdio: 'inherit'})\""
+		"ytdlp_fetch": "node -e \"require('child_process').execSync(process.platform == 'win32' ? '.\\\\bin\\\\ytdlp_fetch.exe' : './bin/ytdlp_fetch', {stdio: 'inherit'})\""
 	},
 	"repository": {
 		"type": "git",
