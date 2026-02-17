@@ -1,6 +1,13 @@
 ## Coming Soon App Features
 
-new readme images
+-   new readme images
+-   Fix Fetchin all recommendations upon any download
+-   downloading streamed songs gives an error
+-   new added .svg's dont appear because of the error, the fetch function doesnt run
+-   Search code for TODO'S
+-   Stream seeking not working
+-   If the app is pre-release, the version button doesnt light up
+-   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 
 ### Big updates remaining:
 
@@ -12,9 +19,6 @@ new readme images
 
 ### Planned Features
 
--   downloading streamed songs gives an error
--   Search code for TODO'S
--   Stream seeking not working
 -   refresh recommendations table each month (Needs to re-do all rows)
 -   initialiseSettingsDatabase has duplicate code
 -   The "x" button in modals should close that modal, not the modal with the highest z-index
@@ -25,42 +29,37 @@ new readme images
 -   Customisable queue list with drag and drop (similar to youtube)
 -   Add a window, where in the left side you can see your songs and you can filter them via a search bar and sort them, on the right side there will be the playlists, and the users will be able to drag and drop all the songs to the playlists they desire.
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
--   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add approximate time remaining for volume stabilisation.
 -   Hover songs for the full song name?
 -   Need to have full online & full offline modes
--   Add an option to toggle volume stabilisation for the song, and pre-set artist-language-genre info in the download options
+-   Add an option to toggle volume stabilisation for the song
 -   Add song to queue
 -   the app assumes 3 boxes height for each device. Calculate the row amount based on #content height
 -   does the db cleaning truly work?
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
 -   Make the db saves non-blocking
--   Make the charts on song listen time instead of song amounts perhaps? or toggle
 -   Most Listened Playlist and other playlist data in Statistics
--   Add pages to the music tab and a way to navigate between them if using "show x rows".
 -   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)
 -   Make quick search modal shortcut customisable
--   Compile go & C binaries at github actions and gitignore them. Compile only the needed ytdlp binary.
 
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working
 -   Use our check_dupe_songs go file while downloading songs to avoid duplications
 -   What if the restart wasnt needed after downloading the assets, we can just force reload the app, or load the missing assets individually
 -   Factory Reset (With options like: only settings, remove all songs/playlists etc.)
--   Redesign main menu- Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
+-   Redesign main menu
+-   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
 -   Rework the download modal and three-way modal
 
 -   Customise Discord Rich Presence box in the settings
 -   Edit app font
 -   If currently listening to a music outside a playlist, enter a playlist that the song is in without changing the song / its progress
--   Add the .desktop and the wrapper script inside the app, it will run if the app is AppImage and the user doesnt have the wrapper script in the folder.
--   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
+-   Add the .desktop and the wrapper script inside the app, it will run if the app is AppImage and the user doesnt have the wrapper script in the folder. Create a button in settings to create .desktop
 -   Ability to download from 0. to x. song, or x. song to y. song, or y. song to the end while downloading a playlist.
 -   Use main speed - Use custom speed for this song (in customisation modal)
 -   Changing backgrounds: Make a preview mode so it doesn't instantly change it
 -   Merge playlists
 -   Paste song thumbnails from the clipboard.
--   Exclude songs from shuffles (Not interested button, could be in the bottom right, or in the customisation modal, or both)
 -   In the customisation modal, give an option to search a thumbnail from youtube, with multiple options
 -   Use CSS Clamp in the controls bar for preventing overlapping
 -   Multi select in the music tab for customising multiple songs
@@ -79,7 +78,7 @@ new readme images
 -   Disable thumbnails
 -   Change placeholder thumbnail --> if (userPlaceholderThumbnail) else (placeholderThumbnail)
 -   Move app folders
--   Set time zone preference
+-   Set time zone and time format preference
 -   Make splash screen better & cooler
 -   Package Data to Desktop
 -   Could save data online
