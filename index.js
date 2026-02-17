@@ -41,7 +41,6 @@ function copyBinariesOutside() {
 	});
 }
 
-copyBinariesOutside();
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.setPath("cache", path.join(__dirname, "cache"));
 
@@ -123,6 +122,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
 	app.setName("TaratorMusic");
+    copyBinariesOutside();
 
 	let menuShown = true;
 	const originalMenu = Menu.getApplicationMenu();
