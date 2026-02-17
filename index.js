@@ -13,20 +13,13 @@ function copyBinariesOutside() {
 	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
 
 	const baseBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", "ytdlp_fetch"];
-	let platformBinaries = [];
-
-	if (isWin) {
-		platformBinaries = ["yt-dlp.exe"];
-	} else if (isMac) {
-		platformBinaries = ["yt-dlp_macos"];
-	} else {
-		platformBinaries = ["yt-dlp_linux"];
-	}
-
+	const platformBinaries = isWin ? ["yt-dlp.exe"] : isMac ? ["yt-dlp_macos"] : ["yt-dlp_linux"];
 	const backendBinaries = [...baseBinaries.map(b => (isWin ? `${b}.exe` : b)), ...platformBinaries];
 
 	backendBinaries.forEach(bin => {
-		const sourceBinary = path.join(process.resourcesPath, "bin", bin);
+		const isDev = !app.isPackaged;
+
+		const sourceBinary = isDev ? path.join(__dirname, "bin", bin) : path.join(process.resourcesPath, "bin", bin);
 		const targetPath = path.join(binFolder, bin);
 
 		if (!fs.existsSync(sourceBinary)) {
@@ -122,7 +115,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
 	app.setName("TaratorMusic");
-    copyBinariesOutside();
+	copyBinariesOutside();
 
 	let menuShown = true;
 	const originalMenu = Menu.getApplicationMenu();
