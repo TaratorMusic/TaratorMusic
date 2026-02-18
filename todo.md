@@ -8,6 +8,7 @@
 -   Stream seeking not working
 -   If the app is pre-release, the version button doesnt light up
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
+-   Add shortcut of CTRL+H for playlist with inputted name 
 
 ### Big updates remaining:
 
