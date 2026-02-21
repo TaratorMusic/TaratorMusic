@@ -1743,6 +1743,10 @@ async function stabiliseThisSong(songId) {
 	document.getElementById("stabiliseSongButton").disabled = false;
 }
 
+function restartApp() {
+	ipcRenderer.send("restart-app");
+}
+
 document.addEventListener("DOMContentLoaded", function () {
 	initialiseSettingsDatabase();
 	initialiseMusicsDatabase();

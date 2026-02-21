@@ -3,7 +3,7 @@ const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 
-function copyBinariesOutside() {
+async function copyBinariesOutside() {
 	const isWin = process.platform == "win32";
 	const isMac = process.platform == "darwin";
 
@@ -32,6 +32,13 @@ function copyBinariesOutside() {
 			fs.chmodSync(targetPath, 0o755);
 		}
 	});
+
+	await restart();
+}
+
+async function restart() {
+	app.relaunch();
+	app.exit(0);
 }
 
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
@@ -110,6 +117,10 @@ function createWindow() {
 
 	ipcMain.handle("close-app", () => {
 		mainWindow.close();
+	});
+
+	ipcMain.handle("restart-app", () => {
+		restart();
 	});
 }
 

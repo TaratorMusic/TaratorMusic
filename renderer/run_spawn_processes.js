@@ -5,9 +5,10 @@ async function createAppThumbnailsFolder() {
 		const proc = spawn(goBinary, [appThumbnailFolder], { stdio: "inherit" });
 
 		proc.on("error", reject);
-		proc.on("close", code => {
+		proc.on("close", async code => {
 			if (code !== 0) return reject(alertModal(`Go process exited with code ${code}`));
-			alertModal("App thumbnails installed. App restart required for the effects.");
+			await alertModal("App thumbnails installed. App restart required for the effects.");
+            restartApp();
 			resolve();
 		});
 	});
