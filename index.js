@@ -32,8 +32,6 @@ async function copyBinariesOutside() {
 			fs.chmodSync(targetPath, 0o755);
 		}
 	});
-
-	await restart();
 }
 
 async function restart() {

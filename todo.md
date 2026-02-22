@@ -1,15 +1,21 @@
-## Coming Soon App Features
+## Version 1.8.1 Planned Features
 
 -   new readme images
 -   new bug where random song and presumably random playlist functions doing infinite loops if there is only one song
--   Fix Fetchin all recommendations upon any download
+-   Fix Fetchin all recommendations upon any download (Creates extra modals)
 -   downloading streamed songs gives an error
 -   new added .svg's dont appear because of the error, the fetch function doesnt run
--   Search code for TODO'S
--   Stream seeking not working
--   If the app is pre-release, the version button doesnt light up
+-   Check if spotify web scraping works
+-   Add color picker
+-   Add green/red color to the mute button if volume = 0
+
+### Version 1.8.2 Planned Features
+
+-   Add shortcut for last played playlist
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add shortcut of CTRL+H for playlist with inputted name 
+-   Stream seeking not working
+-   Search code for TODO'S
 
 ### Big updates remaining:
 
@@ -21,6 +27,7 @@
 
 ### Planned Features
 
+-   If the app is pre-release, the version button doesnt light up
 -   refresh recommendations table each month (Needs to re-do all rows)
 -   initialiseSettingsDatabase has duplicate code
 -   The "x" button in modals should close that modal, not the modal with the highest z-index

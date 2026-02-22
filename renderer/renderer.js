@@ -328,7 +328,8 @@ function initialiseSettingsDatabase() {
 	ipcRenderer.invoke("get-app-version").then(async version => {
 		if (version != current_version) {
 			ipcRenderer.send("copy-binaries");
-			alertModal("Version change detected. Binaries being rebuilt...");
+			await alertModal("Version change detected. Binaries being rebuilt...");
+			ipcRenderer.send("restart-app");
 		}
 
 		current_version = version;
@@ -1741,10 +1742,6 @@ async function stabiliseThisSong(songId) {
 	await normalizeAudio(path.join(musicFolder, songId + "." + stmt.song_extension));
 	await alertModal(`Song "${stmt.song_name}" successfully stabilised.`);
 	document.getElementById("stabiliseSongButton").disabled = false;
-}
-
-function restartApp() {
-	ipcRenderer.send("restart-app");
 }
 
 document.addEventListener("DOMContentLoaded", function () {
