@@ -190,6 +190,7 @@ async function getPlaylistSongsAndArtists(link) {
 	document.getElementById("downloadModalText").innerText = "Launching browser...";
 	const browser = await puppeteer.launch({ headless: true });
 	const page = await browser.newPage();
+
 	await page.setViewport({ width: 1920, height: 1080 });
 	await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
 
@@ -200,10 +201,11 @@ async function getPlaylistSongsAndArtists(link) {
 	await page.waitForSelector('a[data-testid="internal-track-link"]', { timeout: 30000 });
 
 	const scrollContainer = await page.evaluateHandle(() => {
-		function isScrollable(el) {
-			const style = getComputedStyle(el);
-			return (style.overflowY == "auto" || style.overflowY == "scroll") && el.scrollHeight > el.clientHeight;
+		function isScrollable(element) {
+			const style = getComputedStyle(element);
+			return (style.overflowY == "auto" || style.overflowY == "scroll") && element.scrollHeight > element.clientHeight;
 		}
+
 		const allDivs = Array.from(document.querySelectorAll("div"));
 		return allDivs.find(div => isScrollable(div) && div.querySelectorAll('a[data-testid="internal-track-link"]').length > 0);
 	});
@@ -227,20 +229,23 @@ async function getPlaylistSongsAndArtists(link) {
 	const { imageUrl } = await page.evaluate(() => {
 		let imageUrl = null;
 		const thumbnailElement = document.querySelector('[data-testid="playlist-image"] img');
+
 		if (thumbnailElement && thumbnailElement.src) {
 			imageUrl = thumbnailElement.src;
 		} else {
 			const allDivs = Array.from(document.querySelectorAll("div"));
-			const backgroundDiv = allDivs.find(el => {
-				const style = getComputedStyle(el);
-				const bg = style.backgroundImage;
-				return bg.includes("scdn.co/image/") && el.clientHeight > 200 && el.clientWidth > 200;
+			const backgroundDiv = allDivs.find(element => {
+				const style = getComputedStyle(element);
+				const backgroundImage = style.backgroundImage;
+				return backgroundImage.includes("scdn.co/image/") && element.clientHeight > 200 && element.clientWidth > 200;
 			});
+
 			if (backgroundDiv) {
 				const match = getComputedStyle(backgroundDiv).backgroundImage.match(/url\("?([^"]+)"?\)/);
 				if (match && match[1]) imageUrl = match[1];
 			}
 		}
+
 		return { imageUrl };
 	});
 
@@ -253,7 +258,7 @@ async function getPlaylistSongsAndArtists(link) {
 
 		while (sameCount < 3) {
 			container.scrollBy(0, 800);
-			await sleep(800);
+			await new Promise(resolve => setTimeout(resolve, 800));
 
 			const rows = container.querySelectorAll("[aria-rowindex]");
 			let newFound = 0;
@@ -261,41 +266,25 @@ async function getPlaylistSongsAndArtists(link) {
 			rows.forEach(row => {
 				const rowIndex = parseInt(row.getAttribute("aria-rowindex"), 10);
 
-				console.log(`Processing row ${rowIndex}, lastRowIndex: ${lastRowIndex}`);
-
-				if (rowIndex <= lastRowIndex) {
-					console.log(`Skipping row ${rowIndex} (already processed)`);
-					return;
-				}
+				if (rowIndex <= lastRowIndex) return;
 
 				const trackLink = row.querySelector('a[data-testid="internal-track-link"]');
-				if (!trackLink) {
-					console.log(`No track link found in row ${rowIndex}`);
-					return;
-				}
+				if (!trackLink) return;
 
 				const title = row.querySelector("div[data-encore-id='text']")?.textContent.trim();
 				const artistLink = row.querySelector("span a[href^='/artist']");
 				const artist = artistLink?.textContent.trim();
 
-				console.log(`Row ${rowIndex}: title="${title}", artist="${artist}"`);
-
 				if (title && artist) {
 					const key = title + "||" + artist;
+
 					if (!seen.has(key)) {
 						seen.set(key, { title, artist });
-						console.log(`${seen.size}. song: ${title} by ${artist}`);
 						newFound++;
 						lastRowIndex = Math.max(lastRowIndex, rowIndex);
-					} else {
-						console.log(`Duplicate found: ${key}`);
 					}
-				} else {
-					console.log(`Missing title or artist in row ${rowIndex}`);
 				}
 			});
-
-			console.log(`Scroll iteration complete. New found: ${newFound}, Same count: ${sameCount}`);
 
 			if (newFound == 0) {
 				sameCount++;
@@ -309,43 +298,35 @@ async function getPlaylistSongsAndArtists(link) {
 
 	document.getElementById("downloadModalText").innerText = `Extracted ${songs.length} tracks. Searching for the tracks in Youtube...`;
 
-	async function fetchWithRetry(video, retries = 5) {
-		const query = `${video.title} ${video.artist}`;
-		for (let i = 0; i < retries; i++) {
+	let foundCount = 0;
+	const total = songs.length;
+	const videoItems = [];
+
+	for (let i = 0; i < songs.length; i++) {
+		const video = songs[i];
+
+		try {
+			const query = `${video.title} ${video.artist}`;
 			const result = await ytsr(query, { limit: 1, type: "video" });
 			if (result.items.length) {
 				const yt = result.items[0];
-				return { title: query, url: yt.url, thumbnail: yt.thumbnail };
+				videoItems.push({ title: query, url: yt.url, thumbnail: yt.thumbnail });
+			} else {
+				videoItems.push({ title: `${video.title} ${video.artist}`, url: null, thumbnail: null });
 			}
-			await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+		} catch (err) {
+			videoItems.push({ title: `${video.title} ${video.artist}`, url: null, thumbnail: null });
 		}
-		throw new Error(`Failed to fetch video for: ${query}`);
-	}
 
-	async function asyncPool(concurrency, items, iteratorFn) {
-		const ret = [];
-		const executing = [];
-		for (let i = 0; i < items.length; i++) {
-			const item = items[i];
-			const p = Promise.resolve().then(() => iteratorFn(item, i));
-			ret.push(p);
-			if (executing.length >= concurrency) {
-				await Promise.race(executing);
-			}
-			const e = p.then(() => executing.splice(executing.indexOf(e), 1));
-			executing.push(e);
-		}
-		return Promise.all(ret);
-	}
-
-	let foundCount = 0;
-	const total = songs.length;
-	const videoItems = await asyncPool(5, songs, async video => {
-		const item = await fetchWithRetry(video);
 		foundCount++;
-		document.getElementById("downloadModalText").innerText = `Found ${foundCount} out of ${total} songs in Youtube...`;
-		return item;
-	});
+		document.getElementById("downloadModalText").innerText = `Found ${foundCount} out of ${total} songs in YouTube...`;
+
+		// Every 30 songs, wait 40 seconds
+		if ((i + 1) % 30 == 0 && i + 1 < songs.length) {
+			document.getElementById("downloadModalText").innerText = `Fetched ${foundCount} songs. Waiting 300s to avoid Youtube API rate limits...`;
+			await new Promise(r => setTimeout(r, 300000));
+		}
+	}
 
 	await browser.close();
 	renderPlaylistUI(playlistName, playlistThumbnail, videoItems);

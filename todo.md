@@ -5,9 +5,9 @@
 -   Fix Fetchin all recommendations upon any download (Creates extra modals)
 -   downloading streamed songs gives an error
 -   new added .svg's dont appear because of the error, the fetch function doesnt run
--   Check if spotify web scraping works
--   Add color picker
+-   Add color picker for background
 -   Add green/red color to the mute button if volume = 0
+-   Test if long youtube playlists actually download... (400song)
 
 ### Version 1.8.2 Planned Features
 
