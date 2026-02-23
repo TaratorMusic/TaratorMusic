@@ -70,6 +70,7 @@
 * {
 	box-sizing: border-box !important;
 	user-select: none;
+    color: white;
 }
 
 body {
@@ -93,7 +94,6 @@ select:focus {
 	background-position: 0% 0%;
 	background-repeat: no-repeat;
 	animation: gradientAnimation 10s ease infinite;
-	color: white !important;
 }
 
 .bg-gradient-red {
@@ -102,7 +102,6 @@ select:focus {
 	background-position: 0% 0%;
 	background-repeat: no-repeat;
 	animation: gradientAnimation 10s ease infinite;
-	color: white !important;
 }
 
 .bg-gradient-green {
@@ -111,7 +110,6 @@ select:focus {
 	background-position: 0% 0%;
 	background-repeat: no-repeat;
 	animation: gradientAnimation 10s ease infinite;
-	color: white !important;
 }
 
 .bg-gradient-purple {
@@ -120,7 +118,6 @@ select:focus {
 	background-position: 0% 0%;
 	background-repeat: no-repeat;
 	animation: gradientAnimation 10s ease infinite;
-	color: white !important;
 }
 
 .bg-gradient-black {
@@ -129,7 +126,6 @@ select:focus {
 	background-position: 0% 0%;
 	background-repeat: no-repeat;
 	animation: gradientAnimation 10s ease infinite;
-	color: white !important;
 }
 
 body::-webkit-scrollbar {
@@ -344,7 +340,6 @@ audio {
 	height: 3.5vh;
 	font-size: 2.2vh;
 	background-color: black;
-	color: white;
 	cursor: pointer;
 	outline: none;
 	box-shadow: none;
@@ -475,7 +470,7 @@ audio {
 
 #music-controls input[type="range"] {
 	cursor: pointer;
-	color: pink;
+	color: pink !important;
 }
 
 #video-progress {
@@ -658,7 +653,6 @@ audio {
 #musicSearchRefreshButton {
 	padding: 2px 4px;
 	background-color: rgba(0, 0, 0, 0.8);
-	color: white;
 	transition: all 0.5s ease-in-out;
 	cursor: pointer;
 }
@@ -667,7 +661,6 @@ audio {
 	padding: 5px 10px;
 	background-color: rgba(0, 0, 0, 0.8);
 	border: 1px solid white;
-	color: white;
 	transition: all 0.5s ease-in-out;
 	border-radius: 5px;
 	cursor: pointer;
@@ -923,7 +916,7 @@ input:checked + .slider:before {
 
 #mainmenutimespent,
 #mainmenusessiontimespent {
-	color: orange;
+	color: orange !important;
 	height: 50%;
 }
 
@@ -1039,7 +1032,7 @@ input:checked + .slider:before {
 
 .confirm-modal {
 	background: #1e1e1e;
-	color: #ededed;
+	color: #ededed !important;
 	padding: 24px 32px;
 	border-radius: 8px;
 	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
@@ -1068,7 +1061,7 @@ input:checked + .slider:before {
 
 #confirmModalPrimary {
 	background: #e53935;
-	color: #fff;
+	color: #fff !important;
 }
 
 #confirmModalPrimary:hover {
@@ -1077,7 +1070,7 @@ input:checked + .slider:before {
 
 #confirmModalSecondary {
 	background: #424242;
-	color: #ccc;
+	color: #ccc !important;
 }
 
 #confirmModalSecondary:hover {
@@ -1085,7 +1078,7 @@ input:checked + .slider:before {
 }
 
 .settingsMenuButtons {
-	color: red;
+	color: red !important;
 	transition: all 0.3s ease;
 }
 
@@ -1096,7 +1089,7 @@ input:checked + .slider:before {
 #tooltip {
 	position: absolute;
 	background: #333;
-	color: #fff;
+	color: #fff !important;
 	padding: 6px 10px;
 	border-radius: 4px;
 	margin-left: 5px;
@@ -1134,7 +1127,7 @@ input:checked + .slider:before {
 }
 
 .red-placeholder::placeholder {
-	color: red;
+	color: red !important;
 }
 
 .theBigText {
@@ -1207,7 +1200,6 @@ th {
 	background-color: rgba(0, 0, 0, 0.8);
 	border: 1px solid white;
 	border-radius: 5px;
-	color: white !important;
 }
 
 #createPlaylistButton {
@@ -1221,7 +1213,6 @@ th {
 	border: 1px solid white;
 	border-radius: 5px;
 	cursor: pointer;
-	color: white !important;
 	margin-left: 5vw;
 	display: flex;
 	justify-content: center;
@@ -1268,7 +1259,6 @@ th {
 
 #mostListenedSongText {
 	flex: 1;
-	color: white;
 	font-family: Arial, sans-serif;
 	font-size: 1.1rem;
 	line-height: 1.5;
@@ -1304,7 +1294,6 @@ th {
 #pieChartPartTitle {
 	font-size: 1.8rem;
 	font-weight: bold;
-	color: white;
 	text-align: center;
 	font-family: Arial, sans-serif;
 }
@@ -1329,7 +1318,6 @@ th {
 	background: rgba(0, 0, 0, 0.4);
 	border-radius: 16px;
 	padding: 15px;
-	color: white;
 	text-align: center;
 }
 
@@ -1344,7 +1332,7 @@ th {
 	margin-top: 3vh;
 	font-size: 1rem;
 	font-weight: 500;
-	color: #e0e0e0;
+	color: #e0e0e0 !important;
 }
 
 .hourChart {
@@ -1365,8 +1353,7 @@ th {
 
 .activityBox div {
 	min-width: 9vw;
-	color: white;
-	font-size: 1.2vw;
+    font-size: 1.2vw;
 	font-weight: 600;
 	text-align: left;
 	margin-right: 1vw;
@@ -1381,7 +1368,6 @@ th {
 #daysHeatMapTitle {
 	font-size: 1.8rem;
 	font-weight: bold;
-	color: white;
 	text-align: center;
 	margin: 3vh 0 2vh 0;
 	font-family: Arial, sans-serif;
@@ -1393,7 +1379,6 @@ th {
 	padding: 25px;
 	border-radius: 16px;
 	border: 1px solid rgba(255, 255, 255, 0.1);
-	color: white;
 	font-family: Arial, sans-serif;
 	font-size: 1.1rem;
 	line-height: 1.6;
@@ -1405,18 +1390,16 @@ th {
 
 .theBigText span.label {
 	font-weight: 600;
-	color: #ffd700;
+	color: #ffd700 !important;
 }
 
 .theBigText span.value {
 	font-weight: 500;
-	color: #ffffff;
 }
 
 #generalStatisticsTitle {
 	font-size: 1.8rem;
 	font-weight: bold;
-	color: white;
 	text-align: center;
 	margin: 3vh 0 2vh 0;
 	font-family: Arial, sans-serif;

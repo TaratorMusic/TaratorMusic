@@ -280,7 +280,13 @@ function initialiseSettingsDatabase() {
 		musicMode = settingsRow.musicMode;
 		stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 		current_version = settingsRow.current_version;
-		document.body.className = `bg-gradient-${settingsRow.background}`;
+
+		if (settingsRow.background.includes("#")) {
+			document.body.style.background = settingsRow.background;
+		} else {
+			document.body.className = `bg-gradient-${settingsRow.background}`;
+		}
+
 		popularityFactor = settingsRow.popularityFactor;
 		artistStrengthFactor = settingsRow.artistStrengthFactor;
 		similarArtistsFactor = settingsRow.similarArtistsFactor;
@@ -335,15 +341,15 @@ function initialiseSettingsDatabase() {
 	document.getElementById("main-menu").click();
 
 	ipcRenderer.invoke("get-app-version").then(async version => {
-		if (version != current_version) {
-			ipcRenderer.send("copy-binaries");
-			await alertModal("Version change detected. Binaries being rebuilt...");
-			ipcRenderer.send("restart-app");
-		}
-
+		const willUpdate = version != current_version;
 		current_version = version;
 		updateDatabase("current_version", current_version, settingsDb, "settings");
 		document.getElementById("version").textContent = `Version: ${version}`;
+
+		if (willUpdate) {
+			await alertModal("Version change detected. Binaries being rebuilt...");
+			ipcRenderer.send("copy-binaries");
+		}
 	});
 }
 
@@ -1776,6 +1782,10 @@ document.addEventListener("DOMContentLoaded", function () {
 			break;
 		}
 	}
+
+	document.getElementById("picker").addEventListener("input", color => {
+		changeBackground(color.target.value);
+	});
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));

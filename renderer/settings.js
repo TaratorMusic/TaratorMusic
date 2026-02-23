@@ -56,7 +56,15 @@ document.querySelectorAll(".settingsKeybinds button").forEach(button => {
 
 function changeBackground(color) {
 	updateDatabase("background", color, settingsDb, "settings");
-	document.body.className = `bg-gradient-${color}`;
+	document.body.style.background = "";
+	document.body.className = "";
+	document.body.style.color = "white !important";
+
+	if (color.includes("#")) {
+		document.body.style.background = color;
+	} else {
+		document.body.classList.add(`bg-gradient-${color}`);
+	}
 }
 
 async function redownloadAllSongs() {

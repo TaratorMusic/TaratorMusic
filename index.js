@@ -91,8 +91,9 @@ function createWindow() {
 
 	mainWindow.loadFile("renderer/index.html");
 
-	ipcMain.on("copy-binaries", () => {
-		copyBinariesOutside();
+	ipcMain.on("copy-binaries", async () => {
+		await copyBinariesOutside();
+		restart();
 	});
 
 	ipcMain.handle("get-app-version", () => app.getVersion());

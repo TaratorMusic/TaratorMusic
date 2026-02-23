@@ -1,7 +1,4 @@
-## Version 1.8.1 Planned Features
-
 -   new readme images
--   Add color picker for background
 
 ### Version 1.8.2 Planned Features
 
