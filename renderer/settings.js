@@ -17,6 +17,10 @@ async function saveKeybinds() {
 	updateDatabase("key_Mute", document.getElementById("settingsMute").innerHTML, settingsDb, "settings");
 	updateDatabase("key_Speed", document.getElementById("settingsSpeed").innerHTML, settingsDb, "settings");
 	updateDatabase("key_Loop", document.getElementById("settingsLoop").innerHTML, settingsDb, "settings");
+	updateDatabase("key_searchSong", document.getElementById("settingsSearchSong").innerHTML, settingsDb, "settings");
+	updateDatabase("key_RandomSong", document.getElementById("settingsRandomSong").innerHTML, settingsDb, "settings");
+	updateDatabase("key_RandomPlaylist", document.getElementById("settingsRandomPlaylist").innerHTML, settingsDb, "settings");
+	updateDatabase("key_LastPlaylist", document.getElementById("settingsLastPlaylist").innerHTML, settingsDb, "settings");
 
 	key_Rewind = document.getElementById("settingsRewind").innerHTML;
 	key_Previous = document.getElementById("settingsPrevious").innerHTML;
@@ -28,6 +32,10 @@ async function saveKeybinds() {
 	key_Mute = document.getElementById("settingsMute").innerHTML;
 	key_Speed = document.getElementById("settingsSpeed").innerHTML;
 	key_Loop = document.getElementById("settingsLoop").innerHTML;
+	key_searchSong = document.getElementById("settingsSearchSong").innerHTML;
+	key_RandomSong = document.getElementById("settingsRandomSong").innerHTML;
+	key_RandomPlaylist = document.getElementById("settingsRandomPlaylist").innerHTML;
+	key_LastPlaylist = document.getElementById("settingsLastPlaylist").innerHTML;
 }
 
 document.querySelectorAll(".settingsKeybinds button").forEach(button => {

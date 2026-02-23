@@ -99,8 +99,10 @@ let key_Shuffle;
 let key_Mute;
 let key_Speed;
 let key_Loop;
+let key_searchSong;
 let key_randomSong;
 let key_randomPlaylist;
+let key_lastPlaylist;
 let dividevolume;
 let displayPage;
 let stabiliseVolumeToggle;
@@ -129,8 +131,10 @@ const defaultSettings = {
 	key_Mute: "d",
 	key_Speed: "f",
 	key_Loop: "g",
+	key_searchSong: "z",
 	key_randomSong: "1",
 	key_randomPlaylist: "2",
+	key_lastPlaylist: "3",
 	dividevolume: 1,
 	displayPage: "scroll",
 	musicMode: "offline",
@@ -247,8 +251,10 @@ function initialiseSettingsDatabase() {
 		document.getElementById("settingsMute").innerHTML = settingsRow.key_Mute;
 		document.getElementById("settingsSpeed").innerHTML = settingsRow.key_Speed;
 		document.getElementById("settingsLoop").innerHTML = settingsRow.key_Loop;
+		document.getElementById("settingsSearchSong").innerHTML = settingsRow.key_searchSong;
 		document.getElementById("settingsRandomSong").innerHTML = settingsRow.key_randomSong;
 		document.getElementById("settingsRandomPlaylist").innerHTML = settingsRow.key_randomPlaylist;
+		document.getElementById("settingsLastPlaylist").innerHTML = settingsRow.key_lastPlaylist;
 
 		key_Rewind = settingsRow.key_Rewind;
 		key_Previous = settingsRow.key_Previous;
@@ -260,8 +266,10 @@ function initialiseSettingsDatabase() {
 		key_Mute = settingsRow.key_Mute;
 		key_Speed = settingsRow.key_Speed;
 		key_Loop = settingsRow.key_Loop;
+		key_searchSong = settingsRow.key_searchSong;
 		key_randomSong = settingsRow.key_randomSong;
 		key_randomPlaylist = settingsRow.key_randomPlaylist;
+		key_lastPlaylist = settingsRow.key_lastPlaylist;
 		rememberautoplay = settingsRow.rememberautoplay;
 		remembershuffle = settingsRow.remembershuffle;
 		rememberloop = settingsRow.rememberloop;
@@ -1601,15 +1609,6 @@ document.addEventListener("keydown", event => {
 	if (event.key == "Enter" && document.activeElement == document.getElementById("music-search") && musicMode != "offline") searchYoutubeInMusics();
 	if (event.key == "Enter" && document.getElementById("searchModal").style.display == "flex") return searchSong();
 
-	if (event.ctrlKey && event.key.toLowerCase() == "f") {
-		event.preventDefault();
-		searchModalInput.classList.remove("red-placeholder");
-		searchModalInput.placeholder = "Type a song name, and press Enter";
-		document.getElementById("searchModal").style.display = "flex";
-		document.getElementById("searchModalInput").focus();
-		return;
-	}
-
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
 		return;
 	}
@@ -1634,10 +1633,18 @@ document.addEventListener("keydown", event => {
 		document.getElementById("speedModal").style.display == "block" ? closeModal() : speed();
 	} else if (event.key == key_Loop) {
 		toggleLoop();
+	} else if (event.key == key_searchSong) {
+		event.preventDefault();
+		searchModalInput.classList.remove("red-placeholder");
+		searchModalInput.placeholder = "Type a song name, and press Enter";
+		document.getElementById("searchModal").style.display = "flex";
+		document.getElementById("searchModalInput").focus();
 	} else if (event.key == key_randomSong) {
 		randomSongFunctionMainMenu();
 	} else if (event.key == key_randomPlaylist) {
 		randomPlaylistFunctionMainMenu();
+	} else if (event.key == key_lastPlaylist) {
+		// TODO
 	}
 });
 
