@@ -308,7 +308,7 @@ function initialiseSettingsDatabase() {
 			forwardButton: "forward.svg",
 			autoplayButton: "redAutoplay.svg",
 			shuffleButton: "redShuffle.svg",
-			muteButton: "mute.svg",
+			muteButton: "mute_on.svg",
 			speedButton: "speed.svg",
 			loopButton: "redLoop.svg",
 			songSettingsButton: "adjustments.svg",
@@ -1313,9 +1313,11 @@ function mute() {
 	if (volumeControl.value != 0) {
 		previousVolume = volumeControl.value;
 		volumeControl.value = 0;
+		document.getElementById("muteButton").innerHTML = `<img src="${path.join(appThumbnailFolder, `mute_off.svg`)}" alt="Mute Active">`;
 		document.getElementById("muteButton").classList.add("active");
 	} else {
 		volumeControl.value = previousVolume;
+		document.getElementById("muteButton").innerHTML = `<img src="${path.join(appThumbnailFolder, `mute_on.svg`)}" alt="Mute Deactive">`;
 		document.getElementById("muteButton").classList.remove("active");
 	}
 	if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
@@ -1869,6 +1871,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	volumeControl.addEventListener("input", () => {
 		volume = volumeControl.value / 100 / dividevolume;
 		if (audioPlayer) audioPlayer.stdin.write(`volume ${volume}\n`);
+		document.getElementById("muteButton").innerHTML = `<img src="${path.join(appThumbnailFolder, `mute_o${volume == 0 ? "ff" : "n"}.svg`)}" alt="Mute ${volume == 0 ? "A" : "Dea"}ctive">`;
 		updateDatabase("volume", volumeControl.value, settingsDb, "settings");
 	});
 

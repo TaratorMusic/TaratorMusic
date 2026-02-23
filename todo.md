@@ -1,9 +1,7 @@
 ## Version 1.8.1 Planned Features
 
 -   new readme images
--   new added .svg's dont appear because of the error, the fetch function doesnt run
 -   Add color picker for background
--   Add green/red color to the mute button if volume = 0
 
 ### Version 1.8.2 Planned Features
 

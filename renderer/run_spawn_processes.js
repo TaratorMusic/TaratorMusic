@@ -8,7 +8,7 @@ async function createAppThumbnailsFolder() {
 		proc.on("close", async code => {
 			if (code !== 0) return reject(alertModal(`Go process exited with code ${code}`));
 			await alertModal("App thumbnails installed. App restart required for the effects.");
-            restartApp();
+			ipcRenderer.send("restart-app");
 			resolve();
 		});
 	});
@@ -143,7 +143,37 @@ async function startupCheck() {
 		if (!fs.existsSync(appThumbnailFolder)) {
 			loadNewPage("createAppThumbnailsFolder");
 		} else {
-			const files = ["addtoplaylist.svg", "adjustments.svg", "backward.svg", "custom.svg", "customise.svg", "forward.svg", "greenAutoplay.svg", "greenLoop.svg", "greenShuffle.svg", "mute.svg", "next.svg", "pause.svg", "placeholder.jpg", "play.svg", "previous.svg", "redAutoplay.svg", "redLoop.svg", "redShuffle.svg", "speed.svg", "star.svg", "tarator_icon.icns", "tarator_icon.ico", "tarator_icon.png", "tarator16_icon.png", "tarator512_icon.png", "tarator1024_icon.png", "trash.svg"];
+			const files = [
+				"addtoplaylist.svg",
+				"adjustments.svg",
+				"backward.svg",
+				"custom.svg",
+				"customise.svg",
+				"forward.svg",
+				"greenAutoplay.svg",
+				"greenLoop.svg",
+				"greenShuffle.svg",
+				"mute_on.svg",
+				"mute_off.svg",
+				"next.svg",
+				"pause.svg",
+				"placeholder.jpg",
+				"play.svg",
+				"previous.svg",
+				"redAutoplay.svg",
+				"redLoop.svg",
+				"redShuffle.svg",
+				"refresh.svg",
+				"speed.svg",
+				"star.svg",
+				"tarator_icon.icns",
+				"tarator_icon.ico",
+				"tarator_icon.png",
+				"tarator16_icon.png",
+				"tarator512_icon.png",
+				"tarator1024_icon.png",
+				"trash.svg",
+			];
 			for (const file of files) {
 				if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
 					loadNewPage("createAppThumbnailsFolder");
@@ -281,7 +311,7 @@ async function foundNewSongs(folderSongs, databaseSongs) {
 		const stats = fs.statSync(fullPath);
 		const fileSize = stats.size;
 
-        // TODO: Mass Insert
+		// TODO: Mass Insert
 		const insertQuery = `
             INSERT INTO songs (
                 song_id, song_name, song_url, song_length, seconds_played,

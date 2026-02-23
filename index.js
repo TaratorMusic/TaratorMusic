@@ -117,7 +117,7 @@ function createWindow() {
 		mainWindow.close();
 	});
 
-	ipcMain.handle("restart-app", () => {
+	ipcMain.on("restart-app", () => {
 		restart();
 	});
 }
