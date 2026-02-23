@@ -5,10 +5,10 @@
 -   new added .svg's dont appear because of the error, the fetch function doesnt run
 -   Add color picker for background
 -   Add green/red color to the mute button if volume = 0
--   Add shortcut for last played playlist
 
 ### Version 1.8.2 Planned Features
 
+-   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add shortcut of CTRL+H for playlist with inputted name 
 -   Stream seeking not working

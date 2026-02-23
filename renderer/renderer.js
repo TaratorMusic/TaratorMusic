@@ -291,6 +291,7 @@ function initialiseSettingsDatabase() {
 		discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
 		discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
 		document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
+
 		document.getElementById("weight1").value = popularityFactor;
 		document.getElementById("weight2").value = artistStrengthFactor;
 		document.getElementById("weight3").value = similarArtistsFactor;
@@ -1103,6 +1104,7 @@ async function playPlaylist(playlist, startingIndex = 0) {
 	}
 
 	currentPlaylistElement = startingIndex;
+	localStorage.setItem("lastPlaylist", playlist.id);
 	await playMusic(playlist.songs[startingIndex], playlist);
 }
 
@@ -1587,6 +1589,11 @@ function searchSong() {
 	} catch {
 		// To prevent console errors
 	}
+}
+
+function playLastPlaylist() {
+	const lastPlaylistId = localStorage.getItem("lastPlaylist");
+	playPlaylist(playlistsMap.get(lastPlaylistId), 0);
 }
 
 document.querySelectorAll('input[type="range"]').forEach(range => {
