@@ -172,7 +172,7 @@ async function loadNewPage(query, info) {
 		shortenSongIdsGoPart(info);
 	} else if (query == "downloadStreamedSong") {
 		await loadJSFile("download_music");
-		createDownloadModalForStreamedSong(info);
+		await processVideoLink(null, info);
 	}
 }
 

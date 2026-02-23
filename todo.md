@@ -1,7 +1,6 @@
 ## Version 1.8.1 Planned Features
 
 -   new readme images
--   downloading streamed songs gives an error
 -   new added .svg's dont appear because of the error, the fetch function doesnt run
 -   Add color picker for background
 -   Add green/red color to the mute button if volume = 0
@@ -15,6 +14,7 @@
 -   Search code for TODO'S
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Add search queries like || && ! "" + ,
+-   Fix app resizing removing all recommendations-fetched songs
 
 ### Big updates remaining:
 

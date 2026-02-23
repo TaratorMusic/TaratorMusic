@@ -70,100 +70,6 @@ async function checkNameThumbnail(predetermined) {
 	}
 }
 
-async function createDownloadModalForStreamedSong(songId) {
-	try {
-		document.getElementById("downloadModal").style.display = "block";
-		document.getElementById("downloadFirstButton").disabled = true;
-		document.getElementById("downloadFirstInput").value = `https://www.youtube.com/watch?v=${songId}`;
-
-		if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
-
-		const downloadSecondPhase = document.createElement("div");
-		downloadSecondPhase.id = "downloadSecondPhase";
-		document.getElementById("downloadModalContent").appendChild(downloadSecondPhase);
-
-		const downloadModalBottomRow = document.createElement("div");
-		downloadModalBottomRow.id = "downloadModalBottomRow";
-		downloadSecondPhase.appendChild(downloadModalBottomRow);
-
-		const downloadModalText = document.createElement("div");
-		downloadModalText.id = "downloadModalText";
-		downloadModalBottomRow.appendChild(downloadModalText);
-		downloadModalText.innerHTML = "Checking...";
-
-		const videoTitle = streamedSongsHtmlMap.get(songId)?.name;
-		const thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail.url || "";
-
-		const downloadPlaceofSongs = document.createElement("div");
-		downloadPlaceofSongs.className = "flexrow";
-		downloadPlaceofSongs.id = "downloadPlaceofSongs";
-		document.getElementById("downloadSecondPhase").appendChild(downloadPlaceofSongs);
-
-		const songAndThumbnail = document.createElement("div");
-		songAndThumbnail.className = "songAndThumbnail";
-		downloadPlaceofSongs.appendChild(songAndThumbnail);
-
-		const exampleDownloadColumn = document.createElement("div");
-		exampleDownloadColumn.className = "exampleDownloadColumn";
-		songAndThumbnail.appendChild(exampleDownloadColumn);
-
-		const downloadSecondInput = document.createElement("input");
-		downloadSecondInput.type = "text";
-		downloadSecondInput.id = "downloadSecondInput";
-		downloadSecondInput.value = videoTitle;
-		downloadSecondInput.spellcheck = false;
-		exampleDownloadColumn.appendChild(downloadSecondInput);
-
-		const thumbnailInput = document.createElement("input");
-		thumbnailInput.type = "file";
-		thumbnailInput.id = "thumbnailInput";
-		thumbnailInput.accept = "image/*";
-		thumbnailInput.onchange = function (event) {
-			updateThumbnailImage(event, 3);
-		};
-		exampleDownloadColumn.appendChild(thumbnailInput);
-
-		const thumbnailImage = document.createElement("img");
-		thumbnailImage.id = "thumbnailImage";
-		thumbnailImage.className = "thumbnailImage";
-		thumbnailImage.src = thumbnailUrl.trim();
-		thumbnailImage.alt = "";
-
-		thumbnailImage.onerror = function () {
-			console.log("Error loading thumbnail image:", thumbnailUrl);
-		};
-
-		songAndThumbnail.appendChild(thumbnailImage);
-
-		const addToPlaylistBtn = document.createElement("button");
-		addToPlaylistBtn.className = "addToPlaylist";
-		addToPlaylistBtn.innerHTML = "Playlists";
-		addToPlaylistBtn.onclick = () => openAddToPlaylistModalStaging("songAndThumbnail");
-		exampleDownloadColumn.appendChild(addToPlaylistBtn);
-
-		document.getElementById("downloadModalText").innerHTML = "";
-
-		const finalDownloadButton = document.createElement("button");
-		finalDownloadButton.id = "finalDownloadButton";
-		finalDownloadButton.setAttribute("data-file-name", songId);
-		finalDownloadButton.onclick = function () {
-			actuallyDownloadTheSong();
-		};
-		finalDownloadButton.textContent = "Download";
-		document.getElementById("downloadModalBottomRow").appendChild(finalDownloadButton);
-
-		document.getElementById("downloadFirstButton").disabled = false;
-		document.getElementById("downloadSecondPhase").style.display = "block";
-		downloadingStyle = "youtube_video";
-	} catch (error) {
-		console.log("Error in processVideoLink:", error);
-		document.getElementById("downloadFirstButton").disabled = false;
-		if (error.message.includes("age")) await alertModal("You can't download this song because it is age restricted.");
-		if (error.message.includes("private")) await alertModal("You can't download this song because it is a private video.");
-		if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
-	}
-}
-
 async function getSpotifySongName(link) {
 	const fetch = require("node-fetch");
 	const cheerio = require("cheerio");
@@ -332,22 +238,44 @@ async function getPlaylistSongsAndArtists(link) {
 	renderPlaylistUI(playlistName, playlistThumbnail, videoItems);
 }
 
-async function processVideoLink(videoUrl) {
+async function processVideoLink(videoUrl, songId = null) {
 	try {
-		console.log(videoUrl);
-		const info = await ytdl.getInfo(videoUrl);
-		console.log(info);
-		const videoTitle = info.videoDetails.title;
-		console.log(videoTitle);
+		if (songId) {
+			document.getElementById("downloadModal").style.display = "block";
+			document.getElementById("downloadFirstButton").disabled = true;
+			document.getElementById("downloadFirstInput").value = `https://www.youtube.com/watch?v=${songId}`;
 
-		const thumbnails = info.videoDetails.thumbnails || [];
-		const bestThumbnail = thumbnails.reduce((max, thumb) => {
-			const size = (thumb.width || 0) * (thumb.height || 0);
-			const maxSize = (max.width || 0) * (max.height || 0);
-			return size > maxSize ? thumb : max;
-		}, thumbnails[0] || {});
+			if (document.getElementById("downloadSecondPhase")) document.getElementById("downloadSecondPhase").remove();
 
-		const thumbnailUrl = bestThumbnail.url || "";
+			const downloadSecondPhase = document.createElement("div");
+			downloadSecondPhase.id = "downloadSecondPhase";
+			document.getElementById("downloadModalContent").appendChild(downloadSecondPhase);
+
+			const downloadModalBottomRow = document.createElement("div");
+			downloadModalBottomRow.id = "downloadModalBottomRow";
+			downloadSecondPhase.appendChild(downloadModalBottomRow);
+
+			const downloadModalText = document.createElement("div");
+			downloadModalText.id = "downloadModalText";
+			downloadModalBottomRow.appendChild(downloadModalText);
+			downloadModalText.innerHTML = "Checking...";
+		}
+
+		let videoTitle, thumbnailUrl;
+		if (songId) {
+			videoTitle = streamedSongsHtmlMap.get(songId)?.name;
+			thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail.url || "";
+		} else {
+			const info = await ytdl.getInfo(videoUrl);
+			videoTitle = info.videoDetails.title;
+			const thumbnails = info.videoDetails.thumbnails || [];
+			const bestThumbnail = thumbnails.reduce((max, thumb) => {
+				const size = (thumb.width || 0) * (thumb.height || 0);
+				const maxSize = (max.width || 0) * (max.height || 0);
+				return size > maxSize ? thumb : max;
+			}, thumbnails[0] || {});
+			thumbnailUrl = bestThumbnail.url || "";
+		}
 
 		const downloadPlaceofSongs = document.createElement("div");
 		downloadPlaceofSongs.className = "flexrow";
@@ -383,11 +311,9 @@ async function processVideoLink(videoUrl) {
 		thumbnailImage.className = "thumbnailImage";
 		thumbnailImage.src = thumbnailUrl.trim();
 		thumbnailImage.alt = "";
-
 		thumbnailImage.onerror = function () {
 			console.log("Error loading thumbnail image:", thumbnailUrl);
 		};
-
 		songAndThumbnail.appendChild(thumbnailImage);
 
 		const addToPlaylistBtn = document.createElement("button");
@@ -420,6 +346,7 @@ async function processVideoLink(videoUrl) {
 
 		const finalDownloadButton = document.createElement("button");
 		finalDownloadButton.id = "finalDownloadButton";
+		if (songId) finalDownloadButton.setAttribute("data-file-name", songId);
 		finalDownloadButton.onclick = function () {
 			actuallyDownloadTheSong();
 		};
@@ -428,6 +355,7 @@ async function processVideoLink(videoUrl) {
 
 		document.getElementById("downloadFirstButton").disabled = false;
 		document.getElementById("downloadSecondPhase").style.display = "block";
+		if (songId) downloadingStyle = "youtube_video";
 	} catch (error) {
 		console.log("Error in processVideoLink:", error);
 		document.getElementById("downloadFirstButton").disabled = false;

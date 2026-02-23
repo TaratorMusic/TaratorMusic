@@ -1651,7 +1651,7 @@ document.addEventListener("keydown", event => {
 	} else if (event.key == key_randomPlaylist) {
 		randomPlaylistFunctionMainMenu();
 	} else if (event.key == key_lastPlaylist) {
-		// TODO
+		playLastPlaylist();
 	}
 });
 
