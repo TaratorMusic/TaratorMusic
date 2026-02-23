@@ -943,18 +943,13 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
-			try {
-				await downloadAudio(songLink, outputPath, progressMsg => {
-					document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
-				});
-			} catch (error) {
-				if (error.message.includes("Age confirmation required") || error.message.includes("confirm your age")) {
-					await alertModal("This song requires age confirmation. Skipping...");
-					document.getElementById("downloadModalText").innerText = `Skipping song ${i + 1} due to age restriction.`;
-					continue;
-				} else {
-					throw error;
-				}
+			const result = await downloadAudio(songLink, outputPath, progressMsg => {
+				document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
+			});
+
+			if (result == "AGE_RESTRICTED") {
+				await alertModal("This song requires age confirmation. Skipping...");
+				continue;
 			}
 
 			if (stabiliseVolumeToggle == 1) {
@@ -1101,8 +1096,9 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 			return reject(new Error("Invalid YouTube URL"));
 		}
 
-		console.log(videoUrl.split("&")[0]);
-		const yt = spawn(getYtDlpPath(), ["--js-runtimes", "node", "-x", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl.split("&")[0]]);
+		let stderrBuffer = "";
+
+		const yt = spawn(getYtDlpPath(), ["--js-runtimes", "node", "-x", "--ignore-errors", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl.split("&")[0]]);
 
 		yt.stdout.on("data", data => {
 			const msg = data.toString();
@@ -1113,14 +1109,21 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 		});
 
 		yt.stderr.on("data", data => {
-			console.error(data.toString());
+			stderrBuffer += data.toString();
 		});
 
 		yt.on("error", err => reject(err));
 
 		yt.on("close", code => {
-			if (code === 0 && fs.existsSync(outputFilePath)) resolve();
-			else reject(new Error(`yt-dlp exited with code ${code}`));
+			if (stderrBuffer.includes("confirm your age")) {
+				return resolve("AGE_RESTRICTED");
+			}
+
+			if (code == 0 && fs.existsSync(outputFilePath)) {
+				resolve();
+			} else {
+				reject(new Error(stderrBuffer || `yt-dlp exited with code ${code}`));
+			}
 		});
 	});
 }

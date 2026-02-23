@@ -6,15 +6,17 @@
 -   new added .svg's dont appear because of the error, the fetch function doesnt run
 -   Add color picker for background
 -   Add green/red color to the mute button if volume = 0
--   Test if long youtube playlists actually download... (400song)
+-   Make quick search modal shortcut customisable
+-   Add shortcut for last played playlist
 
 ### Version 1.8.2 Planned Features
 
--   Add shortcut for last played playlist
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add shortcut of CTRL+H for playlist with inputted name 
 -   Stream seeking not working
 -   Search code for TODO'S
+-   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
+-   Add search queries like || && ! "" + ,
 
 ### Big updates remaining:
 
@@ -30,8 +32,6 @@
 -   refresh recommendations table each month (Needs to re-do all rows)
 -   initialiseSettingsDatabase has duplicate code
 -   The "x" button in modals should close that modal, not the modal with the highest z-index
--   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
--   Add search queries like || && ! "" + ,
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
 -   Some songs silently fail loading (probably age-restricted)
 -   Customisable queue list with drag and drop (similar to youtube)
@@ -48,7 +48,6 @@
 -   Make the db saves non-blocking
 -   Most Listened Playlist and other playlist data in Statistics
 -   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)
--   Make quick search modal shortcut customisable
 
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
 -   Data-tooltip on the action buttons are not working
