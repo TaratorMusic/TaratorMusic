@@ -1105,12 +1105,10 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 			return reject(new Error("Invalid YouTube URL"));
 		}
 
-		const yt = spawn(getYtDlpPath(), ["-x", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl]);
+		const yt = spawn(getYtDlpPath(), ["--js-runtimes", "node", "-x", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl]);
 
 		yt.stdout.on("data", data => {
 			const msg = data.toString();
-			console.log(msg);
-
 			if (msg.includes("ETA")) {
 				const cleanMsg = msg.replace("[download]", "").trim();
 				if (onProgress) onProgress(cleanMsg);
@@ -1118,8 +1116,7 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 		});
 
 		yt.stderr.on("data", data => {
-			const msg = data.toString();
-			console.error(msg);
+			console.error(data.toString());
 		});
 
 		yt.on("error", err => reject(err));
