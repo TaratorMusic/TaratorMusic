@@ -1,7 +1,6 @@
 ## Version 1.8.1 Planned Features
 
 -   new readme images
--   new bug where random song and presumably random playlist functions doing infinite loops if there is only one song
 -   downloading streamed songs gives an error
 -   new added .svg's dont appear because of the error, the fetch function doesnt run
 -   Add color picker for background

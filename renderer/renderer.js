@@ -822,7 +822,7 @@ function renderMusics() {
 					return exactMatch ? value == searchValue : value.includes(searchValue);
 				};
 
-				return compare(song_name) || (exactMatch ? id === searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
+				return compare(song_name) || (exactMatch ? id == searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
 			});
 
 		const maxVisible = displayPage == "scroll" ? filteredSongs.length : parseInt(3 * previousItemsPerRow * currentPage);
@@ -914,7 +914,7 @@ function refreshRecommendations() {
 					continue;
 				}
 
-				if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() === key.toLowerCase().trim())) continue;
+				if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() == key.toLowerCase().trim())) continue;
 
 				const fullSong = {
 					id: songID,
@@ -1208,31 +1208,31 @@ async function randomSongFunctionMainMenu() {
 	const musicItems = musicsDb
 		.prepare("SELECT song_id, song_name FROM songs")
 		.all()
-		.filter(song => !notInterestedIds.includes(song.song_id)); // TODO: Dont call the db here
+		.filter(song => !notInterestedIds.includes(song.song_id));
 
 	if (musicItems.length == 0) return;
+	if (musicItems.length == 1) return playMusic(musicItems[0].song_id, null);
 
-	let randomIndex = Math.floor(Math.random() * musicItems.length);
+	let randomIndex;
 
-	if (playingSongsID) {
-		while (removeExtensions(musicItems[randomIndex].song_name) == document.getElementById("song-name").innerText) {
-			randomIndex = Math.floor(Math.random() * musicItems.length);
-		}
-	}
+	do {
+		randomIndex = Math.floor(Math.random() * musicItems.length);
+	} while (playingSongsID && removeExtensions(musicItems[randomIndex].song_name) == document.getElementById("song-name").innerText);
 
 	playMusic(musicItems[randomIndex].song_id, null);
 }
 
 async function randomPlaylistFunctionMainMenu() {
-	const playlistsList = Array.from(playlistsMap.keys());
+	const playlistsList = Array.from(playlistsMap.keys()).filter(p => playlistsMap.get(p).songs.length > 0);
 
 	if (playlistsList.length == 0) return;
+	if (playlistsList.length == 1) return playPlaylist(playlistsMap.get(playlistsList[0]), 0);
 
-	let randomIndex = Math.floor(Math.random() * playlistsList.length);
+	let randomIndex;
 
-	while (currentPlaylist == playlistsList[randomIndex] || playlistsMap.get(playlistsList[randomIndex]).songs.length == 0) {
+	do {
 		randomIndex = Math.floor(Math.random() * playlistsList.length);
-	}
+	} while (currentPlaylist == playlistsList[randomIndex]);
 
 	playPlaylist(playlistsMap.get(playlistsList[randomIndex]), 0);
 }
@@ -1477,7 +1477,7 @@ async function saveEditedSong() {
 	customiseDiv.style.display = "none";
 	document.getElementById("my-music").click();
 
-	if (playingSongsID === customiseDiv.dataset.songID) document.getElementById("song-name").innerText = newNameInput;
+	if (playingSongsID == customiseDiv.dataset.songID) document.getElementById("song-name").innerText = newNameInput;
 
 	try {
 		const updatedElement = await new Promise((resolve, reject) => {
@@ -1528,7 +1528,7 @@ async function removeSong(fileToDelete) {
 
 	playlists.forEach(playlist => {
 		const songs = JSON.parse(playlist.songs);
-		const updatedSongs = songs.filter(song => song !== fileToDelete);
+		const updatedSongs = songs.filter(song => song != fileToDelete);
 		playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(updatedSongs), playlist.id);
 	});
 
