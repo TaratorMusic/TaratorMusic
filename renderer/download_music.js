@@ -736,9 +736,6 @@ async function actuallyDownloadTheSong() {
 				document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
 			});
 
-			document.getElementById("downloadModalText").innerText = `Fetching recommendations for ${secondInput}...`;
-			await fetchRecommendationsData(artist);
-
 			if (stabiliseVolumeToggle == 1) {
 				try {
 					document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
@@ -824,6 +821,7 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 			grabAndStoreSongInfo(songID);
+			await fetchRecommendationsData();
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
@@ -959,9 +957,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 				}
 			}
 
-			document.getElementById("downloadModalText").innerText = `Fetching recommendations for ${songTitle}...`;
-			await fetchRecommendationsData(artists[i]);
-
 			if (stabiliseVolumeToggle == 1) {
 				try {
 					document.getElementById("downloadModalText").innerText = `Stabilising volume for song ${i + 1} of ${totalSongs}: ${songTitle}`;
@@ -1084,6 +1079,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
 		await commitStagedPlaylistAdds();
 		grabAndStoreSongInfo(songIds);
+		await fetchRecommendationsData();
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 	}
@@ -1105,11 +1101,12 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 			return reject(new Error("Invalid YouTube URL"));
 		}
 
-		const yt = spawn(getYtDlpPath(), ["--js-runtimes", "node", "-x", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl]);
+		console.log(videoUrl.split("&")[0]);
+		const yt = spawn(getYtDlpPath(), ["--js-runtimes", "node", "-x", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl.split("&")[0]]);
 
 		yt.stdout.on("data", data => {
 			const msg = data.toString();
-			if (msg.includes("ETA")) {
+			if (msg.includes("[download]")) {
 				const cleanMsg = msg.replace("[download]", "").trim();
 				if (onProgress) onProgress(cleanMsg);
 			}

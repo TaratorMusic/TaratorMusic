@@ -2,7 +2,6 @@
 
 -   new readme images
 -   new bug where random song and presumably random playlist functions doing infinite loops if there is only one song
--   Fix Fetchin all recommendations upon any download (Creates extra modals)
 -   downloading streamed songs gives an error
 -   new added .svg's dont appear because of the error, the fetch function doesnt run
 -   Add color picker for background
