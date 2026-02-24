@@ -665,6 +665,7 @@ audio {
 	background-color: rgba(0, 0, 0, 0.8);
 	transition: all 0.5s ease-in-out;
 	cursor: pointer;
+    color: white !important;
 }
 
 #settings-content button {

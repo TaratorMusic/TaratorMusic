@@ -1,17 +1,22 @@
--   new readme images
 
 ### Version 1.8.2 Planned Features
 
 -   Fix song streaming not working
+-   Stream seeking not working
+-   Merge stream and discovery modes
+-   Add tooltips to the new buttons at the top of the my music page
 -   Add an option to disable recommendations fetching
--   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running
+-   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running --> Maybe refresh the playlist variable every time playMusic starts using current playlist id
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add shortcut of CTRL+H for playlist with inputted name 
--   Stream seeking not working
--   Search code for TODO'S
--   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Add search queries like || && ! "" + ,
+-   new readme images
+
+### Version 1.8.3 Planned Features
+
+-   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Fix app resizing removing all recommendations-fetched songs
+-   Search code for TODO'S
 
 ### Big updates remaining:
 

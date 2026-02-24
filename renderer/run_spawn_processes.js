@@ -287,40 +287,66 @@ async function foundNewSongs(folderSongs, databaseSongs) {
 		}
 	}
 
+	const insertQuery = `
+        INSERT INTO songs (
+            song_id, song_name, song_url, song_length, seconds_played,
+            times_listened, stabilised, size, speed, bass, treble,
+            midrange, volume, song_extension, thumbnail_extension, artist, genre, language
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+	const insert = musicsDb.prepare(insertQuery);
+	const transaction = musicsDb.transaction(rows => {
+		for (const row of rows) insert.run(...row);
+	});
+
+	const rowsToInsert = [];
+
 	for (const fileName of Object.keys(folderOnly)) {
 		let songName = fileName;
+		const songExt = folderOnly[fileName]?.song_extension ?? "";
+		const thumbExt = folderOnly[fileName]?.thumbnail_extension ?? "";
+
+		const originalMusicPath = path.join(musicFolder, fileName + songExt);
 
 		if (!fileName.includes("tarator")) {
 			songName = generateId();
-			const thumbSrc = path.join(thumbnailFolder, fileName) + folderOnly[fileName].thumbnail_extension;
 
-			if (fs.existsSync(thumbSrc)) fs.renameSync(thumbSrc, path.join(thumbnailFolder, songName));
-			await fs.renameSync(path.join(musicFolder, fileName), path.join(musicFolder, songName));
+			const newMusicPath = path.join(musicFolder, songName + songExt);
+			if (fs.existsSync(originalMusicPath)) {
+				fs.renameSync(originalMusicPath, newMusicPath);
+			}
+
+			if (thumbExt) {
+				const originalThumbPath = path.join(thumbnailFolder, fileName + thumbExt);
+				const newThumbPath = path.join(thumbnailFolder, songName + thumbExt);
+
+				if (fs.existsSync(originalThumbPath)) {
+					fs.renameSync(originalThumbPath, newThumbPath);
+				}
+			}
 		}
 
-		const fullPath = path.join(musicFolder, songName) + folderOnly[fileName].song_extension;
+		const fullPath = path.join(musicFolder, songName + songExt);
+		if (!fs.existsSync(fullPath)) continue;
 
 		const metadata = await new Promise((resolve, reject) => {
 			ffmpeg.ffprobe(fullPath, (err, meta) => {
-				if (err) return reject(err);
+				if (err) return resolve(null);
 				resolve(meta);
 			});
 		});
 
-		const duration = metadata.format?.duration ? Math.round(metadata.format.duration) : null;
+		const duration = metadata?.format?.duration ? Math.round(metadata.format.duration) : null;
+
 		const stats = fs.statSync(fullPath);
 		const fileSize = stats.size;
 
-		// TODO: Mass Insert
-		const insertQuery = `
-            INSERT INTO songs (
-                song_id, song_name, song_url, song_length, seconds_played,
-                times_listened, stabilised, size, speed, bass, treble,
-                midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+		rowsToInsert.push([songName, fileName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, songExt.replace(".", "") || null, thumbExt.replace(".", "") || null, null, null, null]);
+	}
 
-		musicsDb.prepare(insertQuery).run(songName, fileName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, folderOnly[fileName]?.song_extension?.replace(".", "") ?? null, folderOnly[fileName]?.thumbnail_extension?.replace(".", "") ?? null, null, null, null);
+	if (rowsToInsert.length > 0) {
+		transaction(rowsToInsert);
 	}
 
 	await alertModal(promptUserOnSongs(Object.keys(databaseOnly).length));
