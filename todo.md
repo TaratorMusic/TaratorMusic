@@ -4,7 +4,6 @@
 -   Fix song streaming not working
 -   Stream seeking not working
 -   Merge stream and discovery modes
--   Add tooltips to the new buttons at the top of the my music page
 -   Add an option to disable recommendations fetching
 -   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running --> Maybe refresh the playlist variable every time playMusic starts using current playlist id
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results

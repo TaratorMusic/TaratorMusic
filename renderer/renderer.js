@@ -575,6 +575,7 @@ async function myMusicOnClick() {
 	musicSearchParts.className = "beatifullyCenteredRow";
 
 	const musicSearchInput = document.createElement("input");
+	musicSearchInput.dataset.tooltip = "Search for a song";
 	musicSearchInput.type = "text";
 	musicSearchInput.id = "music-search";
 
@@ -583,14 +584,17 @@ async function myMusicOnClick() {
 	});
 
 	const musicSearchInputAmount = document.createElement("input");
+	musicSearchInputAmount.dataset.tooltip = "Amount of songs to search";
 	musicSearchInputAmount.id = "musicSearchInputAmount";
 	musicSearchInputAmount.value = "4";
 	musicSearchInputAmount.style.cursor = "unset !important";
 	const musicSearchEnterButton = document.createElement("button");
+	musicSearchEnterButton.dataset.tooltip = "Search";
 	musicSearchEnterButton.id = "musicSearchEnterButton";
 	musicSearchEnterButton.innerText = "↵";
 	musicSearchEnterButton.addEventListener("click", searchYoutubeInMusics);
 	const musicSearchRefreshButton = document.createElement("button");
+	musicSearchRefreshButton.dataset.tooltip = "Refresh Recommendations";
 	musicSearchRefreshButton.id = "musicSearchRefreshButton";
 	musicSearchRefreshButton.style.backgroundImage = `url("file://${path.join(appThumbnailFolder, "refresh.svg").replace(/\\/g, "/")}")`; // TODO: Move to css
 	musicSearchRefreshButton.style.backgroundSize = "cover";
@@ -599,6 +603,32 @@ async function myMusicOnClick() {
 	musicSearchRefreshButton.addEventListener("click", () => {
 		localStorage.setItem("recommendationsCache", null);
 		renderMusics();
+	});
+
+	const tooltipElements = [musicSearchInput, musicSearchInputAmount, musicSearchEnterButton, musicSearchRefreshButton];
+
+	tooltipElements.forEach(el => {
+		let timeoutId;
+
+		el.addEventListener("mouseenter", e => {
+			timeoutId = setTimeout(() => {
+				if (!el.dataset.tooltip) return;
+				tooltip.textContent = el.dataset.tooltip;
+				tooltip.style.display = "block";
+				tooltip.style.left = e.pageX + 5 + "px";
+				tooltip.style.top = e.pageY + 5 + "px";
+			}, 1000);
+		});
+
+		el.addEventListener("mousemove", e => {
+			tooltip.style.left = e.pageX + 5 + "px";
+			tooltip.style.top = e.pageY + 5 + "px";
+		});
+
+		el.addEventListener("mouseleave", () => {
+			clearTimeout(timeoutId);
+			tooltip.style.display = "none";
+		});
 	});
 
 	const displayPageSelect = document.createElement("select");
@@ -1386,7 +1416,8 @@ function opencustomiseModal(songsId) {
 		document.getElementById("removeSongButton").disabled = false;
 		document.getElementById("customiseSongLink").disabled = false;
 		document.getElementById("customiseThumbnail").disabled = false;
-	} else { // The song is not downloaded
+	} else {
+		// The song is not downloaded
 		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?`);
 		({ song_name, thumbnail_url, artist, genre, language } = stmt.get(songsId));
 
@@ -1478,10 +1509,10 @@ async function saveEditedSong() {
 		musicsDb
 			.prepare(
 				`
-                UPDATE streams 
-                SET song_name = ?, genre = ?, artist = ?, language = ? 
-                WHERE song_id = ?
-            `,
+                    UPDATE streams 
+                    SET song_name = ?, genre = ?, artist = ?, language = ? 
+                    WHERE song_id = ?
+                `,
 			)
 			.run(newNameInput, songsGenre, songsArtist, songsLanguage, songID);
 
