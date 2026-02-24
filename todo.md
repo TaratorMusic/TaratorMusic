@@ -2,6 +2,8 @@
 
 ### Version 1.8.2 Planned Features
 
+-   Fix song streaming not working
+-   Add an option to disable recommendations fetching
 -   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add shortcut of CTRL+H for playlist with inputted name 

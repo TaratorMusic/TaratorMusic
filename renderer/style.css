@@ -70,7 +70,11 @@
 * {
 	box-sizing: border-box !important;
 	user-select: none;
-    color: white;
+	color: white;
+}
+
+input {
+	color: black !important;
 }
 
 body {
@@ -186,7 +190,9 @@ body::-webkit-scrollbar {
 	align-items: center;
 	border-radius: 2px;
 	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-	transition: background-color 0.6s ease, box-shadow 0.6s ease;
+	transition:
+		background-color 0.6s ease,
+		box-shadow 0.6s ease;
 }
 
 .sidebarButtons:hover {
@@ -528,6 +534,10 @@ audio {
 	font-weight: bold;
 	font-size: 2vw;
 	display: flex;
+}
+
+.modal button {
+	color: black !important;
 }
 
 .close {
@@ -1353,7 +1363,7 @@ th {
 
 .activityBox div {
 	min-width: 9vw;
-    font-size: 1.2vw;
+	font-size: 1.2vw;
 	font-weight: 600;
 	text-align: left;
 	margin-right: 1vw;
@@ -1429,4 +1439,8 @@ th {
 
 #htmlTable td {
 	font-size: 1vw;
+}
+
+#musicSearchInputAmount {
+	color: white !important;
 }
