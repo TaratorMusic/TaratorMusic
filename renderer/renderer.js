@@ -1386,7 +1386,7 @@ function opencustomiseModal(songsId) {
 		document.getElementById("removeSongButton").disabled = false;
 		document.getElementById("customiseSongLink").disabled = false;
 		document.getElementById("customiseThumbnail").disabled = false;
-	} else {
+	} else { // The song is not downloaded
 		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?`);
 		({ song_name, thumbnail_url, artist, genre, language } = stmt.get(songsId));
 
@@ -1762,6 +1762,7 @@ async function stabiliseThisSong(songId) {
 	if (stmt.stabilised == 1) return await alertModal("You have this song already stabilised.");
 	document.getElementById("stabiliseSongButton").disabled = true;
 	await normalizeAudio(path.join(musicFolder, songId + "." + stmt.song_extension));
+	musicsDb.prepare("UPDATE songs SET stabilised = 1 WHERE song_id = ?").run(songId);
 	await alertModal(`Song "${stmt.song_name}" successfully stabilised.`);
 	document.getElementById("stabiliseSongButton").disabled = false;
 }

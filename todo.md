@@ -9,11 +9,11 @@
 -   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running --> Maybe refresh the playlist variable every time playMusic starts using current playlist id
 -   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
 -   Add shortcut of CTRL+H for playlist with inputted name 
--   Add search queries like || && ! "" + ,
 -   new readme images
 
 ### Version 1.8.3 Planned Features
 
+-   Add search queries like || && ! "" + ,
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Fix app resizing removing all recommendations-fetched songs
 -   Search code for TODO'S
