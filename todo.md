@@ -2,6 +2,7 @@
 ### Version 1.8.2 Planned Features
 
 -   Fix song streaming not working
+-   Fix mute button looking weird
 -   Stream seeking not working
 -   Merge stream and discovery modes
 -   Add an option to disable recommendations fetching
