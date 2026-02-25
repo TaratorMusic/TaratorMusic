@@ -28,12 +28,12 @@ async function createMostListenedSongBox() {
 	const most_listened_song = musicsDb
 		.prepare(
 			`
-            SELECT song_id, SUM(end_time - start_time) AS total_time
-            FROM timers
-            GROUP BY song_id
-            ORDER BY total_time DESC
-            LIMIT 1
-        `
+                SELECT song_id, SUM(end_time - start_time) AS total_time
+                FROM timers
+                GROUP BY song_id
+                ORDER BY total_time DESC
+                LIMIT 1
+            `,
 		)
 		.get();
 
@@ -313,7 +313,7 @@ async function generalStatistics() {
 			`SELECT *
             FROM timers
             ORDER BY start_time ASC
-            LIMIT 1`
+            LIMIT 1`,
 		)
 		.get();
 
@@ -322,7 +322,7 @@ async function generalStatistics() {
 			`SELECT 
             COUNT(CASE WHEN playlist IS NULL THEN 1 END) AS null_count,
             COUNT(CASE WHEN playlist IS NOT NULL THEN 1 END) AS not_null_count
-            FROM timers`
+            FROM timers`,
 		)
 		.get();
 

@@ -1592,6 +1592,7 @@ async function removeSong(fileToDelete) {
 	});
 
 	musicsDb.prepare("DELETE FROM songs WHERE song_id = ?").run(fileToDelete);
+	musicsDb.prepare("DELETE FROM timers WHERE song_id = ?").run(fileToDelete);
 	songNameCache.delete(fileToDelete);
 
 	closeModal();
