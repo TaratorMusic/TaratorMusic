@@ -1,23 +1,24 @@
 
 ### Version 1.8.2 Planned Features
 
--   Fix song streaming not working
 -   Fix mute button looking weird
--   Stream seeking not working
+-   Fix songs with no thumbnails being stuck at 00:00 with no errors (Check logs before fixing thumbnails)
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
--   Add an option to disable recommendations fetching
+-   Add an option to disable recommendations fetching to the settings
 -   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running --> Maybe refresh the playlist variable every time playMusic starts using current playlist id
--   New shortcut --> CTRL + G to search something, and the app will shuffle between the found results
--   Add shortcut of CTRL+H for playlist with inputted name 
+-   New shortcut --> x to search something, and the app will shuffle between the found results
+-   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   new readme images
 
 ### Version 1.8.3 Planned Features
 
+-   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
 -   Add search queries like || && ! "" + ,
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Fix app resizing removing all recommendations-fetched songs
 -   Search code for TODO'S
+-   Stream seeking not working
 
 ### Big updates remaining:
 

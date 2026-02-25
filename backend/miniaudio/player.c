@@ -8,12 +8,21 @@
 #include <windows.h>
 #define popen _popen
 #define pclose _pclose
+#define THREAD_RETURN DWORD WINAPI
+#define THREAD_ARG LPVOID
+#else
+#include <pthread.h>
+#include <unistd.h>
+#define THREAD_RETURN void*
+#define THREAD_ARG void*
 #endif
 
 typedef struct {
     FILE* pipe;
     ma_uint64 frames_read;
+    ma_uint64 prev_frames_read;
     int paused;
+    int pipe_eof;
     unsigned char* buffer;
     size_t buffer_filled;
     size_t buffer_pos;
@@ -29,6 +38,16 @@ static int is_loaded = 0;
 static int is_streaming = 0;
 static float current_volume = 1.0f;
 static int stream_playing = 0;
+static ma_uint32 stream_sample_rate = 44100;
+
+static int monitor_running = 0;
+static int was_paused = -1;
+
+#ifdef _WIN32
+static HANDLE monitor_thread;
+#else
+static pthread_t monitor_thread;
+#endif
 
 static void stop_stream(void);
 
@@ -52,7 +71,10 @@ static void stream_callback(ma_device* pDevice, void* pOutput, const void* pInpu
             }
             data->buffer_filled = fread(data->buffer, 1, 65536, data->pipe);
             data->buffer_pos = 0;
-            if (data->buffer_filled == 0) break;
+            if (data->buffer_filled == 0) {
+                data->pipe_eof = 1;
+                break;
+            }
         }
 
         size_t toCopy = data->buffer_filled - data->buffer_pos;
@@ -84,18 +106,116 @@ static void stream_callback(ma_device* pDevice, void* pOutput, const void* pInpu
     (void)pInput;
 }
 
+static THREAD_RETURN monitor_thread_func(THREAD_ARG arg) {
+    (void)arg;
+
+    while (monitor_running) {
+#ifdef _WIN32
+        Sleep(500);
+#else
+        usleep(500000);
+#endif
+        if (!monitor_running) break;
+
+        if (is_streaming) {
+            if (stream_data.paused) {
+                if (was_paused != 1) {
+                    printf("EV_PAUSED\n");
+                    fflush(stdout);
+                    was_paused = 1;
+                }
+                continue;
+            }
+
+            if (was_paused == 1) {
+                printf("EV_RESUMED\n");
+                fflush(stdout);
+                was_paused = 0;
+            }
+
+            if (stream_data.pipe_eof &&
+                stream_data.frames_read == stream_data.prev_frames_read) {
+                printf("EV_ENDED\n");
+                fflush(stdout);
+                continue;
+            }
+
+            stream_data.prev_frames_read = stream_data.frames_read;
+            float pos = (float)stream_data.frames_read / (float)stream_sample_rate;
+            printf("EV_POSITION %.3f\n", pos);
+            fflush(stdout);
+
+        } else if (is_loaded) {
+            if (!ma_sound_is_playing(&sound)) {
+                if (ma_sound_at_end(&sound)) {
+                    printf("EV_ENDED\n");
+                    fflush(stdout);
+                    continue;
+                }
+                if (was_paused != 1) {
+                    printf("EV_PAUSED\n");
+                    fflush(stdout);
+                    was_paused = 1;
+                }
+                continue;
+            }
+
+            if (was_paused == 1) {
+                printf("EV_RESUMED\n");
+                fflush(stdout);
+                was_paused = 0;
+            }
+
+            ma_uint64 cur;
+            ma_uint32 rate;
+            if (ma_sound_get_cursor_in_pcm_frames(&sound, &cur) == MA_SUCCESS &&
+                ma_sound_get_data_format(&sound, NULL, NULL, &rate, NULL, 0) == MA_SUCCESS) {
+                printf("EV_POSITION %.3f\n", (float)cur / (float)rate);
+                fflush(stdout);
+            }
+        }
+    }
+
+#ifdef _WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
+
+static void start_monitor(void) {
+    monitor_running = 1;
+    was_paused = 0;
+#ifdef _WIN32
+    monitor_thread = CreateThread(NULL, 0, monitor_thread_func, NULL, 0, NULL);
+#else
+    pthread_create(&monitor_thread, NULL, monitor_thread_func, NULL);
+#endif
+}
+
+static void stop_monitor(void) {
+    if (!monitor_running) return;
+    monitor_running = 0;
+#ifdef _WIN32
+    WaitForSingleObject(monitor_thread, 2000);
+    CloseHandle(monitor_thread);
+#else
+    pthread_join(monitor_thread, NULL);
+#endif
+}
+
 void player_init(void) {
     if (ma_engine_init(NULL, &engine) == MA_SUCCESS) {
         is_initialized = 1;
-        printf("Audio engine initialized\n");
-        fflush(stdout);
+        fprintf(stderr, "Audio engine initialized\n");
+        start_monitor();
     } else {
-        printf("Failed to initialize audio engine\n");
-        fflush(stdout);
+        fprintf(stderr, "Failed to initialize audio engine\n");
     }
 }
 
 void player_cleanup(void) {
+    stop_monitor();
     stop_stream();
     if (is_loaded) {
         ma_sound_uninit(&sound);
@@ -106,14 +226,12 @@ void player_cleanup(void) {
         is_initialized = 0;
     }
     if (stream_data.buffer) free(stream_data.buffer);
-    printf("Audio player cleaned up\n");
-    fflush(stdout);
+    fprintf(stderr, "Audio player cleaned up\n");
 }
 
 void play_song(const char *filename) {
     if (!is_initialized) {
-        printf("Audio engine not initialized\n");
-        fflush(stdout);
+        fprintf(stderr, "Audio engine not initialized\n");
         return;
     }
 
@@ -125,61 +243,65 @@ void play_song(const char *filename) {
         is_loaded = 0;
     }
 
+    was_paused = 0;
+
     if (ma_sound_init_from_file(&engine, filename, 0, NULL, NULL, &sound) != MA_SUCCESS) {
-        printf("Failed to load: '%s'\n", filename);
-        fflush(stdout);
+        fprintf(stderr, "Failed to load: '%s'\n", filename);
         return;
     }
 
     is_loaded = 1;
     ma_sound_set_volume(&sound, current_volume);
     ma_sound_start(&sound);
-    printf("Started playing: %s\n", filename);
-    fflush(stdout);
+    fprintf(stderr, "Started playing: %s\n", filename);
 }
 
 void stop_song(void) {
     stop_stream();
 
     if (!is_loaded) {
-        printf("No song loaded to stop\n");
-        fflush(stdout);
+        fprintf(stderr, "No song loaded to stop\n");
         return;
     }
 
     ma_sound_stop(&sound);
     ma_sound_seek_to_pcm_frame(&sound, 0);
-    printf("Song stopped\n");
-    fflush(stdout);
+    was_paused = -1;
+    fprintf(stderr, "Song stopped\n");
 }
 
 void pause_resume_song(void) {
     if (is_streaming) {
         if (!stream_data.paused) {
             stream_data.paused = 1;
-            printf("Stream paused\n");
+            printf("EV_PAUSED\n");
+            fflush(stdout);
+            was_paused = 1;
         } else {
             stream_data.paused = 0;
-            printf("Stream resumed\n");
+            printf("EV_RESUMED\n");
+            fflush(stdout);
+            was_paused = 0;
         }
-        fflush(stdout);
         return;
     }
 
     if (!is_loaded) {
-        printf("No song loaded to pause/resume\n");
-        fflush(stdout);
+        fprintf(stderr, "No song loaded to pause/resume\n");
         return;
     }
 
     if (ma_sound_is_playing(&sound)) {
         ma_sound_stop(&sound);
-        printf("Song paused\n");
+        printf("EV_PAUSED\n");
+        fflush(stdout);
+        was_paused = 1;
     } else {
         ma_sound_start(&sound);
-        printf("Song resumed\n");
+        printf("EV_RESUMED\n");
+        fflush(stdout);
+        was_paused = 0;
     }
-    fflush(stdout);
 }
 
 void adjust_volume(float volume) {
@@ -191,96 +313,78 @@ void adjust_volume(float volume) {
         ma_sound_set_volume(&sound, volume);
     }
 
-    printf("Volume set to: %.1f%%\n", volume * 100);
-    fflush(stdout);
+    fprintf(stderr, "Volume set to: %.1f%%\n", volume * 100);
 }
 
 void seek_time(float seconds) {
     if (!is_loaded) {
-        printf("No song loaded to seek\n");
-        fflush(stdout);
+        fprintf(stderr, "No song loaded to seek\n");
         return;
     }
 
     if (seconds < 0.0f) {
-        printf("Invalid seek time: %.1f\n", seconds);
-        fflush(stdout);
+        fprintf(stderr, "Invalid seek time: %.1f\n", seconds);
         return;
     }
 
     ma_uint32 sampleRate;
     if (ma_sound_get_data_format(&sound, NULL, NULL, &sampleRate, NULL, 0) != MA_SUCCESS) {
-        printf("Failed to get sample rate for seeking\n");
-        fflush(stdout);
+        fprintf(stderr, "Failed to get sample rate for seeking\n");
         return;
     }
 
     ma_uint64 frame = (ma_uint64)(seconds * sampleRate);
     ma_sound_seek_to_pcm_frame(&sound, frame);
-    printf("Seeked to: %.1f seconds\n", seconds);
-    fflush(stdout);
+    fprintf(stderr, "Seeked to: %.1f seconds\n", seconds);
 }
 
 void set_playback_speed(float speed) {
     if (!is_loaded) {
-        printf("No song loaded to adjust speed\n");
-        fflush(stdout);
+        fprintf(stderr, "No song loaded to adjust speed\n");
         return;
     }
 
     if (speed < 0.1f) speed = 0.1f;
     if (speed > 4.0f) speed = 4.0f;
     ma_sound_set_pitch(&sound, speed);
-    printf("Playback speed set to: %.1fx\n", speed);
-    fflush(stdout);
+    fprintf(stderr, "Playback speed set to: %.1fx\n", speed);
 }
 
 void show_status(void) {
     if (is_streaming) {
-        float seconds = (float)stream_data.frames_read / 44100.0f;
-        printf("Playing: %s\n", stream_playing && !stream_data.paused ? "Yes" : "No");
-        printf("Position: %.1f sec\n", seconds);
-        printf("Volume: %.1f%%\n", current_volume * 100);
-        fflush(stdout);
+        float seconds = (float)stream_data.frames_read / (float)stream_sample_rate;
+        fprintf(stderr, "Playing: %s\n", stream_playing && !stream_data.paused ? "Yes" : "No");
+        fprintf(stderr, "Position: %.1f sec\n", seconds);
+        fprintf(stderr, "Volume: %.1f%%\n", current_volume * 100);
         return;
     }
 
     if (!is_loaded) {
-        printf("No song loaded\n");
-        printf("Playing: No\n");
-        printf("Position: 0.0 sec\n");
-        printf("Volume: %.1f%%\n", current_volume * 100);
-        fflush(stdout);
+        fprintf(stderr, "No song loaded\n");
         return;
     }
 
-    printf("Playing: %s\n", ma_sound_is_playing(&sound) ? "Yes" : "No");
+    fprintf(stderr, "Playing: %s\n", ma_sound_is_playing(&sound) ? "Yes" : "No");
 
     ma_uint64 cur;
     ma_uint32 rate;
     if (ma_sound_get_cursor_in_pcm_frames(&sound, &cur) == MA_SUCCESS &&
         ma_sound_get_data_format(&sound, NULL, NULL, &rate, NULL, 0) == MA_SUCCESS) {
-        printf("Position: %.1f sec\n", (float)cur / rate);
-    } else {
-        printf("Position: 0.0 sec\n");
+        fprintf(stderr, "Position: %.1f sec\n", (float)cur / rate);
     }
 
     ma_uint64 len;
     if (ma_sound_get_length_in_pcm_frames(&sound, &len) == MA_SUCCESS &&
         ma_sound_get_data_format(&sound, NULL, NULL, &rate, NULL, 0) == MA_SUCCESS) {
-        printf("Length: %.1f sec\n", (float)len / rate);
-    } else {
-        printf("Length: 0.0 sec\n");
+        fprintf(stderr, "Length: %.1f sec\n", (float)len / rate);
     }
 
-    printf("Volume: %.1f%%\n", ma_sound_get_volume(&sound) * 100);
-    fflush(stdout);
+    fprintf(stderr, "Volume: %.1f%%\n", ma_sound_get_volume(&sound) * 100);
 }
 
 void stream_url(const char *url) {
     if (!is_initialized) {
-        printf("Audio engine not initialized\n");
-        fflush(stdout);
+        fprintf(stderr, "Audio engine not initialized\n");
         return;
     }
 
@@ -332,17 +436,19 @@ void stream_url(const char *url) {
 
     stream_pipe = popen(cmd, "r");
     if (!stream_pipe) {
-        printf("Failed to start stream pipeline\n");
-        fflush(stdout);
+        fprintf(stderr, "Failed to start stream pipeline\n");
         return;
     }
 
     stream_data.pipe = stream_pipe;
     stream_data.frames_read = 0;
+    stream_data.prev_frames_read = 0;
     stream_data.paused = 0;
+    stream_data.pipe_eof = 0;
     stream_data.buffer_filled = 0;
     stream_data.buffer_pos = 0;
     stream_playing = 1;
+    was_paused = 0;
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
     config.playback.format = ma_format_s16;
@@ -352,25 +458,24 @@ void stream_url(const char *url) {
     config.pUserData = &stream_data;
 
     if (ma_device_init(NULL, &config, &stream_device) != MA_SUCCESS) {
-        printf("Failed to initialize stream device\n");
+        fprintf(stderr, "Failed to initialize stream device\n");
         pclose(stream_pipe);
         stream_pipe = NULL;
-        fflush(stdout);
         return;
     }
 
+    stream_sample_rate = stream_device.sampleRate;
+
     if (ma_device_start(&stream_device) != MA_SUCCESS) {
-        printf("Failed to start stream device\n");
+        fprintf(stderr, "Failed to start stream device\n");
         ma_device_uninit(&stream_device);
         pclose(stream_pipe);
         stream_pipe = NULL;
-        fflush(stdout);
         return;
     }
 
     is_streaming = 1;
-    printf("Started streaming: %s\n", url);
-    fflush(stdout);
+    fprintf(stderr, "Started streaming: %s\n", url);
 }
 
 static void stop_stream(void) {
@@ -384,26 +489,26 @@ static void stop_stream(void) {
     }
 
     stream_data.frames_read = 0;
+    stream_data.prev_frames_read = 0;
     stream_data.paused = 0;
+    stream_data.pipe_eof = 0;
     stream_data.buffer_filled = 0;
     stream_data.buffer_pos = 0;
     stream_playing = 0;
     is_streaming = 0;
-    printf("Stream stopped\n");
-    fflush(stdout);
+    was_paused = -1;
+    fprintf(stderr, "Stream stopped\n");
 }
 
 int main() {
     setbuf(stdout, NULL);
 
-    printf("Audio player starting...\n");
-    fflush(stdout);
+    fprintf(stderr, "Audio player starting...\n");
 
     player_init();
 
     char line[512];
-    printf("Ready for commands\n");
-    fflush(stdout);
+    fprintf(stderr, "Ready for commands\n");
 
     while (fgets(line, sizeof(line), stdin)) {
         size_t len = strlen(line);
@@ -415,8 +520,7 @@ int main() {
             line[len-1] = '\0';
         }
 
-        printf("Received command: '%s'\n", line);
-        fflush(stdout);
+        fprintf(stderr, "Received command: '%s'\n", line);
 
         if (strncmp(line, "play ", 5) == 0) {
             play_song(line + 5);
@@ -436,12 +540,10 @@ int main() {
         } else if (strncmp(line, "status", 6) == 0) {
             show_status();
         } else if (strncmp(line, "quit", 4) == 0) {
-            printf("Quitting...\n");
-            fflush(stdout);
+            fprintf(stderr, "Quitting...\n");
             break;
         } else {
-            printf("Unknown command: '%s'\n", line);
-            fflush(stdout);
+            fprintf(stderr, "Unknown command: '%s'\n", line);
         }
     }
 

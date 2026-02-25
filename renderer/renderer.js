@@ -79,6 +79,9 @@ let previousItemsPerRow;
 let currentPage = 1;
 let streamedSongsHtmlMap = new Map();
 let notInterestedSongs;
+let lastAuthoritativePosition = 0; // Playing songs position sent by miniaudio
+let lastSyncTimestamp = 0; // Current predicted timestamp in JS
+let isInterpolating = false; // If song is playing
 
 const debounceMap = new Map();
 let songNameCache = new Map();
@@ -1798,6 +1801,23 @@ async function stabiliseThisSong(songId) {
 	document.getElementById("stabiliseSongButton").disabled = false;
 }
 
+function getInterpolatedPosition() {
+	if (!isInterpolating || lastSyncTimestamp == 0) return lastAuthoritativePosition;
+	const elapsed = (performance.now() - lastSyncTimestamp) / 1000;
+	return lastAuthoritativePosition + elapsed;
+}
+
+function tick() {
+	if (!isUserSeeking && songDuration > 0) {
+		const pos = getInterpolatedPosition();
+		const clamped = Math.min(pos, songDuration);
+		videoLength.textContent = `${formatTime(clamped)} / ${formatTime(songDuration)}`;
+		videoProgress.value = (clamped / songDuration) * 100;
+		if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
+	}
+	requestAnimationFrame(tick);
+}
+
 document.addEventListener("DOMContentLoaded", function () {
 	initialiseSettingsDatabase();
 	initialiseMusicsDatabase();
@@ -1875,40 +1895,48 @@ document.addEventListener("DOMContentLoaded", function () {
 	startupCheck();
 
 	audioPlayer = spawn(path.join(backendFolder, "player"), [], { stdio: ["pipe", "pipe", "pipe"] });
-
-	setInterval(() => {
-		audioPlayer.stdin.write("status\n");
-	}, 250);
-
 	audioPlayer.stdout.on("data", data => {
-		const output = data.toString();
-		const currentMatch = output.match(/Position: ([0-9.]+) sec/);
+		const lines = data.toString().split("\n");
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed) continue;
 
-		if (currentMatch) {
-			const currentTimeSec = parseFloat(currentMatch[1]);
-			const currentTime = formatTime(currentTimeSec);
-			videoLength.textContent = `${currentTime} / ${formatTime(songDuration)}`;
-
-			if (songDuration > 0) {
-				videoProgress.value = (currentTimeSec / songDuration) * 100;
-
-				if (currentTimeSec >= songDuration - 0.51) {
-					if (isAutoplayActive) {
-						playNextSong();
-					} else {
-						playButton.style.display = "inline-block";
-						pauseButton.style.display = "none";
-						if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
-						if (player) player.playbackStatus = "Paused";
-						playing = false;
-					}
+			if (trimmed.startsWith("EV_POSITION ")) {
+				const pos = parseFloat(trimmed.slice(12));
+				if (!Number.isNaN(pos) && !isUserSeeking) {
+					lastAuthoritativePosition = pos;
+					lastSyncTimestamp = performance.now();
+					isInterpolating = true;
 				}
-				if (player && playingSongsID) player.getPosition = () => Math.floor(currentTimeSec * 1e6);
+			} else if (trimmed == "EV_ENDED") {
+				isInterpolating = false;
+				if (isAutoplayActive) {
+					playNextSong();
+				} else {
+					playButton.style.display = "inline-block";
+					pauseButton.style.display = "none";
+					if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
+					if (player) player.playbackStatus = "Paused";
+					playing = false;
+				}
+			} else if (trimmed == "EV_PAUSED") {
+				isInterpolating = false;
+				playButton.style.display = "inline-block";
+				pauseButton.style.display = "none";
+				playing = false;
+			} else if (trimmed == "EV_RESUMED") {
+				lastSyncTimestamp = performance.now();
+				isInterpolating = true;
+				playButton.style.display = "none";
+				pauseButton.style.display = "inline-block";
+				playing = true;
 			}
-		}
 
-		updateDiscordPresence();
+			updateDiscordPresence();
+		}
 	});
+
+	requestAnimationFrame(tick);
 
 	volumeControl.addEventListener("input", () => {
 		volume = volumeControl.value / 100 / dividevolume;
@@ -1935,10 +1963,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	videoProgress.addEventListener("input", () => {
 		if (!isUserSeeking) return;
-
 		const seekPercent = parseFloat(videoProgress.value);
 		if (!Number.isNaN(seekPercent) && audioPlayer && songDuration > 0) {
 			const seekTime = (songDuration * seekPercent) / 100;
+			lastAuthoritativePosition = seekTime;
+			lastSyncTimestamp = performance.now();
 			audioPlayer.stdin.write(`seek ${seekTime}\n`);
 		}
 	});
