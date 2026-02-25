@@ -3,7 +3,7 @@
 
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
--   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running --> Maybe refresh the playlist variable every time playMusic starts using current playlist id
+-   Prevent random playlist playing the current playlist
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   new readme images

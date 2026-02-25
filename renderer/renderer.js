@@ -1143,14 +1143,15 @@ async function playMusic(songId, playlistId) {
 	}
 }
 
-async function playPlaylist(playlist, startingIndex = 0) {
+async function playPlaylist(playlistId, startingIndex = 0) {
+	const playlist = playlistsMap.get(playlistId);
 	if (!playlist.songs || playlist.songs.length == 0) {
 		return console.log(`Playlist ${playlist.name} is empty.`);
 	}
 
 	currentPlaylistElement = startingIndex;
 	localStorage.setItem("lastPlaylist", playlist.id);
-	await playMusic(playlist.songs[startingIndex], playlist);
+	await playMusic(playlist.songs[startingIndex], playlistId);
 }
 
 async function playPreviousSong() {
@@ -1182,7 +1183,7 @@ async function playPreviousSong() {
 	} else {
 		if (currentPlaylist) {
 			if (currentPlaylistElement > 0) {
-				playMusic(currentPlaylist.songs[currentPlaylistElement - 1], currentPlaylist);
+				playMusic(playlistsMap.get(currentPlaylist).songs[currentPlaylistElement - 1], currentPlaylist);
 				currentPlaylistElement--;
 			}
 		} else {
@@ -1212,8 +1213,8 @@ async function playNextSong() {
 
 	if (isShuffleActive) {
 		if (currentPlaylist) {
-			const validSongs = currentPlaylist.songs.filter(id => !notInterestedIds.includes(id));
-			const currentSongId = currentPlaylist.songs[currentPlaylistElement];
+			const validSongs = playlistsMap.get(currentPlaylist).songs.filter(id => !notInterestedIds.includes(id));
+			const currentSongId = playlistsMap.get(currentPlaylist).songs[currentPlaylistElement];
 
 			if (validSongs.length == 0) return;
 			if (validSongs.length == 1) {
@@ -1224,7 +1225,7 @@ async function playNextSong() {
 					randomIndex = Math.floor(Math.random() * validSongs.length);
 				}
 				nextSongId = validSongs[randomIndex];
-				currentPlaylistElement = currentPlaylist.songs.indexOf(nextSongId);
+				currentPlaylistElement = playlistsMap.get(currentPlaylist).songs.indexOf(nextSongId);
 			}
 		} else {
 			if (sortedSongIds.length == 0) return;
@@ -1240,11 +1241,11 @@ async function playNextSong() {
 		}
 	} else {
 		if (currentPlaylist) {
-			const validSongs = currentPlaylist.songs.filter(id => !notInterestedIds.includes(id));
-			const currentIndex = validSongs.indexOf(currentPlaylist.songs[currentPlaylistElement]);
+			const validSongs = playlistsMap.get(currentPlaylist).songs.filter(id => !notInterestedIds.includes(id));
+			const currentIndex = validSongs.indexOf(playlistsMap.get(currentPlaylist).songs[currentPlaylistElement]);
 			if (currentIndex >= 0 && currentIndex < validSongs.length - 1) {
 				nextSongId = validSongs[currentIndex + 1];
-				currentPlaylistElement = currentPlaylist.songs.indexOf(nextSongId);
+				currentPlaylistElement = playlistsMap.get(currentPlaylist).songs.indexOf(nextSongId);
 			}
 		} else {
 			const currentIndex = sortedSongIds.indexOf(playingSongsID);
@@ -1281,7 +1282,7 @@ async function randomPlaylistFunctionMainMenu() {
 	const playlistsList = Array.from(playlistsMap.keys()).filter(p => playlistsMap.get(p).songs.length > 0);
 
 	if (playlistsList.length == 0) return;
-	if (playlistsList.length == 1) return playPlaylist(playlistsMap.get(playlistsList[0]), 0);
+	if (playlistsList.length == 1) return playPlaylist(playlistsList[0], 0);
 
 	let randomIndex;
 
@@ -1289,7 +1290,7 @@ async function randomPlaylistFunctionMainMenu() {
 		randomIndex = Math.floor(Math.random() * playlistsList.length);
 	} while (currentPlaylist == playlistsList[randomIndex]);
 
-	playPlaylist(playlistsMap.get(playlistsList[randomIndex]), 0);
+	playPlaylist(playlistsList[randomIndex], 0);
 }
 
 function playPause() {
@@ -1600,6 +1601,7 @@ async function removeSong(fileToDelete) {
 	const divToRemove = document.querySelector(`div[alt="${fileToDelete}.${row.song_extension}"]`);
 	if (divToRemove) divToRemove.remove();
 	if (document.getElementById("my-music-content").style.display == "block") renderMusics();
+	getPlaylists();
 }
 
 async function updateThumbnailImage(event, mode) {
@@ -1643,7 +1645,7 @@ function searchSong() {
 
 function playLastPlaylist() {
 	const lastPlaylistId = localStorage.getItem("lastPlaylist");
-	playPlaylist(playlistsMap.get(lastPlaylistId), 0);
+	playPlaylist(lastPlaylistId, 0);
 }
 
 document.querySelectorAll('input[type="range"]').forEach(range => {
@@ -1788,7 +1790,7 @@ async function saveUserProgress() {
 	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) {
 		const theId = removeExtensions(playingSongsID).replace("tarator", "").replace("-", "");
 		const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
-		const playlist = currentPlaylist ? currentPlaylist.id.replace("tarator-", "") : null;
+		const playlist = currentPlaylist ? currentPlaylist.replace("tarator-", "") : null;
 
 		musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time, playlist) VALUES (?, ?, ?, ?)").run(theId, songStartTime, currentTimeUnix, playlist);
 		console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds. Playlist: ${playlist}`);

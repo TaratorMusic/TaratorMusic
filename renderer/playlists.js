@@ -128,12 +128,12 @@ function displayPlaylists(playlists) {
 			playlistSong.className = "playlist-song";
 
 			playlistSong.addEventListener("click", () => {
-				playPlaylist(playlist, i);
+				playPlaylist(playlist.id, i);
 			});
 		}
 
 		thumbnail.addEventListener("click", () => {
-			playPlaylist(playlist, 0);
+			playPlaylist(playlist.id, 0);
 		});
 
 		playlistsArea.appendChild(playlistElement);
@@ -325,8 +325,7 @@ function addToSelectedPlaylists(songName) {
 			}
 		});
 		closeModal();
-
-		if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
+		getPlaylists(getComputedStyle(document.getElementById("playlists-content")).display == "grid");
 	} catch (err) {
 		console.log("Error updating playlists in the database:", err);
 	}
