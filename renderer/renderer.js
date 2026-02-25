@@ -1396,12 +1396,14 @@ function speed() {
 function skipForward() {
 	const newTime = Math.min(songDuration, (Number(videoProgress.value) / 100) * songDuration + 5);
 	videoProgress.value = String((newTime / songDuration) * 100);
+	videoLength.textContent = `${formatTime(newTime)} / ${formatTime(songDuration)}`;
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 }
 
 function skipBackward() {
 	const newTime = Math.max(0, (Number(videoProgress.value) / 100) * songDuration - 5);
 	videoProgress.value = String((newTime / songDuration) * 100);
+	videoLength.textContent = `${formatTime(newTime)} / ${formatTime(songDuration)}`;
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 }
 
