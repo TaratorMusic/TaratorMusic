@@ -40,6 +40,9 @@ async function restart() {
 }
 
 app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 app.setPath("cache", path.join(__dirname, "cache"));
 
 autoUpdater.autoDownload = false;

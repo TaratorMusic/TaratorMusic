@@ -4,6 +4,7 @@
 -   Fix song streaming not working
 -   Fix mute button looking weird
 -   Stream seeking not working
+-   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
 -   Add an option to disable recommendations fetching
 -   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running --> Maybe refresh the playlist variable every time playMusic starts using current playlist id
