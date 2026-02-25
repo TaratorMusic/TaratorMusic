@@ -1450,6 +1450,7 @@ function opencustomiseModal(songsId) {
 		document.getElementById("customiseThumbnail").disabled = true;
 	}
 
+    document.getElementById("customiseSongIdArea").innerHTML = songsId;
 	document.getElementById("customiseSongName").value = song_name;
 	document.getElementById("customiseImage").src = thumbnailPath;
 	document.getElementById("customiseSongLink").value = song_url;

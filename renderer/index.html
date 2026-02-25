@@ -81,6 +81,10 @@
 							<input id="customiseThumbnail" type="file" onchange="updateThumbnailImage(event, 1)" accept="image/*" />
 							<img id="customiseImage" />
 						</div>
+						<div style="display: flex; flex-direction: row;">
+							<label for="customiseSongId">Song Id:</label>
+							<div id="customiseSongIdArea"></div>
+						</div>
 						<div>
 							<label for="customiseSongLink">Song Link:</label>
 							<input type="text" id="customiseSongLink" />
@@ -263,7 +267,7 @@
 					<button onclick="changeBackground('purple')">Purple</button>
 					<button onclick="changeBackground('black')">Black</button>
 					<div>Custom:</div>
-					<input style="cursor: pointer;" type="color" id="picker" />
+					<input style="cursor: pointer" type="color" id="picker" />
 				</div>
 				<h5>Change the background color or upload your own background with this setting.</h5>
 				<h1 class="underline-text">System</h1>
