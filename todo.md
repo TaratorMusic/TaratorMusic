@@ -1,7 +1,6 @@
 
 ### Version 1.8.2 Planned Features
 
--   Fix songs with no thumbnails being stuck at 00:00 with no errors (Check logs before fixing thumbnails)
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
 -   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running --> Maybe refresh the playlist variable every time playMusic starts using current playlist id
@@ -11,6 +10,9 @@
 
 ### Version 1.8.3 Planned Features
 
+-   Some songs magically change ID's i dont know what causes it though
+-   Dont check for song info if all three values are already filled
+-   Fix streamed songs ids glitching inside playlists
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
 -   Add search queries like || && ! "" + ,

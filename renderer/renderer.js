@@ -1075,12 +1075,11 @@ async function playMusic(songId, playlistId) {
 		playingSongsID = songId;
 		currentPlaylist = playlistId || null;
 
-		lastAuthoritativePosition = 0;
-		lastSyncTimestamp = performance.now();
-		isInterpolating = true;
-
-		videoProgress.value = 0;
 		songDuration = offlineMode ? getSongNameCached(songId).song_length : streamedSongsHtmlMap.get(songId)?.length;
+		lastSyncTimestamp = performance.now();
+		isInterpolating = false;
+		lastAuthoritativePosition = 0;
+		videoProgress.value = 0;
 		videoLength.innerText = `00:00 / ${formatTime(songDuration)}`;
 
 		document.getElementById("addToFavoritesButtonBottomRight").style.color = "white";
@@ -1450,7 +1449,7 @@ function opencustomiseModal(songsId) {
 		document.getElementById("customiseThumbnail").disabled = true;
 	}
 
-    document.getElementById("customiseSongIdArea").innerHTML = "&nbsp" + songsId;
+	document.getElementById("customiseSongIdArea").innerHTML = "&nbsp" + songsId;
 	document.getElementById("customiseSongName").value = song_name;
 	document.getElementById("customiseImage").src = thumbnailPath;
 	document.getElementById("customiseSongLink").value = song_url;
