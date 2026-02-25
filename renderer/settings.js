@@ -138,6 +138,11 @@ function stabiliseVolumeToggleTogglerFunction() {
 	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb, "settings");
 }
 
+function recommendationsToggleTogglerFunction() {
+    recommendationsAfterDownload = recommendationsAfterDownload == 1 ? 0 : 1;
+	updateDatabase("recommendationsAfterDownload", recommendationsAfterDownload, settingsDb, "settings");
+}
+
 async function saveRecommendationWeights() {
 	let total = 0;
 

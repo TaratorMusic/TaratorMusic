@@ -749,7 +749,7 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 			grabAndStoreSongInfo(songID);
-			await fetchRecommendationsData();
+			if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
 		} catch (error) {
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
 			console.log(error);
@@ -1002,7 +1002,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
 		await commitStagedPlaylistAdds();
 		grabAndStoreSongInfo(songIds);
-		await fetchRecommendationsData();
+		if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 	}

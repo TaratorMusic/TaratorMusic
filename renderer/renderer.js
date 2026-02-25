@@ -110,6 +110,7 @@ let dividevolume;
 let displayPage;
 let stabiliseVolumeToggle;
 let current_version;
+let recommendationsAfterDownload;
 
 let popularityFactor;
 let artistStrengthFactor;
@@ -155,6 +156,7 @@ const defaultSettings = {
 	userPreferenceFactor: 17,
 	artistListenTimeFactor: 25,
 	randomFactor: 15,
+	recommendationsAfterDownload: 1,
 };
 
 function initialiseSettingsDatabase() {
@@ -172,14 +174,14 @@ function initialiseSettingsDatabase() {
 		settingsDb
 			.prepare(
 				`CREATE TABLE IF NOT EXISTS statistics (
-                total_time_spent INTEGER,
-                app_install_date INTEGER,
-                playlists_formed INTEGER,
-                songs_downloaded_youtube INTEGER,
-                songs_downloaded_spotify INTEGER,
-                ytdlp_last_update_date INTEGER,
-                recommendations_last_refresh INTEGER
-            )`,
+                    total_time_spent INTEGER,
+                    app_install_date INTEGER,
+                    playlists_formed INTEGER,
+                    songs_downloaded_youtube INTEGER,
+                    songs_downloaded_spotify INTEGER,
+                    ytdlp_last_update_date INTEGER,
+                    recommendations_last_refresh INTEGER
+                )`,
 			)
 			.run();
 
@@ -283,6 +285,7 @@ function initialiseSettingsDatabase() {
 		musicMode = settingsRow.musicMode;
 		stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 		current_version = settingsRow.current_version;
+		recommendationsAfterDownload = settingsRow.recommendationsAfterDownload;
 
 		if (settingsRow.background.includes("#")) {
 			document.body.style.background = settingsRow.background;
@@ -1840,6 +1843,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
+	document.getElementById("recommendationsToggle").checked = recommendationsAfterDownload == 1 ? true : false;
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
 	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
 	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));

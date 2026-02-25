@@ -5,7 +5,6 @@
 -   Fix songs with no thumbnails being stuck at 00:00 with no errors (Check logs before fixing thumbnails)
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
--   Add an option to disable recommendations fetching to the settings
 -   Fix playlists not getting edited after adding a song (and probably removing) while playPlaylist is running --> Maybe refresh the playlist variable every time playMusic starts using current playlist id
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
@@ -30,6 +29,7 @@
 
 ### Planned Features
 
+-   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   If the app is pre-release, the version button doesnt light up
 -   refresh recommendations table each month (Needs to re-do all rows)
 -   initialiseSettingsDatabase has duplicate code

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
@@ -34,7 +34,7 @@
 					<input type="text" id="editPlaylistNameInput" placeholder="Enter playlist name" />
 					<div class="flexrow" style="height: 55vh; justify-content: center">
 						<img id="editPlaylistThumbnail" />
-						<input type="file" onchange="updateThumbnailImage(event,2)" id="editPlaylistThumbnail" accept="image/*" style="margin-bottom: 10px" />
+						<input type="file" onchange="updateThumbnailImage(event, 2)" id="editPlaylistThumbnail" accept="image/*" style="margin-bottom: 10px" />
 					</div>
 					<div class="flexrow">
 						<button id="editPlaylistDelete" onclick="deletePlaylist()">Delete</button>
@@ -227,10 +227,10 @@
 					<div>Loop:</div>
 					<button id="settingsLoop" required></button>
 				</div>
-                <div class="settingsKeybinds">
-                    <div>Search Song:</div>
-                    <button id="settingsSearchSong" required></button>
-                </div>
+				<div class="settingsKeybinds">
+					<div>Search Song:</div>
+					<button id="settingsSearchSong" required></button>
+				</div>
 				<div class="settingsKeybinds">
 					<div>Random Song:</div>
 					<button id="settingsRandomSong" required></button>
@@ -239,10 +239,10 @@
 					<div>Random Playlist:</div>
 					<button id="settingsRandomPlaylist" required></button>
 				</div>
-                <div class="settingsKeybinds">
-                    <div>Last Playlist:</div>
-                    <button id="settingsLastPlaylist" required></button>
-                </div>
+				<div class="settingsKeybinds">
+					<div>Last Playlist:</div>
+					<button id="settingsLastPlaylist" required></button>
+				</div>
 				<button onclick="saveKeybinds()">Save Keybinds</button>
 				<h1 class="underline-text">Customisation</h1>
 				<div class="settingsflexrow">
@@ -262,8 +262,8 @@
 					<button onclick="changeBackground('green')">Green</button>
 					<button onclick="changeBackground('purple')">Purple</button>
 					<button onclick="changeBackground('black')">Black</button>
-                    <div>Custom:</div>
-                    <input type="color" id="picker">
+					<div>Custom:</div>
+					<input type="color" id="picker" />
 				</div>
 				<h5>Change the background color or upload your own background with this setting.</h5>
 				<h1 class="underline-text">System</h1>
@@ -282,7 +282,15 @@
 						<span class="slider round"></span>
 					</label>
 				</div>
-				<h5>If not selected, you will need to manually stabilise song volumes using the buttons below.</h5>
+				<h5>If not selected, you will need to manually stabilise song volumes using the button below.</h5>
+				<div class="settingsflexrow">
+					<h2>Fetch Recommendations While Downloading Music</h2>
+					<label class="switch">
+						<input type="checkbox" id="recommendationsToggle" onclick="recommendationsToggleTogglerFunction()" />
+						<span class="slider round"></span>
+					</label>
+				</div>
+				<h5>If not selected, you will need to manually fetch recommendations using the button below.</h5>
 				<div class="settingsflexrow">
 					<h2>Stabilise All Volumes</h2>
 					<button onclick="processAllFiles()">Stabilise</button>
@@ -293,12 +301,12 @@
 					<h2>Add Song Information</h2>
 					<button onclick="grabAndStoreSongInfo()">Check</button>
 				</div>
-                <h5>You can add song genre, artist and language by checking online.</h5>
-                <div class="settingsflexrow">
-                    <h2>Fetch Song Recommendations</h2>
-                    <button id="fetchRecommendationsDataButton" onclick="fetchRecommendationsData()">Check</button>
-                </div>
-                <h5>Fetches all song recommendations for the currently installed songs.</h5>
+				<h5>You can add song genre, artist and language by checking online.</h5>
+				<div class="settingsflexrow">
+					<h2>Fetch Song Recommendations</h2>
+					<button id="fetchRecommendationsDataButton" onclick="fetchRecommendationsData()">Check</button>
+				</div>
+				<h5>Fetches all song recommendations for the currently installed songs.</h5>
 				<div class="settingsflexrow">
 					<h2>Redownload Old Songs</h2>
 					<button onclick="redownloadAllSongs()">Redownload</button>
@@ -310,7 +318,7 @@
 				</div>
 				<h5>Enter debug mode to see the errors and the logs.</h5>
 				<h1 class="underline-text">Recommendations Weights</h1>
-				<h2 style="margin-top: -3vh;">Consider them as percentages, the total needs to be equal to 100.</h2>
+				<h2 style="margin-top: -3vh">Consider them as percentages, the total needs to be equal to 100.</h2>
 				<div class="settingsflexrow">Popularity Factor <input type="number" id="weight1" min="0" max="100" /></div>
 				<h5>Higher the value, more chance the user gets a more popular song from the desired artists.</h5>
 				<div class="settingsflexrow">Artist Strength Factor <input type="number" id="weight2" min="0" max="100" /></div>
