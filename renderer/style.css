@@ -1089,7 +1089,7 @@ input:checked + .slider:before {
 }
 
 .settingsMenuButtons {
-	color: red !important;
+	color: red;
 	transition: all 0.3s ease;
 }
 
