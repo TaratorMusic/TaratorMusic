@@ -1,5 +1,5 @@
 
-### Version 1.8.2 Planned Features
+### Version 1.8.3 Planned Features
 
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
@@ -7,9 +7,6 @@
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   new readme images
-
-### Version 1.8.3 Planned Features
-
 -   Some songs magically change ID's i dont know what causes it though
 -   Dont check for song info if all three values are already filled
 -   Fix streamed songs ids glitching inside playlists
