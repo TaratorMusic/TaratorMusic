@@ -7,6 +7,7 @@
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   new readme images
+-   Dc rich presence doesnt pause
 -   Some songs magically change ID's i dont know what causes it though
 -   Dont check for song info if all three values are already filled
 -   Fix streamed songs ids glitching inside playlists
@@ -20,7 +21,7 @@
 
 ### Big updates remaining:
 
--   Integrate Discord bot that plays the music
+-   Integrate Dc bot that plays the music
 -   File conversions, in-app, both music and thumbnail files
 -   Intelligent shuffle: All the songs will get pointed depending on how long you listened to them (Percentages), songs with higher points will play more, there will be a toggle - For this setting, and a button to reset all the points.
 -   Customise bass, treble etc. in the customisation modal, or leave them as generic, or customise them whole in the settings page.
@@ -59,7 +60,7 @@
 -   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
 -   Rework the download modal and three-way modal
 
--   Customise Discord Rich Presence box in the settings
+-   Customise Dc Rich Presence box in the settings
 -   Edit app font
 -   If currently listening to a music outside a playlist, enter a playlist that the song is in without changing the song / its progress
 -   Add the .desktop and the wrapper script inside the app, it will run if the app is AppImage and the user doesnt have the wrapper script in the folder. Create a button in settings to create .desktop
