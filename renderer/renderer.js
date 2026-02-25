@@ -1075,6 +1075,10 @@ async function playMusic(songId, playlistId) {
 		playingSongsID = songId;
 		currentPlaylist = playlistId || null;
 
+		lastAuthoritativePosition = 0;
+		lastSyncTimestamp = performance.now();
+		isInterpolating = true;
+
 		videoProgress.value = 0;
 		songDuration = offlineMode ? getSongNameCached(songId).song_length : streamedSongsHtmlMap.get(songId)?.length;
 		videoLength.innerText = `00:00 / ${formatTime(songDuration)}`;
@@ -1818,6 +1822,7 @@ function tick() {
 		videoProgress.value = (clamped / songDuration) * 100;
 		if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
 	}
+
 	requestAnimationFrame(tick);
 }
 
