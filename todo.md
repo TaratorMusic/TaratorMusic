@@ -1,7 +1,6 @@
 
 ### Version 1.8.2 Planned Features
 
--   Fix mute button looking weird
 -   Fix songs with no thumbnails being stuck at 00:00 with no errors (Check logs before fixing thumbnails)
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
@@ -12,6 +11,7 @@
 
 ### Version 1.8.3 Planned Features
 
+-   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
 -   Add search queries like || && ! "" + ,
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
