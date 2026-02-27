@@ -1,6 +1,8 @@
 
 ### Version 1.8.3 Planned Features
 
+-   Picture in picture window with customisation
+-   Lyrics storage
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
 -   You need to swap back to offline mode to properly disable the buttons above
