@@ -1,17 +1,20 @@
 
-### Version 1.8.3 Planned Features
+## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
--   Lyrics storage
+-   Lyrics storage for both a modal and for picture in picture
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
 -   You need to swap back to offline mode to properly disable the buttons above
+-   new readme images
+-   Dont check for song info if all three values are already filled
+
+### Version 1.8.4 Planned Features
+
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
--   new readme images
 -   Dc rich presence doesnt pause
 -   Some songs magically change ID's i dont know what causes it though
--   Dont check for song info if all three values are already filled
 -   Fix streamed songs ids glitching inside playlists
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
@@ -19,6 +22,7 @@
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Fix app resizing removing all recommendations-fetched songs
 -   Search code for TODO'S
+-   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   Stream seeking not working
 
 ### Big updates remaining:
@@ -38,14 +42,12 @@
 -   The "x" button in modals should close that modal, not the modal with the highest z-index
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
 -   Some songs silently fail loading (probably age-restricted)
--   Customisable queue list with drag and drop (similar to youtube)
 -   Add a window, where in the left side you can see your songs and you can filter them via a search bar and sort them, on the right side there will be the playlists, and the users will be able to drag and drop all the songs to the playlists they desire.
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
 -   Add approximate time remaining for volume stabilisation.
 -   Hover songs for the full song name?
 -   Need to have full online & full offline modes
 -   Add an option to toggle volume stabilisation for the song
--   Add song to queue
 -   the app assumes 3 boxes height for each device. Calculate the row amount based on #content height
 -   does the db cleaning truly work?
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
