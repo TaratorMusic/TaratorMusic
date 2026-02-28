@@ -2,7 +2,7 @@ async function createAppThumbnailsFolder() {
 	await alertModal("Some app assets not found, they will now be fetched from the repository. Click the button to continue.");
 	return new Promise((resolve, reject) => {
 		const goBinary = path.join(backendFolder, "create_app_thumbnails_folder");
-		const proc = spawn(goBinary, [appThumbnailFolder], { stdio: "inherit" });
+		const proc = spawn(goBinary, [appThumbnailFolder], { windowsHide: true, stdio: "inherit" });
 
 		proc.on("error", reject);
 		proc.on("close", async code => {
@@ -17,7 +17,7 @@ async function createAppThumbnailsFolder() {
 function shortenSongIdsGoPart(queryArray) {
 	return new Promise((resolve, reject) => {
 		const goBinary = path.join(backendFolder, "shorten_song_ids");
-		const proc = spawn(goBinary, [queryArray[1], queryArray[2]], { stdio: ["pipe", "inherit", "inherit"] });
+		const proc = spawn(goBinary, [queryArray[1], queryArray[2]], { windowsHide: true, stdio: ["pipe", "inherit", "inherit"] });
 
 		proc.on("error", reject);
 
@@ -77,10 +77,13 @@ async function grabAndStoreSongInfo(songId) {
 		}
 
 		const goBinary = path.join(backendFolder, "musicbrainz_fetch");
-		const proc = spawn(goBinary, songs);
+		const proc = spawn(goBinary, songs, {
+			windowsHide: true,
+		});
 
 		let buffer = "";
 		let count = 0;
+        
 		proc.stdout.on("data", chunk => {
 			buffer += chunk.toString();
 			for (let i = buffer.indexOf("\n"); i >= 0; i = buffer.indexOf("\n")) {
@@ -228,7 +231,7 @@ async function startupCheck() {
 		});
 
 		const goBinary = path.join(backendFolder, "startup_check");
-		const proc = spawn(goBinary, [musicFolder, thumbnailFolder], { stdio: ["pipe", "pipe", "inherit"] });
+		const proc = spawn(goBinary, [musicFolder, thumbnailFolder], { windowsHide: true, stdio: ["pipe", "pipe", "inherit"] });
 		let data = "";
 
 		proc.on("error", reject);

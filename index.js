@@ -43,6 +43,7 @@ app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+app.commandLine.appendSwitch("disable-features", "Win32kLockdown");
 app.setPath("cache", path.join(__dirname, "cache"));
 
 autoUpdater.autoDownload = false;
