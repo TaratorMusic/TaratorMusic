@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -49,6 +50,29 @@ func createDatabaseFiles() {
 	}
 
 	fmt.Println("Databases ensured in:", databasesFolder)
+}
+
+func createTable(dbFile, tableName string, columns []Column) error {
+	db, err := sql.Open("sqlite", dbFile)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	defs := []string{}
+	for _, col := range columns {
+		def := col.Name + " " + col.Type
+		if col.Default != "" {
+			def += " DEFAULT " + col.Default
+		}
+		defs = append(defs, def)
+	}
+
+	sqlStmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s(%s);",
+		tableName, strings.Join(defs, ", "))
+
+	_, err = db.Exec(sqlStmt)
+	return err
 }
 
 func initialiseSettingsDatabase() {

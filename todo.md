@@ -49,9 +49,7 @@
 -   Need to have full online & full offline modes
 -   Add an option to toggle volume stabilisation for the song
 -   the app assumes 3 boxes height for each device. Calculate the row amount based on #content height
--   does the db cleaning truly work?
 -   Error deciphering formats: Error: read ECONNRESET at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) Stream error: No playable formats found download_music:922 --> Probably caused by lost internet connection, need a way to restart the downloads
--   Make the db saves non-blocking
 -   Most Listened Playlist and other playlist data in Statistics
 -   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)
 
