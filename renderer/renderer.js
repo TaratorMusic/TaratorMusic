@@ -9,7 +9,8 @@ const ytsr = require("@distube/ytsr");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
 let settingsDbPath, playlistsDbPath, musicsDbPath;
-let settingsDb, playlistsDb, musicsDb, recommendationsCache;
+let settingsDb, playlistsDb, musicsDb;
+let recommendationsCache = localStorage.getItem("recommendationsCache") || null;
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
@@ -35,7 +36,6 @@ let settingsDb, playlistsDb, musicsDb, recommendationsCache;
 	settingsDb = new Database(settingsDbPath);
 	playlistsDb = new Database(playlistsDbPath);
 	musicsDb = new Database(musicsDbPath);
-	recommendationsCache = localStorage.getItem("recommendationsCache") || null;
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");

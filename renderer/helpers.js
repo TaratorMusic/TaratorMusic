@@ -168,8 +168,6 @@ async function loadNewPage(query, info) {
 		document.getElementById("downloadFirstInput").focus();
 	} else if (query == "createAppThumbnailsFolder") {
 		createAppThumbnailsFolder();
-	} else if (query == "shortenSongIdsGoPart") {
-		shortenSongIdsGoPart(info);
 	} else if (query == "downloadStreamedSong") {
 		await loadJSFile("download_music");
 		await processVideoLink(null, info);

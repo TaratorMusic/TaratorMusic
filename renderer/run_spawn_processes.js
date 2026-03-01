@@ -14,26 +14,6 @@ async function createAppThumbnailsFolder() {
 	});
 }
 
-function shortenSongIdsGoPart(queryArray) {
-	return new Promise((resolve, reject) => {
-		const goBinary = path.join(backendFolder, "shorten_song_ids");
-		const proc = spawn(goBinary, [queryArray[1], queryArray[2]], { windowsHide: true, stdio: ["pipe", "inherit", "inherit"] });
-
-		proc.on("error", reject);
-
-		proc.stdin.write(JSON.stringify(queryArray[0]));
-		proc.stdin.end();
-
-		proc.on("close", async code => {
-			if (code !== 0) {
-				await alertModal(`Go process exited with code ${code}`);
-				return reject(new Error(`Go process exited with code ${code}`));
-			}
-			resolve();
-		});
-	});
-}
-
 async function grabAndStoreSongInfo(songId) {
 	if (songId == "html") songId = document.getElementById("customiseModal").dataset.songID;
 
