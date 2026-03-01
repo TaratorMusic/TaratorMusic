@@ -66,6 +66,12 @@ function createWindow() {
 
 	splash.loadFile("renderer/splash.html");
 
+	ipcMain.on("renderer-domready", e => {
+		if (e.sender.id !== mainWindow.webContents.id) return;
+		if (splash && !splash.isDestroyed()) splash.destroy();
+		if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
+	});
+
 	mainWindow = new BrowserWindow({
 		width: 1600,
 		height: 850,
@@ -94,37 +100,6 @@ function createWindow() {
 	});
 
 	mainWindow.loadFile("renderer/index.html");
-
-	ipcMain.on("copy-binaries", async () => {
-		await copyBinariesOutside();
-		restart();
-	});
-
-	ipcMain.handle("get-app-version", () => app.getVersion());
-
-	ipcMain.handle("get-app-base-path", () => {
-		if (process.env.APPIMAGE) return path.dirname(process.env.APPIMAGE);
-		return app.getAppPath();
-	});
-
-	ipcMain.on("renderer-domready", e => {
-		if (e.sender.id !== mainWindow.webContents.id) return;
-		if (splash && !splash.isDestroyed()) splash.destroy();
-		if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
-	});
-
-	ipcMain.handle("raise-window", () => {
-		mainWindow.focus();
-		mainWindow.moveTop();
-	});
-
-	ipcMain.handle("close-app", () => {
-		mainWindow.close();
-	});
-
-	ipcMain.on("restart-app", () => {
-		restart();
-	});
 }
 
 app.whenReady().then(() => {
@@ -156,6 +131,31 @@ app.whenReady().then(() => {
 			Menu.setApplicationMenu(originalMenu);
 			menuShown = true;
 		}
+	});
+
+	ipcMain.on("copy-binaries", async () => {
+		await copyBinariesOutside();
+		restart();
+	});
+
+	ipcMain.handle("get-app-version", () => app.getVersion());
+
+	ipcMain.handle("get-app-base-path", () => {
+		if (process.env.APPIMAGE) return path.dirname(process.env.APPIMAGE);
+		return app.getAppPath();
+	});
+
+	ipcMain.handle("raise-window", () => {
+		mainWindow.focus();
+		mainWindow.moveTop();
+	});
+
+	ipcMain.handle("close-app", () => {
+		mainWindow.close();
+	});
+
+	ipcMain.on("restart-app", () => {
+		restart();
 	});
 
 	autoUpdater.on("update-downloaded", () => {
