@@ -412,7 +412,7 @@ function initialiseMusicsDatabase() {
 			`CREATE TABLE IF NOT EXISTS timers (
                 song_id TEXT,
                 start_time INTEGER,
-                end_time INTEGER
+                end_time INTEGER,
                 playlist TEXT
             )`,
 		)
