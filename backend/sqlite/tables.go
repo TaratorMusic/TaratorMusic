@@ -110,6 +110,11 @@ var notInterestedColumns = []Column{
 	{Name: "song_name", Type: "TEXT"},
 }
 
+var lyricsColumns = []Column{
+	{Name: "song_id", Type: "TEXT"},
+	{Name: "lyrics", Type: "TEXT"},
+}
+
 // playlists.db tables
 
 var playlistsColumns = []Column{

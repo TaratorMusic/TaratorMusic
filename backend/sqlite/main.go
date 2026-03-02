@@ -170,6 +170,7 @@ func initialiseMusicsDatabase() error {
 		{"streams", streamsColumns},
 		{"timers", timersColumns},
 		{"not_interested", notInterestedColumns},
+		{"lyrics", lyricsColumns},
 	}
 
 	for _, t := range tables {
