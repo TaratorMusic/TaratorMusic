@@ -22,26 +22,117 @@ var settingsDbPath = filepath.Join(databasesFolder, "settings.db")
 var musicsDbPath = filepath.Join(databasesFolder, "musics.db")
 var playlistsDbPath = filepath.Join(databasesFolder, "playlists.db")
 
+var databases = map[string]*sql.DB{}
+
+type IPCRequest struct {
+	ID    string        `json:"id"`
+	DB    string        `json:"db"`
+	Query string        `json:"query"`
+	Args  []interface{} `json:"args"`
+	Fetch bool          `json:"fetch"`
+}
+
+type IPCResponse struct {
+	ID    string                   `json:"id"`
+	Rows  []map[string]interface{} `json:"rows,omitempty"`
+	Error string                   `json:"error,omitempty"`
+}
+
 func main() {
 	createDatabaseFiles()
 
+	for name, path := range map[string]string{
+		"settings":  settingsDbPath,
+		"musics":    musicsDbPath,
+		"playlists": playlistsDbPath,
+	} {
+		db, err := sql.Open("sqlite", path)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "failed to open db:", name, err)
+			os.Exit(1)
+		}
+		defer db.Close()
+		databases[name] = db
+	}
+
 	if err := initialiseSettingsDatabase(); err != nil {
-		fmt.Println("Error initializing settings database:", err)
-	} else {
-		fmt.Println("Settings database initialized successfully")
+		fmt.Fprintln(os.Stderr, "failed to init settings db:", err)
+		os.Exit(1)
 	}
-
 	if err := initialiseMusicsDatabase(); err != nil {
-		fmt.Println("Error initializing musics database:", err)
-	} else {
-		fmt.Println("Musics database initialized successfully")
+		fmt.Fprintln(os.Stderr, "failed to init musics db:", err)
+		os.Exit(1)
+	}
+	if err := initialisePlaylistsDatabase(); err != nil {
+		fmt.Fprintln(os.Stderr, "failed to init playlists db:", err)
+		os.Exit(1)
 	}
 
-	if err := initialisePlaylistsDatabase(); err != nil {
-		fmt.Println("Error initializing playlists database:", err)
-	} else {
-		fmt.Println("Playlists database initialized successfully")
+	decoder := json.NewDecoder(os.Stdin)
+	encoder := json.NewEncoder(os.Stdout)
+
+	for {
+		var req IPCRequest
+		if err := decoder.Decode(&req); err != nil {
+			break
+		}
+		encoder.Encode(dispatch(req))
 	}
+}
+
+func dispatch(req IPCRequest) (resp IPCResponse) {
+	defer func() {
+		if r := recover(); r != nil {
+			resp = IPCResponse{ID: req.ID, Error: fmt.Sprintf("panic: %v", r)}
+		}
+	}()
+
+	db, ok := databases[req.DB]
+	if !ok {
+		return IPCResponse{ID: req.ID, Error: "unknown db: " + req.DB}
+	}
+
+	if req.Fetch {
+		rows, err := db.Query(req.Query, req.Args...)
+		if err != nil {
+			return IPCResponse{ID: req.ID, Error: err.Error()}
+		}
+		defer rows.Close()
+		results, err := scanRows(rows)
+		if err != nil {
+			return IPCResponse{ID: req.ID, Error: err.Error()}
+		}
+		return IPCResponse{ID: req.ID, Rows: results}
+	}
+
+	if _, err := db.Exec(req.Query, req.Args...); err != nil {
+		return IPCResponse{ID: req.ID, Error: err.Error()}
+	}
+	return IPCResponse{ID: req.ID}
+}
+
+func scanRows(rows *sql.Rows) ([]map[string]interface{}, error) {
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	var results []map[string]interface{}
+	for rows.Next() {
+		values := make([]interface{}, len(cols))
+		valuePtrs := make([]interface{}, len(cols))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return nil, err
+		}
+		row := map[string]interface{}{}
+		for i, col := range cols {
+			row[col] = values[i]
+		}
+		results = append(results, row)
+	}
+	return results, rows.Err()
 }
 
 func createDatabaseFiles() {
@@ -74,12 +165,10 @@ func createTable(db *sql.DB, tableName string, columns []Column) error {
 }
 
 func syncTable(db *sql.DB, tableName string, columns []Column) error {
-	// Step 1: create table if it doesn't exist
 	if err := createTable(db, tableName, columns); err != nil {
 		return fmt.Errorf("failed to create table %q: %w", tableName, err)
 	}
 
-	// Step 2: check existing columns
 	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s);", tableName))
 	if err != nil {
 		return fmt.Errorf("failed to get table info for %q: %w", tableName, err)
@@ -98,7 +187,6 @@ func syncTable(db *sql.DB, tableName string, columns []Column) error {
 		existingCols[name] = true
 	}
 
-	// Step 3: add missing columns dynamically
 	for _, col := range columns {
 		if existingCols[col.Name] {
 			continue
@@ -116,16 +204,11 @@ func syncTable(db *sql.DB, tableName string, columns []Column) error {
 }
 
 func initialiseSettingsDatabase() error {
-	db, err := sql.Open("sqlite", settingsDbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
+	db := databases["settings"]
 
 	if err := syncTable(db, "settings", settingsColumns); err != nil {
 		return err
 	}
-
 	if err := syncTable(db, "statistics", statsColumns); err != nil {
 		return err
 	}
@@ -134,7 +217,6 @@ func initialiseSettingsDatabase() error {
 	if err := db.QueryRow("SELECT COUNT(*) FROM settings").Scan(&count); err != nil {
 		return fmt.Errorf("failed to count settings rows: %w", err)
 	}
-
 	if count == 0 {
 		if _, err := db.Exec("INSERT INTO settings DEFAULT VALUES;"); err != nil {
 			return fmt.Errorf("failed to insert default settings row: %w", err)
@@ -144,7 +226,6 @@ func initialiseSettingsDatabase() error {
 	if err := db.QueryRow("SELECT COUNT(*) FROM statistics").Scan(&count); err != nil {
 		return fmt.Errorf("failed to count statistics rows: %w", err)
 	}
-
 	if count == 0 {
 		if _, err := db.Exec("INSERT INTO statistics DEFAULT VALUES;"); err != nil {
 			return fmt.Errorf("failed to insert default statistics row: %w", err)
@@ -155,11 +236,7 @@ func initialiseSettingsDatabase() error {
 }
 
 func initialiseMusicsDatabase() error {
-	db, err := sql.Open("sqlite", musicsDbPath)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
+	db := databases["musics"]
 
 	tables := []struct {
 		name    string
@@ -183,18 +260,12 @@ func initialiseMusicsDatabase() error {
 }
 
 func initialisePlaylistsDatabase() error {
-	db, err := sql.Open("sqlite", playlistsDbPath)
-	if err != nil {
-		return err
-	}
-
-	defer db.Close()
+	db := databases["playlists"]
 
 	if err := syncTable(db, "playlists", playlistsColumns); err != nil {
 		return err
 	}
 
-	// Ensure the "Favorites" playlist row exists.
 	var count int
 	if err := db.QueryRow("SELECT COUNT(*) FROM playlists WHERE name = ?", "Favorites").Scan(&count); err != nil {
 		return fmt.Errorf("failed to query favorites: %w", err)
