@@ -13,7 +13,6 @@
 		"dist": "electron-builder",
 		"gobuild": "bash -c 'for f in backend/**/main.go; do name=$(basename $(dirname \"$f\")); dir=$(dirname \"$f\"); if [ \"$OS\" = \"Windows_NT\" ]; then CGO_ENABLED=0 go build -o ./bin/$name.exe \"./$dir\"; else CGO_ENABLED=0 go build -o ./bin/$name \"./$dir\"; fi; done'",
 		"cbuild": "node -e \"require('child_process').execSync(process.platform == 'win32' ? 'gcc -O2 ./backend/miniaudio/player.c ./backend/miniaudio/miniaudio.c -o ./bin/player.exe -lpthread' : 'gcc -O2 ./backend/miniaudio/player.c ./backend/miniaudio/miniaudio.c -o ./bin/player -ldl -lpthread -lm', {stdio: 'inherit'})\"",
-		"postinstall": "electron-builder install-app-deps",
 		"ytdlp_fetch": "node -e \"const path = require('path'); const { execSync } = require('child_process'); const bin = path.join(process.cwd(), 'bin', process.platform == 'win32' ? 'ytdlp_fetch.exe' : 'ytdlp_fetch'); execSync(bin, {stdio: 'inherit'});\""
 	},
 	"repository": {
@@ -88,7 +87,6 @@
 		"@distube/ytpl": "github:Victiniiiii/ytpl",
 		"@distube/ytsr": "2.0.4",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",
-		"better-sqlite3": "^11.9.1",
 		"chart.js": "^4.5.0",
 		"cheerio": "^1.1.0",
 		"discord-rpc": "github:Victiniiiii/RPC-Listening",
@@ -105,8 +103,8 @@
 		}
 	},
 	"devDependencies": {
-		"electron": "^31.1.0",
-		"electron-builder": "^24.13.3",
+		"electron": "^40.7.0",
+		"electron-builder": "^26.8.1",
 		"electron-rebuild": "^3.2.9"
 	}
 }

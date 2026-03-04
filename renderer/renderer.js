@@ -2,7 +2,6 @@
 
 const path = require("path");
 const fs = require("fs");
-const Database = require("better-sqlite3");
 const { spawn } = require("child_process");
 const ytdl = require("@distube/ytdl-core");
 const ytsr = require("@distube/ytsr");
