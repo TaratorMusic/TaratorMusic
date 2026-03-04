@@ -8,11 +8,25 @@ let songsTable;
 let timersTable;
 
 async function renderStatistics() {
-	const row = musicsDb.prepare("SELECT 1 FROM timers LIMIT 1").get(); // Checks if the first row exists (If any data exists)
-	if (!row) return alertModal("You haven't listened to any songs yet.");
+	const rowRes = callSqlite({
+		db: "musics",
+		query: "SELECT 1 FROM timers LIMIT 1",
+		fetch: true,
+	});
 
-	songsTable = musicsDb.prepare("SELECT song_id, song_name, song_url, song_extension, thumbnail_extension, stabilised, size, speed, bass, treble, midrange, volume, song_length, artist, genre, language FROM songs").all();
-	timersTable = musicsDb.prepare("SELECT song_id, start_time, end_time, playlist FROM timers").all();
+	if (!rowRes.length) return alertModal("You haven't listened to any songs yet.");
+
+	songsTable = callSqlite({
+		db: "musics",
+		query: "SELECT song_id, song_name, song_url, song_extension, thumbnail_extension, stabilised, size, speed, bass, treble, midrange, volume, song_length, artist, genre, language FROM songs",
+		fetch: true,
+	}); // TODO: USE THE CACHE
+
+	timersTable = callSqlite({
+		db: "musics",
+		query: "SELECT song_id, start_time, end_time, playlist FROM timers",
+		fetch: true,
+	});
 
 	document.getElementById("statistics-content").style.display = "flex";
 	statisticsContent.innerHTML = "";
@@ -25,21 +39,22 @@ async function renderStatistics() {
 }
 
 async function createMostListenedSongBox() {
-	const most_listened_song = musicsDb
-		.prepare(
-			`
-                SELECT song_id, SUM(end_time - start_time) AS total_time
-                FROM timers
-                GROUP BY song_id
-                ORDER BY total_time DESC
-                LIMIT 1
-            `,
-		)
-		.get();
+	const most_listened_song_res = callSqlite({
+		db: "musics",
+		query: `
+        SELECT song_id, SUM(end_time - start_time) AS total_time
+        FROM timers
+        GROUP BY song_id
+        ORDER BY total_time DESC
+        LIMIT 1
+    `,
+		fetch: true,
+	});
 
+	const most_listened_song = most_listened_song_res[0];
 	const songId = "tarator-" + most_listened_song.song_id;
-	const mostListenedSongsRow = musicsDb.prepare("SELECT song_name, thumbnail_extension, artist, language, genre FROM songs WHERE song_id = ?").get(songId);
-
+	const mostListenedSongsRow = songNameCache.get(songId) || {};
+    
 	const statisticsMostListened = document.createElement("div");
 	statisticsMostListened.id = "statisticsMostListened";
 	statisticsContent.appendChild(statisticsMostListened);
@@ -62,8 +77,14 @@ async function createMostListenedSongBox() {
 	mostListenedSongText.id = "mostListenedSongText";
 	statisticsMostListenedBox.appendChild(mostListenedSongText);
 
-	const { min_start, max_start, total_rows } = musicsDb.prepare("SELECT MIN(start_time) AS min_start, MAX(start_time) AS max_start, COUNT(*) AS total_rows FROM timers WHERE song_id = ?").get(most_listened_song.song_id);
+	const statsRes = callSqlite({
+		db: "musics",
+		query: "SELECT MIN(start_time) AS min_start, MAX(start_time) AS max_start, COUNT(*) AS total_rows FROM timers WHERE song_id = ?",
+		args: [most_listened_song.song_id],
+		fetch: true,
+	});
 
+	const { min_start, max_start, total_rows } = statsRes[0];
 	const artist = mostListenedSongsRow.artist || "Unknown Artist";
 	const genre = mostListenedSongsRow.genre || "Unknown Genre";
 	const language = mostListenedSongsRow.language || "Unknown Language";
@@ -307,24 +328,38 @@ async function generalStatistics() {
 	statsTitle.innerHTML = "General Statistics";
 	statisticsContent.appendChild(statsTitle);
 
-	const row = settingsDb.prepare("SELECT * FROM statistics").all()[0];
-	const leastListenRow = musicsDb
-		.prepare(
-			`SELECT *
-            FROM timers
-            ORDER BY start_time ASC
-            LIMIT 1`,
-		)
-		.get();
+	const row = callSqlite({
+		db: "settings",
+		query: "SELECT * FROM statistics",
+		args: [],
+		fetch: true,
+	});
 
-	const counts = musicsDb
-		.prepare(
-			`SELECT 
+	const leastListenRowRes = callSqlite({
+		db: "musics",
+		query: `
+        SELECT *
+        FROM timers
+        ORDER BY start_time ASC
+        LIMIT 1
+    `,
+		fetch: true,
+	});
+
+	const leastListenRow = leastListenRowRes[0];
+
+	const countsRes = callSqlite({
+		db: "musics",
+		query: `
+        SELECT 
             COUNT(CASE WHEN playlist IS NULL THEN 1 END) AS null_count,
             COUNT(CASE WHEN playlist IS NOT NULL THEN 1 END) AS not_null_count
-            FROM timers`,
-		)
-		.get();
+        FROM timers
+    `,
+		fetch: true,
+	});
+
+	const counts = countsRes[0];
 
 	let totalvalue, totalunit, sessionvalue, sessionunit;
 	let totalTimeSpent = row.total_time_spent;

@@ -1,39 +1,19 @@
 function getRecommendations() {
 	const artistPreferenceScore = calculateArtistPreference();
-    if (artistPreferenceScore == 999) return alertModal("No songs listened yet to give recommendations of.")
+	if (artistPreferenceScore == 999) return alertModal("No songs listened yet to give recommendations of.");
 	const songMap = new Map();
 	const pointsMap = new Map();
 
-	const existingSongsSet = new Set(
-		musicsDb
-			.prepare("SELECT song_name FROM songs")
-			.all()
-			.map(row => row.song_name),
-	);
+	const existingSongsSet = new Set(Array.from(songNameCache.values()).map(song => song.song_name));
+	const notInterestedSet = new Set(notInterestedSongs.map(song => song.song_name));
+	const existingArtistSet = new Set(Array.from(songNameCache.values()).map(song => song.artist));
 
-	const notInterestedSet = new Set(
-		musicsDb
-			.prepare("SELECT song_name FROM not_interested")
-			.all()
-			.map(row => row.song_name),
-	);
-
-	const existingArtistSet = new Set(
-		musicsDb
-			.prepare("SELECT DISTINCT artist FROM songs")
-			.all()
-			.map(row => row.artist),
-	);
-
-	const listenTimesMap = musicsDb
-		.prepare(
-			`
-            SELECT songs.artist, SUM(end_time - start_time) AS totalListenTime
-            FROM timers
-            JOIN songs ON timers.song_id = songs.song_id
-            GROUP BY songs.artist
-            `,
-		)
+	const listenTimesMap = callSqlite({
+		db: "musics",
+		query: "SELECT songs.artist, SUM(end_time - start_time) AS totalListenTime FROM timers JOIN songs ON timers.song_id = songs.song_id GROUP BY songs.artist",
+		args: [],
+		fetch: true,
+	})
 		.all()
 		.reduce((acc, row) => {
 			acc[row.artist] = row.totalListenTime || 0;
@@ -42,7 +22,12 @@ function getRecommendations() {
 
 	const maxListenTime = Math.max(...Object.values(listenTimesMap), 1);
 
-	const artists = musicsDb.prepare("SELECT artist_name, deezer_songs_array, similar_artists_array, artist_fan_amount FROM recommendations").all();
+	const artists = callSqlite({
+		db: "musics",
+		query: "SELECT artist_name, deezer_songs_array, similar_artists_array, artist_fan_amount FROM recommendations",
+		args: [],
+		fetch: true,
+	});
 
 	artists.forEach(artist => {
 		const songs = JSON.parse(artist.deezer_songs_array);
@@ -95,20 +80,17 @@ function getRecommendations() {
 }
 
 function calculateArtistPreference() {
-	const songTimes = musicsDb
-		.prepare(
-			`
-            SELECT song_id, SUM(end_time - start_time) AS total_seconds
-            FROM timers
-            GROUP BY song_id
-            `,
-		)
-		.all();
+	const songTimes = callSqlite({
+		db: "musics",
+		query: "SELECT song_id, SUM(end_time - start_time) AS total_seconds FROM timers GROUP BY song_id",
+		args: [],
+		fetch: true,
+	});
 
 	const artistTimes = {};
 
 	for (const row of songTimes) {
-		const song = musicsDb.prepare("SELECT artist FROM songs WHERE song_id = ?").get(`tarator-${row.song_id}`);
+		const song = songNameCache.get(`tarator-${row.song_id}`);
 		if (!song) continue;
 		artistTimes[song.artist] = (artistTimes[song.artist] || 0) + row.total_seconds;
 	}
@@ -127,18 +109,16 @@ function calculateArtistPreference() {
 
 async function fetchRecommendationsData(input) {
 	if (!input) alertModal("Checking all songs for recommendations... You can close this modal.");
-	const recommendationRows = musicsDb.prepare("SELECT artist_name FROM recommendations").all();
+    
+	const recommendationRows = callSqlite({
+		db: "musics",
+		query: "SELECT artist_name FROM recommendations",
+		args: [],
+		fetch: true,
+	});
+
 	const existingArtists = new Set(recommendationRows.map(row => row.artist_name.toLowerCase()));
-
-	const artists = Array.isArray(input)
-		? input
-		: input
-			? [input]
-			: musicsDb
-					.prepare("SELECT DISTINCT artist FROM songs")
-					.all()
-					.map(row => row.artist);
-
+	const artists = Array.isArray(input) ? input : input ? [input] : Array.from(new Set(Array.from(songNameCache.values()).map(song => song.artist)));
 	const artistsToProcess = artists.filter(artist => artist && !existingArtists.has(artist.toLowerCase()));
 
 	console.log(`Processing ${artistsToProcess.length} new artists (${existingArtists.size} already in db)`);
@@ -218,15 +198,15 @@ async function fetchRecommendationsData(input) {
 	}
 
 	if (artistsData.length > 0) {
-		const insertStmt = musicsDb.prepare(`INSERT OR REPLACE INTO recommendations 
-            (artist_id, artist_name, artist_fan_amount, similar_artists_array, deezer_songs_array) 
-            VALUES (?, ?, ?, ?, ?)`);
-		musicsDb.transaction(artists => {
-			for (const artist of artists) {
-				insertStmt.run(artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array));
-				console.log("Inserted: ", artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array));
-			}
-		})(artistsData);
+		for (const artist of artists) {
+			callSqlite({
+				db: "musics",
+				query: "INSERT OR REPLACE INTO recommendations (artist_id, artist_name, artist_fan_amount, similar_artists_array, deezer_songs_array) VALUES (?, ?, ?, ?, ?)",
+				args: [artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array)],
+				fetch: true,
+			});
+			console.log("Inserted: ", artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array));
+		}
 
 		console.log(`Saved ${artistsData.length} artists to recommendations table`);
 		if (!input) alertModal(`Saved ${artistsData.length} artists to recommendations table`);

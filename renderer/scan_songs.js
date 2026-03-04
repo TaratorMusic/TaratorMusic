@@ -39,7 +39,13 @@ async function normalizeAudio(filePath) {
 }
 
 async function processAllFiles() {
-	const rows = musicsDb.prepare("SELECT song_id, song_extension, stabilised FROM songs WHERE stabilised != 1").all();
+	const rows = Array.from(songNameCache.entries())
+		.filter(([_, data]) => data.stabilised !== 1)
+		.map(([song_id, data]) => ({
+			song_id,
+			song_extension: data.song_extension,
+			stabilised: data.stabilised,
+		}));
 	document.getElementById("stabiliseProgress").innerText = `Found ${rows.length} songs to process.`;
 
 	let processedCount = 0;
@@ -53,7 +59,12 @@ async function processAllFiles() {
 
 		try {
 			await normalizeAudio(fullPath);
-			const updateResult = musicsDb.prepare("UPDATE songs SET stabilised = 1 WHERE song_id = ?").run(row.song_id);
+			const updateResult = callSqlite({
+				db: "musics",
+				query: "UPDATE songs SET stabilised = 1 WHERE song_id = ?",
+				args: [row.song_id],
+			});
+
 			processedCount++;
 			if (updateResult.changes > 0) {
 				document.getElementById("stabiliseProgress").innerText = `[${processedCount}/${totalRows}] Successfully normalized and marked ${getSongNameById(row.song_id)}`;

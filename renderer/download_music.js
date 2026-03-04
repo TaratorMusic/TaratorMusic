@@ -706,28 +706,28 @@ async function actuallyDownloadTheSong() {
 					}
 				});
 
-				musicsDb.prepare("DELETE FROM streams WHERE song_id = ?").run(songID);
-				musicsDb.prepare("UPDATE timers SET song_id = ? WHERE song_id = ?").run(songID, oldId);
+				callSqlite({
+					db: "musics",
+					query: "DELETE FROM streams WHERE song_id = ?",
+					args: [songID],
+					fetch: false,
+				});
+
+				callSqlite({
+					db: "musics",
+					query: "UPDATE timers SET song_id = ? WHERE song_id = ?",
+					args: [songID, oldId],
+					fetch: false,
+				});
 			}
 
 			try {
-				musicsDb
-					.prepare(
-						`INSERT INTO songs (
-							song_id, song_name, song_url,
-							song_length, seconds_played, times_listened, stabilised,
-							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					)
-					.run(songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", artist, genre, language);
-
-				settingsDb
-					.prepare(
-						`UPDATE statistics SET
-                        ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} =
-                        ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + 1`,
-					)
-					.run();
+				callSqlite({
+					db: "musics",
+					query: `INSERT INTO songs (song_id, song_name, song_url, song_length, seconds_played, times_listened, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					args: [songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", artist, genre, language],
+					fetch: false,
+				});
 
 				songNameCache.set(songID, {
 					song_name: secondInput,
@@ -934,15 +934,12 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 			if (songId && songTitle && songLink && duration != null) {
 				try {
-					musicsDb
-						.prepare(
-							`INSERT INTO songs (
-							song_id, song_name, song_url,
-							song_length, seconds_played, times_listened, stabilised,
-							size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-						)
-						.run(songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", genres[i], artists[i], languages[i]);
+					callSqlite({
+						db: "musics",
+						query: `INSERT INTO songs (song_id, song_name, song_url, song_length, seconds_played, times_listened, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+						args: [songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", genres[i], artists[i], languages[i]],
+						fetch: false,
+					});
 
 					songNameCache.set(songId, {
 						song_name: songTitle,
@@ -973,27 +970,26 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			await sleep(500);
 		}
 
-		settingsDb
-			.prepare(
-				`UPDATE statistics SET
-                ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} =
-                ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${totalSongs}`,
-			)
-			.run();
+		callSqlite({
+			db: "settings",
+			query: `UPDATE statistics SET ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} = ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${totalSongs}`,
+			args: [],
+			fetch: false,
+		});
 
 		if (window.isSaveAsPlaylistActive) {
 			const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
 			const songsJson = JSON.stringify(songIds.map(id => id.trim()));
 
 			try {
-				playlistsDb
-					.prepare(
-						`
-						INSERT INTO playlists (id, name, songs, thumbnail_extension)
-						VALUES (?, ?, ?, ?)
-					`,
-					)
-					.run(playlistID, playlistName, songsJson, "jpg");
+				callSqlite({
+					db: "playlists",
+					query: `
+        INSERT INTO playlists (id, name, songs, thumbnail_extension)
+        VALUES (?, ?, ?, ?)
+    `,
+					args: [playlistID, playlistName, songsJson, "jpg"],
+				});
 			} catch (err) {
 				console.log("Failed to save playlist:", err);
 			}
@@ -1061,7 +1057,12 @@ function openAddToPlaylistModalStaging(songId) {
 	const checkboxContainer = document.getElementById("playlist-checkboxes");
 	checkboxContainer.innerHTML = "";
 
-	const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists").all() || [];
+	const allPlaylists =
+		callSqlite({
+			db: "playlists",
+			query: "SELECT * FROM playlists", // TODO: USE THE CACHE
+			fetch: true,
+		}) || [];
 	allPlaylists.forEach(playlist => {
 		const checkbox = document.createElement("input");
 		checkbox.type = "checkbox";
@@ -1093,15 +1094,26 @@ function openAddToPlaylistModalStaging(songId) {
 
 async function commitStagedPlaylistAdds() {
 	for (const [song, lists] of pendingPlaylistAddsWithIds.entries()) {
-		lists.forEach(listID => {
-			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE id = ?").get(listID);
-			let songs = JSON.parse(playlist.songs);
+		for (const listID of lists) {
+			const playlistRes = callSqlite({
+				db: "playlists",
+				query: "SELECT * FROM playlists WHERE id = ?",
+				args: [listID],
+				fetch: true,
+			}); // TODO: USE THE CACHE
+
+			const playlist = playlistRes[0];
+			let songs = JSON.parse(playlist.songs || "[]");
 
 			if (!songs.includes(song)) {
 				songs.push(song);
-				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE name = ?").run(JSON.stringify(songs), listID);
+				callSqlite({
+					db: "playlists",
+					query: "UPDATE playlists SET songs = ? WHERE id = ?",
+					args: [JSON.stringify(songs), listID],
+				});
 			}
-		});
+		}
 	}
 	pendingPlaylistAddsWithIds.clear();
 }

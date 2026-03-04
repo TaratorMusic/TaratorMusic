@@ -12,7 +12,7 @@ async function copyBinariesOutside() {
 
 	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
 
-	const baseBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", "ytdlp_fetch"];
+	const baseBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", "sqlite", "ytdlp_fetch"];
 	const platformBinaries = isWin ? ["yt-dlp.exe"] : isMac ? ["yt-dlp_macos"] : ["yt-dlp_linux"];
 	const backendBinaries = [...baseBinaries.map(b => (isWin ? `${b}.exe` : b)), ...platformBinaries];
 
@@ -52,23 +52,23 @@ autoUpdater.autoInstallOnAppQuit = false;
 let mainWindow;
 
 function createWindow() {
-	const splash = new BrowserWindow({
-		width: 1600,
-		height: 850,
-		title: "TaratorMusic",
-		icon: path.join(__dirname, "assets/tarator16_icon.png"),
-		frame: false,
-		closable: true,
-		transparent: true,
-		alwaysOnTop: true,
-		resizable: false,
-	});
+	// const splash = new BrowserWindow({
+	// 	width: 1600,
+	// 	height: 850,
+	// 	title: "TaratorMusic",
+	// 	icon: path.join(__dirname, "assets/tarator16_icon.png"),
+	// 	frame: false,
+	// 	closable: true,
+	// 	transparent: true,
+	// 	alwaysOnTop: true,
+	// 	resizable: false,
+	// });
 
-	splash.loadFile("renderer/splash.html");
+	// splash.loadFile("renderer/splash.html");
 
 	ipcMain.on("renderer-domready", e => {
 		if (e.sender.id !== mainWindow.webContents.id) return;
-		if (splash && !splash.isDestroyed()) splash.destroy();
+		// if (splash && !splash.isDestroyed()) splash.destroy();
 		if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
 	});
 
@@ -99,7 +99,7 @@ function createWindow() {
 		});
 	});
 
-	mainWindow.loadFile("renderer/index.html");
+	mainWindow.loadFile("renderer/index.html");mainWindow.show();
 }
 
 app.whenReady().then(() => {

@@ -1,15 +1,10 @@
-// TODO: Update database function
-// TODO: getSongNameCached
-// TODO: Check other renderer scripts
-
-// TODO: Dont forget the give back the data to JS as the cache
-
 package main
 
 import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,12 +28,16 @@ type IPCRequest struct {
 }
 
 type IPCResponse struct {
-	ID    string                   `json:"id"`
 	Rows  []map[string]interface{} `json:"rows,omitempty"`
 	Error string                   `json:"error,omitempty"`
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Fprintln(os.Stderr, "usage: sqlite <databases-folder>")
+		os.Exit(1)
+	}
+
 	createDatabaseFiles()
 
 	for name, path := range map[string]string{
@@ -74,7 +73,10 @@ func main() {
 	for {
 		var req IPCRequest
 		if err := decoder.Decode(&req); err != nil {
-			break
+			if err == io.EOF {
+				break
+			}
+			continue
 		}
 		encoder.Encode(dispatch(req))
 	}
@@ -83,32 +85,32 @@ func main() {
 func dispatch(req IPCRequest) (resp IPCResponse) {
 	defer func() {
 		if r := recover(); r != nil {
-			resp = IPCResponse{ID: req.ID, Error: fmt.Sprintf("panic: %v", r)}
+			resp = IPCResponse{Error: fmt.Sprintf("panic: %v", r)}
 		}
 	}()
 
 	db, ok := databases[req.DB]
 	if !ok {
-		return IPCResponse{ID: req.ID, Error: "unknown db: " + req.DB}
+		return IPCResponse{Error: "unknown db: " + req.DB}
 	}
 
 	if req.Fetch {
 		rows, err := db.Query(req.Query, req.Args...)
 		if err != nil {
-			return IPCResponse{ID: req.ID, Error: err.Error()}
+			return IPCResponse{Error: err.Error()}
 		}
 		defer rows.Close()
 		results, err := scanRows(rows)
 		if err != nil {
-			return IPCResponse{ID: req.ID, Error: err.Error()}
+			return IPCResponse{Error: err.Error()}
 		}
-		return IPCResponse{ID: req.ID, Rows: results}
+		return IPCResponse{Rows: results}
 	}
 
 	if _, err := db.Exec(req.Query, req.Args...); err != nil {
-		return IPCResponse{ID: req.ID, Error: err.Error()}
+		return IPCResponse{Error: err.Error()}
 	}
-	return IPCResponse{ID: req.ID}
+	return IPCResponse{}
 }
 
 func scanRows(rows *sql.Rows) ([]map[string]interface{}, error) {
@@ -146,7 +148,6 @@ func createDatabaseFiles() {
 			f.Close()
 		}
 	}
-	fmt.Println("Databases ensured in:", databasesFolder)
 }
 
 func createTable(db *sql.DB, tableName string, columns []Column) error {

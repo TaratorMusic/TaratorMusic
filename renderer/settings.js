@@ -1,5 +1,5 @@
 async function saveKeybinds() {
-	const buttons = Array.from(document.querySelectorAll(".settingsKeybinds button")).map(button => button.innerText.trim());
+	const buttons = Array.from(document.querySelectorAll(".settingsKeybinds button")).map(b => b.innerText.trim());
 	const test = findDuplicates(buttons);
 
 	if (test.length > 0) {
@@ -7,20 +7,20 @@ async function saveKeybinds() {
 		return;
 	}
 
-	updateDatabase("key_Rewind", document.getElementById("settingsRewind").innerHTML, settingsDb, "settings");
-	updateDatabase("key_Previous", document.getElementById("settingsPrevious").innerHTML, settingsDb, "settings");
-	updateDatabase("key_PlayPause", document.getElementById("settingsPlayPause").innerHTML, settingsDb, "settings");
-	updateDatabase("key_Next", document.getElementById("settingsNext").innerHTML, settingsDb, "settings");
-	updateDatabase("key_Skip", document.getElementById("settingsSkip").innerHTML, settingsDb, "settings");
-	updateDatabase("key_Autoplay", document.getElementById("settingsAutoplay").innerHTML, settingsDb, "settings");
-	updateDatabase("key_Shuffle", document.getElementById("settingsShuffle").innerHTML, settingsDb, "settings");
-	updateDatabase("key_Mute", document.getElementById("settingsMute").innerHTML, settingsDb, "settings");
-	updateDatabase("key_Speed", document.getElementById("settingsSpeed").innerHTML, settingsDb, "settings");
-	updateDatabase("key_Loop", document.getElementById("settingsLoop").innerHTML, settingsDb, "settings");
-	updateDatabase("key_searchSong", document.getElementById("settingsSearchSong").innerHTML, settingsDb, "settings");
-	updateDatabase("key_RandomSong", document.getElementById("settingsRandomSong").innerHTML, settingsDb, "settings");
-	updateDatabase("key_RandomPlaylist", document.getElementById("settingsRandomPlaylist").innerHTML, settingsDb, "settings");
-	updateDatabase("key_LastPlaylist", document.getElementById("settingsLastPlaylist").innerHTML, settingsDb, "settings");
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Rewind = ?", args: [document.getElementById("settingsRewind").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Previous = ?", args: [document.getElementById("settingsPrevious").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_PlayPause = ?", args: [document.getElementById("settingsPlayPause").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Next = ?", args: [document.getElementById("settingsNext").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Skip = ?", args: [document.getElementById("settingsSkip").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Autoplay = ?", args: [document.getElementById("settingsAutoplay").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Shuffle = ?", args: [document.getElementById("settingsShuffle").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Mute = ?", args: [document.getElementById("settingsMute").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Speed = ?", args: [document.getElementById("settingsSpeed").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_Loop = ?", args: [document.getElementById("settingsLoop").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_searchSong = ?", args: [document.getElementById("settingsSearchSong").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_RandomSong = ?", args: [document.getElementById("settingsRandomSong").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_RandomPlaylist = ?", args: [document.getElementById("settingsRandomPlaylist").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_LastPlaylist = ?", args: [document.getElementById("settingsLastPlaylist").innerHTML] });
 
 	key_Rewind = document.getElementById("settingsRewind").innerHTML;
 	key_Previous = document.getElementById("settingsPrevious").innerHTML;
@@ -55,7 +55,7 @@ document.querySelectorAll(".settingsKeybinds button").forEach(button => {
 });
 
 function changeBackground(color) {
-	updateDatabase("background", color, settingsDb, "settings");
+	callSqlite({ db: "settings", query: "UPDATE settings SET background = ?", args: [color] });
 	document.body.style.background = "";
 	document.body.className = "";
 	document.body.style.color = "white !important";
@@ -68,12 +68,12 @@ function changeBackground(color) {
 }
 
 async function redownloadAllSongs() {
-	const rows = musicsDb.prepare("SELECT song_id, song_name, song_url FROM songs").all();
+	const rows = callSqlite({ db: "musics", query: "SELECT song_id, song_name, song_url FROM songs", fetch: true });
 	const existingFiles = fs.readdirSync(musicFolder);
 	const existingIds = new Set(existingFiles.map(file => path.parse(file).name));
 	const filteredRows = rows.filter(row => !existingIds.has(row.song_id));
 
-	if (filteredRows.length == 0) {
+	if (filteredRows.length === 0) {
 		await alertModal("No songs to redownload.");
 		return;
 	}
@@ -89,24 +89,21 @@ async function redownloadAllSongs() {
 	for (let i = 0; i < filteredRows.length; i++) {
 		const row = filteredRows[i];
 		let confirmed = false;
+		let info;
 		try {
 			info = await ytdl.getInfo(row.song_url);
 			document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
-		} catch (err) {
-			if (checkAllSongs == "SkipAll") {
-				continue;
-			} else if (checkAllSongs == "AskEach") {
+		} catch {
+			if (checkAllSongs === "SkipAll") continue;
+			if (checkAllSongs === "AskEach") {
 				confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No");
-				if (!confirmed) {
-					continue;
-				}
+				if (!confirmed) continue;
 			}
-
-			if (checkAllSongs == "SearchAll" || (checkAllSongs == "AskEach" && confirmed)) {
+			if (checkAllSongs === "SearchAll" || (checkAllSongs === "AskEach" && confirmed)) {
 				try {
 					const newUrl = await searchInYoutube(row.song_name);
 					info = await ytdl.getInfo(newUrl);
-				} catch (e) {
+				} catch {
 					continue;
 				}
 			}
@@ -119,42 +116,41 @@ async function redownloadAllSongs() {
 			return size > maxSize ? thumb : max;
 		}, thumbnails[0] || {});
 
-		const thumbnailUrl = bestThumbnail.url || "";
 		songs.push({
 			url: row.song_url,
 			id: row.song_id,
 			title: row.song_name,
-			thumbnail: thumbnailUrl,
+			thumbnail: bestThumbnail.url || "",
 		});
 
-		if (i + 1 != filteredRows.length) await sleep(500); // For not overloading Youtube API
+		if (i + 1 !== filteredRows.length) await sleep(500);
 	}
 
 	await renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailFolder, "tarator_icon.png"), songs);
 }
 
 function stabiliseVolumeToggleTogglerFunction() {
-	stabiliseVolumeToggle = stabiliseVolumeToggle == 1 ? 0 : 1;
-	updateDatabase("stabiliseVolumeToggle", stabiliseVolumeToggle, settingsDb, "settings");
+	stabiliseVolumeToggle = stabiliseVolumeToggle === 1 ? 0 : 1;
+	callSqlite({ db: "settings", query: "UPDATE settings SET stabiliseVolumeToggle = ?", args: [stabiliseVolumeToggle] });
 }
 
 function recommendationsToggleTogglerFunction() {
-    recommendationsAfterDownload = recommendationsAfterDownload == 1 ? 0 : 1;
-	updateDatabase("recommendationsAfterDownload", recommendationsAfterDownload, settingsDb, "settings");
+	recommendationsAfterDownload = recommendationsAfterDownload === 1 ? 0 : 1;
+	callSqlite({ db: "settings", query: "UPDATE settings SET recommendationsAfterDownload = ?", args: [recommendationsAfterDownload] });
 }
 
 async function saveRecommendationWeights() {
 	let total = 0;
 
 	for (let i = 1; i <= 6; i++) {
-		let theValue = Number(document.getElementById(`weight${i}`).value);
+		const theValue = Number(document.getElementById(`weight${i}`).value);
 		if (!Number.isFinite(theValue)) return await alertModal("One of the weights is not a number.");
 		if (theValue > 100) return await alertModal("A weight can not be over 100.");
 		if (theValue < 0) return await alertModal("A weight can not be negative.");
 		total += theValue;
 	}
 
-	if (total != 100) return await alertModal("The total of all weights must equal to 100. ");
+	if (total !== 100) return await alertModal("The total of all weights must equal to 100.");
 
 	popularityFactor = document.getElementById("weight1").value;
 	artistStrengthFactor = document.getElementById("weight2").value;
@@ -163,12 +159,12 @@ async function saveRecommendationWeights() {
 	artistListenTimeFactor = document.getElementById("weight5").value;
 	randomFactor = document.getElementById("weight6").value;
 
-	updateDatabase("popularityFactor", popularityFactor, settingsDb, "settings");
-	updateDatabase("artistStrengthFactor", artistStrengthFactor, settingsDb, "settings");
-	updateDatabase("similarArtistsFactor", similarArtistsFactor, settingsDb, "settings");
-	updateDatabase("userPreferenceFactor", userPreferenceFactor, settingsDb, "settings");
-	updateDatabase("artistListenTimeFactor", artistListenTimeFactor, settingsDb, "settings");
-	updateDatabase("randomFactor", randomFactor, settingsDb, "settings");
+	callSqlite({ db: "settings", query: "UPDATE settings SET popularityFactor = ?", args: [popularityFactor] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET artistStrengthFactor = ?", args: [artistStrengthFactor] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET similarArtistsFactor = ?", args: [similarArtistsFactor] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET userPreferenceFactor = ?", args: [userPreferenceFactor] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET artistListenTimeFactor = ?", args: [artistListenTimeFactor] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET randomFactor = ?", args: [randomFactor] });
 
 	alertModal("Success!");
 }
@@ -189,12 +185,12 @@ async function resetRecommendationWeights() {
 		document.getElementById("weight5").value = 25;
 		document.getElementById("weight6").value = 15;
 
-		updateDatabase("popularityFactor", popularityFactor, settingsDb, "settings");
-		updateDatabase("artistStrengthFactor", artistStrengthFactor, settingsDb, "settings");
-		updateDatabase("similarArtistsFactor", similarArtistsFactor, settingsDb, "settings");
-		updateDatabase("userPreferenceFactor", userPreferenceFactor, settingsDb, "settings");
-		updateDatabase("artistListenTimeFactor", artistListenTimeFactor, settingsDb, "settings");
-		updateDatabase("randomFactor", randomFactor, settingsDb, "settings");
+		callSqlite({ db: "settings", query: "UPDATE settings SET popularityFactor = ?", args: [popularityFactor] });
+		callSqlite({ db: "settings", query: "UPDATE settings SET artistStrengthFactor = ?", args: [artistStrengthFactor] });
+		callSqlite({ db: "settings", query: "UPDATE settings SET similarArtistsFactor = ?", args: [similarArtistsFactor] });
+		callSqlite({ db: "settings", query: "UPDATE settings SET userPreferenceFactor = ?", args: [userPreferenceFactor] });
+		callSqlite({ db: "settings", query: "UPDATE settings SET artistListenTimeFactor = ?", args: [artistListenTimeFactor] });
+		callSqlite({ db: "settings", query: "UPDATE settings SET randomFactor = ?", args: [randomFactor] });
 
 		await alertModal("Success!");
 	}

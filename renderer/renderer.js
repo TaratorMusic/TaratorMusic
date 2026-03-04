@@ -8,9 +8,12 @@ const ytdl = require("@distube/ytdl-core");
 const ytsr = require("@distube/ytsr");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
-let settingsDbPath, playlistsDbPath, musicsDbPath;
-let settingsDb, playlistsDb, musicsDb;
 let recommendationsCache = localStorage.getItem("recommendationsCache") || null;
+
+const sqlitePending = {};
+let sqliteCounter = 0;
+let sqliteBuffer = "";
+let sqliteBinary;
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
@@ -21,21 +24,50 @@ let recommendationsCache = localStorage.getItem("recommendationsCache") || null;
 	databasesFolder = path.join(taratorFolder, "databases");
 	backendFolder = path.join(taratorFolder, "bin");
 
-	settingsDbPath = path.join(databasesFolder, "settings.db");
-	playlistsDbPath = path.join(databasesFolder, "playlists.db");
-	musicsDbPath = path.join(databasesFolder, "musics.db");
-
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
 
-	if (!fs.existsSync(settingsDbPath)) fs.writeFileSync(settingsDbPath, "");
-	if (!fs.existsSync(playlistsDbPath)) fs.writeFileSync(playlistsDbPath, "");
-	if (!fs.existsSync(musicsDbPath)) fs.writeFileSync(musicsDbPath, "");
+	sqliteBinary = spawn(path.join(backendFolder, "./sqlite"), [databasesFolder], {
+		stdio: ["pipe", "pipe", "pipe"],
+	});
 
-	settingsDb = new Database(settingsDbPath);
-	playlistsDb = new Database(playlistsDbPath);
-	musicsDb = new Database(musicsDbPath);
+	sqliteBinary.stdout.on("data", chunk => {
+		sqliteBuffer += chunk.toString();
+		const lines = sqliteBuffer.split("\n");
+		sqliteBuffer = lines.pop();
+		for (const line of lines) {
+			if (!line.trim()) continue;
+
+			const trimmed = line.trim();
+			if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+				console.log("non-JSON output from sqlite:", trimmed);
+				continue;
+			}
+
+			try {
+				const res = JSON.parse(trimmed);
+				if (sqlitePending[res.id]) {
+					sqlitePending[res.id](res);
+					delete sqlitePending[res.id];
+				}
+			} catch (e) {
+				console.error("failed to parse response:", e, "line:", trimmed);
+			}
+		}
+	});
+
+	sqliteBinary.stderr.on("data", data => {
+		console.error("go stderr:", data.toString());
+	});
+
+	sqliteBinary.on("error", err => {
+		console.error("failed to start sqlite binary:", err);
+	});
+
+	sqliteBinary.on("close", code => {
+		console.log("go process exited with code", code);
+	});
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");
@@ -48,14 +80,13 @@ const videoProgress = document.getElementById("video-progress");
 const searchModalInput = document.getElementById("searchModalInput");
 const content = document.getElementById("content");
 
+// TODO: Clear these variables
 const platform = process.platform;
 let audioPlayer;
 let player = null;
-
 let playingSongsID = "";
 let currentPlaylist = null; // Currently playing playlist's ID
 let currentPlaylistElement = null; // The order of the currently playing song in the playlist its in
-let playlistsMap = new Map(); // Full playlists cache
 let playlistPlayedSongs = [];
 let playedSongs = [];
 let isShuffleActive = false;
@@ -78,13 +109,13 @@ let playing = false;
 let previousItemsPerRow;
 let currentPage = 1;
 let streamedSongsHtmlMap = new Map();
-let notInterestedSongs;
 let lastAuthoritativePosition = 0; // Playing songs position sent by miniaudio
 let lastSyncTimestamp = 0; // Current predicted timestamp in JS
 let isInterpolating = false; // If song is playing
 
-const debounceMap = new Map();
-let songNameCache = new Map();
+let songNameCache = new Map(); // Song cache
+let playlistsMap = new Map(); // Playlist cache
+let notInterestedSongs; // Not interested songs cache
 
 let sessionTimeSpent = 0;
 let rememberautoplay;
@@ -119,238 +150,164 @@ let userPreferenceFactor;
 let artistListenTimeFactor;
 let randomFactor;
 
-const defaultSettings = {
-	volume: 50,
-	rememberautoplay: 1,
-	remembershuffle: 1,
-	rememberloop: 0,
-	rememberspeed: 1,
-	key_Rewind: "q",
-	key_Previous: "w",
-	key_PlayPause: "e",
-	key_Next: "r",
-	key_Skip: "t",
-	key_Autoplay: "a",
-	key_Shuffle: "s",
-	key_Mute: "d",
-	key_Speed: "f",
-	key_Loop: "g",
-	key_searchSong: "z",
-	key_randomSong: "1",
-	key_randomPlaylist: "2",
-	key_lastPlaylist: "3",
-	dividevolume: 1,
-	displayPage: "scroll",
-	musicMode: "offline",
-	background: "green",
-	stabiliseVolumeToggle: 1,
-	dc_rpc: 0,
-	dc_bot: 0,
-	dc_bot_token: null,
-	dc_channel_id: null,
-	dc_guild_id: null,
-	current_version: null,
-	popularityFactor: 15,
-	artistStrengthFactor: 8,
-	similarArtistsFactor: 20,
-	userPreferenceFactor: 17,
-	artistListenTimeFactor: 25,
-	randomFactor: 15,
-	recommendationsAfterDownload: 1,
-};
+function callSqlite({ db, query, args = [], fetch = false }) {
+	return new Promise((resolve, reject) => {
+		const id = String(sqliteCounter++);
+		sqlitePending[id] = res => (res.error ? reject(new Error(res.error)) : resolve(res.rows ?? []));
+		sqliteBinary.stdin.write(JSON.stringify({ id, db, query, args, fetch }) + "\n");
+	});
+}
 
-function initialiseSettingsDatabase() {
-	let settingsRow;
+async function initialiseDatabases() {
+	const settingsRows = await callSqlite({
+		db: "settings",
+		query: "SELECT * FROM settings LIMIT 1",
+		fetch: true,
+	});
+	const settingsRow = settingsRows[0];
 
-	try {
-		const columns = Object.entries(defaultSettings)
-			.map(([key, value]) => {
-				const type = typeof value == "number" ? "INTEGER" : "TEXT";
-				return `${key} ${type}`;
-			})
-			.join(", ");
+	const statsRows = await callSqlite({
+		db: "settings",
+		query: "SELECT * FROM statistics LIMIT 1",
+		fetch: true,
+	});
+	const statsRow = statsRows[0];
 
-		settingsDb.prepare(`CREATE TABLE IF NOT EXISTS settings (${columns})`).run();
-		settingsDb
-			.prepare(
-				`CREATE TABLE IF NOT EXISTS statistics (
-                    total_time_spent INTEGER,
-                    app_install_date INTEGER,
-                    playlists_formed INTEGER,
-                    songs_downloaded_youtube INTEGER,
-                    songs_downloaded_spotify INTEGER,
-                    ytdlp_last_update_date INTEGER,
-                    recommendations_last_refresh INTEGER
-                )`,
-			)
-			.run();
+	notInterestedSongs = await callSqlite({
+		db: "musics",
+		query: "SELECT song_id FROM not_interested",
+		fetch: true,
+	});
 
-		const statsInfo = settingsDb.prepare("PRAGMA table_info(statistics)").all();
-		const existingStatsColumns = statsInfo.map(col => col.name);
-		const requiredStatsColumns = [
-			{ name: "total_time_spent", type: "INTEGER", defaultVal: 0 },
-			{ name: "app_install_date", type: "INTEGER", defaultVal: 0 },
-			{ name: "playlists_formed", type: "INTEGER", defaultVal: 0 },
-			{ name: "songs_downloaded_youtube", type: "INTEGER", defaultVal: 0 },
-			{ name: "songs_downloaded_spotify", type: "INTEGER", defaultVal: 0 },
-			{ name: "ytdlp_last_update_date", type: "INTEGER", defaultVal: Date.now() },
-			{ name: "recommendations_last_refresh", type: "INTEGER", defaultVal: 0 },
-		];
+	const songsRows = await callSqlite({
+		db: "musics",
+		query: "SELECT song_id, song_length, song_url, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs",
+		fetch: true,
+	});
 
-		for (const col of requiredStatsColumns) {
-			if (!existingStatsColumns.includes(col.name)) {
-				settingsDb.prepare(`ALTER TABLE statistics ADD COLUMN ${col.name} ${col.type} DEFAULT ${col.defaultVal}`).run();
-			}
-		}
-
-		let settingsRow = settingsDb.prepare("SELECT * FROM settings LIMIT 1").get();
-		let statsRow = settingsDb.prepare("SELECT * FROM statistics LIMIT 1").get();
-
-		if (!settingsRow) {
-			const cols = Object.keys(defaultSettings).join(", ");
-			const placeholders = Object.keys(defaultSettings)
-				.map(() => "?")
-				.join(", ");
-			settingsDb.prepare(`INSERT INTO settings (${cols}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
-			settingsRow = defaultSettings;
-		}
-
-		if (!statsRow) {
-			settingsDb
-				.prepare(
-					`INSERT INTO statistics (total_time_spent, app_install_date, playlists_formed, songs_downloaded_youtube, songs_downloaded_spotify)
-             VALUES (0, ?, 0, 0, 0)`,
-				)
-				.run(Math.floor(Date.now() / 1000));
-			statsRow = settingsDb.prepare("SELECT * FROM statistics LIMIT 1").get();
-		} else if (!statsRow.app_install_date || statsRow.app_install_date == 0) {
-			settingsDb.prepare(`UPDATE statistics SET app_install_date = ?`).run(Math.floor(Date.now() / 1000));
-		}
-
-		const tableInfo = settingsDb.prepare("PRAGMA table_info(settings)").all();
-		const existingColumns = tableInfo.map(col => col.name);
-
-		for (const [key, value] of Object.entries(defaultSettings)) {
-			if (!existingColumns.includes(key)) {
-				const type = typeof value == "number" ? "INTEGER" : "TEXT";
-				const defaultVal = typeof value == "number" ? value : `'${value}'`;
-				settingsDb.prepare(`ALTER TABLE settings ADD COLUMN ${key} ${type} DEFAULT ${defaultVal}`).run();
-			}
-		}
-
-		if (existingColumns.length == 0) {
-			const cols = Object.keys(defaultSettings).join(", ");
-			const placeholders = Object.keys(defaultSettings)
-				.map(() => "?")
-				.join(", ");
-			settingsDb.prepare(`INSERT INTO settings (${cols}) VALUES (${placeholders})`).run(...Object.values(defaultSettings));
-		}
-
-		document.getElementById("settingsRewind").innerHTML = settingsRow.key_Rewind;
-		document.getElementById("settingsPrevious").innerHTML = settingsRow.key_Previous;
-		document.getElementById("settingsPlayPause").innerHTML = settingsRow.key_PlayPause;
-		document.getElementById("settingsNext").innerHTML = settingsRow.key_Next;
-		document.getElementById("settingsSkip").innerHTML = settingsRow.key_Skip;
-		document.getElementById("settingsAutoplay").innerHTML = settingsRow.key_Autoplay;
-		document.getElementById("settingsShuffle").innerHTML = settingsRow.key_Shuffle;
-		document.getElementById("settingsMute").innerHTML = settingsRow.key_Mute;
-		document.getElementById("settingsSpeed").innerHTML = settingsRow.key_Speed;
-		document.getElementById("settingsLoop").innerHTML = settingsRow.key_Loop;
-		document.getElementById("settingsSearchSong").innerHTML = settingsRow.key_searchSong;
-		document.getElementById("settingsRandomSong").innerHTML = settingsRow.key_randomSong;
-		document.getElementById("settingsRandomPlaylist").innerHTML = settingsRow.key_randomPlaylist;
-		document.getElementById("settingsLastPlaylist").innerHTML = settingsRow.key_lastPlaylist;
-
-		key_Rewind = settingsRow.key_Rewind;
-		key_Previous = settingsRow.key_Previous;
-		key_PlayPause = settingsRow.key_PlayPause;
-		key_Next = settingsRow.key_Next;
-		key_Skip = settingsRow.key_Skip;
-		key_Autoplay = settingsRow.key_Autoplay;
-		key_Shuffle = settingsRow.key_Shuffle;
-		key_Mute = settingsRow.key_Mute;
-		key_Speed = settingsRow.key_Speed;
-		key_Loop = settingsRow.key_Loop;
-		key_searchSong = settingsRow.key_searchSong;
-		key_randomSong = settingsRow.key_randomSong;
-		key_randomPlaylist = settingsRow.key_randomPlaylist;
-		key_lastPlaylist = settingsRow.key_lastPlaylist;
-		rememberautoplay = settingsRow.rememberautoplay;
-		remembershuffle = settingsRow.remembershuffle;
-		rememberloop = settingsRow.rememberloop;
-		rememberspeed = settingsRow.rememberspeed;
-		volume = settingsRow.volume / 100 / settingsRow.dividevolume;
-		dividevolume = settingsRow.dividevolume;
-		displayPage = settingsRow.displayPage;
-		musicMode = settingsRow.musicMode;
-		stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
-		current_version = settingsRow.current_version;
-		recommendationsAfterDownload = settingsRow.recommendationsAfterDownload;
-
-		if (settingsRow.background.includes("#")) {
-			document.body.style.background = settingsRow.background;
-		} else {
-			document.body.className = `bg-gradient-${settingsRow.background}`;
-		}
-
-		popularityFactor = settingsRow.popularityFactor;
-		artistStrengthFactor = settingsRow.artistStrengthFactor;
-		similarArtistsFactor = settingsRow.similarArtistsFactor;
-		userPreferenceFactor = settingsRow.userPreferenceFactor;
-		artistListenTimeFactor = settingsRow.artistListenTimeFactor;
-		randomFactor = settingsRow.randomFactor;
-
-		discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
-		discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
-		document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
-
-		document.getElementById("weight1").value = popularityFactor;
-		document.getElementById("weight2").value = artistStrengthFactor;
-		document.getElementById("weight3").value = similarArtistsFactor;
-		document.getElementById("weight4").value = userPreferenceFactor;
-		document.getElementById("weight5").value = artistListenTimeFactor;
-		document.getElementById("weight6").value = randomFactor;
-
-		const icons = {
-			backwardButton: "backward.svg",
-			previousSongButton: "previous.svg",
-			playButton: "play.svg",
-			pauseButton: "pause.svg",
-			nextSongButton: "next.svg",
-			forwardButton: "forward.svg",
-			autoplayButton: "redAutoplay.svg",
-			shuffleButton: "redShuffle.svg",
-			muteButton: "mute_on.svg",
-			speedButton: "speed.svg",
-			loopButton: "redLoop.svg",
-			songSettingsButton: "adjustments.svg",
-		};
-
-		for (const [id, file] of Object.entries(icons)) {
-			const el = document.getElementById(id);
-			if (el) {
-				el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
-			}
-		}
-
-		rememberautoplay && toggleAutoplay();
-		remembershuffle && toggleShuffle();
-		rememberloop && toggleLoop();
-
-		volumeControl.value = volume * 100 * dividevolume;
-	} catch (err) {
-		console.log("Database error:", err.message);
-		return;
+	for (const row of songsRows) {
+		songNameCache.set(row.song_id, {
+			song_name: row.song_name,
+			song_length: row.song_length,
+			song_extension: row.song_extension,
+			song_url: row.song_url,
+			thumbnail_extension: row.thumbnail_extension,
+			stabilised: row.stabilised,
+			size: row.size,
+			genre: row.genre,
+			artist: row.artist,
+			language: row.language,
+		});
 	}
+
+	document.getElementById("settingsRewind").innerHTML = settingsRow.key_Rewind;
+	document.getElementById("settingsPrevious").innerHTML = settingsRow.key_Previous;
+	document.getElementById("settingsPlayPause").innerHTML = settingsRow.key_PlayPause;
+	document.getElementById("settingsNext").innerHTML = settingsRow.key_Next;
+	document.getElementById("settingsSkip").innerHTML = settingsRow.key_Skip;
+	document.getElementById("settingsAutoplay").innerHTML = settingsRow.key_Autoplay;
+	document.getElementById("settingsShuffle").innerHTML = settingsRow.key_Shuffle;
+	document.getElementById("settingsMute").innerHTML = settingsRow.key_Mute;
+	document.getElementById("settingsSpeed").innerHTML = settingsRow.key_Speed;
+	document.getElementById("settingsLoop").innerHTML = settingsRow.key_Loop;
+	document.getElementById("settingsSearchSong").innerHTML = settingsRow.key_searchSong;
+	document.getElementById("settingsRandomSong").innerHTML = settingsRow.key_randomSong;
+	document.getElementById("settingsRandomPlaylist").innerHTML = settingsRow.key_randomPlaylist;
+	document.getElementById("settingsLastPlaylist").innerHTML = settingsRow.key_lastPlaylist;
+
+	key_Rewind = settingsRow.key_Rewind;
+	key_Previous = settingsRow.key_Previous;
+	key_PlayPause = settingsRow.key_PlayPause;
+	key_Next = settingsRow.key_Next;
+	key_Skip = settingsRow.key_Skip;
+	key_Autoplay = settingsRow.key_Autoplay;
+	key_Shuffle = settingsRow.key_Shuffle;
+	key_Mute = settingsRow.key_Mute;
+	key_Speed = settingsRow.key_Speed;
+	key_Loop = settingsRow.key_Loop;
+	key_searchSong = settingsRow.key_searchSong;
+	key_randomSong = settingsRow.key_randomSong;
+	key_randomPlaylist = settingsRow.key_randomPlaylist;
+	key_lastPlaylist = settingsRow.key_lastPlaylist;
+	rememberautoplay = settingsRow.rememberautoplay;
+	remembershuffle = settingsRow.remembershuffle;
+	rememberloop = settingsRow.rememberloop;
+	rememberspeed = settingsRow.rememberspeed;
+	volume = settingsRow.volume / 100 / settingsRow.dividevolume;
+	dividevolume = settingsRow.dividevolume;
+	displayPage = settingsRow.displayPage;
+	musicMode = settingsRow.musicMode;
+	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
+	current_version = settingsRow.current_version;
+	recommendationsAfterDownload = settingsRow.recommendationsAfterDownload;
+
+	if (settingsRow.background.includes("#")) {
+		document.body.style.background = settingsRow.background;
+	} else {
+		document.body.className = `bg-gradient-${settingsRow.background}`;
+	}
+
+	popularityFactor = settingsRow.popularityFactor;
+	artistStrengthFactor = settingsRow.artistStrengthFactor;
+	similarArtistsFactor = settingsRow.similarArtistsFactor;
+	userPreferenceFactor = settingsRow.userPreferenceFactor;
+	artistListenTimeFactor = settingsRow.artistListenTimeFactor;
+	randomFactor = settingsRow.randomFactor;
+
+	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
+	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
+	document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
+
+	document.getElementById("weight1").value = popularityFactor;
+	document.getElementById("weight2").value = artistStrengthFactor;
+	document.getElementById("weight3").value = similarArtistsFactor;
+	document.getElementById("weight4").value = userPreferenceFactor;
+	document.getElementById("weight5").value = artistListenTimeFactor;
+	document.getElementById("weight6").value = randomFactor;
+
+	const icons = {
+		backwardButton: "backward.svg",
+		previousSongButton: "previous.svg",
+		playButton: "play.svg",
+		pauseButton: "pause.svg",
+		nextSongButton: "next.svg",
+		forwardButton: "forward.svg",
+		autoplayButton: "redAutoplay.svg",
+		shuffleButton: "redShuffle.svg",
+		muteButton: "mute_on.svg",
+		speedButton: "speed.svg",
+		loopButton: "redLoop.svg",
+		songSettingsButton: "adjustments.svg",
+	};
+
+	for (const [id, file] of Object.entries(icons)) {
+		const el = document.getElementById(id);
+		if (el) {
+			el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
+		}
+	}
+
+	rememberautoplay && toggleAutoplay();
+	remembershuffle && toggleShuffle();
+	rememberloop && toggleLoop();
+
+	volumeControl.value = volume * 100 * dividevolume;
 
 	setupLazyBackgrounds();
 	document.getElementById("main-menu").click();
+	startupCheck();
 
 	ipcRenderer.invoke("get-app-version").then(async version => {
 		const willUpdate = version != current_version;
 		current_version = version;
-		updateDatabase("current_version", current_version, settingsDb, "settings");
 		document.getElementById("version").textContent = `Version: ${version}`;
+
+		await callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET current_version = ?",
+			args: [current_version],
+			fetch: false,
+		});
 
 		if (willUpdate) {
 			await alertModal("Version change detected. Binaries being rebuilt...");
@@ -359,172 +316,14 @@ function initialiseSettingsDatabase() {
 	});
 }
 
-function initialiseMusicsDatabase() {
-	const requiredColumns = [
-		{ name: "song_id", type: "TEXT PRIMARY KEY" },
-		{ name: "song_name", type: "TEXT" },
-		{ name: "song_url", type: "TEXT" },
-		{ name: "song_extension", type: "TEXT" },
-		{ name: "thumbnail_extension", type: "TEXT" },
-		{ name: "seconds_played", type: "INTEGER" },
-		{ name: "times_listened", type: "INTEGER" },
-		{ name: "stabilised", type: "INTEGER" },
-		{ name: "size", type: "INTEGER" },
-		{ name: "speed", type: "REAL" },
-		{ name: "bass", type: "REAL" },
-		{ name: "treble", type: "REAL" },
-		{ name: "midrange", type: "REAL" },
-		{ name: "volume", type: "INTEGER" },
-		{ name: "song_length", type: "INTEGER" },
-		{ name: "artist", type: "TEXT" },
-		{ name: "genre", type: "TEXT" },
-		{ name: "language", type: "TEXT" },
-	];
-
-	musicsDb
-		.prepare(
-			`CREATE TABLE IF NOT EXISTS recommendations (
-                artist_id INTEGER PRIMARY KEY,
-                artist_name TEXT,
-                artist_fan_amount INTEGER,
-                similar_artists_array TEXT,
-                deezer_songs_array TEXT
-            )`,
-		)
-		.run();
-
-	musicsDb
-		.prepare(
-			`CREATE TABLE IF NOT EXISTS streams (
-                song_id TEXT PRIMARY KEY,
-                song_name TEXT,
-                thumbnail_url TEXT,
-                length INTEGER,
-                artist TEXT,
-                genre TEXT,
-                language TEXT
-            )`,
-		)
-		.run();
-
-	musicsDb
-		.prepare(
-			`CREATE TABLE IF NOT EXISTS timers (
-                song_id TEXT,
-                start_time INTEGER,
-                end_time INTEGER,
-                playlist TEXT
-            )`,
-		)
-		.run();
-
-	musicsDb
-		.prepare(
-			`CREATE TABLE IF NOT EXISTS not_interested (
-                song_id TEXT,
-                song_name TEXT
-            )`,
-		)
-		.run();
-
-	musicsDb
-		.prepare(
-			`CREATE TABLE IF NOT EXISTS songs (
-                ${requiredColumns.map(column => `${column.name} ${column.type}`).join(", ")}
-            )`,
-		)
-		.run();
-
-	const existingSongColumns = musicsDb
-		.prepare(`PRAGMA table_info(songs)`)
-		.all()
-		.map(col => col.name);
-
-	for (const col of requiredColumns) {
-		if (!existingSongColumns.includes(col.name)) {
-			musicsDb.prepare(`ALTER TABLE songs ADD COLUMN ${col.name} ${col.type}`).run();
-		}
-	}
-
-	const existingTimerColumns = musicsDb
-		.prepare(`PRAGMA table_info(timers)`)
-		.all()
-		.map(col => col.name);
-
-	if (!existingTimerColumns.includes("playlist")) {
-		musicsDb.prepare(`ALTER TABLE timers ADD COLUMN playlist TEXT`).run();
-	}
-
-	const rows = musicsDb.prepare("SELECT song_id, song_length, song_url, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs").all();
-	for (const row of rows) {
-		songNameCache.set(row.song_id, {
-			song_name: row.song_name,
-			song_length: row.song_length,
-			song_extension: row.song_extension,
-			song_url: row.song_url,
-			thumbnail_extension: row.thumbnail_extension,
-			genre: row.genre,
-			artist: row.artist,
-			language: row.language,
-		});
-	}
-
-	notInterestedSongs = musicsDb.prepare("SELECT song_id FROM not_interested").all();
-}
-
-function initialisePlaylistsDatabase() {
-	try {
-		playlistsDb
-			.prepare(
-				`
-			CREATE TABLE IF NOT EXISTS playlists (
-				id TEXT PRIMARY KEY,
-				name TEXT,
-				songs TEXT,
-				thumbnail_extension TEXT
-			)
-		`,
-			)
-			.run();
-
-		playlistsDb.transaction(() => {
-			const fav = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get("Favorites");
-			if (!fav) playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run("Favorites", "Favorites", JSON.stringify([]), "svg");
-		})();
-	} catch (err) {
-		console.log("Error initializing playlists database:", err);
-		return [];
-	}
-}
-
-function updateDatabase(column, value, dbName, table) {
-	const key = `${table}.${column}`;
-
-	if (debounceMap.has(key)) clearTimeout(debounceMap.get(key));
-
-	const timeout = setTimeout(() => {
-		try {
-			dbName.prepare(`UPDATE ${table} SET ${column} = ?`).run(value);
-			console.log(`${table}.${column} updated to ${value}.`);
-		} catch (err) {
-			console.log(`Error updating ${table}.${column}:`, err.message);
-		}
-		debounceMap.delete(key);
-	}, 300);
-
-	debounceMap.set(key, timeout);
-}
-
-setInterval(() => {
+setInterval(async () => {
 	sessionTimeSpent += 60;
-	settingsDb
-		.prepare(
-			`
-                UPDATE statistics
-                SET total_time_spent = total_time_spent + 60
-            `,
-		)
-		.run();
+	await callSqlite({
+		db: "settings",
+		query: "UPDATE statistics SET total_time_spent = total_time_spent + 60",
+		args: [],
+		fetch: false,
+	});
 }, 60000);
 
 tabs.forEach(tab => {
@@ -561,11 +360,18 @@ tabs.forEach(tab => {
 	});
 });
 
-function getSongNameCached(songId) {
+async function getSongNameCached(songId) {
 	if (!songNameCache.has(songId)) {
-		const stmt = musicsDb.prepare("SELECT song_name, song_length, song_url, song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?");
-		const row = stmt.get(songId);
-		songNameCache.set(songId, row || { song_name: null, song_length: null, song_url: null, song_extension: null, thumbnail_extension: null, genre: null, artist: null, language: null });
+		// TODO: Test this
+		const { rows } = await callSqlite({
+			db: "musics",
+			query: "SELECT song_name, song_length, song_url, song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?",
+			args: [songId],
+			fetch: true,
+		});
+
+		console.log("songs:", rows);
+		songNameCache.set(songId, rows || { song_name: null, song_length: null, song_url: null, song_extension: null, thumbnail_extension: null, genre: null, artist: null, language: null });
 	}
 	return songNameCache.get(songId);
 }
@@ -675,7 +481,12 @@ async function myMusicOnClick() {
 	displayPageSelect.onchange = () => {
 		const selectedValue = displayPageSelect.value;
 		console.log("Selected:", selectedValue, "at displayPage");
-		updateDatabase("displayPage", selectedValue, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET displayPage = ?",
+			args: [selectedValue],
+			fetch: false,
+		});
 		displayPage = selectedValue;
 		renderMusics();
 	};
@@ -698,7 +509,12 @@ async function myMusicOnClick() {
 	musicModeSelect.onchange = () => {
 		const selectedValue = musicModeSelect.value;
 		console.log("Selected:", selectedValue, "at musicMode");
-		updateDatabase("musicMode", selectedValue, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET musicMode = ?",
+			args: [selectedValue],
+			fetch: false,
+		});
 		musicMode = selectedValue;
 		changeSearchBar();
 		renderMusics();
@@ -787,17 +603,20 @@ function searchYoutubeInMusics() {
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
 
-					musicsDb
-						.prepare(
-							`
-                                INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language)
-                                VALUES (?, ?, ?, ?, ?, ?, ?)
-                            `,
-						)
-						.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
+					await callSqlite({
+						db: "musics",
+						query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
+						args: [songID, videoTitle, bestThumbnail.url, songLength, null, null, null],
+						fetch: false,
+					});
 
 					if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
-						musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, videoTitle);
+						await callSqlite({
+							db: "musics",
+							query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
+							args: [songID, videoTitle],
+							fetch: false,
+						});
 						notInterestedSongs.push({ song_id: songID });
 						continue;
 					}
@@ -838,42 +657,39 @@ function searchYoutubeInMusics() {
 function renderMusics() {
 	const container = document.getElementById("music-list-container");
 	const scrollPos = container.scrollTop;
-
 	container.innerHTML = "";
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 	if (Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) < currentPage) currentPage = Math.ceil(songNameCache.size / (3 * previousItemsPerRow));
 
 	let filteredSongs = {};
-
 	if (musicMode == "offline") {
-		const songRows = musicsDb.prepare("SELECT song_id, song_length, song_extension, thumbnail_extension FROM songs").all();
-		document.getElementById("music-search").placeholder = `Search of ${songRows.length} songs in ${taratorFolder}...`;
+		document.getElementById("music-search").placeholder = `Search of ${songNameCache.size} songs in ${taratorFolder}...`;
 
-		filteredSongs = songRows
-			.map(row => ({
-				id: row.song_id,
-				name: `${row.song_id}.${row.song_extension}`,
-				thumbnail: `file://${row.song_id}.${row.thumbnail_extension}`,
-				length: row.song_length || 0,
-				info: getSongNameCached(row.song_id),
+		filteredSongs = Array.from(songNameCache.entries())
+			.map(([song_id, data]) => ({
+				id: song_id,
+				name: `${song_id}.${data.song_extension}`,
+				thumbnail: `file://${song_id}.${data.thumbnail_extension}`,
+				length: data.song_length || 0,
+				song_name: data.song_name,
+				artist: data.artist,
+				genre: data.genre,
+				language: data.language,
+				thumbnail_extension: data.thumbnail_extension,
 			}))
-			.sort((a, b) => (a.info.song_name || "").toLowerCase().localeCompare((b.info.song_name || "").toLowerCase()))
+			.sort((a, b) => (a.song_name || "").toLowerCase().localeCompare((b.song_name || "").toLowerCase()))
 			.filter(song => {
 				let searchValue = document.getElementById("music-search").value.trim().toLowerCase();
 				const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
 				if (exactMatch) searchValue = searchValue.slice(1, -1);
 				if (!searchValue) return true;
-
-				const { song_name, artist, genre, language } = song.info;
 				const id = song.id.toString();
-
 				const compare = fieldValue => {
 					if (!fieldValue) return false;
 					const value = String(fieldValue).toLowerCase();
 					return exactMatch ? value == searchValue : value.includes(searchValue);
 				};
-
-				return compare(song_name) || (exactMatch ? id == searchValue : id.includes(searchValue)) || compare(artist) || compare(genre) || compare(language);
+				return compare(song.song_name) || (exactMatch ? id == searchValue : id.includes(searchValue)) || compare(song.artist) || compare(song.genre) || compare(song.language);
 			});
 
 		const maxVisible = displayPage == "scroll" ? filteredSongs.length : parseInt(3 * previousItemsPerRow * currentPage);
@@ -887,30 +703,24 @@ function renderMusics() {
 		});
 	} else if (musicMode == "stream") {
 		document.getElementById("music-search").placeholder = `Search in Youtube or already streamed songs...`;
-		// Get all songs from "streams" table
 	} else if (musicMode == "discover") {
 		document.getElementById("music-search").placeholder = `Search in Youtube...`;
 		container.innerHTML = "Loading...";
-
 		const recommendationsCache = localStorage.getItem("recommendationsCache");
-
 		if (recommendationsCache != "null") {
 			const cachedMap = new Map(JSON.parse(recommendationsCache));
 			streamedSongsHtmlMap = cachedMap;
 			container.innerHTML = "";
-
 			for (const [id, song] of cachedMap) {
 				const musicElement = createMusicElement(song);
 				if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 				musicElement.addEventListener("click", () => playMusic(song.id, null));
-
 				if (musicMode == "discover") {
 					container.appendChild(musicElement);
 				} else {
 					return;
 				}
 			}
-
 			setupLazyBackgrounds();
 		} else {
 			refreshRecommendations();
@@ -920,7 +730,6 @@ function renderMusics() {
 	document.querySelectorAll(".pageScrollButtons").forEach(button => {
 		button.disabled = displayPage == "scroll";
 	});
-
 	setupLazyBackgrounds();
 	container.scrollTop = scrollPos;
 }
@@ -950,17 +759,20 @@ function refreshRecommendations() {
 					return size > maxSize ? thumb : max;
 				}, thumbnails[0] || {});
 
-				musicsDb
-					.prepare(
-						`
-                            INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        `,
-					)
-					.run(songID, videoTitle, bestThumbnail.url, songLength, null, null, null);
+				await callSqlite({
+					db: "musics",
+					query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
+					args: [songID, videoTitle, bestThumbnail.url, songLength, null, null, null],
+					fetch: false,
+				});
 
 				if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
-					musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(songID, key);
+					await callSqlite({
+						db: "musics",
+						query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
+						args: [songID, key],
+						fetch: false,
+					});
 					notInterestedSongs.push({ song_id: songID });
 					continue;
 				}
@@ -1008,28 +820,24 @@ function createMusicElement(songFile) {
 	musicElement.setAttribute("data-file-name", songFile.id);
 
 	const songNameElement = document.createElement("div");
-
 	let fileNameWithoutExtension;
 
 	if (songFile.id.includes("tarator")) {
 		fileNameWithoutExtension = path.parse(songFile.name).name;
-		const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + getSongNameCached(fileNameWithoutExtension).thumbnail_extension);
-
+		const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + songFile.thumbnail_extension);
 		if (fs.existsSync(thumbnailPath)) {
 			const backgroundElement = document.createElement("div");
 			backgroundElement.classList.add("background-element");
 			backgroundElement.dataset.bg = `file://${thumbnailPath.replace(/\\/g, "/")}?t=${Date.now()}`;
 			musicElement.appendChild(backgroundElement);
 		}
-
 		songNameElement.classList.add("song-name");
-		songNameElement.innerText = getSongNameCached(fileNameWithoutExtension).song_name;
+		songNameElement.innerText = songFile.song_name;
 	} else {
 		const backgroundElement = document.createElement("div");
 		backgroundElement.classList.add("background-element");
 		backgroundElement.dataset.bg = songFile.thumbnail.url || songFile.thumbnail;
 		musicElement.appendChild(backgroundElement);
-
 		songNameElement.classList.add("song-name");
 		songNameElement.innerText = songFile.name;
 		fileNameWithoutExtension = songFile.name;
@@ -1040,7 +848,6 @@ function createMusicElement(songFile) {
 	songLengthElement.innerText = formatTime(songFile.length);
 
 	const customiseButtonElement = document.createElement("button");
-
 	customiseButtonElement.classList.add("customise-button");
 	customiseButtonElement.addEventListener("click", event => {
 		event.stopPropagation();
@@ -1064,18 +871,25 @@ function createMusicElement(songFile) {
 	return musicElement;
 }
 
-async function playMusic(songId, playlistId) {
-	await saveUserProgress();
+function playMusic(songId, playlistId) {
+	saveUserProgress();
 
 	try {
 		const offlineMode = !!songId.includes("tarator");
-		const songName = document.getElementById("song-name");
-		songName.setAttribute("data-file-name", playingSongsID);
-		songName.textContent = offlineMode ? getSongNameById(songId) : streamedSongsHtmlMap.get(songId)?.name;
+		const songNameEl = document.getElementById("song-name");
 		playingSongsID = songId;
 		currentPlaylist = playlistId || null;
 
-		songDuration = offlineMode ? getSongNameCached(songId).song_length : streamedSongsHtmlMap.get(songId)?.length;
+		const songData = offlineMode ? songNameCache.get(songId) : streamedSongsHtmlMap.get(songId);
+		if (!songData) {
+			console.warn("Song not found in cache or stream map:", songId);
+			return;
+		}
+
+		songNameEl.setAttribute("data-file-name", playingSongsID);
+		songNameEl.textContent = offlineMode ? songData.song_name : songData.name;
+
+		songDuration = offlineMode ? songData.song_length || 0 : songData.length || 0;
 		lastSyncTimestamp = performance.now();
 		isInterpolating = false;
 		lastAuthoritativePosition = 0;
@@ -1086,38 +900,41 @@ async function playMusic(songId, playlistId) {
 		document.getElementById("addToPlaylistButtonBottomRight").style.color = "white";
 		document.getElementById("customiseButtonBottomRight").style.color = "white";
 
-		if (!!playlistsDb.prepare("SELECT 1 FROM playlists WHERE name=? AND EXISTS (SELECT 1 FROM json_each(songs) WHERE value=?)").get("Favorites", songId)) {
+		const favPlaylist = playlistsMap.get("Favorites");
+		if (favPlaylist && favPlaylist.songs.includes(songId)) {
 			addToFavoritesButtonBottomRight.style.color = "red";
 		}
 
-		const songPath = offlineMode ? path.join(musicFolder, `${playingSongsID}.${getSongNameCached(songId).song_extension}`) : `https://www.youtube.com/watch?v=${songId}`;
-		offlineMode ? audioPlayer.stdin.write(`play ${songPath}\n`) : audioPlayer.stdin.write(`stream ${songPath} \n`);
-		audioPlayer.stdin.write(`volume ${volume}\n`);
-		audioPlayer.stdin.write(`speed ${rememberspeed}\n`);
+		const songPath = offlineMode ? path.join(musicFolder, `${songId}.${songData.song_extension || "mp3"}`) : `https://www.youtube.com/watch?v=${songId}`;
+
+		if (audioPlayer && audioPlayer.stdin.writable) {
+			audioPlayer.stdin.write(`${offlineMode ? "play" : "stream"} ${songPath}\n`);
+			audioPlayer.stdin.write(`volume ${volume}\n`);
+			audioPlayer.stdin.write(`speed ${rememberspeed}\n`);
+		}
 
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
 
 		let thumbnailUrl;
-
 		if (offlineMode) {
-			const thumbnailPath = path.join(thumbnailFolder, `${songId}.${getSongNameCached(songId).thumbnail_extension}`.replace(/%20/g, " "));
-			thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg".replace(/%20/g, " "));
+			const thumbnailPath = path.join(thumbnailFolder, `${songId}.${songData.thumbnail_extension || "jpg"}`.replace(/%20/g, " "));
+			thumbnailUrl = path.join(appThumbnailFolder, "placeholder.jpg");
 
 			if (fs.existsSync(thumbnailPath)) {
 				thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}`;
 			} else {
-				console.log("Tried to get thumbnail from", thumbnailPath, "but failed. Used", thumbnailUrl, "instead.");
+				console.log("Tried to get thumbnail from", thumbnailPath, "but failed. Used placeholder.");
 			}
 		} else {
-			thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail.url;
+			thumbnailUrl = songData.thumbnail?.url || "";
 		}
 
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url('${thumbnailUrl}')`;
 
 		document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
-		document.querySelectorAll(".music-item").forEach(musicElement => {
-			if (removeExtensions(musicElement.getAttribute("data-file-name")) == playingSongsID) musicElement.classList.add("playing");
+		document.querySelectorAll(".music-item").forEach(musicEl => {
+			if (removeExtensions(musicEl.getAttribute("data-file-name")) === playingSongsID) musicEl.classList.add("playing");
 		});
 
 		if (player) {
@@ -1128,9 +945,10 @@ async function playMusic(songId, playlistId) {
 		playing = true;
 
 		if (playlistId) {
-			if (newPlaylistID != playlistId.id) {
-				newPlaylistID = playlistId.id;
-				playlistPlayedSongs.splice(0, 9999);
+			const pid = playlistId.id || playlistId;
+			if (newPlaylistID !== pid) {
+				newPlaylistID = pid;
+				playlistPlayedSongs.splice(0, playlistPlayedSongs.length);
 			}
 			playlistPlayedSongs.unshift(playingSongsID);
 			if (playlistPlayedSongs.length > 9999) playlistPlayedSongs.pop();
@@ -1139,7 +957,7 @@ async function playMusic(songId, playlistId) {
 			if (playedSongs.length > 9999) playedSongs.pop();
 		}
 	} catch (error) {
-		console.log("Error:", error);
+		console.error("Error in playMusic:", error);
 	}
 }
 
@@ -1157,7 +975,10 @@ async function playPlaylist(playlistId, startingIndex = 0) {
 async function playPreviousSong() {
 	if (!playingSongsID) return;
 
-	const allMusics = musicsDb.prepare("SELECT song_id, song_name FROM songs").all();
+	const allMusics = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
+		song_id,
+		song_name: data.song_name,
+	}));
 	const songMap = new Map();
 	allMusics.forEach(song => songMap.set(song.song_id, song.song_name));
 
@@ -1261,10 +1082,9 @@ async function playNextSong() {
 
 async function randomSongFunctionMainMenu() {
 	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
-	const musicItems = musicsDb
-		.prepare("SELECT song_id, song_name FROM songs")
-		.all()
-		.filter(song => !notInterestedIds.includes(song.song_id));
+	const musicItems = Array.from(songNameCache.entries())
+		.map(([song_id, data]) => ({ song_id, song_name: data.song_name }))
+		.filter(song => !notInterestedSongs.some(nis => nis.song_id === song.song_id));
 
 	if (musicItems.length == 0) return;
 	if (musicItems.length == 1) return playMusic(musicItems[0].song_id, null);
@@ -1319,11 +1139,21 @@ function toggleAutoplay() {
 	if (isAutoplayActive) {
 		autoplayButton.classList.add("active");
 		autoplayButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenAutoplay.svg")}" alt="Autoplay Active">`;
-		updateDatabase("rememberautoplay", 1, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET rememberautoplay = ?",
+			args: [1],
+			fetch: false,
+		});
 	} else {
 		autoplayButton.classList.remove("active");
 		autoplayButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redAutoplay.svg")}" alt="Autoplay Disabled">`;
-		updateDatabase("rememberautoplay", 0, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET rememberautoplay = ?",
+			args: [0],
+			fetch: false,
+		});
 	}
 }
 
@@ -1333,11 +1163,21 @@ function toggleShuffle() {
 	if (isShuffleActive) {
 		shuffleButton.classList.add("active");
 		shuffleButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenShuffle.svg")}" alt="Shuffle Active">`;
-		updateDatabase("remembershuffle", 1, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET remembershuffle = ?",
+			args: [1],
+			fetch: false,
+		});
 	} else {
 		shuffleButton.classList.remove("active");
 		shuffleButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redShuffle.svg")}" alt="Shuffle Disabled">`;
-		updateDatabase("remembershuffle", 0, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET remembershuffle = ?",
+			args: [0],
+			fetch: false,
+		});
 	}
 }
 
@@ -1347,11 +1187,21 @@ function toggleLoop() {
 	if (isLooping) {
 		loopButton.classList.add("active");
 		loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "greenLoop.svg")}" alt="Loop Enabled">`;
-		updateDatabase("rememberloop", 1, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET rememberloop = ?",
+			args: [1],
+			fetch: false,
+		});
 	} else {
 		loopButton.classList.remove("active");
 		loopButton.innerHTML = `<img src="${path.join(appThumbnailFolder, "redLoop.svg")}" alt="Loop Disabled">`;
-		updateDatabase("rememberloop", 0, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET rememberloop = ?",
+			args: [0],
+			fetch: false,
+		});
 	}
 }
 
@@ -1367,7 +1217,12 @@ function mute() {
 		document.getElementById("muteButton").classList.remove("active");
 	}
 	if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
-	updateDatabase("volume", volumeControl.value, settingsDb, "settings");
+	callSqlite({
+		db: "settings",
+		query: "UPDATE settings SET volume = ?",
+		args: [volumeControl.value],
+		fetch: false,
+	});
 }
 
 function speed() {
@@ -1384,7 +1239,12 @@ function speed() {
 		}
 		speedOption.addEventListener("click", () => {
 			rememberspeed = speed;
-			updateDatabase("rememberspeed", speed, settingsDb, "settings");
+			callSqlite({
+				db: "settings",
+				query: "UPDATE settings SET rememberspeed = ?",
+				args: [speed],
+				fetch: false,
+			});
 			if (audioPlayer) audioPlayer.stdin.write(`speed ${rememberspeed}\n`);
 
 			closeModal();
@@ -1407,19 +1267,15 @@ function skipBackward() {
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 }
 
-function opencustomiseModal(songsId) {
+async function opencustomiseModal(songsId) {
 	let song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url, thumbnailPath;
 
 	let ifSongInNotInterested = !!notInterestedSongs.map(song => song.song_id).includes(songsId);
 	document.getElementById("notInterestedToggle").innerText = ifSongInNotInterested ? "Not Interested" : "Interested";
 
 	if (songsId.includes("tarator")) {
-		const stmt = musicsDb.prepare(`
-            SELECT song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url
-            FROM songs
-            WHERE song_id = ?
-        `);
-		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = stmt.get(songsId));
+		const songData = songNameCache.get(songsId) || {};
+		const { song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = songData;
 		thumbnailPath = path.join(thumbnailFolder, songsId + "." + thumbnail_extension);
 
 		document.getElementById("downloadThisSong").disabled = true;
@@ -1430,8 +1286,12 @@ function opencustomiseModal(songsId) {
 		document.getElementById("customiseThumbnail").disabled = false;
 	} else {
 		// The song is not downloaded
-		const stmt = musicsDb.prepare(`SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?`);
-		({ song_name, thumbnail_url, artist, genre, language } = stmt.get(songsId));
+		const { song_name, thumbnail_url, artist, genre, language } = await callSqlite({
+			db: "musics",
+			query: "SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?",
+			args: [songsId],
+			fetch: true,
+		});
 
 		thumbnailPath = thumbnail_url;
 		song_url = `https://www.youtube.com/watch?v=${songsId}`;
@@ -1495,7 +1355,7 @@ async function saveEditedSong() {
 	let element, thumbnailPath;
 
 	if (songID.includes("tarator")) {
-		const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(songID);
+		const row = songNameCache.get(songID) || {};
 		if (!row) return await alertModal("Song not found in database.");
 
 		element = document.querySelector(`.music-item[data-file-name="${songID}"]`);
@@ -1506,28 +1366,21 @@ async function saveEditedSong() {
 		const newThumbFile = document.getElementById("customiseThumbnail").files[0];
 		if (newThumbFile && newThumbFile.path && fs.existsSync(newThumbFile.path)) fs.writeFileSync(thumbnailPath, fs.readFileSync(newThumbFile.path));
 
-		const updated = musicsDb
-			.prepare(
-				`
-                    UPDATE songs 
-                    SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ?
-                    WHERE song_id = ?
-                    RETURNING song_name, song_extension, song_length, song_url, thumbnail_extension, genre, artist, language
-                `,
-			)
-			.get(newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID);
+		const { updated } = await callSqlite({
+			db: "musics",
+			query: "UPDATE songs SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ? WHERE song_id = ? RETURNING song_name, song_extension, song_length, song_url, thumbnail_extension, genre, artist, language",
+			args: [newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID],
+			fetch: true,
+		});
 
 		if (updated) songNameCache.set(songID, updated);
 	} else {
-		musicsDb
-			.prepare(
-				`
-                    UPDATE streams 
-                    SET song_name = ?, genre = ?, artist = ?, language = ? 
-                    WHERE song_id = ?
-                `,
-			)
-			.run(newNameInput, songsGenre, songsArtist, songsLanguage, songID);
+		await callSqlite({
+			db: "musics",
+			query: "UPDATE streams SET song_name = ?, genre = ?, artist = ?, language = ? WHERE song_id = ?",
+			args: [(newNameInput, songsGenre, songsArtist, songsLanguage, songID)],
+			fetch: false,
+		});
 
 		element = document.querySelector(`div[data-file-name="${songID}"]`);
 		if (element) {
@@ -1575,35 +1428,39 @@ async function saveEditedSong() {
 	}
 }
 
-async function removeSong(fileToDelete) {
-	if (!(await confirmModal("Delete this song?", "Delete", "Keep"))) return;
+function removeSong(fileToDelete) {
+	confirmModal("Delete this song?", "Delete", "Keep").then(confirmed => {
+		if (!confirmed) return;
 
-	const row = musicsDb.prepare("SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?").get(fileToDelete);
+		callSqlite({ db: "musics", query: "SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?", args: [fileToDelete], fetch: true }).then(rowRes => {
+			const row = rowRes[0];
+			const musicFilePath = path.join(musicFolder, fileToDelete + "." + row.song_extension);
+			const thumbnailFilePath = path.join(thumbnailFolder, fileToDelete + "." + row.thumbnail_extension);
 
-	const musicFilePath = path.join(musicFolder, fileToDelete + "." + row.song_extension);
-	const thumbnailFilePath = path.join(thumbnailFolder, fileToDelete + "." + row.thumbnailExtension);
+			if (fs.existsSync(musicFilePath)) fs.unlinkSync(musicFilePath);
+			if (fs.existsSync(thumbnailFilePath)) fs.unlinkSync(thumbnailFilePath);
 
-	if (fs.existsSync(musicFilePath)) fs.unlinkSync(musicFilePath);
-	if (fs.existsSync(thumbnailFilePath)) fs.unlinkSync(thumbnailFilePath);
+			callSqlite({ db: "playlists", query: "SELECT * FROM playlists WHERE songs = ?", args: [JSON.stringify([fileToDelete])], fetch: true }).then(playlists => {
+				playlists.forEach(playlist => {
+					const songs = JSON.parse(playlist.songs);
+					const updatedSongs = songs.filter(song => song !== fileToDelete);
+					callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(updatedSongs), playlist.id] });
+				});
+			});
 
-	const playlists = playlistsDb.prepare("SELECT * FROM playlists WHERE JSON_EXTRACT(songs, '$') LIKE ?").all(`%${fileToDelete}%`);
+			callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_id = ?", args: [fileToDelete], fetch: false });
+			callSqlite({ db: "musics", query: "DELETE FROM timers WHERE song_id = ?", args: [fileToDelete], fetch: false });
 
-	playlists.forEach(playlist => {
-		const songs = JSON.parse(playlist.songs);
-		const updatedSongs = songs.filter(song => song != fileToDelete);
-		playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(updatedSongs), playlist.id);
+			songNameCache.delete(fileToDelete);
+
+			closeModal();
+			document.getElementById("customiseModal").style.display = "none";
+			const divToRemove = document.querySelector(`div[alt="${fileToDelete}.${row.song_extension}"]`);
+			if (divToRemove) divToRemove.remove();
+			if (document.getElementById("my-music-content").style.display === "block") renderMusics();
+			getPlaylists();
+		});
 	});
-
-	musicsDb.prepare("DELETE FROM songs WHERE song_id = ?").run(fileToDelete);
-	musicsDb.prepare("DELETE FROM timers WHERE song_id = ?").run(fileToDelete);
-	songNameCache.delete(fileToDelete);
-
-	closeModal();
-	document.getElementById("customiseModal").style.display = "none";
-	const divToRemove = document.querySelector(`div[alt="${fileToDelete}.${row.song_extension}"]`);
-	if (divToRemove) divToRemove.remove();
-	if (document.getElementById("my-music-content").style.display == "block") renderMusics();
-	getPlaylists();
 }
 
 async function updateThumbnailImage(event, mode) {
@@ -1624,17 +1481,15 @@ async function updateThumbnailImage(event, mode) {
 	}
 }
 
-function searchSong() {
+async function searchSong() {
 	try {
-		const stmt = musicsDb.prepare(`
-            SELECT song_id
-            FROM songs
-            WHERE song_name LIKE ? COLLATE NOCASE
-            ORDER BY LENGTH(song_name)
-            LIMIT 1
-        `);
+		const { row } = await callSqlite({
+			db: "musics",
+			query: "SELECT song_id FROM songs WHERE song_name LIKE ? COLLATE NOCASE ORDER BY LENGTH(song_name) LIMIT 1",
+			args: [`%${searchModalInput.value}%`],
+			fetch: true,
+		});
 
-		const row = stmt.get(`%${searchModalInput.value}%`);
 		searchModalInput.value = "";
 		searchModalInput.classList.add("red-placeholder");
 		searchModalInput.placeholder = "Song not found.";
@@ -1753,35 +1608,41 @@ function setupLazyBackgrounds() {
 function handleDropdownChange(option, selectElement) {
 	const selectedValue = Number(selectElement.value);
 	console.log("Selected:", selectedValue, "at", option);
-	updateDatabase(option, selectedValue, settingsDb, "settings");
+	callSqlite({
+		db: "settings",
+		query: `UPDATE settings SET ${option} = ?`,
+		args: [selectedValue],
+		fetch: false,
+	});
 	dividevolume = selectedValue;
 	if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
 }
 
 function getSongNameById(songId) {
-	const stmt = musicsDb.prepare("SELECT song_name FROM songs WHERE song_id = ?");
-	const row = stmt.get(songId);
+	const row = songNameCache.get(songId);
 	return row ? row.song_name : null;
 }
 
 function bottomRightFunctions(input) {
 	if (!playingSongsID) return;
-	if (input == "addToPlaylist") {
+
+	if (input === "addToPlaylist") {
 		openAddToPlaylistModal(playingSongsID);
-	} else if (input == "addToFavorites") {
-		let songs = [];
+	} else if (input === "addToFavorites") {
+		callSqlite({ db: "playlists", query: "SELECT songs FROM playlists WHERE id = ?", args: ["Favorites"], fetch: true }).then(favRows => {
+			let songs = [];
+			const fav = favRows[0];
+			if (fav && fav.songs) songs = JSON.parse(fav.songs);
 
-		const fav = playlistsDb.prepare("SELECT songs FROM playlists WHERE id = ?").get("Favorites");
-		if (fav && fav.songs) songs = JSON.parse(fav.songs);
+			if (!songs.includes(playingSongsID)) {
+				songs.push(playingSongsID);
+				callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(songs), "Favorites"] });
 
-		if (!songs.includes(playingSongsID)) {
-			songs.push(playingSongsID);
-			playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(JSON.stringify(songs), "Favorites");
-
-			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
-			addToFavoritesButtonBottomRight.style.color = "red";
-		}
-	} else if (input == "customise") {
+				if (getComputedStyle(document.getElementById("playlists-content")).display === "grid") getPlaylists(true);
+				addToFavoritesButtonBottomRight.style.color = "red";
+			}
+		});
+	} else if (input === "customise") {
 		opencustomiseModal(playingSongsID);
 	}
 }
@@ -1794,7 +1655,13 @@ async function saveUserProgress() {
 		const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
 		const playlist = currentPlaylist ? currentPlaylist.replace("tarator-", "") : null;
 
-		musicsDb.prepare("INSERT INTO timers (song_id, start_time, end_time, playlist) VALUES (?, ?, ?, ?)").run(theId, songStartTime, currentTimeUnix, playlist);
+		await callSqlite({
+			db: "musics",
+			query: "INSERT INTO timers (song_id, start_time, end_time, playlist) VALUES (?, ?, ?, ?)",
+			args: [theId, songStartTime, currentTimeUnix, playlist],
+			fetch: false,
+		});
+
 		console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds. Playlist: ${playlist}`);
 	}
 
@@ -1804,12 +1671,24 @@ async function saveUserProgress() {
 }
 
 async function stabiliseThisSong(songId) {
-	const stmt = musicsDb.prepare("SELECT song_name, song_extension, stabilised FROM songs WHERE song_id = ?").get(songId);
-	if (stmt.stabilised == 1) return await alertModal("You have this song already stabilised.");
+	const songData = songNameCache.get(songId);
+	if (!songData) return;
+
+	if (songData.stabilised == 1) return await alertModal("You have this song already stabilised.");
+
 	document.getElementById("stabiliseSongButton").disabled = true;
-	await normalizeAudio(path.join(musicFolder, songId + "." + stmt.song_extension));
-	musicsDb.prepare("UPDATE songs SET stabilised = 1 WHERE song_id = ?").run(songId);
-	await alertModal(`Song "${stmt.song_name}" successfully stabilised.`);
+	await normalizeAudio(path.join(musicFolder, songId + "." + songData.song_extension));
+
+	await callSqlite({
+		db: "musics",
+		query: "UPDATE songs SET stabilised = 1 WHERE song_id = ?",
+		args: [songId],
+		fetch: false,
+	});
+
+	songData.stabilised = 1;
+
+	await alertModal(`Song "${songData.song_name}" successfully stabilised.`);
 	document.getElementById("stabiliseSongButton").disabled = false;
 }
 
@@ -1832,9 +1711,7 @@ function tick() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-	initialiseSettingsDatabase();
-	initialiseMusicsDatabase();
-	initialisePlaylistsDatabase();
+	initialiseDatabases();
 
 	ipcRenderer.send("renderer-domready");
 
@@ -1863,7 +1740,12 @@ document.addEventListener("DOMContentLoaded", function () {
 			document.getElementById("notInterestedToggle").innerText = "Interested";
 		} else {
 			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
-			musicsDb.prepare("INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)").run(e.currentTarget.dataset.songId, document.getElementById("customiseSongName").value);
+			callSqlite({
+				db: "musics",
+				query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
+				args: [e.currentTarget.dataset.songId, document.getElementById("customiseSongName").value],
+				fetch: false,
+			});
 			document.getElementById("notInterestedToggle").innerText = " Not Interested";
 		}
 	});
@@ -1905,8 +1787,6 @@ document.addEventListener("DOMContentLoaded", function () {
 		document.getElementById("installBtn").disabled = true;
 		ipcRenderer.send("download-update");
 	});
-
-	startupCheck();
 
 	audioPlayer = spawn(path.join(backendFolder, "player"), [], { stdio: ["pipe", "pipe", "pipe"] });
 	audioPlayer.stdout.on("data", data => {
@@ -1956,7 +1836,12 @@ document.addEventListener("DOMContentLoaded", function () {
 		volume = volumeControl.value / 100 / dividevolume;
 		if (audioPlayer) audioPlayer.stdin.write(`volume ${volume}\n`);
 		document.getElementById("muteButton").innerHTML = `<img src="${path.join(appThumbnailFolder, `mute_o${volume == 0 ? "ff" : "n"}.svg`)}" alt="Mute ${volume == 0 ? "A" : "Dea"}ctive">`;
-		updateDatabase("volume", volumeControl.value, settingsDb, "settings");
+		callSqlite({
+			db: "settings",
+			query: "UPDATE settings SET volume = ?",
+			args: [volumeControl.value],
+			fetch: false,
+		});
 	});
 
 	playButton.addEventListener("click", () => {

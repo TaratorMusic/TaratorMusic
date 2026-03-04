@@ -26,8 +26,7 @@ events.forEach(eventName => {
 		} else if (eventName === "play") {
 			console.log("unused function for now:", eventName);
 			playing = true;
-		}
-		else if (eventName === "seek" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
+		} else if (eventName === "seek" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
 		else if (eventName === "position" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
 		else if (eventName === "open") console.log("unused function for now:", eventName, args);
 		else if (eventName === "volume") console.log("unused function for now:", eventName, args);
@@ -38,7 +37,7 @@ events.forEach(eventName => {
 
 function editMPRIS() {
 	if (playingSongsID.includes("tarator")) {
-		const row = musicsDb.prepare("SELECT song_name, song_length, thumbnail_extension, artist FROM songs WHERE song_id = ?").get(playingSongsID);
+		const row = songNameCache.get(playingSongsID) || {};
 		player.metadata = {
 			"mpris:trackid": player.objectPath("track/0"),
 			"mpris:length": row.song_length * 1000000,

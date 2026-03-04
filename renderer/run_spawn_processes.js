@@ -26,27 +26,20 @@ async function grabAndStoreSongInfo(songId) {
 					songs[i] = getSongNameById(songId[i]);
 				}
 			} else {
-				const row = musicsDb.prepare(`SELECT song_name FROM songs WHERE song_id = ?`).get(songId);
-				if (!row) {
+				const songData = songNameCache.get(songId);
+				if (!songData) {
 					alertModal("Song not found in database.");
 					return resolve();
 				} else {
-					songs = [row.song_name];
+					songs = [songData.song_name];
 				}
 			}
 
 			alertModal("Checking for song info... You can close this window.");
 		} else {
-			// This part checks all songs (no songId provided)
-			songs = musicsDb
-				.prepare(
-					`
-                        SELECT song_name FROM songs
-                        WHERE artist IS NULL OR genre IS NULL OR language IS NULL
-                    `,
-				)
-				.all()
-				.map(row => row.song_name);
+			songs = Array.from(songNameCache.values())
+				.filter(s => !s.artist || !s.genre || !s.language)
+				.map(s => s.song_name);
 
 			if (!songs.length) {
 				alertModal("No songs with missing information.");
@@ -63,7 +56,7 @@ async function grabAndStoreSongInfo(songId) {
 
 		let buffer = "";
 		let count = 0;
-        
+
 		proc.stdout.on("data", chunk => {
 			buffer += chunk.toString();
 			for (let i = buffer.indexOf("\n"); i >= 0; i = buffer.indexOf("\n")) {
@@ -75,18 +68,12 @@ async function grabAndStoreSongInfo(songId) {
 					const meta = JSON.parse(line);
 					const songIdUsed = Array.isArray(songId) ? songId[count] : songId;
 
-					musicsDb
-						.prepare(
-							`
-                                UPDATE songs
-                                SET
-                                    artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END,
-                                    genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END,
-                                    language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END
-                                WHERE song_id = ?
-                            `,
-						)
-						.run(meta.artist, meta.genre, meta.language, songIdUsed);
+					callSqlite({
+						db: "musics",
+						query: " UPDATE songs SET artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END, genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END, language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END WHERE song_id = ?",
+						args: [meta.artist, meta.genre, meta.language, songIdUsed],
+						fetch: false,
+					});
 
 					console.log(meta.artist, meta.genre, meta.language, songIdUsed);
 
@@ -118,97 +105,93 @@ async function grabAndStoreSongInfo(songId) {
 }
 
 async function startupCheck() {
-	return new Promise((resolve, reject) => {
-		musicsDb.prepare(`DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL`).run();
-		musicsDb.prepare("UPDATE songs SET song_extension = LTRIM(song_extension, '.')").run();
-		musicsDb.prepare("UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')").run();
+	return new Promise(async (resolve, reject) => {
+		callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL", fetch: false });
+		callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = LTRIM(song_extension, '.')", fetch: false });
+		callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')", fetch: false });
 
 		if (!fs.existsSync(appThumbnailFolder)) {
 			loadNewPage("createAppThumbnailsFolder");
-		} else {
-			const files = [
-				"addtoplaylist.svg",
-				"adjustments.svg",
-				"backward.svg",
-				"custom.svg",
-				"customise.svg",
-				"forward.svg",
-				"greenAutoplay.svg",
-				"greenLoop.svg",
-				"greenShuffle.svg",
-				"mute_on.svg",
-				"mute_off.svg",
-				"next.svg",
-				"pause.svg",
-				"placeholder.jpg",
-				"play.svg",
-				"previous.svg",
-				"redAutoplay.svg",
-				"redLoop.svg",
-				"redShuffle.svg",
-				"refresh.svg",
-				"speed.svg",
-				"star.svg",
-				"tarator_icon.icns",
-				"tarator_icon.ico",
-				"tarator_icon.png",
-				"tarator16_icon.png",
-				"tarator512_icon.png",
-				"tarator1024_icon.png",
-				"trash.svg",
-			];
-			for (const file of files) {
-				if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
-					loadNewPage("createAppThumbnailsFolder");
-					return;
-				}
+			return;
+		}
+
+		const requiredFiles = [
+			"addtoplaylist.svg",
+			"adjustments.svg",
+			"backward.svg",
+			"custom.svg",
+			"customise.svg",
+			"forward.svg",
+			"greenAutoplay.svg",
+			"greenLoop.svg",
+			"greenShuffle.svg",
+			"mute_on.svg",
+			"mute_off.svg",
+			"next.svg",
+			"pause.svg",
+			"placeholder.jpg",
+			"play.svg",
+			"previous.svg",
+			"redAutoplay.svg",
+			"redLoop.svg",
+			"redShuffle.svg",
+			"refresh.svg",
+			"speed.svg",
+			"star.svg",
+			"tarator_icon.icns",
+			"tarator_icon.ico",
+			"tarator_icon.png",
+			"tarator16_icon.png",
+			"tarator512_icon.png",
+			"tarator1024_icon.png",
+			"trash.svg",
+		];
+
+		for (const file of requiredFiles) {
+			if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
+				loadNewPage("createAppThumbnailsFolder");
+				return;
 			}
 		}
 
-		const missingSongs = musicsDb.prepare("SELECT song_id FROM songs WHERE song_extension IS NULL").all();
-		if (missingSongs.length > 0) {
+		const missingSongExts = [...songNameCache.entries()].filter(([, v]) => !v.song_extension);
+		const missingThumbExts = [...songNameCache.entries()].filter(([, v]) => !v.thumbnail_extension);
+
+		if (missingSongExts.length > 0) {
 			const musicFiles = fs.readdirSync(musicFolder);
-			for (const { song_id } of missingSongs) {
+			for (const [song_id, data] of missingSongExts) {
 				const file = musicFiles.find(f => path.parse(f).name === song_id);
 				if (file) {
 					const ext = path.extname(file).slice(1);
-					musicsDb.prepare("UPDATE songs SET song_extension = ? WHERE song_id = ?").run(ext, song_id);
+					data.song_extension = ext;
+					callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = ? WHERE song_id = ?", args: [ext, song_id], fetch: false });
 				}
 			}
 		}
 
-		const missingThumbs = musicsDb.prepare("SELECT song_id FROM songs WHERE thumbnail_extension IS NULL").all();
-		if (missingThumbs.length > 0) {
+		if (missingThumbExts.length > 0) {
 			const thumbFiles = fs.readdirSync(thumbnailFolder);
-			for (const { song_id } of missingThumbs) {
+			for (const [song_id, data] of missingThumbExts) {
 				const file = thumbFiles.find(f => path.parse(f).name === song_id);
 				if (file) {
 					const ext = path.extname(file).slice(1);
-					musicsDb.prepare("UPDATE songs SET thumbnail_extension = ? WHERE song_id = ?").run(ext, song_id);
+					data.thumbnail_extension = ext;
+					callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = ? WHERE song_id = ?", args: [ext, song_id], fetch: false });
 				}
 			}
 		}
 
-		const allMusics = musicsDb.prepare("SELECT song_id, song_extension, thumbnail_extension FROM songs").all();
+		const allMusics = [...songNameCache.entries()].map(([song_id, v]) => ({ song_id, ...v }));
 		const musicMap = Object.fromEntries(allMusics.map(({ song_id, ...rest }) => [song_id, rest]));
+		const validSongIds = new Set(songNameCache.keys());
 
-		const selectPlaylists = playlistsDb.prepare(`SELECT id, songs FROM playlists`).all();
-		const checkSongExists = musicsDb.prepare(`SELECT 1 FROM songs WHERE song_id = ?`);
-		const updatePlaylist = playlistsDb.prepare(`UPDATE playlists SET songs = ? WHERE id = ?`);
-
-		selectPlaylists.forEach(row => {
-			let songArray = JSON.parse(row.songs || "[]");
-
-			const filtered = songArray.filter(id => {
-				const exists = checkSongExists.get(id);
-				return !!exists;
-			});
-
-			if (filtered.length !== songArray.length) {
-				const newSongsJson = JSON.stringify(filtered);
-				updatePlaylist.run(newSongsJson, row.id);
+		for (const [playlistId, playlist] of playlistsMap.entries()) {
+			const filtered = playlist.songs.filter(id => validSongIds.has(id));
+			if (filtered.length !== playlist.songs.length) {
+				playlist.songs = filtered;
+				callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(filtered), playlistId], fetch: false });
 			}
-		});
+		}
 
 		const goBinary = path.join(backendFolder, "startup_check");
 		const proc = spawn(goBinary, [musicFolder, thumbnailFolder], { windowsHide: true, stdio: ["pipe", "pipe", "inherit"] });
@@ -221,13 +204,9 @@ async function startupCheck() {
 			if (code !== 0) return reject(new Error(`Go process exited with code ${code}`));
 			try {
 				data = JSON.parse(data);
-
 				if (Object.keys(data).length != allMusics.length) {
 					foundNewSongs(data, musicMap);
-				} else {
-					alertModal(promptUserOnSongs());
 				}
-
 				resolve(data);
 			} catch (e) {
 				reject(e);
@@ -236,52 +215,49 @@ async function startupCheck() {
 	});
 }
 
-function promptUserOnSongs(redownload) {
+async function promptUserOnSongs(redownload) {
 	let thePrompt = "";
-	const stabilisedNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE size IS NULL").get().total;
-	const artistNull = musicsDb.prepare("SELECT COUNT(*) AS total FROM songs WHERE artist IS NULL").get().total;
+
+	const stabilisedRes = callSqlite({
+		db: "musics",
+		query: "SELECT COUNT(*) AS total FROM songs WHERE size IS NULL",
+		fetch: true,
+	});
+
+	const artistRes = callSqlite({
+		db: "musics",
+		query: "SELECT COUNT(*) AS total FROM songs WHERE artist IS NULL",
+		fetch: true,
+	});
+
+	const stabilisedNull = stabilisedRes[0].total;
+	const artistNull = artistRes[0].total;
 
 	if (redownload > 0) thePrompt += `You have ${redownload} songs not installed. `;
 
-	if (stabilisedNull != 0 || artistNull != 0) {
-		if (stabilisedNull != 0) thePrompt += `You have ${stabilisedNull} songs not stabilised. `;
-		if (artistNull != 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information. `;
+	if (stabilisedNull !== 0 || artistNull !== 0) {
+		if (stabilisedNull !== 0) thePrompt += `You have ${stabilisedNull} songs not stabilised. `;
+		if (artistNull !== 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information. `;
 	}
 
-	if (thePrompt != "") thePrompt += "Complete your songs data using the options in the settings menu.";
+	if (thePrompt !== "") thePrompt += "Complete your songs data using the options in the settings menu.";
 
 	return thePrompt;
 }
 
 async function foundNewSongs(folderSongs, databaseSongs) {
 	await alertModal("Found new songs in your folders.");
+
 	const folderOnly = {};
 	const databaseOnly = {};
 
 	for (const key of Object.keys(folderSongs)) {
-		if (!(key in databaseSongs)) {
-			folderOnly[key] = folderSongs[key];
-		}
+		if (!(key in databaseSongs)) folderOnly[key] = folderSongs[key];
 	}
 
 	for (const key of Object.keys(databaseSongs)) {
-		if (!(key in folderSongs)) {
-			databaseOnly[key] = databaseSongs[key];
-		}
+		if (!(key in folderSongs)) databaseOnly[key] = databaseSongs[key];
 	}
-
-	const insertQuery = `
-        INSERT INTO songs (
-            song_id, song_name, song_url, song_length, seconds_played,
-            times_listened, stabilised, size, speed, bass, treble,
-            midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-	const insert = musicsDb.prepare(insertQuery);
-	const transaction = musicsDb.transaction(rows => {
-		for (const row of rows) insert.run(...row);
-	});
 
 	const rowsToInsert = [];
 
@@ -296,32 +272,23 @@ async function foundNewSongs(folderSongs, databaseSongs) {
 			songName = generateId();
 
 			const newMusicPath = path.join(musicFolder, songName + songExt);
-			if (fs.existsSync(originalMusicPath)) {
-				fs.renameSync(originalMusicPath, newMusicPath);
-			}
+			if (fs.existsSync(originalMusicPath)) fs.renameSync(originalMusicPath, newMusicPath);
 
 			if (thumbExt) {
 				const originalThumbPath = path.join(thumbnailFolder, fileName + thumbExt);
 				const newThumbPath = path.join(thumbnailFolder, songName + thumbExt);
-
-				if (fs.existsSync(originalThumbPath)) {
-					fs.renameSync(originalThumbPath, newThumbPath);
-				}
+				if (fs.existsSync(originalThumbPath)) fs.renameSync(originalThumbPath, newThumbPath);
 			}
 		}
 
 		const fullPath = path.join(musicFolder, songName + songExt);
 		if (!fs.existsSync(fullPath)) continue;
 
-		const metadata = await new Promise((resolve, reject) => {
-			ffmpeg.ffprobe(fullPath, (err, meta) => {
-				if (err) return resolve(null);
-				resolve(meta);
-			});
+		const metadata = await new Promise(resolve => {
+			ffmpeg.ffprobe(fullPath, (err, meta) => resolve(err ? null : meta));
 		});
 
 		const duration = metadata?.format?.duration ? Math.round(metadata.format.duration) : null;
-
 		const stats = fs.statSync(fullPath);
 		const fileSize = stats.size;
 
@@ -329,7 +296,20 @@ async function foundNewSongs(folderSongs, databaseSongs) {
 	}
 
 	if (rowsToInsert.length > 0) {
-		transaction(rowsToInsert);
+		for (const row of rowsToInsert) {
+			callSqlite({
+				db: "musics",
+				query: `
+			                INSERT INTO songs (
+			                    song_id, song_name, song_url, song_length, seconds_played,
+			                    times_listened, stabilised, size, speed, bass, treble,
+			                    midrange, volume, song_extension, thumbnail_extension, artist, genre, language
+			                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			            `,
+				args: row,
+				fetch: false,
+			});
+		}
 	}
 
 	await alertModal(promptUserOnSongs(Object.keys(databaseOnly).length));

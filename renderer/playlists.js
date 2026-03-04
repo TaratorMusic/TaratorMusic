@@ -1,6 +1,10 @@
-function getPlaylists(displaying) {
+async function getPlaylists(displaying) {
 	try {
-		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
+		const playlists = await callSqlite({
+			db: "playlists",
+			query: "SELECT * FROM playlists",
+			fetch: true,
+		});
 
 		playlistsMap.clear();
 
@@ -166,14 +170,25 @@ async function saveNewPlaylist() {
 	}
 
 	const dest = path.join(thumbnailFolder, `${id}playlist.${ext}`);
-	const existing = playlistsDb.prepare("SELECT id FROM playlists WHERE name = ?").get(name);
+	const existingRes = callSqlite({
+		db: "playlists",
+		query: "SELECT id FROM playlists WHERE name = ?", // TODO: USE THE CACHE
+		args: [name],
+		fetch: true,
+	});
 
-	if (existing) {
-		if (!(await confirmModal("A playlist with the same name exists, continue?", "Continue", "Return"))) return;
-	}
+	existingRes.then(async existingRows => {
+		if (existingRows.length) {
+			const proceed = await confirmModal("A playlist with the same name exists, continue?", "Continue", "Return");
+			if (!proceed) return;
+		}
 
-	playlistsDb.prepare("INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)").run(id, name, JSON.stringify([]), ext);
-	settingsDb.prepare(`UPDATE statistics SET playlists_formed = playlists_formed + 1`).run();
+		callSqlite({
+			db: "playlists",
+			query: "INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)",
+			args: [id, name, JSON.stringify([]), ext],
+		});
+	});
 	fs.copyFileSync(srcPath, dest);
 
 	closeModal();
@@ -219,7 +234,11 @@ async function saveEditedPlaylist() {
 			const imgElement = playlistElement.querySelector("img");
 			imgElement.src = "";
 			imgElement.src = resolvedPath;
-			playlistsDb.prepare("UPDATE playlists SET name = ?, thumbnail_extension = ? WHERE id = ?").run(newName, newThumbnailExtension, playlistID);
+			callSqlite({
+				db: "playlists",
+				query: "UPDATE playlists SET name = ?, thumbnail_extension = ? WHERE id = ?",
+				args: [newName, newThumbnailExtension, playlistID],
+			});
 			closeModal();
 		})
 		.catch(err => {
@@ -233,8 +252,8 @@ function openAddToPlaylistModal(songName) {
 	playlistsContainer.innerHTML = "";
 
 	try {
-		const playlists = playlistsDb.prepare("SELECT * FROM playlists").all();
-
+		const playlists = Array.from(playlistsMap.values());
+        
 		if (!playlists || playlists.length == 0) {
 			console.log("No playlists found.");
 			displayPlaylists([]);
@@ -283,75 +302,61 @@ function openAddToPlaylistModal(songName) {
 function addToSelectedPlaylists(songName) {
 	const checkboxes = document.querySelectorAll('#playlist-checkboxes input[type="checkbox"]');
 	const selectedPlaylists = Array.from(checkboxes)
-		.filter(checkbox => checkbox.checked)
-		.map(checkbox => checkbox.id);
+		.filter(cb => cb.checked)
+		.map(cb => cb.id);
 
-	try {
-		selectedPlaylists.forEach(playlistId => {
-			const playlist = playlistsDb.prepare("SELECT * FROM playlists WHERE id = ?").get(playlistId);
+	selectedPlaylists.forEach(playlistId => {
+		// TODO: USE THE CACHE HERE
+		callSqlite({ db: "playlists", query: "SELECT * FROM playlists WHERE id = ?", args: [playlistId], fetch: true }).then(playlistRows => {
+			const playlist = playlistRows[0];
+			let songsInPlaylist = playlist.songs ? JSON.parse(playlist.songs) : [];
 
-			let songsInPlaylist = [];
-			if (playlist.songs) {
-				songsInPlaylist = JSON.parse(playlist.songs);
-			}
-
-			const songExists = songsInPlaylist.includes(songName);
-
-			if (songExists) {
+			if (songsInPlaylist.includes(songName)) {
 				console.log(`Song '${songName}' already exists in playlist '${playlistId}'.`);
 			} else {
 				songsInPlaylist.push(songName);
-				const updatedSongs = JSON.stringify(songsInPlaylist);
-				playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(updatedSongs, playlistId);
+				callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(songsInPlaylist), playlistId] });
 				console.log(`Song '${songName}' added to playlist '${playlistId}'.`);
 			}
 		});
+	});
 
-		const allPlaylists = playlistsDb.prepare("SELECT * FROM playlists").all();
+	callSqlite({ db: "playlists", query: "SELECT * FROM playlists", fetch: true }).then(allPlaylists => {
 		allPlaylists.forEach(playlist => {
 			if (!selectedPlaylists.includes(playlist.id)) {
-				let songsInPlaylist = [];
-				if (playlist.songs) {
-					songsInPlaylist = JSON.parse(playlist.songs);
-				}
-
-				const songExistsInPlaylist = songsInPlaylist.includes(songName);
-				if (songExistsInPlaylist) {
-					const updatedSongs = songsInPlaylist.filter(song => song !== songName);
-					const newSongs = JSON.stringify(updatedSongs);
-					playlistsDb.prepare("UPDATE playlists SET songs = ? WHERE id = ?").run(newSongs, playlist.id);
+				let songsInPlaylist = playlist.songs ? JSON.parse(playlist.songs) : [];
+				if (songsInPlaylist.includes(songName)) {
+					const updatedSongs = JSON.stringify(songsInPlaylist.filter(song => song !== songName));
+					callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [updatedSongs, playlist.id] });
 					console.log(`Song '${songName}' removed from playlist '${playlist.id}'.`);
 				}
 			}
 		});
-		closeModal();
-		getPlaylists(getComputedStyle(document.getElementById("playlists-content")).display == "grid");
-	} catch (err) {
-		console.log("Error updating playlists in the database:", err);
-	}
-}
-
-async function deletePlaylist() {
-	if (!(await confirmModal("Are you sure you want to remove this playlist?"))) return;
-
-	const playlistName = document.getElementById("editInvisibleName").value;
-	const playlistID = document.getElementById("editInvisibleId").value;
-	const playlistThumbnailExtension = document.getElementById("editInvisibleExtension").value;
-	const thumbnailPath = path.join(thumbnailFolder, playlistID + "playlist." + playlistThumbnailExtension);
-
-	fs.unlink(thumbnailPath, err => {
-		if (err) {
-			console.log(`Failed to delete file: ${err.message}`);
-			return;
-		}
-		console.log("File deleted successfully!");
 	});
 
-	playlistsDb.prepare("DELETE FROM playlists WHERE id = ?").run(playlistID);
-
-	console.log(`Deleted playlist "${playlistName}" and its song links.`);
-
 	closeModal();
-	document.getElementById("settings").click();
-	document.getElementById("playlists").click();
+	getPlaylists(getComputedStyle(document.getElementById("playlists-content")).display === "grid");
+}
+
+function deletePlaylist() {
+	confirmModal("Are you sure you want to remove this playlist?").then(confirmed => {
+		if (!confirmed) return;
+
+		const playlistName = document.getElementById("editInvisibleName").value;
+		const playlistID = document.getElementById("editInvisibleId").value;
+		const playlistThumbnailExtension = document.getElementById("editInvisibleExtension").value;
+		const thumbnailPath = path.join(thumbnailFolder, playlistID + "playlist." + playlistThumbnailExtension);
+
+		fs.unlink(thumbnailPath, err => {
+			if (err) console.log(`Failed to delete file: ${err.message}`);
+			else console.log("File deleted successfully!");
+		});
+
+		callSqlite({ db: "playlists", query: "DELETE FROM playlists WHERE id = ?", args: [playlistID] });
+		console.log(`Deleted playlist "${playlistName}" and its song links.`);
+
+		closeModal();
+		document.getElementById("settings").click();
+		document.getElementById("playlists").click();
+	});
 }
