@@ -2,22 +2,23 @@
 ## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
+-   Toggles in the settings do not work
 -   Lyrics storage for both a modal and for picture in picture
 -   Lyrics should support the main lyrics and translations.
 -   Statistics page does not work. Also, if no stats, redirect to the main menu
+-   Test all the misc settings before upping the version
+-   new readme images
+
+### Version 1.8.4 Planned Features
+
 -   Is my music page loading a little bit slower?
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
 -   Compiling JS Script
+-   You need to swap back to offline mode to properly disable the buttons above
 -   The app launch feels a tad bit slower
 -   Improve ytdlp speeds to compensate for ytdlcore
--   You need to swap back to offline mode to properly disable the buttons above
--   new readme images
 -   Dont check for song info if all three values are already filled
--   Test all the misc settings before upping the version
-
-### Version 1.8.4 Planned Features
-
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   Dc rich presence doesnt pause

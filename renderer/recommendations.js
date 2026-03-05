@@ -98,7 +98,7 @@ function calculateArtistPreference() {
 
 	const artistDurations = Object.values(artistTimes);
 	if (artistDurations.length == 0) return 999;
-    
+
 	const sortedDurations = artistDurations.slice().sort((a, b) => a - b);
 
 	const numArtists = sortedDurations.length;
