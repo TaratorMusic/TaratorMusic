@@ -111,7 +111,7 @@ var notInterestedColumns = []Column{
 }
 
 var lyricsColumns = []Column{
-	{Name: "song_id", Type: "TEXT"},
+	{Name: "song_id", Type: "TEXT PRIMARY KEY"},
 	{Name: "lyrics", Type: "TEXT"},
 }
 

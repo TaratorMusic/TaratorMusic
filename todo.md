@@ -3,10 +3,10 @@
 
 -   Picture in picture window with customisation
 -   Toggles in the settings do not work
--   Lyrics storage for both a modal and for picture in picture
--   Lyrics should support the main lyrics and translations.
 -   Statistics page does not work. Also, if no stats, redirect to the main menu
 -   Test all the misc settings before upping the version
+-   Bottom right customise button returns all undefined, same with customise song and add to playlist buttons
+-   Add a shortcut for lyrics modal
 -   new readme images
 
 ### Version 1.8.4 Planned Features
@@ -22,6 +22,8 @@
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   Dc rich presence doesnt pause
+-   Lyrics storage for picture in picture, and it should support multiple languages
+-   Fetch lyrics automatic function
 -   Some songs magically change ID's i dont know what causes it though
 -   Fix streamed songs ids glitching inside playlists
 -   Fetch song recommendations always finds the same number, is it saving it to the db?

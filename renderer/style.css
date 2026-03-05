@@ -1445,3 +1445,9 @@ th {
 #musicSearchInputAmount {
 	color: white !important;
 }
+
+#lyricsArea {
+    width: 100%;
+    height: 90%;
+    color: black;
+}

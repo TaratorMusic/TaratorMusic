@@ -157,6 +157,16 @@
 				</div>
 				<input id="searchModalInput" placeholder="Type a song name, and press Enter" />
 			</div>
+            <div id="lyricsModal" class="modal">
+                <div class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Lyrics</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<textarea name="lyricsArea" id="lyricsArea"></textarea>
+                    <button id="lyricsConfirm" onclick="saveLyrics()">Confirm</button>
+				</div>
+            </div>
 		</div>
 
 		<div class="sidebar">
@@ -373,6 +383,7 @@
 				<div id="addToPlaylistButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('addToPlaylist')">Add to Playlist</div>
 				<div id="addToFavoritesButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('addToFavorites')">Add to Favorites</div>
 				<div id="customiseButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('customise')">Customise Song</div>
+				<div id="lyricsButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('lyrics')">Song Lyrics</div>
 			</div>
 		</div>
 		<div id="tooltip"></div>

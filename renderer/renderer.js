@@ -122,6 +122,7 @@ let isInterpolating = false; // If song is playing
 let songNameCache = new Map(); // Song cache
 let playlistsMap = new Map(); // Playlist cache
 let notInterestedSongs; // Not interested songs cache
+let songLyricsCache = new Map(); // Cache for song lyrics
 
 let sessionTimeSpent = 0;
 let rememberautoplay;
@@ -172,13 +173,6 @@ async function initialiseDatabases() {
 	});
 	const settingsRow = settingsRows[0];
 
-	const statsRows = await callSqlite({
-		db: "settings",
-		query: "SELECT * FROM statistics LIMIT 1",
-		fetch: true,
-	});
-	const statsRow = statsRows[0];
-
 	notInterestedSongs = await callSqlite({
 		db: "musics",
 		query: "SELECT song_id FROM not_interested",
@@ -203,6 +197,18 @@ async function initialiseDatabases() {
 			genre: row.genre,
 			artist: row.artist,
 			language: row.language,
+		});
+	}
+
+	const lyricsRows = await callSqlite({
+		db: "musics",
+		query: "SELECT song_id, lyrics FROM lyrics",
+		fetch: true,
+	});
+
+	for (const row of lyricsRows) {
+		songLyricsCache.set(row.song_id, {
+			lyrics: row.lyrics,
 		});
 	}
 
@@ -903,10 +909,15 @@ function playMusic(songId, playlistId) {
 		document.getElementById("addToFavoritesButtonBottomRight").style.color = "white";
 		document.getElementById("addToPlaylistButtonBottomRight").style.color = "white";
 		document.getElementById("customiseButtonBottomRight").style.color = "white";
+		document.getElementById("lyricsButtonBottomRight").style.color = "white";
 
 		const favPlaylist = playlistsMap.get("Favorites");
 		if (favPlaylist && favPlaylist.songs.includes(songId)) {
 			addToFavoritesButtonBottomRight.style.color = "red";
+		}
+
+		if (songLyricsCache.has(songId)) {
+			document.getElementById("lyricsButtonBottomRight").style.color = "white";
 		}
 
 		const songPath = offlineMode ? path.join(musicFolder, `${songId}.${songData.song_extension || "mp3"}`) : `https://www.youtube.com/watch?v=${songId}`;
@@ -938,7 +949,7 @@ function playMusic(songId, playlistId) {
 
 		document.querySelectorAll(".music-item.playing").forEach(el => el.classList.remove("playing"));
 		document.querySelectorAll(".music-item").forEach(musicEl => {
-			if (removeExtensions(musicEl.getAttribute("data-file-name")) === playingSongsID) musicEl.classList.add("playing");
+			if (removeExtensions(musicEl.getAttribute("data-file-name")) == playingSongsID) musicEl.classList.add("playing");
 		});
 
 		if (player) {
@@ -1088,7 +1099,7 @@ async function randomSongFunctionMainMenu() {
 	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
 	const musicItems = Array.from(songNameCache.entries())
 		.map(([song_id, data]) => ({ song_id, song_name: data.song_name }))
-		.filter(song => !notInterestedSongs.some(nis => nis.song_id === song.song_id));
+		.filter(song => !notInterestedSongs.some(nis => nis.song_id == song.song_id));
 
 	if (musicItems.length == 0) return;
 	if (musicItems.length == 1) return playMusic(musicItems[0].song_id, null);
@@ -1344,6 +1355,38 @@ async function opencustomiseModal(songsId) {
 	customiseDiv.style.display = "block";
 }
 
+function openLyricsModal() {
+	document.getElementById("lyricsModal").style.display = "block";
+
+	const cached = songLyricsCache.get(playingSongsID);
+	if (cached) {
+		console.log("Lyrics:", cached.lyrics);
+		document.getElementById("lyricsArea").value = cached.lyrics;
+	} else {
+		document.getElementById("lyricsArea").value = "";
+	}
+}
+
+async function saveLyrics() {
+	const savedSongId = playingSongsID; // Saving the ID just in case the song ends before the modal is confirmed / function is finished
+	if (!(await confirmModal(`Would you like to set these lyrics for ${getSongNameById(savedSongId)}`, "Yes", "No"))) return;
+
+	songLyricsCache.set(savedSongId, {
+		lyrics: document.getElementById("lyricsArea").value,
+	});
+
+	await callSqlite({
+		db: "musics",
+		query: `
+            INSERT INTO lyrics (song_id, lyrics)
+            VALUES (?, ?)
+            ON CONFLICT(song_id) DO UPDATE SET lyrics = excluded.lyrics
+        `,
+		args: [savedSongId, document.getElementById("lyricsArea").value],
+		fetch: false,
+	});
+}
+
 async function saveEditedSong() {
 	const customiseDiv = document.getElementById("customiseModal");
 
@@ -1461,7 +1504,7 @@ function removeSong(fileToDelete) {
 			document.getElementById("customiseModal").style.display = "none";
 			const divToRemove = document.querySelector(`div[alt="${fileToDelete}.${row.song_extension}"]`);
 			if (divToRemove) divToRemove.remove();
-			if (document.getElementById("my-music-content").style.display === "block") renderMusics();
+			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 			getPlaylists();
 		});
 	});
@@ -1630,9 +1673,9 @@ function getSongNameById(songId) {
 function bottomRightFunctions(input) {
 	if (!playingSongsID) return;
 
-	if (input === "addToPlaylist") {
+	if (input == "addToPlaylist") {
 		openAddToPlaylistModal(playingSongsID);
-	} else if (input === "addToFavorites") {
+	} else if (input == "addToFavorites") {
 		callSqlite({ db: "playlists", query: "SELECT songs FROM playlists WHERE id = ?", args: ["Favorites"], fetch: true }).then(favRows => {
 			let songs = [];
 			const fav = favRows[0];
@@ -1642,12 +1685,14 @@ function bottomRightFunctions(input) {
 				songs.push(playingSongsID);
 				callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(songs), "Favorites"] });
 
-				if (getComputedStyle(document.getElementById("playlists-content")).display === "grid") getPlaylists(true);
+				if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
 				addToFavoritesButtonBottomRight.style.color = "red";
 			}
 		});
-	} else if (input === "customise") {
+	} else if (input == "customise") {
 		opencustomiseModal(playingSongsID);
+	} else if (input == "lyrics") {
+		openLyricsModal(playingSongsID);
 	}
 }
 

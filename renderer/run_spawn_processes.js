@@ -76,7 +76,7 @@ async function grabAndStoreSongInfo(songId) {
 					});
 
 					const cached = songNameCache.get(songId);
-					console.log("New song info added for", cached.song_name, ":", meta.artist, meta.genre, meta.language, songIdUsed);
+					console.log("New song info added for", cached.song_name, ": ", meta.artist, meta.genre, meta.language, songIdUsed);
 
 					if (cached) {
 						if (cached.artist == null || cached.artist === "") cached.artist = meta.artist;
