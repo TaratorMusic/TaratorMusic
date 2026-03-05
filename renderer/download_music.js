@@ -22,9 +22,9 @@ function differentiateMediaLinks(url) {
 	}
 }
 
-async function searchInYoutube(songName, resultLimit = 1) {
-	const result = await ytsr(songName, { safeSearch: false, limit: resultLimit });
-	searchedSongsUrl = result.items[resultLimit - 1].url;
+async function searchInYoutube(songName) {
+	const info = await getVideoInfo(`ytsearch1:${songName}`);
+    searchedSongsUrl = info.entries[0].webpage_url
 	return searchedSongsUrl;
 }
 
@@ -213,15 +213,28 @@ async function getPlaylistSongsAndArtists(link) {
 
 		try {
 			const query = `${video.title} ${video.artist}`;
-			const result = await ytsr(query, { limit: 1, type: "video" });
-			if (result.items.length) {
-				const yt = result.items[0];
-				videoItems.push({ title: query, url: yt.url, thumbnail: yt.thumbnail });
+			const url = await searchInYoutube(query);
+
+			if (url) {
+				const info = await getVideoInfo(url);
+				videoItems.push({
+					title: query,
+					url: url,
+					thumbnail: info.thumbnail || null,
+				});
 			} else {
-				videoItems.push({ title: `${video.title} ${video.artist}`, url: null, thumbnail: null });
+				videoItems.push({
+					title: `${video.title} ${video.artist}`,
+					url: null,
+					thumbnail: null,
+				});
 			}
 		} catch (err) {
-			videoItems.push({ title: `${video.title} ${video.artist}`, url: null, thumbnail: null });
+			videoItems.push({
+				title: `${video.title} ${video.artist}`,
+				url: null,
+				thumbnail: null,
+			});
 		}
 
 		foundCount++;
@@ -639,7 +652,7 @@ async function actuallyDownloadTheSong() {
 	if (downloadingStyle == "youtube_video" || downloadingStyle == "spotify_track" || downloadingStyle == "search") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
 		const oldId = document.getElementById("finalDownloadButton").getAttribute("data-file-name");
-		const songID = generateId();
+		const songID = await generateId();
 		const outputFilePath = path.join(musicFolder, `${songID}.mp3`);
 		const img = document.getElementById("thumbnailImage");
 
@@ -660,8 +673,14 @@ async function actuallyDownloadTheSong() {
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
 
 		try {
+			let lastUpdate = 0;
+
 			await downloadAudio(firstInput, outputFilePath, progressMsg => {
-				document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
+				const now = Date.now();
+				if (now - lastUpdate > 200) {
+					document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
+					lastUpdate = now;
+				}
 			});
 
 			if (stabiliseVolumeToggle == 1) {
@@ -772,7 +791,7 @@ async function actuallyDownloadTheSong() {
 			if (link && titleInput) {
 				songLinks.push(link);
 				songTitles.push(titleInput.value.trim());
-				songElement.hasAttribute("data-id") ? songIds.push(songElement.getAttribute("data-id")) : songIds.push(generateId());
+				songElement.hasAttribute("data-id") ? songIds.push(songElement.getAttribute("data-id")) : songIds.push(await generateId());
 			}
 		}
 
@@ -797,7 +816,7 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("finalDownloadButton").disabled = false;
 			return;
 		}
-		const playlistID = generateId();
+		const playlistID = await generateId();
 
 		try {
 			document.getElementById("downloadModalText").innerText = totalSongs > 50 ? "Downloading... This might take some time..." : "Downloading...";

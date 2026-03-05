@@ -156,7 +156,7 @@ async function saveNewPlaylist() {
 	const name = document.getElementById("playlistNameInput").value.trim();
 	if (!name) return await alertModal("Playlist name required.");
 
-	const id = generateId();
+	const id = await generateId();
 
 	const fileInput = document.getElementById("thumbnailInput").files[0];
 	let srcPath, ext;

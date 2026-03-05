@@ -269,7 +269,7 @@ async function foundNewSongs(folderSongs, databaseSongs) {
 		const originalMusicPath = path.join(musicFolder, fileName + songExt);
 
 		if (!fileName.includes("tarator")) {
-			songName = generateId();
+			songName = await generateId();
 
 			const newMusicPath = path.join(musicFolder, songName + songExt);
 			if (fs.existsSync(originalMusicPath)) fs.renameSync(originalMusicPath, newMusicPath);

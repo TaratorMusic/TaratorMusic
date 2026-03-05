@@ -188,19 +188,20 @@ function cleanDownloadModal() {
 function removeExtensions(input) {
 	return input.replace(/\.[^/.]+$/, "");
 }
-
-function generateId() {
+async function generateId() {
 	let id;
+	let exists;
+
 	do {
 		id = `tarator-${Math.random().toString(36).slice(2, 6)}`;
-	} while (
-		callSqlite({
+
+		exists = await callSqlite({
 			db: "musics",
 			query: "SELECT 1 FROM songs WHERE song_id = ?",
 			args: [id],
 			fetch: true,
-		})
-	);
+		});
+	} while (exists && exists.length);
 
 	return id;
 }

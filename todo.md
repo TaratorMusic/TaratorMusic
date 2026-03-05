@@ -9,6 +9,8 @@
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
 -   Compiling JS Script
+-   The app launch feels a tad bit slower
+-   Improve ytdlp speeds to compensate for ytdlcore
 -   You need to swap back to offline mode to properly disable the buttons above
 -   new readme images
 -   Dont check for song info if all three values are already filled

@@ -3,7 +3,6 @@
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
-const ytsr = require("@distube/ytsr");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
 let recommendationsCache = localStorage.getItem("recommendationsCache") || null;
@@ -48,6 +47,15 @@ let sqliteBinary;
 				if (sqlitePending[res.id]) {
 					sqlitePending[res.id](res);
 					delete sqlitePending[res.id];
+				} else {
+					// fallback for windows, possibly mac too
+					const firstKey = Object.keys(sqlitePending)[0];
+					if (firstKey) {
+						sqlitePending[firstKey](res);
+						delete sqlitePending[firstKey];
+					} else {
+						console.warn("Received response but no pending requests:", res);
+					}
 				}
 			} catch (e) {
 				console.error("failed to parse response:", e, "line:", trimmed);
@@ -584,13 +592,14 @@ function searchYoutubeInMusics() {
 
 		(async () => {
 			streamedSongsHtmlMap = new Map();
-			const results = await ytsr(searchedThing, { safeSearch: false, limit: goal });
+			const results = await getVideoInfo(`ytsearch${goal}:${searchedThing}`);
+			const items = results.entries || [];
 
 			container.innerHTML = "";
 
-			for (let i = 0; i < results.items.length; i++) {
+			for (let i = 0; i < items.length; i++) {
 				try {
-					const info = results.items[i];
+					const info = items[i];
 					const videoTitle = info.name;
 					const songID = info.id;
 					const thumbnails = info.thumbnails || [];
@@ -745,17 +754,14 @@ function refreshRecommendations() {
 		for (const [key, value] of recommendedMusicMap) {
 			const ytQuery = `${key} by ${value[0]}`;
 			try {
-				const result = await ytsr(ytQuery, { safeSearch: false, limit: 1 });
-				const info = result.items[0];
-				const videoTitle = info.name;
+				const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
+				const info = result.entries[0];
+
+				const videoTitle = info.title;
 				const songID = info.id;
-				const thumbnails = info.thumbnails || [];
-				const songLength = parseTimeToSeconds(info.duration);
-				const bestThumbnail = thumbnails.reduce((max, thumb) => {
-					const size = (thumb.width || 0) * (thumb.height || 0);
-					const maxSize = (max.width || 0) * (max.height || 0);
-					return size > maxSize ? thumb : max;
-				}, thumbnails[0] || {});
+				const songLength = info.duration;
+				const bestThumbnail = info.thumbnail;
+				const url = info.webpage_url;
 
 				await callSqlite({
 					db: "musics",
