@@ -266,9 +266,9 @@ async function processVideoLink(videoUrl, songId = null) {
 			videoTitle = streamedSongsHtmlMap.get(songId)?.name;
 			thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail.url || "";
 		} else {
-			const info = await ytdl.getInfo(videoUrl);
-			videoTitle = info.videoDetails.title;
-			const thumbnails = info.videoDetails.thumbnails || [];
+			const info = await getVideoInfo(videoUrl);
+			videoTitle = info.title;
+			const thumbnails = info.thumbnails || [];
 			const bestThumbnail = thumbnails.reduce((max, thumb) => {
 				const size = (thumb.width || 0) * (thumb.height || 0);
 				const maxSize = (max.width || 0) * (max.height || 0);
@@ -610,8 +610,8 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		const videoId = extractVideoId(imageUrl);
 		if (videoId) {
 			try {
-				const info = await ytdl.getInfo(videoId);
-				const thumbnails = info.videoDetails.thumbnails;
+				const info = await getVideoInfo(videoUrl);
+				const thumbnails = info.thumbnails;
 				if (!thumbnails?.length) throw new Error("No thumbnails found");
 				const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
 				await saveBufferFromUrl(thumbnailUrl, thumbnailPath);
@@ -1116,4 +1116,38 @@ async function commitStagedPlaylistAdds() {
 		}
 	}
 	pendingPlaylistAddsWithIds.clear();
+}
+
+function getVideoInfo(url) {
+	return new Promise((resolve, reject) => {
+		const args = [
+			"-J", // JSON output
+			"--skip-download",
+			"--no-playlist",
+			"--quiet",
+			"--no-warnings",
+			"--no-check-certificate",
+			"--youtube-skip-dash-manifest", // skips heavy manifest parsing
+			"--socket-timeout",
+			"5", // short timeout for slow connections
+		];
+
+		const yt = spawn(getYtDlpPath(), [...args, url]);
+
+		let data = "";
+		let err = "";
+
+		yt.stdout.on("data", chunk => (data += chunk));
+		yt.stderr.on("data", chunk => (err += chunk));
+
+		yt.on("close", code => {
+			if (code !== 0) return reject(new Error(err || `yt-dlp exited ${code}`));
+
+			try {
+				resolve(JSON.parse(data));
+			} catch (e) {
+				reject(e);
+			}
+		});
+	});
 }

@@ -83,7 +83,6 @@
 		}
 	},
 	"dependencies": {
-		"@distube/ytdl-core": "github:Victiniiiii/ytdl-core",
 		"@distube/ytpl": "github:Victiniiiii/ytpl",
 		"@distube/ytsr": "2.0.4",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",

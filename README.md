@@ -29,11 +29,11 @@ C and its miniaudio library for playing audio
 
 Electron to make it a cross platform desktop app, electron-updater to detect new versions and give the user the option to update
 
-@distube/ytdl-core and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists. @distube/ytsr for searching videos in youtube
+yt-dlp and @distube/ytpl libraries for installing youtube videos, thumbnails and playlists. @distube/ytsr for searching videos in youtube
 
 cheerio and puppeteer to scrape song and playlist data from Spotify
 
-Better-SQLite3 to store most listened songs, playlists and settings data
+modernc.org/sqlite to store most listened songs, playlists and settings data
 
 Chart.js to show user stats in the statistics tab
 

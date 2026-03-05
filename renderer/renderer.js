@@ -3,7 +3,6 @@
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
-const ytdl = require("@distube/ytdl-core");
 const ytsr = require("@distube/ytsr");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;

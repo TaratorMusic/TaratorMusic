@@ -4,7 +4,7 @@
 -   Picture in picture window with customisation
 -   Lyrics storage for both a modal and for picture in picture
 -   Lyrics should support the main lyrics and translations.
--   Statistics page does not work.
+-   Statistics page does not work. Also, if no stats, redirect to the main menu
 -   Is my music page loading a little bit slower?
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes

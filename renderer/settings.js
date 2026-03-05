@@ -91,7 +91,7 @@ async function redownloadAllSongs() {
 		let confirmed = false;
 		let info;
 		try {
-			info = await ytdl.getInfo(row.song_url);
+			info = await getVideoInfo(videoUrl);
 			document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
 		} catch {
 			if (checkAllSongs === "SkipAll") continue;
@@ -102,14 +102,14 @@ async function redownloadAllSongs() {
 			if (checkAllSongs === "SearchAll" || (checkAllSongs === "AskEach" && confirmed)) {
 				try {
 					const newUrl = await searchInYoutube(row.song_name);
-					info = await ytdl.getInfo(newUrl);
+					info = await getVideoInfo(videoUrl);
 				} catch {
 					continue;
 				}
 			}
 		}
 
-		const thumbnails = info.videoDetails.thumbnails || [];
+		const thumbnails = info.thumbnails || [];
 		const bestThumbnail = thumbnails.reduce((max, thumb) => {
 			const size = (thumb.width || 0) * (thumb.height || 0);
 			const maxSize = (max.width || 0) * (max.height || 0);
