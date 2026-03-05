@@ -80,12 +80,13 @@ function getRecommendations() {
 }
 
 function calculateArtistPreference() {
-	const songTimes = callSqlite({
-		db: "musics",
-		query: "SELECT song_id, SUM(end_time - start_time) AS total_seconds FROM timers GROUP BY song_id",
-		args: [],
-		fetch: true,
-	});
+	let songTimes =
+		callSqlite({
+			db: "musics",
+			query: "SELECT song_id, SUM(end_time - start_time) AS total_seconds FROM timers GROUP BY song_id",
+			args: [],
+			fetch: true,
+		}) || [];
 
 	const artistTimes = {};
 
@@ -96,6 +97,8 @@ function calculateArtistPreference() {
 	}
 
 	const artistDurations = Object.values(artistTimes);
+	if (artistDurations.length == 0) return 999;
+    
 	const sortedDurations = artistDurations.slice().sort((a, b) => a - b);
 
 	const numArtists = sortedDurations.length;
@@ -103,13 +106,14 @@ function calculateArtistPreference() {
 	const totalDuration = sortedDurations.reduce((sum, duration) => sum + duration, 0);
 
 	const giniCoefficient = (2 * cumulativeWeightedSum) / (numArtists * totalDuration) - (numArtists + 1) / numArtists;
+
 	console.log("Gini Coefficient (0 = equal, 1 = concentrated):", giniCoefficient);
 	return Number.isNaN(giniCoefficient) ? 999 : giniCoefficient;
 }
 
 async function fetchRecommendationsData(input) {
 	if (!input) alertModal("Checking all songs for recommendations... You can close this modal.");
-    
+
 	const recommendationRows = callSqlite({
 		db: "musics",
 		query: "SELECT artist_name FROM recommendations",
