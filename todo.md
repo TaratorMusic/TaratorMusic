@@ -2,19 +2,21 @@
 ## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
--   Toggles in the settings do not work
+-   Add to playlist button is buggy, the playlists do not show up
+-   Thumbnail changing for songs is not working
+-   Toggles in the settings do not work. Add logs
 -   Statistics page does not work. Also, if no stats, redirect to the main menu
 -   Test all the misc settings before upping the version
--   Bottom right customise button returns all undefined, same with customise song and add to playlist buttons
--   Add a shortcut for lyrics modal
 -   new readme images
 
 ### Version 1.8.4 Planned Features
 
 -   Is my music page loading a little bit slower?
+-   Change so when a new song is added we properly rendermusics again
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
 -   Compiling JS Script
+-   Add a shortcut for lyrics modal
 -   You need to swap back to offline mode to properly disable the buttons above
 -   The app launch feels a tad bit slower
 -   Improve ytdlp speeds to compensate for ytdlcore

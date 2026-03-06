@@ -358,8 +358,8 @@
 			<div id="allbuttons">
 				<button id="backwardButton" class="audio-button" data-tooltip="Back 5 Seconds" onclick="skipBackward()"></button>
 				<button id="previousSongButton" class="audio-button" data-tooltip="Play Previous Song" onclick="playPreviousSong()"></button>
-				<button id="playButton" class="audio-button" data-tooltip="Play Song"></button>
-				<button id="pauseButton" class="audio-button" data-tooltip="Pause Song" style="display: none"></button>
+				<button id="playButton" class="audio-button" data-tooltip="Play Song" onclick="playPause()"></button>
+				<button id="pauseButton" class="audio-button" data-tooltip="Pause Song" style="display: none" onclick="playPause()"></button>
 				<button id="nextSongButton" class="audio-button" data-tooltip="Play Next Song" onclick="playNextSong()"></button>
 				<button id="forwardButton" class="audio-button" data-tooltip="Forward 5 Seconds" onclick="skipForward()"></button>
 				<button id="autoplayButton" class="audio-button" data-tooltip="Toggle Autoplay" onclick="toggleAutoplay()"></button>

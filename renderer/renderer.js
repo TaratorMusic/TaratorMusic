@@ -1290,7 +1290,10 @@ async function opencustomiseModal(songsId) {
 
 	if (songsId.includes("tarator")) {
 		const songData = songNameCache.get(songsId) || {};
-		const { song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = songData;
+		console.log(songData);
+
+		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = songData);
+
 		thumbnailPath = path.join(thumbnailFolder, songsId + "." + thumbnail_extension);
 
 		document.getElementById("downloadThisSong").disabled = true;
@@ -1300,13 +1303,14 @@ async function opencustomiseModal(songsId) {
 		document.getElementById("customiseSongLink").disabled = false;
 		document.getElementById("customiseThumbnail").disabled = false;
 	} else {
-		// The song is not downloaded
-		const { song_name, thumbnail_url, artist, genre, language } = await callSqlite({
+		const row = await callSqlite({
 			db: "musics",
 			query: "SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?",
 			args: [songsId],
 			fetch: true,
 		});
+
+		({ song_name, thumbnail_url, artist, genre, language } = row);
 
 		thumbnailPath = thumbnail_url;
 		song_url = `https://www.youtube.com/watch?v=${songsId}`;
@@ -1321,7 +1325,7 @@ async function opencustomiseModal(songsId) {
 
 		document.getElementById("downloadThisSong").disabled = false;
 		document.getElementById("stabiliseSongButton").disabled = true;
-		document.getElementById("fetchSongInfoButton").disabled = true; // TODO: Make the fetch song function work for streams table too (But it would fetch too many songs)
+		document.getElementById("fetchSongInfoButton").disabled = true;
 		document.getElementById("removeSongButton").disabled = true;
 		document.getElementById("customiseSongLink").disabled = true;
 		document.getElementById("customiseThumbnail").disabled = true;
@@ -1338,11 +1342,6 @@ async function opencustomiseModal(songsId) {
 
 	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised != null ? stabilised == 1 : "Not downloaded"}`;
 	document.getElementById("modalFileSize").innerText = `File Size: ${size != null ? (size / 1048576).toFixed(2) + " MBs" : "Not downloaded"}`;
-	// document.getElementById("modalPlaySpeed").innerText = `Play Speed: ${playSpeed != null ? playSpeed + "x" : "Not downloaded"}`;
-	// document.getElementById("modalBass").innerText = `Bass: ${bass != null ? bass : "Not downloaded"}`;
-	// document.getElementById("modalTreble").innerText = `Treble: ${treble != null ? treble : "Not downloaded"}`;
-	// document.getElementById("modalMidrange").innerText = `Midrange: ${midrange != null ? midrange : "Not downloaded"}`;
-	// document.getElementById("modalVolume").innerText = `Volume: ${volume != null ? volume : "Not downloaded"}`;
 
 	document.getElementById("removeSongButton").dataset.songId = songsId;
 	document.getElementById("stabiliseSongButton").dataset.songId = songsId;
@@ -1891,14 +1890,6 @@ document.addEventListener("DOMContentLoaded", function () {
 			args: [volumeControl.value],
 			fetch: false,
 		});
-	});
-
-	playButton.addEventListener("click", () => {
-		playPause();
-	});
-
-	pauseButton.addEventListener("click", () => {
-		playPause();
 	});
 
 	videoProgress.addEventListener("mousedown", () => {
