@@ -3,7 +3,6 @@
 
 -   Picture in picture window with customisation
 -   Thumbnail changing for songs is not working
--   Toggles in the settings do not work. Add logs
 -   Test all the misc settings before upping the version
 -   new readme images
 -   Song volume changes after song change while muted
@@ -12,7 +11,8 @@
 ### Version 1.8.4 Planned Features
 
 -   Is my music page loading a little bit slower?
--   Using TaratorMusic since Invalid Date
+-   "Using TaratorMusic since Invalid Date"
+-   Stabilise all button skips everything
 -   if no stats, redirect to the main menu
 -   Change so when a new song is added we properly rendermusics again
 -   Adding to playlist after downloading a song is not working

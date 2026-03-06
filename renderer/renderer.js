@@ -309,6 +309,39 @@ async function initialiseDatabases() {
 	document.getElementById("main-menu").click();
 	startupCheck();
 
+	const divideVolumeSelect = document.getElementById("dividevolume");
+	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
+		if (divideVolumeSelect.options[i].value == dividevolume) {
+			divideVolumeSelect.selectedIndex = i;
+			break;
+		}
+	}
+
+	document.getElementById("picker").addEventListener("input", color => {
+		changeBackground(color.target.value);
+	});
+
+	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
+	document.getElementById("recommendationsToggle").checked = recommendationsAfterDownload == 1 ? true : false;
+	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
+	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
+	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
+	document.getElementById("notInterestedToggle").addEventListener("click", e => {
+		if (!!notInterestedSongs.map(song => song.song_id).includes(e.currentTarget.dataset.songId)) {
+			notInterestedSongs = notInterestedSongs.filter(s => s.song_id != e.currentTarget.dataset.songId);
+			document.getElementById("notInterestedToggle").innerText = "Interested";
+		} else {
+			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
+			callSqlite({
+				db: "musics",
+				query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
+				args: [e.currentTarget.dataset.songId, document.getElementById("customiseSongName").value],
+				fetch: false,
+			});
+			document.getElementById("notInterestedToggle").innerText = " Not Interested";
+		}
+	});
+
 	ipcRenderer.invoke("get-app-version").then(async version => {
 		const willUpdate = version != current_version;
 		current_version = version;
@@ -1762,39 +1795,6 @@ document.addEventListener("DOMContentLoaded", function () {
 	ipcRenderer.send("renderer-domready");
 
 	if (platform == "linux") loadJSFile("mpris");
-
-	const divideVolumeSelect = document.getElementById("dividevolume");
-	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
-		if (divideVolumeSelect.options[i].value == dividevolume) {
-			divideVolumeSelect.selectedIndex = i;
-			break;
-		}
-	}
-
-	document.getElementById("picker").addEventListener("input", color => {
-		changeBackground(color.target.value);
-	});
-
-	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
-	document.getElementById("recommendationsToggle").checked = recommendationsAfterDownload == 1 ? true : false;
-	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
-	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
-	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
-	document.getElementById("notInterestedToggle").addEventListener("click", e => {
-		if (!!notInterestedSongs.map(song => song.song_id).includes(e.currentTarget.dataset.songId)) {
-			notInterestedSongs = notInterestedSongs.filter(s => s.song_id != e.currentTarget.dataset.songId);
-			document.getElementById("notInterestedToggle").innerText = "Interested";
-		} else {
-			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
-			callSqlite({
-				db: "musics",
-				query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
-				args: [e.currentTarget.dataset.songId, document.getElementById("customiseSongName").value],
-				fetch: false,
-			});
-			document.getElementById("notInterestedToggle").innerText = " Not Interested";
-		}
-	});
 
 	document.querySelectorAll("[data-tooltip]").forEach(el => {
 		el.addEventListener("mouseenter", e => {

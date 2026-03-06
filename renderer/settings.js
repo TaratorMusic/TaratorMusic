@@ -129,14 +129,16 @@ async function redownloadAllSongs() {
 	await renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailFolder, "tarator_icon.png"), songs);
 }
 
-function stabiliseVolumeToggleTogglerFunction() {
+async function stabiliseVolumeToggleTogglerFunction() {
 	stabiliseVolumeToggle = stabiliseVolumeToggle === 1 ? 0 : 1;
-	callSqlite({ db: "settings", query: "UPDATE settings SET stabiliseVolumeToggle = ?", args: [stabiliseVolumeToggle] });
+	await callSqlite({ db: "settings", query: "UPDATE settings SET stabiliseVolumeToggle = ?", args: [stabiliseVolumeToggle] });
+	console.log("New stabiliseVolumeToggle", stabiliseVolumeToggle);
 }
 
-function recommendationsToggleTogglerFunction() {
+async function recommendationsToggleTogglerFunction() {
 	recommendationsAfterDownload = recommendationsAfterDownload === 1 ? 0 : 1;
-	callSqlite({ db: "settings", query: "UPDATE settings SET recommendationsAfterDownload = ?", args: [recommendationsAfterDownload] });
+	await callSqlite({ db: "settings", query: "UPDATE settings SET recommendationsAfterDownload = ?", args: [recommendationsAfterDownload] });
+	console.log("New recommendationsAfterDownload", recommendationsAfterDownload);
 }
 
 async function saveRecommendationWeights() {
