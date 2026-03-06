@@ -1290,8 +1290,6 @@ async function opencustomiseModal(songsId) {
 
 	if (songsId.includes("tarator")) {
 		const songData = songNameCache.get(songsId) || {};
-		console.log(songData);
-
 		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = songData);
 
 		thumbnailPath = path.join(thumbnailFolder, songsId + "." + thumbnail_extension);

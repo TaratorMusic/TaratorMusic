@@ -24,7 +24,7 @@ function differentiateMediaLinks(url) {
 
 async function searchInYoutube(songName) {
 	const info = await getVideoInfo(`ytsearch1:${songName}`);
-    searchedSongsUrl = info.entries[0].webpage_url
+	searchedSongsUrl = info.entries[0].webpage_url;
 	return searchedSongsUrl;
 }
 
@@ -1004,9 +1004,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 				callSqlite({
 					db: "playlists",
 					query: `
-        INSERT INTO playlists (id, name, songs, thumbnail_extension)
-        VALUES (?, ?, ?, ?)
-    `,
+                        INSERT INTO playlists (id, name, songs, thumbnail_extension)
+                        VALUES (?, ?, ?, ?)
+                    `,
 					args: [playlistID, playlistName, songsJson, "jpg"],
 				});
 			} catch (err) {
@@ -1077,11 +1077,10 @@ function openAddToPlaylistModalStaging(songId) {
 	checkboxContainer.innerHTML = "";
 
 	const allPlaylists =
-		callSqlite({
-			db: "playlists",
-			query: "SELECT * FROM playlists", // TODO: USE THE CACHE
-			fetch: true,
-		}) || [];
+		Array.from(playlistsCache.entries()).map(([id, data]) => ({
+			id,
+			...data,
+		})) || [];
 	allPlaylists.forEach(playlist => {
 		const checkbox = document.createElement("input");
 		checkbox.type = "checkbox";
@@ -1114,12 +1113,17 @@ function openAddToPlaylistModalStaging(songId) {
 async function commitStagedPlaylistAdds() {
 	for (const [song, lists] of pendingPlaylistAddsWithIds.entries()) {
 		for (const listID of lists) {
-			const playlistRes = callSqlite({
-				db: "playlists",
-				query: "SELECT * FROM playlists WHERE id = ?",
-				args: [listID],
-				fetch: true,
-			}); // TODO: USE THE CACHE
+			const playlistRes = [];
+
+			const cached = playlistsCache.get(listID);
+			if (cached) {
+				playlistRes.push({
+					id: listID,
+					name: cached.name,
+					songs: JSON.stringify(cached.songs || []),
+					thumbnail_extension: cached.thumbnail_extension,
+				});
+			}
 
 			const playlist = playlistRes[0];
 			let songs = JSON.parse(playlist.songs || "[]");

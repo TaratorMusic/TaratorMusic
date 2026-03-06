@@ -5,13 +5,15 @@
 -   Add to playlist button is buggy, the playlists do not show up
 -   Thumbnail changing for songs is not working
 -   Toggles in the settings do not work. Add logs
--   Statistics page does not work. Also, if no stats, redirect to the main menu
 -   Test all the misc settings before upping the version
 -   new readme images
+-   Some stuff updating the db does not update the cache, some stuff unnecessarily calls the db instead of the caches
 
 ### Version 1.8.4 Planned Features
 
 -   Is my music page loading a little bit slower?
+-   Using TaratorMusic since Invalid Date
+-   if no stats, redirect to the main menu
 -   Change so when a new song is added we properly rendermusics again
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes

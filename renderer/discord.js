@@ -81,6 +81,8 @@ function toggleDiscordAPI() {
 		args: [discordRPCstatus ? 1 : 0],
 		fetch: false,
 	});
+
+    console.log("New RPC status",discordRPCstatus);
 }
 
 function updateDiscordPresence() {

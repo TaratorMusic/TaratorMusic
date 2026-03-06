@@ -8,7 +8,7 @@ let songsTable;
 let timersTable;
 
 async function renderStatistics() {
-	const rowRes = callSqlite({
+	const rowRes = await callSqlite({
 		db: "musics",
 		query: "SELECT 1 FROM timers LIMIT 1",
 		fetch: true,
@@ -16,13 +16,12 @@ async function renderStatistics() {
 
 	if (!rowRes.length) return alertModal("You haven't listened to any songs yet.");
 
-	songsTable = callSqlite({
-		db: "musics",
-		query: "SELECT song_id, song_name, song_url, song_extension, thumbnail_extension, stabilised, size, speed, bass, treble, midrange, volume, song_length, artist, genre, language FROM songs",
-		fetch: true,
-	}); // TODO: USE THE CACHE
+	songsTable = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
+		song_id,
+		...data,
+	}));
 
-	timersTable = callSqlite({
+	timersTable = await callSqlite({
 		db: "musics",
 		query: "SELECT song_id, start_time, end_time, playlist FROM timers",
 		fetch: true,
@@ -39,7 +38,7 @@ async function renderStatistics() {
 }
 
 async function createMostListenedSongBox() {
-	const most_listened_song_res = callSqlite({
+	const most_listened_song_res = await callSqlite({
 		db: "musics",
 		query: `
         SELECT song_id, SUM(end_time - start_time) AS total_time
@@ -54,7 +53,7 @@ async function createMostListenedSongBox() {
 	const most_listened_song = most_listened_song_res[0];
 	const songId = "tarator-" + most_listened_song.song_id;
 	const mostListenedSongsRow = songNameCache.get(songId) || {};
-    
+
 	const statisticsMostListened = document.createElement("div");
 	statisticsMostListened.id = "statisticsMostListened";
 	statisticsContent.appendChild(statisticsMostListened);
@@ -77,7 +76,7 @@ async function createMostListenedSongBox() {
 	mostListenedSongText.id = "mostListenedSongText";
 	statisticsMostListenedBox.appendChild(mostListenedSongText);
 
-	const statsRes = callSqlite({
+	const statsRes = await callSqlite({
 		db: "musics",
 		query: "SELECT MIN(start_time) AS min_start, MAX(start_time) AS max_start, COUNT(*) AS total_rows FROM timers WHERE song_id = ?",
 		args: [most_listened_song.song_id],
@@ -328,14 +327,14 @@ async function generalStatistics() {
 	statsTitle.innerHTML = "General Statistics";
 	statisticsContent.appendChild(statsTitle);
 
-	const row = callSqlite({
+	const row = await callSqlite({
 		db: "settings",
 		query: "SELECT * FROM statistics",
 		args: [],
 		fetch: true,
 	});
 
-	const leastListenRowRes = callSqlite({
+	const leastListenRowRes = await callSqlite({
 		db: "musics",
 		query: `
         SELECT *
@@ -348,7 +347,7 @@ async function generalStatistics() {
 
 	const leastListenRow = leastListenRowRes[0];
 
-	const countsRes = callSqlite({
+	const countsRes = await callSqlite({
 		db: "musics",
 		query: `
         SELECT 

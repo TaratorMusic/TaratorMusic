@@ -170,12 +170,14 @@ async function saveNewPlaylist() {
 	}
 
 	const dest = path.join(thumbnailFolder, `${id}playlist.${ext}`);
-	const existingRes = callSqlite({
-		db: "playlists",
-		query: "SELECT id FROM playlists WHERE name = ?", // TODO: USE THE CACHE
-		args: [name],
-		fetch: true,
-	});
+	const existingRes = [];
+
+	for (const [id, data] of playlistsCache.entries()) {
+		if (data.name === name) {
+			existingRes.push({ id });
+			break;
+		}
+	}
 
 	existingRes.then(async existingRows => {
 		if (existingRows.length) {
@@ -253,7 +255,7 @@ function openAddToPlaylistModal(songName) {
 
 	try {
 		const playlists = Array.from(playlistsMap.values());
-        
+
 		if (!playlists || playlists.length == 0) {
 			console.log("No playlists found.");
 			displayPlaylists([]);
@@ -306,33 +308,46 @@ function addToSelectedPlaylists(songName) {
 		.map(cb => cb.id);
 
 	selectedPlaylists.forEach(playlistId => {
-		// TODO: USE THE CACHE HERE
-		callSqlite({ db: "playlists", query: "SELECT * FROM playlists WHERE id = ?", args: [playlistId], fetch: true }).then(playlistRows => {
-			const playlist = playlistRows[0];
-			let songsInPlaylist = playlist.songs ? JSON.parse(playlist.songs) : [];
+		const playlist = playlistsCache.get(playlistId);
+		if (!playlist) return;
 
+		let songsInPlaylist = playlist.songs ? [...playlist.songs] : [];
+
+		if (!songsInPlaylist.includes(songName)) {
+			songsInPlaylist.push(songName);
+			callSqlite({
+				db: "playlists",
+				query: "UPDATE playlists SET songs = ? WHERE id = ?",
+				args: [JSON.stringify(songsInPlaylist), playlistId],
+			});
+			playlistsCache.set(playlistId, {
+				...playlist,
+				songs: songsInPlaylist,
+			});
+			console.log(`Song '${songName}' added to playlist '${playlistId}'.`);
+		} else {
+			console.log(`Song '${songName}' already exists in playlist '${playlistId}'.`);
+		}
+	});
+
+	for (const [playlistId, playlist] of playlistsCache.entries()) {
+		if (!selectedPlaylists.includes(playlistId)) {
+			let songsInPlaylist = playlist.songs ? [...playlist.songs] : [];
 			if (songsInPlaylist.includes(songName)) {
-				console.log(`Song '${songName}' already exists in playlist '${playlistId}'.`);
-			} else {
-				songsInPlaylist.push(songName);
-				callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(songsInPlaylist), playlistId] });
-				console.log(`Song '${songName}' added to playlist '${playlistId}'.`);
+				const updatedSongs = songsInPlaylist.filter(song => song !== songName);
+				callSqlite({
+					db: "playlists",
+					query: "UPDATE playlists SET songs = ? WHERE id = ?",
+					args: [JSON.stringify(updatedSongs), playlistId],
+				});
+				playlistsCache.set(playlistId, {
+					...playlist,
+					songs: updatedSongs,
+				});
+				console.log(`Song '${songName}' removed from playlist '${playlistId}'.`);
 			}
-		});
-	});
-
-	callSqlite({ db: "playlists", query: "SELECT * FROM playlists", fetch: true }).then(allPlaylists => {
-		allPlaylists.forEach(playlist => {
-			if (!selectedPlaylists.includes(playlist.id)) {
-				let songsInPlaylist = playlist.songs ? JSON.parse(playlist.songs) : [];
-				if (songsInPlaylist.includes(songName)) {
-					const updatedSongs = JSON.stringify(songsInPlaylist.filter(song => song !== songName));
-					callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [updatedSongs, playlist.id] });
-					console.log(`Song '${songName}' removed from playlist '${playlist.id}'.`);
-				}
-			}
-		});
-	});
+		}
+	}
 
 	closeModal();
 	getPlaylists(getComputedStyle(document.getElementById("playlists-content")).display === "grid");
