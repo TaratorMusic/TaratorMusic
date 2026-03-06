@@ -256,7 +256,7 @@ function openAddToPlaylistModal(songName) {
 	try {
 		const playlists = Array.from(playlistsMap.values());
 
-		if (!playlists || playlists.length == 0) {
+		if (!playlists || playlists.length === 0) {
 			console.log("No playlists found.");
 			displayPlaylists([]);
 			return;
@@ -268,16 +268,8 @@ function openAddToPlaylistModal(songName) {
 			checkbox.id = playlist.id;
 			checkbox.value = songName;
 
-			let songsInPlaylist = [];
-			if (playlist.songs) {
-				songsInPlaylist = JSON.parse(playlist.songs);
-			}
-
-			const isSongInPlaylist = songsInPlaylist.includes(songName);
-
-			if (isSongInPlaylist) {
-				checkbox.checked = true;
-			}
+			const songsInPlaylist = playlist.songs || [];
+			checkbox.checked = songsInPlaylist.includes(songName);
 
 			const label = document.createElement("label");
 			label.textContent = playlist.name;
@@ -291,12 +283,10 @@ function openAddToPlaylistModal(songName) {
 		const button = document.createElement("button");
 		button.id = "addToPlaylistDone";
 		button.textContent = "Done";
-		button.onclick = function () {
-			addToSelectedPlaylists(songName);
-		};
+		button.onclick = () => addToSelectedPlaylists(songName);
 		playlistsContainer.appendChild(button);
 	} catch (err) {
-		console.log("Error fetching playlists from the database:", err);
+		console.log("Error fetching playlists:", err);
 		displayPlaylists([]);
 	}
 }

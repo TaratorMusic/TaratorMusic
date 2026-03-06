@@ -2,11 +2,11 @@
 ## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
--   Add to playlist button is buggy, the playlists do not show up
 -   Thumbnail changing for songs is not working
 -   Toggles in the settings do not work. Add logs
 -   Test all the misc settings before upping the version
 -   new readme images
+-   Song volume changes after song change while muted
 -   Some stuff updating the db does not update the cache, some stuff unnecessarily calls the db instead of the caches
 
 ### Version 1.8.4 Planned Features
