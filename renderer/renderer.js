@@ -1560,7 +1560,7 @@ async function updateThumbnailImage(event, mode) {
 
 async function searchSong() {
 	try {
-		const { row } = await callSqlite({
+		const row = await callSqlite({
 			db: "musics",
 			query: "SELECT song_id FROM songs WHERE song_name LIKE ? COLLATE NOCASE ORDER BY LENGTH(song_name) LIMIT 1",
 			args: [`%${searchModalInput.value}%`],
@@ -1570,7 +1570,7 @@ async function searchSong() {
 		searchModalInput.value = "";
 		searchModalInput.classList.add("red-placeholder");
 		searchModalInput.placeholder = "Song not found.";
-		playMusic(row.song_id, null);
+		playMusic(row[0].song_id, null);
 		document.getElementById("searchModal").style.display = "none";
 	} catch {
 		// To prevent console errors

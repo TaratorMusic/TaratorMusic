@@ -2,16 +2,18 @@
 ## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
--   Search probably not working, redownload or any other setting is not working
+-   Redownload Old Songs not working
+-   Stabilise All Songs not working
+-   Fetch Song Recommendations not working
 -   Thumbnail changing for songs is not working
--   Test all the misc settings before upping the version
--   new readme images
 -   Song volume changes after song change while muted
 -   Some stuff updating the db does not update the cache, some stuff unnecessarily calls the db instead of the caches
+-   new readme images
 
 ### Version 1.8.4 Planned Features
 
 -   Is my music page loading a little bit slower?
+-   Total Time Spent in TaratorMusic: NaN minutes
 -   "Using TaratorMusic since Invalid Date"
 -   Stabilise all button skips everything
 -   if no stats, redirect to the main menu
