@@ -114,7 +114,7 @@ function calculateArtistPreference() {
 async function fetchRecommendationsData(input) {
 	if (!input) alertModal("Checking all songs for recommendations... You can close this modal.");
 
-	const recommendationRows = callSqlite({
+	const recommendationRows = await callSqlite({
 		db: "musics",
 		query: "SELECT artist_name FROM recommendations",
 		args: [],

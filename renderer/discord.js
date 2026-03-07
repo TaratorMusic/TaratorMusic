@@ -82,7 +82,7 @@ function toggleDiscordAPI() {
 		fetch: false,
 	});
 
-    console.log("New RPC status",discordRPCstatus);
+    console.log("New RPC status", discordRPCstatus);
 }
 
 function updateDiscordPresence() {

@@ -2,6 +2,7 @@
 ## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
+-   Search probably not working, redownload or any other setting is not working
 -   Thumbnail changing for songs is not working
 -   Test all the misc settings before upping the version
 -   new readme images
@@ -14,6 +15,7 @@
 -   "Using TaratorMusic since Invalid Date"
 -   Stabilise all button skips everything
 -   if no stats, redirect to the main menu
+-   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
 -   Change so when a new song is added we properly rendermusics again
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes

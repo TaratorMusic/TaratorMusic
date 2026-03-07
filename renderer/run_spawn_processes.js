@@ -15,18 +15,19 @@ async function createAppThumbnailsFolder() {
 }
 
 async function grabAndStoreSongInfo(songId) {
-	if (songId == "html") songId = document.getElementById("customiseModal").dataset.songID;
+	let fetchedId = songId;
+	if (fetchedId == "html") fetchedId = document.getElementById("customiseModal").dataset.songID;
 
 	return new Promise((resolve, reject) => {
 		let songs = [];
 
-		if (songId) {
-			if (Array.isArray(songId)) {
-				for (let i = 0; i < songId.length; i++) {
-					songs[i] = getSongNameById(songId[i]);
+		if (fetchedId) {
+			if (Array.isArray(fetchedId)) {
+				for (let i = 0; i < fetchedId.length; i++) {
+					songs[i] = getSongNameById(fetchedId[i]);
 				}
 			} else {
-				const songData = songNameCache.get(songId);
+				const songData = songNameCache.get(fetchedId);
 				if (!songData) {
 					alertModal("Song not found in database.");
 					return resolve();
@@ -38,8 +39,12 @@ async function grabAndStoreSongInfo(songId) {
 			alertModal("Checking for song info... You can close this window.");
 		} else {
 			songs = Array.from(songNameCache.values())
-				.filter(s => !s.artist || !s.genre || !s.language)
-				.map(s => s.song_name);
+				.filter(song => !song.artist || !song.genre || !song.language)
+				.map(song => song.song_name);
+
+			fetchedId = Array.from(songNameCache.entries())
+				.filter(([key, song]) => !song.artist || !song.genre || !song.language)
+				.map(([key]) => key);
 
 			if (!songs.length) {
 				alertModal("No songs with missing information.");
@@ -66,16 +71,16 @@ async function grabAndStoreSongInfo(songId) {
 
 				try {
 					const meta = JSON.parse(line);
-					const songIdUsed = Array.isArray(songId) ? songId[count] : songId;
+					const songIdUsed = Array.isArray(fetchedId) ? fetchedId[count] : fetchedId;
 
 					callSqlite({
 						db: "musics",
-						query: " UPDATE songs SET artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END, genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END, language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END WHERE song_id = ?",
+						query: "UPDATE songs SET artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END, genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END, language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END WHERE song_id = ?",
 						args: [meta.artist, meta.genre, meta.language, songIdUsed],
 						fetch: false,
 					});
 
-					const cached = songNameCache.get(songId);
+					const cached = songNameCache.get(songIdUsed);
 					console.log("New song info added for", cached.song_name, ": ", meta.artist, meta.genre, meta.language, songIdUsed);
 
 					if (cached) {
@@ -83,7 +88,7 @@ async function grabAndStoreSongInfo(songId) {
 						if (cached.genre == null || cached.genre === "") cached.genre = meta.genre;
 						if (cached.language == null || cached.language === "") cached.language = meta.language;
 
-						if (document.getElementById("customiseModal").style.display == "block" && songId == document.getElementById("customiseModal").dataset.songID) {
+						if (document.getElementById("customiseModal").style.display == "block" && songIdUsed == document.getElementById("customiseModal").dataset.songID) {
 							document.getElementById("customiseSongGenre").value = meta.genre;
 							document.getElementById("customiseSongArtist").value = meta.artist;
 							document.getElementById("customiseSongLanguage").value = meta.language;
@@ -92,7 +97,7 @@ async function grabAndStoreSongInfo(songId) {
 
 					count++;
 				} catch (error) {
-					console.error("Bad JSON:", error);
+					console.error(error);
 				}
 			}
 		});
