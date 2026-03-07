@@ -3,33 +3,39 @@ Chart.register(LineController, LineElement, PointElement, PieController, ArcElem
 
 const statisticsContent = document.getElementById("statistics-content");
 let sortOrder = {};
+let isRenderingStatistics = false;
 
 let songsTable;
 let timersTable;
 
 async function renderStatistics() {
-	timersTable = await callSqlite({
-		db: "musics",
-		query: "SELECT song_id, start_time, end_time, playlist FROM timers",
-		fetch: true,
-	});
+	if (isRenderingStatistics) return;
+	isRenderingStatistics = true;
+	try {
+		timersTable = await callSqlite({
+			db: "musics",
+			query: "SELECT song_id, start_time, end_time, playlist FROM timers",
+			fetch: true,
+		});
 
-	if (!timersTable.length) return alertModal("You haven't listened to any songs yet.");
+		if (!timersTable.length) return alertModal("You haven't listened to any songs yet.");
 
-	songsTable = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
-		song_id,
-		...data,
-	}));
+		songsTable = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
+			song_id,
+			...data,
+		}));
 
-	const statsEl = document.getElementById("statistics-content");
-	statsEl.style.display = "flex";
-	statsEl.innerHTML = "";
+		statisticsContent.innerHTML = "";
+		statisticsContent.style.display = "flex";
 
-	await createMostListenedSongBox();
-	await createPieCharts();
-	await daysHeatMap();
-	await generalStatistics();
-	await htmlTableStats();
+		await createMostListenedSongBox();
+		await createPieCharts();
+		await daysHeatMap();
+		await generalStatistics();
+		await htmlTableStats();
+	} finally {
+		isRenderingStatistics = false;
+	}
 }
 
 async function createMostListenedSongBox() {
