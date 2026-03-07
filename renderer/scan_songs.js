@@ -52,7 +52,7 @@ async function processAllFiles() {
 	const totalRows = rows.length;
 
 	for (const row of rows) {
-		const fileName = row.song_id + row.song_extension;
+		const fileName = row.song_id + "." + row.song_extension;
 		const fullPath = path.join(musicFolder, fileName);
 
 		document.getElementById("stabiliseProgress").innerText = `[${processedCount + 1}/${totalRows}] Normalizing ${getSongNameById(row.song_id)}...`;

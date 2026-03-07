@@ -173,45 +173,6 @@ async function initialiseDatabases() {
 	});
 	const settingsRow = settingsRows[0];
 
-	notInterestedSongs = await callSqlite({
-		db: "musics",
-		query: "SELECT song_id FROM not_interested",
-		fetch: true,
-	});
-
-	const songsRows = await callSqlite({
-		db: "musics",
-		query: "SELECT song_id, song_length, song_url, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs",
-		fetch: true,
-	});
-
-	for (const row of songsRows) {
-		songNameCache.set(row.song_id, {
-			song_name: row.song_name,
-			song_length: row.song_length,
-			song_extension: row.song_extension,
-			song_url: row.song_url,
-			thumbnail_extension: row.thumbnail_extension,
-			stabilised: row.stabilised,
-			size: row.size,
-			genre: row.genre,
-			artist: row.artist,
-			language: row.language,
-		});
-	}
-
-	const lyricsRows = await callSqlite({
-		db: "musics",
-		query: "SELECT song_id, lyrics FROM lyrics",
-		fetch: true,
-	});
-
-	for (const row of lyricsRows) {
-		songLyricsCache.set(row.song_id, {
-			lyrics: row.lyrics,
-		});
-	}
-
 	document.getElementById("settingsRewind").innerHTML = settingsRow.key_Rewind;
 	document.getElementById("settingsPrevious").innerHTML = settingsRow.key_Previous;
 	document.getElementById("settingsPlayPause").innerHTML = settingsRow.key_PlayPause;
@@ -270,13 +231,6 @@ async function initialiseDatabases() {
 	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
 	document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
 
-	document.getElementById("weight1").value = popularityFactor;
-	document.getElementById("weight2").value = artistStrengthFactor;
-	document.getElementById("weight3").value = similarArtistsFactor;
-	document.getElementById("weight4").value = userPreferenceFactor;
-	document.getElementById("weight5").value = artistListenTimeFactor;
-	document.getElementById("weight6").value = randomFactor;
-
 	const icons = {
 		backwardButton: "backward.svg",
 		previousSongButton: "previous.svg",
@@ -298,16 +252,21 @@ async function initialiseDatabases() {
 			el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
 		}
 	}
+	volumeControl.value = volume * 100 * dividevolume;
 
 	rememberautoplay && toggleAutoplay();
 	remembershuffle && toggleShuffle();
 	rememberloop && toggleLoop();
 
-	volumeControl.value = volume * 100 * dividevolume;
-
-	setupLazyBackgrounds();
 	document.getElementById("main-menu").click();
-	startupCheck();
+	ipcRenderer.send("renderer-domready");
+
+	document.getElementById("weight1").value = popularityFactor;
+	document.getElementById("weight2").value = artistStrengthFactor;
+	document.getElementById("weight3").value = similarArtistsFactor;
+	document.getElementById("weight4").value = userPreferenceFactor;
+	document.getElementById("weight5").value = artistListenTimeFactor;
+	document.getElementById("weight6").value = randomFactor;
 
 	const divideVolumeSelect = document.getElementById("dividevolume");
 	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
@@ -360,7 +319,47 @@ async function initialiseDatabases() {
 		}
 	});
 
-	ipcRenderer.send("renderer-domready");
+	notInterestedSongs = await callSqlite({
+		db: "musics",
+		query: "SELECT song_id FROM not_interested",
+		fetch: true,
+	});
+
+	const songsRows = await callSqlite({
+		db: "musics",
+		query: "SELECT song_id, song_length, song_url, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs",
+		fetch: true,
+	});
+
+	for (const row of songsRows) {
+		songNameCache.set(row.song_id, {
+			song_name: row.song_name,
+			song_length: row.song_length,
+			song_extension: row.song_extension,
+			song_url: row.song_url,
+			thumbnail_extension: row.thumbnail_extension,
+			stabilised: row.stabilised,
+			size: row.size,
+			genre: row.genre,
+			artist: row.artist,
+			language: row.language,
+		});
+	}
+
+	const lyricsRows = await callSqlite({
+		db: "musics",
+		query: "SELECT song_id, lyrics FROM lyrics",
+		fetch: true,
+	});
+
+	for (const row of lyricsRows) {
+		songLyricsCache.set(row.song_id, {
+			lyrics: row.lyrics,
+		});
+	}
+
+	setupLazyBackgrounds();
+	startupCheck();
 }
 
 setInterval(async () => {

@@ -2,7 +2,6 @@
 ## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
--   Stabilise All Songs not working
 -   Fetch Song Recommendations not working
 -   Thumbnail changing for songs is not working
 -   Song volume changes after song change while muted
