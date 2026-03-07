@@ -59,7 +59,7 @@ async function processAllFiles() {
 
 		try {
 			await normalizeAudio(fullPath);
-			const updateResult = callSqlite({
+			const updateResult = await callSqlite({
 				db: "musics",
 				query: "UPDATE songs SET stabilised = 1 WHERE song_id = ?",
 				args: [row.song_id],

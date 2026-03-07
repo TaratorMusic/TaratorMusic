@@ -327,7 +327,7 @@ async function initialiseDatabases() {
 
 	const songsRows = await callSqlite({
 		db: "musics",
-		query: "SELECT song_id, song_length, song_url, song_name, song_extension, thumbnail_extension, genre, artist, language FROM songs",
+		query: "SELECT song_id, song_length, song_url, song_name, song_extension, stabilised, size, thumbnail_extension, genre, artist, language FROM songs",
 		fetch: true,
 	});
 
@@ -1372,7 +1372,7 @@ async function opencustomiseModal(songsId) {
 	document.getElementById("customiseSongArtist").value = artist;
 	document.getElementById("customiseSongLanguage").value = language;
 
-	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised != null ? stabilised == 1 : "Not downloaded"}`;
+	document.getElementById("modalStabilised").innerText = `Song Sound Stabilised: ${stabilised != null ? stabilised == 1 : "Not stabilised"}`;
 	document.getElementById("modalFileSize").innerText = `File Size: ${size != null ? (size / 1048576).toFixed(2) + " MBs" : "Not downloaded"}`;
 
 	document.getElementById("removeSongButton").dataset.songId = songsId;
