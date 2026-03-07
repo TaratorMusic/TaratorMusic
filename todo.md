@@ -1,7 +1,7 @@
 
 ## Version 1.8.3 Planned Features
 
--   Picture in picture window with customisation
+-   Few todo left in miniplayer.html
 -   new readme images
 
 ### Version 1.8.4 Planned Features
@@ -26,7 +26,6 @@
 -   Dc rich presence doesnt pause
 -   Lyrics storage for picture in picture, and it should support multiple languages
 -   Fetch lyrics automatic function
--   Some songs magically change ID's i dont know what causes it though
 -   Fix streamed songs ids glitching inside playlists
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
@@ -36,6 +35,10 @@
 -   Search code for TODO'S
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   Stream seeking not working
+
+### Version 1.8.5 Planned Features
+
+-   Will be updated.
 
 ### Big updates remaining:
 

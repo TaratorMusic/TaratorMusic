@@ -50,6 +50,7 @@ autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
 
 let mainWindow;
+let miniPlayer;
 
 function createWindow() {
 	const splash = new BrowserWindow({
@@ -63,7 +64,7 @@ function createWindow() {
 		alwaysOnTop: true,
 		resizable: false,
 	});
-    
+
 	splash.loadFile("renderer/splash.html");
 
 	ipcMain.on("renderer-domready", e => {
@@ -101,6 +102,36 @@ function createWindow() {
 
 	mainWindow.loadFile("renderer/index.html");
 	mainWindow.show();
+}
+
+function createMiniPlayer() {
+	if (miniPlayer && !miniPlayer.isDestroyed()) {
+		miniPlayer.focus();
+		return;
+	}
+
+	miniPlayer = new BrowserWindow({
+		width: 320,
+		height: 120,
+		title: "TaratorMusic PiP",
+		icon: path.join(__dirname, "assets/tarator16_icon.png"),
+		resizable: false,
+		frame: false,
+		alwaysOnTop: true,
+		skipTaskbar: true,
+		transparent: false,
+		movable: true,
+		webPreferences: {
+			contextIsolation: false,
+			nodeIntegration: true,
+		},
+	});
+
+	miniPlayer.loadFile("renderer/miniplayer.html");
+
+	miniPlayer.on("closed", () => {
+		miniPlayer = null;
+	});
 }
 
 app.whenReady().then(() => {
@@ -171,5 +202,22 @@ app.whenReady().then(() => {
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length == 0) createWindow();
+	});
+
+	ipcMain.on("miniplayer-previous", () => mainWindow.webContents.send("player-previous"));
+	ipcMain.on("miniplayer-playpause", () => mainWindow.webContents.send("player-playpause"));
+	ipcMain.on("miniplayer-next", () => mainWindow.webContents.send("player-next"));
+	ipcMain.on("open-miniplayer", () => createMiniPlayer());
+	ipcMain.on("miniplayer-close", () => {
+		if (miniPlayer) miniPlayer.close();
+	});
+	ipcMain.on("miniplayer-minimize", () => {
+		if (miniPlayer) miniPlayer.minimize();
+	});
+
+	ipcMain.on("renderer-miniplayer-update", (_, data) => {
+		if (miniPlayer && !miniPlayer.isDestroyed()) {
+			miniPlayer.webContents.send("miniplayer-update", data);
+		}
 	});
 });

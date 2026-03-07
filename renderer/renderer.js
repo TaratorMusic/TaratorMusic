@@ -149,6 +149,7 @@ let displayPage;
 let stabiliseVolumeToggle;
 let current_version;
 let recommendationsAfterDownload;
+let pictureInPicture;
 
 let popularityFactor;
 let artistStrengthFactor;
@@ -213,6 +214,8 @@ async function initialiseDatabases() {
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 	current_version = settingsRow.current_version;
 	recommendationsAfterDownload = settingsRow.recommendationsAfterDownload;
+	pictureInPicture = settingsRow.pictureInPicture;
+	if (pictureInPicture == 1) ipcRenderer.send("open-miniplayer");
 
 	if (settingsRow.background.includes("#")) {
 		document.body.style.background = settingsRow.background;
@@ -930,8 +933,9 @@ function playMusic(songId, playlistId) {
 			return;
 		}
 
+		const songName = offlineMode ? songData.song_name : songData.name;
 		songNameEl.setAttribute("data-file-name", playingSongsID);
-		songNameEl.textContent = offlineMode ? songData.song_name : songData.name;
+		songNameEl.textContent = songName;
 
 		songDuration = offlineMode ? songData.song_length || 0 : songData.length || 0;
 		lastSyncTimestamp = performance.now();
@@ -992,6 +996,12 @@ function playMusic(songId, playlistId) {
 		}
 
 		playing = true;
+
+		updateMiniPlayer({
+            thumbnail: thumbnailUrl,
+			songName: songName,
+			isPlaying: true,
+		});
 
 		if (playlistId) {
 			const pid = playlistId.id || playlistId;
@@ -1173,12 +1183,18 @@ function playPause() {
 		if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
 		if (player) player.playbackStatus = "Paused";
 		playing = false;
+		updateMiniPlayer({
+			isPlaying: false,
+		});
 	} else {
 		playButton.style.display = "none";
 		pauseButton.style.display = "inline-block";
 		if (playingSongsID) totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
 		if (player) player.playbackStatus = "Playing";
 		playing = true;
+		updateMiniPlayer({
+			isPlaying: true,
+		});
 	}
 }
 
@@ -1444,7 +1460,7 @@ async function saveEditedSong() {
 
 		const newThumbFile = document.getElementById("customiseThumbnail").files[0];
 
-        if (newThumbFile) {
+		if (newThumbFile) {
 			const buffer = Buffer.from(await newThumbFile.arrayBuffer());
 			fs.writeFileSync(thumbnailPath, buffer);
 		}
@@ -1486,22 +1502,6 @@ async function saveEditedSong() {
 	if (playingSongsID == customiseDiv.dataset.songID) document.getElementById("song-name").innerText = newNameInput;
 
 	try {
-		const updatedElement = await new Promise((resolve, reject) => {
-			// TODO: Get rid of this
-			// When the new box in the new menu gets initialised, this will run, aims to add "Playing" text on the playing song
-			const timeout = 5000;
-			const start = Date.now();
-			const interval = setInterval(() => {
-				if (element) {
-					clearInterval(interval);
-					resolve(element);
-				} else if (Date.now() - start > timeout) {
-					clearInterval(interval);
-					reject(new Error("Element not found in time"));
-				}
-			}, 50);
-		});
-
 		if (newNameInput == removeExtensions(playingSongsID)) {
 			element.classList.add("playing");
 			if (songID.includes("tarator")) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
@@ -1813,10 +1813,17 @@ function tick() {
 		const clamped = Math.min(pos, songDuration);
 		videoLength.textContent = `${formatTime(clamped)} / ${formatTime(songDuration)}`;
 		videoProgress.value = (clamped / songDuration) * 100;
+		updateMiniPlayer({
+			progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
+		});
 		if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
 	}
 
 	requestAnimationFrame(tick);
+}
+
+function updateMiniPlayer(state) {
+	ipcRenderer.send("renderer-miniplayer-update", state);
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -1850,6 +1857,10 @@ document.addEventListener("DOMContentLoaded", function () {
 	document.getElementById("version").addEventListener("click", () => {
 		document.getElementById("updateModal").style.display = "block";
 	});
+
+	ipcRenderer.on("player-previous", () => playPreviousSong());
+	ipcRenderer.on("player-playpause", () => playPause());
+	ipcRenderer.on("player-next", () => playNextSong());
 
 	document.getElementById("installBtn").addEventListener("click", () => {
 		if (platform == "win32" || platform == "darwin") {

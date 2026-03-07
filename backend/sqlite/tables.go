@@ -46,6 +46,7 @@ var settingsColumns = []Column{
 	{Name: "artistListenTimeFactor", Type: "INTEGER", Default: "25"},
 	{Name: "randomFactor", Type: "INTEGER", Default: "15"},
 	{Name: "recommendationsAfterDownload", Type: "INTEGER", Default: "1"},
+	{Name: "pictureInPicture", Type: "INTEGER", Default: "0"},
 }
 
 var statsColumns = []Column{
