@@ -2,7 +2,7 @@
 ## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
--   Fetch Song Recommendations not working
+-   Statistics page breaks
 -   Thumbnail changing for songs is not working
 -   Song volume changes after song change while muted
 -   new readme images

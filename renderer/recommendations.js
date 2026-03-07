@@ -81,12 +81,12 @@ async function getRecommendations() {
 
 async function calculateArtistPreference() {
 	let songTimes =
-		await callSqlite({
+		(await callSqlite({
 			db: "musics",
 			query: "SELECT song_id, SUM(end_time - start_time) AS total_seconds FROM timers GROUP BY song_id",
 			args: [],
 			fetch: true,
-		}) || [];
+		})) || [];
 
 	const artistTimes = {};
 
@@ -121,7 +121,7 @@ async function fetchRecommendationsData(input) {
 		fetch: true,
 	});
 
-	const existingArtists = new Set(recommendationRows.map(row => row.artist_name.toLowerCase()));
+	const existingArtists = new Set(recommendationRows.map(row => (row.artist_name ?? "").toLowerCase()).filter(Boolean));
 	const artists = Array.isArray(input) ? input : input ? [input] : Array.from(new Set(Array.from(songNameCache.values()).map(song => song.artist)));
 	const artistsToProcess = artists.filter(artist => artist && !existingArtists.has(artist.toLowerCase()));
 
