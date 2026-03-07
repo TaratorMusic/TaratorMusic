@@ -12,26 +12,26 @@ const events = ["raise", "quit", "next", "previous", "pause", "playpause", "stop
 
 events.forEach(eventName => {
 	player.on(eventName, (...args) => {
-		if (eventName === "raise") ipcRenderer.invoke("raise-window");
-		else if (eventName === "quit") ipcRenderer.invoke("close-app");
-		else if (eventName === "next") playNextSong();
-		else if (eventName === "previous") playPreviousSong();
-		else if (eventName === "pause") {
+		if (eventName == "raise") ipcRenderer.invoke("raise-window");
+		else if (eventName == "quit") ipcRenderer.invoke("close-app");
+		else if (eventName == "next") playNextSong();
+		else if (eventName == "previous") playPreviousSong();
+		else if (eventName == "pause") {
 			playPause();
 			playing = false;
-		} else if (eventName === "playpause") playingSongsID ? playPause() : randomSongFunctionMainMenu();
-		else if (eventName === "stop") {
+		} else if (eventName == "playpause") playingSongsID ? playPause() : randomSongFunctionMainMenu();
+		else if (eventName == "stop") {
 			playPause();
 			playing = false;
-		} else if (eventName === "play") {
+		} else if (eventName == "play") {
 			console.log("unused function for now:", eventName);
 			playing = true;
-		} else if (eventName === "seek" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
-		else if (eventName === "position" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
-		else if (eventName === "open") console.log("unused function for now:", eventName, args);
-		else if (eventName === "volume") console.log("unused function for now:", eventName, args);
-		else if (eventName === "loopStatus") toggleLoop();
-		else if (eventName === "shuffle") toggleShuffle();
+		} else if (eventName == "seek" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
+		else if (eventName == "position" && audioPlayer) audioPlayer.stdin.write(`seek ${args[0].position / 1000000}\n`);
+		else if (eventName == "open") console.log("unused function for now:", eventName, args);
+		else if (eventName == "volume") console.log("unused function for now:", eventName, args);
+		else if (eventName == "loopStatus") toggleLoop();
+		else if (eventName == "shuffle") toggleShuffle();
 	});
 });
 

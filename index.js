@@ -52,23 +52,23 @@ autoUpdater.autoInstallOnAppQuit = false;
 let mainWindow;
 
 function createWindow() {
-	// const splash = new BrowserWindow({
-	// 	width: 1600,
-	// 	height: 850,
-	// 	title: "TaratorMusic",
-	// 	icon: path.join(__dirname, "assets/tarator16_icon.png"),
-	// 	frame: false,
-	// 	closable: true,
-	// 	transparent: true,
-	// 	alwaysOnTop: true,
-	// 	resizable: false,
-	// });
-
-	// splash.loadFile("renderer/splash.html");
+	const splash = new BrowserWindow({
+		width: 1600,
+		height: 850,
+		title: "TaratorMusic",
+		icon: path.join(__dirname, "assets/tarator16_icon.png"),
+		frame: false,
+		closable: true,
+		transparent: true,
+		alwaysOnTop: true,
+		resizable: false,
+	});
+    
+	splash.loadFile("renderer/splash.html");
 
 	ipcMain.on("renderer-domready", e => {
-		if (e.sender.id !== mainWindow.webContents.id) return;
-		// if (splash && !splash.isDestroyed()) splash.destroy();
+		if (e.sender.id != mainWindow.webContents.id) return;
+		if (splash && !splash.isDestroyed()) splash.destroy();
 		if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
 	});
 
@@ -90,16 +90,17 @@ function createWindow() {
 		mainWindow.webContents.send("save-progress");
 		const timeout = setTimeout(() => {
 			mainWindow.destroy();
-			if (process.platform !== "darwin") app.quit();
+			if (process.platform != "darwin") app.quit();
 		}, 2000);
 		ipcMain.once("save-complete", () => {
 			clearTimeout(timeout);
 			mainWindow.destroy();
-			if (process.platform !== "darwin") app.quit();
+			if (process.platform != "darwin") app.quit();
 		});
 	});
 
-	mainWindow.loadFile("renderer/index.html");mainWindow.show();
+	mainWindow.loadFile("renderer/index.html");
+	mainWindow.show();
 }
 
 app.whenReady().then(() => {

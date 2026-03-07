@@ -68,12 +68,19 @@ function changeBackground(color) {
 }
 
 async function redownloadAllSongs() {
-	const rows = callSqlite({ db: "musics", query: "SELECT song_id, song_name, song_url FROM songs", fetch: true });
+    const rows = [...songNameCache.entries()].map(([song_id, song]) => ({
+        song_id,
+        song_name: song.song_name,
+        song_url: song.song_url,
+        song_extension: song.song_extension,
+        thumbnail_extension: song.thumbnail_extension,
+    }));
+
 	const existingFiles = fs.readdirSync(musicFolder);
 	const existingIds = new Set(existingFiles.map(file => path.parse(file).name));
 	const filteredRows = rows.filter(row => !existingIds.has(row.song_id));
 
-	if (filteredRows.length === 0) {
+	if (filteredRows.length == 0) {
 		await alertModal("No songs to redownload.");
 		return;
 	}
@@ -94,12 +101,12 @@ async function redownloadAllSongs() {
 			info = await getVideoInfo(videoUrl);
 			document.getElementById("downloadModalText").innerText = `Thumbnail found for ${row.song_name}. Progress: ${i + 1} of ${filteredRows.length}.`;
 		} catch {
-			if (checkAllSongs === "SkipAll") continue;
-			if (checkAllSongs === "AskEach") {
+			if (checkAllSongs == "SkipAll") continue;
+			if (checkAllSongs == "AskEach") {
 				confirmed = await confirmModal(`No URL for "${row.song_name}". Search YouTube?`, "Yes", "No");
 				if (!confirmed) continue;
 			}
-			if (checkAllSongs === "SearchAll" || (checkAllSongs === "AskEach" && confirmed)) {
+			if (checkAllSongs == "SearchAll" || (checkAllSongs == "AskEach" && confirmed)) {
 				try {
 					const newUrl = await searchInYoutube(row.song_name);
 					info = await getVideoInfo(videoUrl);
@@ -123,20 +130,20 @@ async function redownloadAllSongs() {
 			thumbnail: bestThumbnail.url || "",
 		});
 
-		if (i + 1 !== filteredRows.length) await sleep(500);
+		if (i + 1 != filteredRows.length) await sleep(500);
 	}
 
 	await renderPlaylistUI("TaratorMusic Old Songs", path.join(appThumbnailFolder, "tarator_icon.png"), songs);
 }
 
 async function stabiliseVolumeToggleTogglerFunction() {
-	stabiliseVolumeToggle = stabiliseVolumeToggle === 1 ? 0 : 1;
+	stabiliseVolumeToggle = stabiliseVolumeToggle == 1 ? 0 : 1;
 	await callSqlite({ db: "settings", query: "UPDATE settings SET stabiliseVolumeToggle = ?", args: [stabiliseVolumeToggle] });
 	console.log("New stabiliseVolumeToggle", stabiliseVolumeToggle);
 }
 
 async function recommendationsToggleTogglerFunction() {
-	recommendationsAfterDownload = recommendationsAfterDownload === 1 ? 0 : 1;
+	recommendationsAfterDownload = recommendationsAfterDownload == 1 ? 0 : 1;
 	await callSqlite({ db: "settings", query: "UPDATE settings SET recommendationsAfterDownload = ?", args: [recommendationsAfterDownload] });
 	console.log("New recommendationsAfterDownload", recommendationsAfterDownload);
 }
@@ -152,7 +159,7 @@ async function saveRecommendationWeights() {
 		total += theValue;
 	}
 
-	if (total !== 100) return await alertModal("The total of all weights must equal to 100.");
+	if (total != 100) return await alertModal("The total of all weights must equal to 100.");
 
 	popularityFactor = document.getElementById("weight1").value;
 	artistStrengthFactor = document.getElementById("weight2").value;

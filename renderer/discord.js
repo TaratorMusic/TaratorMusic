@@ -36,15 +36,15 @@ function startDaemon() {
 function updateDiscordStatus(status) {
 	const element = document.getElementById("mainmenudiscordapi");
 
-	if (status === "online") {
+	if (status == "online") {
 		element.innerHTML = "Discord RPC Status: Online";
 		element.style.color = "green";
 		discordRPCstatus = true;
-	} else if (status === "error") {
+	} else if (status == "error") {
 		element.innerHTML = "Discord RPC Status: Error";
 		element.style.color = "red";
 		discordRPCstatus = false;
-	} else if (status === "disabled") {
+	} else if (status == "disabled") {
 		element.innerHTML = "Discord RPC Status: Disabled";
 		element.style.color = "yellow";
 		discordRPCstatus = false;

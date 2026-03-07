@@ -40,7 +40,7 @@ async function normalizeAudio(filePath) {
 
 async function processAllFiles() {
 	const rows = Array.from(songNameCache.entries())
-		.filter(([_, data]) => data.stabilised !== 1)
+		.filter(([_, data]) => data.stabilised != 1)
 		.map(([song_id, data]) => ({
 			song_id,
 			song_extension: data.song_extension,
@@ -64,6 +64,10 @@ async function processAllFiles() {
 				query: "UPDATE songs SET stabilised = 1 WHERE song_id = ?",
 				args: [row.song_id],
 			});
+
+			const cached = songNameCache.get(row.song_id);
+
+			if (cached) cached.stabilised = 1;
 
 			processedCount++;
 			if (updateResult.changes > 0) {

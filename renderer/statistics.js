@@ -8,27 +8,22 @@ let songsTable;
 let timersTable;
 
 async function renderStatistics() {
-	const rowRes = await callSqlite({
-		db: "musics",
-		query: "SELECT 1 FROM timers LIMIT 1",
-		fetch: true,
-	});
-
-	if (!rowRes.length) return alertModal("You haven't listened to any songs yet.");
-
-	songsTable = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
-		song_id,
-		...data,
-	}));
-
 	timersTable = await callSqlite({
 		db: "musics",
 		query: "SELECT song_id, start_time, end_time, playlist FROM timers",
 		fetch: true,
 	});
 
-	document.getElementById("statistics-content").style.display = "flex";
-	statisticsContent.innerHTML = "";
+	if (!timersTable.length) return alertModal("You haven't listened to any songs yet.");
+
+	songsTable = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
+		song_id,
+		...data,
+	}));
+
+	const statsEl = document.getElementById("statistics-content");
+	statsEl.style.display = "flex";
+	statsEl.innerHTML = "";
 
 	await createMostListenedSongBox();
 	await createPieCharts();
@@ -41,12 +36,12 @@ async function createMostListenedSongBox() {
 	const most_listened_song_res = await callSqlite({
 		db: "musics",
 		query: `
-        SELECT song_id, SUM(end_time - start_time) AS total_time
-        FROM timers
-        GROUP BY song_id
-        ORDER BY total_time DESC
-        LIMIT 1
-    `,
+            SELECT song_id, SUM(end_time - start_time) AS total_time
+            FROM timers
+            GROUP BY song_id
+            ORDER BY total_time DESC
+            LIMIT 1
+        `,
 		fetch: true,
 	});
 
@@ -210,7 +205,7 @@ async function createPieCharts() {
 
 	for (const timer of timersTable) {
 		const fullSongId = "tarator-" + timer.song_id;
-		const matchedSong = songsTable.find(song => song.song_id === fullSongId);
+		const matchedSong = songsTable.find(song => song.song_id == fullSongId);
 		if (!matchedSong || !timer.start_time || !timer.end_time) continue;
 		const listenDuration = Math.max(0, timer.end_time - timer.start_time);
 
@@ -337,11 +332,11 @@ async function generalStatistics() {
 	const leastListenRowRes = await callSqlite({
 		db: "musics",
 		query: `
-        SELECT *
-        FROM timers
-        ORDER BY start_time ASC
-        LIMIT 1
-    `,
+            SELECT *
+            FROM timers
+            ORDER BY start_time ASC
+            LIMIT 1
+        `,
 		fetch: true,
 	});
 
@@ -350,11 +345,11 @@ async function generalStatistics() {
 	const countsRes = await callSqlite({
 		db: "musics",
 		query: `
-        SELECT 
-            COUNT(CASE WHEN playlist IS NULL THEN 1 END) AS null_count,
-            COUNT(CASE WHEN playlist IS NOT NULL THEN 1 END) AS not_null_count
-        FROM timers
-    `,
+            SELECT 
+                COUNT(CASE WHEN playlist IS NULL THEN 1 END) AS null_count,
+                COUNT(CASE WHEN playlist IS NOT NULL THEN 1 END) AS not_null_count
+            FROM timers
+        `,
 		fetch: true,
 	});
 
@@ -444,28 +439,28 @@ async function htmlTableStats(sortedData = null) {
 		arrowSpan.style.right = "5px";
 		arrowSpan.style.fontSize = "0.8em";
 
-		if (sortOrder[key]) arrowSpan.textContent = sortOrder[key] === "asc" ? "▲" : "▼";
+		if (sortOrder[key]) arrowSpan.textContent = sortOrder[key] == "asc" ? "▲" : "▼";
 
 		th.appendChild(textSpan);
 		th.appendChild(arrowSpan);
 
 		th.onclick = () => {
 			Object.keys(sortOrder).forEach(k => {
-				if (k !== key) delete sortOrder[k];
+				if (k != key) delete sortOrder[k];
 			});
-			const order = sortOrder[key] === "asc" ? "desc" : sortOrder[key] === "desc" ? "asc" : "desc";
+			const order = sortOrder[key] == "asc" ? "desc" : sortOrder[key] == "desc" ? "asc" : "desc";
 			sortOrder[key] = order;
 			const sorted = [...rows].sort((a, b) => {
 				let aVal = a[key];
 				let bVal = b[key];
-				if (typeof aVal === "string" && aVal.endsWith("%")) aVal = parseFloat(aVal);
-				if (typeof bVal === "string" && bVal.endsWith("%")) bVal = parseFloat(bVal);
+				if (typeof aVal == "string" && aVal.endsWith("%")) aVal = parseFloat(aVal);
+				if (typeof bVal == "string" && bVal.endsWith("%")) bVal = parseFloat(bVal);
 				if (!isNaN(aVal) && !isNaN(bVal)) {
 					aVal = parseFloat(aVal);
 					bVal = parseFloat(bVal);
 				}
-				if (aVal < bVal) return order === "asc" ? -1 : 1;
-				if (aVal > bVal) return order === "asc" ? 1 : -1;
+				if (aVal < bVal) return order == "asc" ? -1 : 1;
+				if (aVal > bVal) return order == "asc" ? 1 : -1;
 				return 0;
 			});
 			htmlTableStats(sorted);
@@ -514,7 +509,7 @@ function findListenPercentage(songId) {
 		const timerStats = timersTableMap[songId] || { playCount: 0, totalDuration: 0 };
 		const totalSongLength = timerStats.playCount * songLength;
 
-		if (!songLength || totalSongLength === 0) return 0;
+		if (!songLength || totalSongLength == 0) return 0;
 		return ((timerStats.totalDuration / totalSongLength) * 100).toFixed(0);
 	} catch {
 		return 0;

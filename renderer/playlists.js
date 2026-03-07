@@ -8,7 +8,7 @@ async function getPlaylists(displaying) {
 
 		playlistsMap.clear();
 
-		if (!playlists || playlists.length === 0) {
+		if (!playlists || playlists.length == 0) {
 			console.log("No playlists found in the database.");
 			if (displaying) displayPlaylists([]);
 			return;
@@ -173,7 +173,7 @@ async function saveNewPlaylist() {
 	const existingRes = [];
 
 	for (const [id, data] of playlistsCache.entries()) {
-		if (data.name === name) {
+		if (data.name == name) {
 			existingRes.push({ id });
 			break;
 		}
@@ -189,6 +189,13 @@ async function saveNewPlaylist() {
 			db: "playlists",
 			query: "INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)",
 			args: [id, name, JSON.stringify([]), ext],
+		});
+
+		playlistsMap.set(id, {
+			id: id,
+			name: name,
+			songs: [],
+			thumbnail_extension: ext,
 		});
 	});
 	fs.copyFileSync(srcPath, dest);
@@ -241,6 +248,14 @@ async function saveEditedPlaylist() {
 				query: "UPDATE playlists SET name = ?, thumbnail_extension = ? WHERE id = ?",
 				args: [newName, newThumbnailExtension, playlistID],
 			});
+
+			const playlist = playlistsMap.get(playlistID);
+
+			if (playlist) {
+				playlist.name = newName;
+				playlist.thumbnail_extension = newThumbnailExtension;
+			}
+
 			closeModal();
 		})
 		.catch(err => {
@@ -256,7 +271,7 @@ function openAddToPlaylistModal(songName) {
 	try {
 		const playlists = Array.from(playlistsMap.values());
 
-		if (!playlists || playlists.length === 0) {
+		if (!playlists || playlists.length == 0) {
 			console.log("No playlists found.");
 			displayPlaylists([]);
 			return;
@@ -324,7 +339,7 @@ function addToSelectedPlaylists(songName) {
 		if (!selectedPlaylists.includes(playlistId)) {
 			let songsInPlaylist = playlist.songs ? [...playlist.songs] : [];
 			if (songsInPlaylist.includes(songName)) {
-				const updatedSongs = songsInPlaylist.filter(song => song !== songName);
+				const updatedSongs = songsInPlaylist.filter(song => song != songName);
 				callSqlite({
 					db: "playlists",
 					query: "UPDATE playlists SET songs = ? WHERE id = ?",
@@ -340,7 +355,7 @@ function addToSelectedPlaylists(songName) {
 	}
 
 	closeModal();
-	getPlaylists(getComputedStyle(document.getElementById("playlists-content")).display === "grid");
+	getPlaylists(getComputedStyle(document.getElementById("playlists-content")).display == "grid");
 }
 
 function deletePlaylist() {
@@ -358,6 +373,7 @@ function deletePlaylist() {
 		});
 
 		callSqlite({ db: "playlists", query: "DELETE FROM playlists WHERE id = ?", args: [playlistID] });
+		playlistsMap.delete(playlistID);
 		console.log(`Deleted playlist "${playlistName}" and its song links.`);
 
 		closeModal();

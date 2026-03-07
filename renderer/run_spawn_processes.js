@@ -6,7 +6,7 @@ async function createAppThumbnailsFolder() {
 
 		proc.on("error", reject);
 		proc.on("close", async code => {
-			if (code !== 0) return reject(alertModal(`Go process exited with code ${code}`));
+			if (code != 0) return reject(alertModal(`Go process exited with code ${code}`));
 			await alertModal("App thumbnails installed. App restart required for the effects.");
 			ipcRenderer.send("restart-app");
 			resolve();
@@ -81,12 +81,13 @@ async function grabAndStoreSongInfo(songId) {
 					});
 
 					const cached = songNameCache.get(songIdUsed);
-					console.log("New song info added for", cached.song_name, ": ", meta.artist, meta.genre, meta.language, songIdUsed);
 
 					if (cached) {
-						if (cached.artist == null || cached.artist === "") cached.artist = meta.artist;
-						if (cached.genre == null || cached.genre === "") cached.genre = meta.genre;
-						if (cached.language == null || cached.language === "") cached.language = meta.language;
+						if (cached.artist == null || cached.artist == "") cached.artist = meta.artist;
+						if (cached.genre == null || cached.genre == "") cached.genre = meta.genre;
+						if (cached.language == null || cached.language == "") cached.language = meta.language;
+
+						console.log("New song info added for", cached.song_name, ":", meta.artist, meta.genre, meta.language, songIdUsed);
 
 						if (document.getElementById("customiseModal").style.display == "block" && songIdUsed == document.getElementById("customiseModal").dataset.songID) {
 							document.getElementById("customiseSongGenre").value = meta.genre;
@@ -164,7 +165,7 @@ async function startupCheck() {
 		if (missingSongExts.length > 0) {
 			const musicFiles = fs.readdirSync(musicFolder);
 			for (const [song_id, data] of missingSongExts) {
-				const file = musicFiles.find(f => path.parse(f).name === song_id);
+				const file = musicFiles.find(f => path.parse(f).name == song_id);
 				if (file) {
 					const ext = path.extname(file).slice(1);
 					data.song_extension = ext;
@@ -176,7 +177,7 @@ async function startupCheck() {
 		if (missingThumbExts.length > 0) {
 			const thumbFiles = fs.readdirSync(thumbnailFolder);
 			for (const [song_id, data] of missingThumbExts) {
-				const file = thumbFiles.find(f => path.parse(f).name === song_id);
+				const file = thumbFiles.find(f => path.parse(f).name == song_id);
 				if (file) {
 					const ext = path.extname(file).slice(1);
 					data.thumbnail_extension = ext;
@@ -191,7 +192,7 @@ async function startupCheck() {
 
 		for (const [playlistId, playlist] of playlistsMap.entries()) {
 			const filtered = playlist.songs.filter(id => validSongIds.has(id));
-			if (filtered.length !== playlist.songs.length) {
+			if (filtered.length != playlist.songs.length) {
 				playlist.songs = filtered;
 				callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(filtered), playlistId], fetch: false });
 			}
@@ -205,7 +206,7 @@ async function startupCheck() {
 		proc.stdout.on("data", chunk => (data += chunk));
 
 		proc.on("close", code => {
-			if (code !== 0) return reject(new Error(`Go process exited with code ${code}`));
+			if (code != 0) return reject(new Error(`Go process exited with code ${code}`));
 			try {
 				data = JSON.parse(data);
 				if (Object.keys(data).length != allMusics.length) {
@@ -222,29 +223,17 @@ async function startupCheck() {
 async function promptUserOnSongs(redownload) {
 	let thePrompt = "";
 
-	const stabilisedRes = callSqlite({
-		db: "musics",
-		query: "SELECT COUNT(*) AS total FROM songs WHERE size IS NULL",
-		fetch: true,
-	});
-
-	const artistRes = callSqlite({
-		db: "musics",
-		query: "SELECT COUNT(*) AS total FROM songs WHERE artist IS NULL",
-		fetch: true,
-	});
-
-	const stabilisedNull = stabilisedRes[0].total;
-	const artistNull = artistRes[0].total;
+	const stabilisedNull = [...songNameCache.values()].filter(v => v.size == null).length;
+	const artistNull = [...songNameCache.values()].filter(v => v.artist == null).length;
 
 	if (redownload > 0) thePrompt += `You have ${redownload} songs not installed. `;
 
-	if (stabilisedNull !== 0 || artistNull !== 0) {
-		if (stabilisedNull !== 0) thePrompt += `You have ${stabilisedNull} songs not stabilised. `;
-		if (artistNull !== 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information. `;
+	if (stabilisedNull != 0 || artistNull != 0) {
+		if (stabilisedNull != 0) thePrompt += `You have ${stabilisedNull} songs not stabilised. `;
+		if (artistNull != 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information. `;
 	}
 
-	if (thePrompt !== "") thePrompt += "Complete your songs data using the options in the settings menu.";
+	if (thePrompt != "") thePrompt += "Complete your songs data using the options in the settings menu.";
 
 	return thePrompt;
 }
@@ -304,17 +293,30 @@ async function foundNewSongs(folderSongs, databaseSongs) {
 			callSqlite({
 				db: "musics",
 				query: `
-			                INSERT INTO songs (
-			                    song_id, song_name, song_url, song_length, seconds_played,
-			                    times_listened, stabilised, size, speed, bass, treble,
-			                    midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-			                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			            `,
+                    INSERT INTO songs (
+                        song_id, song_name, song_url, song_length, seconds_played,
+                        times_listened, stabilised, size, speed, bass, treble,
+                        midrange, volume, song_extension, thumbnail_extension, artist, genre, language
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `,
 				args: row,
 				fetch: false,
+			});
+
+			songNameCache.set(row[0], {
+				song_name: row[1],
+				song_length: row[3],
+				song_extension: row[13],
+				song_url: row[2],
+				thumbnail_extension: row[14],
+				stabilised: row[6],
+				size: row[7],
+				genre: row[16],
+				artist: row[15],
+				language: row[17],
 			});
 		}
 	}
 
-	await alertModal(promptUserOnSongs(Object.keys(databaseOnly).length));
+	await alertModal(await promptUserOnSongs(Object.keys(databaseOnly).length));
 }

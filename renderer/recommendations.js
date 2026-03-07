@@ -1,4 +1,4 @@
-function getRecommendations() {
+async function getRecommendations() {
 	const artistPreferenceScore = calculateArtistPreference();
 	if (artistPreferenceScore == 999) return alertModal("No songs listened yet to give recommendations of.");
 	const songMap = new Map();
@@ -8,7 +8,7 @@ function getRecommendations() {
 	const notInterestedSet = new Set(notInterestedSongs.map(song => song.song_name));
 	const existingArtistSet = new Set(Array.from(songNameCache.values()).map(song => song.artist));
 
-	const listenTimesMap = callSqlite({
+	const listenTimesMap = await callSqlite({
 		db: "musics",
 		query: "SELECT songs.artist, SUM(end_time - start_time) AS totalListenTime FROM timers JOIN songs ON timers.song_id = songs.song_id GROUP BY songs.artist",
 		args: [],
@@ -22,7 +22,7 @@ function getRecommendations() {
 
 	const maxListenTime = Math.max(...Object.values(listenTimesMap), 1);
 
-	const artists = callSqlite({
+	const artists = await callSqlite({
 		db: "musics",
 		query: "SELECT artist_name, deezer_songs_array, similar_artists_array, artist_fan_amount FROM recommendations",
 		args: [],
@@ -79,9 +79,9 @@ function getRecommendations() {
 	return sortedPointsMap;
 }
 
-function calculateArtistPreference() {
+async function calculateArtistPreference() {
 	let songTimes =
-		callSqlite({
+		await callSqlite({
 			db: "musics",
 			query: "SELECT song_id, SUM(end_time - start_time) AS total_seconds FROM timers GROUP BY song_id",
 			args: [],

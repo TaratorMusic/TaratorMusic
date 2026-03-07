@@ -533,7 +533,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		const thumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
 
 		let imgElement = null;
-		if (songIndex !== null) {
+		if (songIndex != null) {
 			imgElement = document.getElementById(`thumbnailImage${songIndex}`);
 		} else {
 			imgElement = document.getElementById("thumbnailImage");
@@ -545,7 +545,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 			return new Promise((resolve, reject) => {
 				https
 					.get(url, res => {
-						if (res.statusCode !== 200) {
+						if (res.statusCode != 200) {
 							reject(new Error(`Failed to fetch thumbnail: ${res.statusCode}`));
 							return;
 						}
@@ -562,7 +562,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 		}
 
 		if (imgElement) {
-			if (imgElement.tagName === "IMG" && imgElement.src) {
+			if (imgElement.tagName == "IMG" && imgElement.src) {
 				if (imgElement.src.startsWith("data:image")) {
 					const base64data = imgElement.src.split(",")[1];
 					fs.writeFileSync(thumbnailPath, Buffer.from(base64data, "base64"));
@@ -579,7 +579,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 				}
 			} else if (imgElement.style?.backgroundImage) {
 				const bgUrl = imgElement.style.backgroundImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
-				if (bgUrl && bgUrl !== "none") {
+				if (bgUrl && bgUrl != "none") {
 					if (bgUrl.startsWith("data:image")) {
 						const base64data = bgUrl.split(",")[1];
 						fs.writeFileSync(thumbnailPath, Buffer.from(base64data, "base64"));
@@ -1009,6 +1009,22 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
                     `,
 					args: [playlistID, playlistName, songsJson, "jpg"],
 				});
+				let parsedSongs = [];
+
+				if (songsJson) {
+					try {
+						parsedSongs = JSON.parse(songsJson);
+					} catch {
+						parsedSongs = [];
+					}
+				}
+
+				playlistsMap.set(playlistID, {
+					id: playlistID,
+					name: playlistName,
+					songs: parsedSongs,
+					thumbnail_extension: "jpg",
+				});
 			} catch (err) {
 				console.log("Failed to save playlist:", err);
 			}
@@ -1035,7 +1051,7 @@ function getYtDlpPath() {
 
 async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 	return new Promise((resolve, reject) => {
-		if (!videoUrl || typeof videoUrl !== "string") {
+		if (!videoUrl || typeof videoUrl != "string") {
 			return reject(new Error("Invalid YouTube URL"));
 		}
 
@@ -1164,7 +1180,7 @@ function getVideoInfo(url) {
 		yt.stderr.on("data", chunk => (err += chunk));
 
 		yt.on("close", code => {
-			if (code !== 0) return reject(new Error(err || `yt-dlp exited ${code}`));
+			if (code != 0) return reject(new Error(err || `yt-dlp exited ${code}`));
 
 			try {
 				resolve(JSON.parse(data));

@@ -359,6 +359,8 @@ async function initialiseDatabases() {
 			ipcRenderer.send("copy-binaries");
 		}
 	});
+
+	ipcRenderer.send("renderer-domready");
 }
 
 setInterval(async () => {
@@ -994,7 +996,7 @@ function playMusic(songId, playlistId) {
 
 		if (playlistId) {
 			const pid = playlistId.id || playlistId;
-			if (newPlaylistID !== pid) {
+			if (newPlaylistID != pid) {
 				newPlaylistID = pid;
 				playlistPlayedSongs.splice(0, playlistPlayedSongs.length);
 			}
@@ -1509,33 +1511,45 @@ function removeSong(fileToDelete) {
 	confirmModal("Delete this song?", "Delete", "Keep").then(confirmed => {
 		if (!confirmed) return;
 
-		callSqlite({ db: "musics", query: "SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?", args: [fileToDelete], fetch: true }).then(rowRes => {
+		callSqlite({
+			db: "musics",
+			query: "SELECT song_extension, thumbnail_extension FROM songs WHERE song_id = ?",
+			args: [fileToDelete],
+			fetch: true,
+		}).then(rowRes => {
 			const row = rowRes[0];
+
 			const musicFilePath = path.join(musicFolder, fileToDelete + "." + row.song_extension);
 			const thumbnailFilePath = path.join(thumbnailFolder, fileToDelete + "." + row.thumbnail_extension);
 
 			if (fs.existsSync(musicFilePath)) fs.unlinkSync(musicFilePath);
 			if (fs.existsSync(thumbnailFilePath)) fs.unlinkSync(thumbnailFilePath);
 
-			callSqlite({ db: "playlists", query: "SELECT * FROM playlists WHERE songs = ?", args: [JSON.stringify([fileToDelete])], fetch: true }).then(playlists => {
-				playlists.forEach(playlist => {
-					const songs = JSON.parse(playlist.songs);
-					const updatedSongs = songs.filter(song => song !== fileToDelete);
-					callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(updatedSongs), playlist.id] });
-				});
-			});
+			for (const [id, playlist] of playlistsMap) {
+				if (!playlist.songs.includes(fileToDelete)) continue;
 
-			callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_id = ?", args: [fileToDelete], fetch: false });
-			callSqlite({ db: "musics", query: "DELETE FROM timers WHERE song_id = ?", args: [fileToDelete], fetch: false });
+				const updatedSongs = playlist.songs.filter(song => song != fileToDelete);
+				playlist.songs = updatedSongs;
+
+				callSqlite({
+					db: "playlists",
+					query: "UPDATE playlists SET songs = ? WHERE id = ?",
+					args: [JSON.stringify(updatedSongs), id],
+				});
+			}
+
+			callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_id = ?", args: [fileToDelete] });
+			callSqlite({ db: "musics", query: "DELETE FROM timers WHERE song_id = ?", args: [fileToDelete] });
 
 			songNameCache.delete(fileToDelete);
 
 			closeModal();
 			document.getElementById("customiseModal").style.display = "none";
+
 			const divToRemove = document.querySelector(`div[alt="${fileToDelete}.${row.song_extension}"]`);
 			if (divToRemove) divToRemove.remove();
+
 			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
-			getPlaylists();
 		});
 	});
 }
@@ -1706,19 +1720,23 @@ function bottomRightFunctions(input) {
 	if (input == "addToPlaylist") {
 		openAddToPlaylistModal(playingSongsID);
 	} else if (input == "addToFavorites") {
-		callSqlite({ db: "playlists", query: "SELECT songs FROM playlists WHERE id = ?", args: ["Favorites"], fetch: true }).then(favRows => {
-			let songs = [];
-			const fav = favRows[0];
-			if (fav && fav.songs) songs = JSON.parse(fav.songs);
+		const fav = playlistsMap.get("Favorites");
 
-			if (!songs.includes(playingSongsID)) {
-				songs.push(playingSongsID);
-				callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(songs), "Favorites"] });
+		if (!fav) return;
 
-				if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
-				addToFavoritesButtonBottomRight.style.color = "red";
-			}
-		});
+		if (!fav.songs.includes(playingSongsID)) {
+			fav.songs.push(playingSongsID);
+
+			callSqlite({
+				db: "playlists",
+				query: "UPDATE playlists SET songs = ? WHERE id = ?",
+				args: [JSON.stringify(fav.songs), "Favorites"],
+			});
+
+			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
+
+			addToFavoritesButtonBottomRight.style.color = "red";
+		}
 	} else if (input == "customise") {
 		opencustomiseModal(playingSongsID);
 	} else if (input == "lyrics") {
@@ -1791,8 +1809,6 @@ function tick() {
 
 document.addEventListener("DOMContentLoaded", function () {
 	initialiseDatabases();
-
-	ipcRenderer.send("renderer-domready");
 
 	if (platform == "linux") loadJSFile("mpris");
 

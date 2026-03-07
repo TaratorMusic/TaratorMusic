@@ -22,7 +22,7 @@ function formatTime(seconds) {
 }
 
 function parseTimeToSeconds(timeStr) {
-	if (typeof timeStr !== "string") return null;
+	if (typeof timeStr != "string") return null;
 	const parts = timeStr.split(":").map(Number);
 	if (parts.some(isNaN)) return null;
 
@@ -89,7 +89,7 @@ function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
 		btn1.textContent = button1;
 		actions.appendChild(btn1);
 
-		if (button2 !== null) {
+		if (button2 != null) {
 			const btn2 = document.createElement("button");
 			btn2.id = "confirmModalSecondary";
 			btn2.textContent = button2;
@@ -110,7 +110,7 @@ function confirmModal(description, button1 = "Confirm", button2 = "Cancel") {
 		}
 
 		btn1.addEventListener("click", () => cleanup(true));
-		if (button2 !== null) {
+		if (button2 != null) {
 			overlay.querySelector("#confirmModalSecondary").addEventListener("click", () => cleanup(false));
 		}
 	});

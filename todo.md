@@ -2,12 +2,10 @@
 ## Version 1.8.3 Planned Features
 
 -   Picture in picture window with customisation
--   Redownload Old Songs not working
 -   Stabilise All Songs not working
 -   Fetch Song Recommendations not working
 -   Thumbnail changing for songs is not working
 -   Song volume changes after song change while muted
--   Some stuff updating the db does not update the cache, some stuff unnecessarily calls the db instead of the caches
 -   new readme images
 
 ### Version 1.8.4 Planned Features
