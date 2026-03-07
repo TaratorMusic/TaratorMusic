@@ -1265,6 +1265,7 @@ function mute() {
 		document.getElementById("muteButton").innerHTML = `<img src="${path.join(appThumbnailFolder, `mute_on.svg`)}" alt="Mute Deactive">`;
 		document.getElementById("muteButton").classList.remove("active");
 	}
+	volume = volumeControl.value;
 	if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
 	callSqlite({
 		db: "settings",
@@ -1433,7 +1434,7 @@ async function saveEditedSong() {
 	let element, thumbnailPath;
 
 	if (songID.includes("tarator")) {
-		const row = songNameCache.get(songID) || {};
+		const row = songNameCache.get(songID);
 		if (!row) return await alertModal("Song not found in database.");
 
 		element = document.querySelector(`.music-item[data-file-name="${songID}"]`);
@@ -1442,16 +1443,28 @@ async function saveEditedSong() {
 		thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
 
 		const newThumbFile = document.getElementById("customiseThumbnail").files[0];
-		if (newThumbFile && newThumbFile.path && fs.existsSync(newThumbFile.path)) fs.writeFileSync(thumbnailPath, fs.readFileSync(newThumbFile.path));
 
-		const { updated } = await callSqlite({
+        if (newThumbFile) {
+			const buffer = Buffer.from(await newThumbFile.arrayBuffer());
+			fs.writeFileSync(thumbnailPath, buffer);
+		}
+
+		const updated = await callSqlite({
 			db: "musics",
-			query: "UPDATE songs SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ? WHERE song_id = ? RETURNING song_name, song_extension, song_length, song_url, thumbnail_extension, genre, artist, language",
+			query: "UPDATE songs SET song_name = ?, song_url = ?, genre = ?, artist = ?, language = ? WHERE song_id = ?",
 			args: [newNameInput, songsUrl, songsGenre, songsArtist, songsLanguage, songID],
-			fetch: true,
+			fetch: false,
 		});
 
-		if (updated) songNameCache.set(songID, updated);
+		const cached = songNameCache.get(songID);
+
+		if (cached) {
+			cached.song_name = newNameInput;
+			cached.song_url = songsUrl;
+			cached.genre = songsGenre;
+			cached.artist = songsArtist;
+			cached.language = songsLanguage;
+		}
 	} else {
 		await callSqlite({
 			db: "musics",
@@ -1490,15 +1503,15 @@ async function saveEditedSong() {
 		});
 
 		if (newNameInput == removeExtensions(playingSongsID)) {
-			updatedElement.classList.add("playing");
+			element.classList.add("playing");
 			if (songID.includes("tarator")) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 		}
 
-		const nameEl = updatedElement.querySelector(".song-name");
+		const nameEl = element.querySelector(".song-name");
 		if (nameEl) nameEl.textContent = newNameInput;
 
 		if (songID.includes("tarator")) {
-			const bgEl = updatedElement.querySelector(".background-element");
+			const bgEl = element.querySelector(".background-element");
 			if (bgEl) bgEl.style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 		}
 	} catch (err) {
