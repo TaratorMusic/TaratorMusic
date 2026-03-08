@@ -1,10 +1,9 @@
 ## Version 1.8.4 Planned Features
 
--   Is my music page loading a little bit slower?
+-   PiP in settings isnt toggled when the window is closed
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Total Time Spent in TaratorMusic: NaN minutes
 -   "Using TaratorMusic since Invalid Date"
--   Stabilise all button skips everything
 -   if no stats, redirect to the main menu
 -   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
 -   Change so when a new song is added we properly rendermusics again
@@ -13,13 +12,13 @@
 -   Compiling JS Script
 -   Add a shortcut for lyrics modal
 -   You need to swap back to offline mode to properly disable the buttons above
--   The app launch feels a tad bit slower
--   Improve ytdlp speeds to compensate for ytdlcore
+-   Improve ytdlp speeds to compensate for ytdlcore somehow
 -   Dont check for song info if all three values are already filled
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   Dc rich presence doesnt pause
--   Lyrics storage for picture in picture, and it should support multiple languages
+-   Lyrics storage for picture in picture
+-   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
 -   Fetch lyrics automatic function
 -   Fix streamed songs ids glitching inside playlists
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
@@ -27,9 +26,9 @@
 -   Add search queries like || && ! "" + ,
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Fix app resizing removing all recommendations-fetched songs
--   Search code for TODO'S
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   Stream seeking not working
+-   Search code for TODO'S
 
 ### Version 1.8.5 Planned Features
 
