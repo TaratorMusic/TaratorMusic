@@ -209,5 +209,5 @@ async function pictureInPictureTogglerFunction() {
 	pictureInPicture = pictureInPicture == 1 ? 0 : 1;
 	await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
 	console.log("New pictureInPicture", pictureInPicture);
-	pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer") : ipcRenderer.send("close-miniplayer");
+	pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer") : ipcRenderer.send("miniplayer-close");
 }

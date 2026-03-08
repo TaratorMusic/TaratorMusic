@@ -285,6 +285,7 @@ async function initialiseDatabases() {
 
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
 	document.getElementById("recommendationsToggle").checked = recommendationsAfterDownload == 1 ? true : false;
+	document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1 ? true : false;
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
 	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
 	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
@@ -982,7 +983,6 @@ function playMusic(songId, playlistId) {
 		} else {
 			thumbnailUrl = songData.thumbnail?.url || "";
 		}
-		console.log(thumbnailUrl);
 
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url('${thumbnailUrl}')`;
 
@@ -1859,6 +1859,10 @@ document.addEventListener("DOMContentLoaded", function () {
 		document.getElementById("updateModal").style.display = "block";
 	});
 
+	ipcRenderer.on("close-pip", async () => {
+		pictureInPicture = 0;
+		await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
+	});
 	ipcRenderer.on("player-previous", () => playPreviousSong());
 	ipcRenderer.on("player-playpause", () => playPause());
 	ipcRenderer.on("player-next", () => playNextSong());

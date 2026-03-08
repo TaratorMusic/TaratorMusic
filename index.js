@@ -210,6 +210,7 @@ app.whenReady().then(() => {
 	ipcMain.on("open-miniplayer", () => createMiniPlayer());
 	ipcMain.on("miniplayer-close", () => {
 		if (miniPlayer) miniPlayer.close();
+		mainWindow.webContents.send("close-pip");
 	});
 	ipcMain.on("miniplayer-minimize", () => {
 		if (miniPlayer) miniPlayer.minimize();
