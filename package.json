@@ -75,10 +75,12 @@
 			"synopsis": "A desktop music player application with playlist support, music downloading, volume stabilising and Discord integration.",
 			"asar": false,
 			"desktop": {
-				"Name": "TaratorMusic",
-				"Comment": "A desktop music player application with playlist support, music downloading, volume stabilising and Discord integration.",
-				"StartupWMClass": "TaratorMusic",
-				"Terminal": false
+				"entry": {
+					"Name": "TaratorMusic",
+					"Comment": "A desktop music player application with playlist support, music downloading, volume stabilising and Discord integration.",
+					"StartupWMClass": "TaratorMusic",
+					"Terminal": false
+				}
 			}
 		}
 	},
@@ -102,7 +104,6 @@
 	},
 	"devDependencies": {
 		"electron": "^40.7.0",
-		"electron-builder": "^26.8.1",
-		"electron-rebuild": "^3.2.9"
+		"electron-builder": "^26.8.1"
 	}
 }
