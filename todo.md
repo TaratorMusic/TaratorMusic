@@ -1,12 +1,7 @@
-
-## Version 1.8.3 Planned Features
-
--   Few todo left in miniplayer.html
--   new readme images
-
-### Version 1.8.4 Planned Features
+## Version 1.8.4 Planned Features
 
 -   Is my music page loading a little bit slower?
+-   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Total Time Spent in TaratorMusic: NaN minutes
 -   "Using TaratorMusic since Invalid Date"
 -   Stabilise all button skips everything
