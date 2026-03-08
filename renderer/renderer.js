@@ -982,6 +982,7 @@ function playMusic(songId, playlistId) {
 		} else {
 			thumbnailUrl = songData.thumbnail?.url || "";
 		}
+		console.log(thumbnailUrl);
 
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url('${thumbnailUrl}')`;
 
@@ -996,12 +997,6 @@ function playMusic(songId, playlistId) {
 		}
 
 		playing = true;
-
-		updateMiniPlayer({
-            thumbnail: thumbnailUrl,
-			songName: songName,
-			isPlaying: true,
-		});
 
 		if (playlistId) {
 			const pid = playlistId.id || playlistId;
@@ -1813,9 +1808,15 @@ function tick() {
 		const clamped = Math.min(pos, songDuration);
 		videoLength.textContent = `${formatTime(clamped)} / ${formatTime(songDuration)}`;
 		videoProgress.value = (clamped / songDuration) * 100;
+		const row = songNameCache.get(playingSongsID);
+
 		updateMiniPlayer({
 			progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
+			thumbnail: path.join(thumbnailFolder, `${playingSongsID}.${row.thumbnail_extension}`),
+			songName: row.song_name,
+			isPlaying: playing,
 		});
+
 		if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
 	}
 

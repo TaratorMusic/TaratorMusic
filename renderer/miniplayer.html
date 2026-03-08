@@ -78,6 +78,8 @@
 <script>
 	const { ipcRenderer } = require("electron");
 
+	let currentThumbnail; // To prevent reupdating the image every second
+
 	document.getElementById("previous-button").style.backgroundImage = "url(../assets/previous.svg)";
 	document.getElementById("next-button").style.backgroundImage = "url(../assets/next.svg)";
 	document.getElementById("pauseplay-button").style.backgroundImage = "url(../assets/play.svg)";
@@ -85,8 +87,11 @@
 	ipcRenderer.on("miniplayer-update", (_, data) => {
 		if (data.songName != undefined) document.getElementById("song-name").innerText = data.songName;
 		if (data.progress != undefined) document.getElementById("song-progress").innerText = data.progress;
-		if (data.thumbnail != undefined) document.getElementById("thumbnail").style.backgroundImage = `url(${data.thumbnail})`;
 		if (data.isPlaying != undefined) document.getElementById("pauseplay-button").style.backgroundImage = data.isPlaying ? "url(../assets/pause.svg)" : "url(../assets/play.svg)";
+		if (data.thumbnail != undefined && data.thumbnail != currentThumbnail) {
+			currentThumbnail = data.thumbnail;
+			document.getElementById("thumbnail").style.backgroundImage = `url(${currentThumbnail})`;
+		}
 	});
 
 	document.getElementById("previous-button").onclick = () => ipcRenderer.send("miniplayer-previous");
@@ -98,8 +103,6 @@
 
 <!--
 TODO:
-- Send all info every second. Thumbnail included, but it should check if the thumbnail has changed before changing it with a local variable.
-- Take all updateMiniPlayer()s and add only one to tick() with the needed info
 - We need the golden ratio for the PiP size, and fix it to that
 - Close button should set the PiP setting to 0
 - Add volume bar to the empty space
