@@ -1,7 +1,7 @@
 <main>
 	<div class="drag-area" style="display: flex; flex-direction: row">
 		<div style="width: 10vw; height: 10vw" id="taratorLogo"><img src="../assets/tarator16_icon.png" alt="" /></div>
-		<div style="width: 70vw; height: 10vw" id="song-name">Song Name</div>
+		<div id="song-name">Song Name</div>
 		<div style="width: 10vw; height: 10vw" id="close-button" class="no-drag">&#x2212;</div>
 		<div style="width: 10vw; height: 10vw" id="minimise-button" class="no-drag">&times;</div>
 	</div>
@@ -29,6 +29,14 @@
 	.no-drag {
 		-webkit-app-region: no-drag;
 		cursor: pointer;
+	}
+
+	#song-name {
+		width: 70vw;
+		height: 10vw;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 
 	#thumbnail {
@@ -74,7 +82,6 @@
 TODO:
 - Send all info every second. Thumbnail included, but it should check if the thumbnail has changed before changing it with a local variable.
 - We need the golden ratio for the PiP size, and fix it to that
-- The title overflows if its too long, fix
 - nextsong button has gray background, check the svg if its from the code if not idk
 - Close button should set the PiP setting to 0
 - Close and minimise are working in reverse
