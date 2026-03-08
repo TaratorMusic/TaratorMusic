@@ -1,14 +1,14 @@
 <main>
-	<div class="drag-area" style="display: flex; flex-direction: row">
-		<div style="width: 10vw; height: 10vw" id="taratorLogo"><img src="../assets/tarator16_icon.png" alt="" /></div>
-		<div id="song-name">Song Name</div>
-		<div style="width: 10vw; height: 10vw" id="close-button" class="no-drag">&#x2212;</div>
-		<div style="width: 10vw; height: 10vw" id="minimise-button" class="no-drag">&times;</div>
+	<div class="drag-area" style="display: flex; flex-direction: row; height: 10vw">
+		<img id="taratorLogo" src="../assets/tarator16_icon.png" style="width: 10vw; height: 10vw" />
+		<div id="song-name">TaratorMusic</div>
+		<div id="minimise-button" class="no-drag">&#x2212;</div>
+		<div id="close-button" class="no-drag">&times;</div>
 	</div>
 
 	<div id="thumbnail" class="drag-area"></div>
 
-	<div class="controls" style="display: flex; flex-direction: row">
+	<div class="controls" style="display: flex; flex-direction: row; height: 10vw">
 		<div id="previous-button" class="no-drag"></div>
 		<div id="pauseplay-button" class="no-drag"></div>
 		<div id="next-button" class="no-drag"></div>
@@ -20,6 +20,12 @@
 	* {
 		margin: 0;
 		padding: 0;
+		color: white;
+		text-align: center;
+	}
+
+	main {
+		background-color: #333;
 	}
 
 	.drag-area {
@@ -37,6 +43,9 @@
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
+		font-size: 5vw;
+		align-items: center;
+		padding: 2vw 2vw 0 2vw;
 	}
 
 	#thumbnail {
@@ -44,6 +53,15 @@
 		height: calc(100vh - 20vw);
 		background-size: cover;
 		background-position: center;
+	}
+
+	#close-button,
+	#minimise-button {
+		width: 10vw;
+		height: 10vw;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 
 	#previous-button,
@@ -81,11 +99,8 @@
 <!--
 TODO:
 - Send all info every second. Thumbnail included, but it should check if the thumbnail has changed before changing it with a local variable.
+- Take all updateMiniPlayer()s and add only one to tick() with the needed info
 - We need the golden ratio for the PiP size, and fix it to that
 - Close button should set the PiP setting to 0
-- Close and minimise are working in reverse
-- The top bar needs some padding
-- PiP needs dark mode just like main tarator so tarator gray
 - Add volume bar to the empty space
-- Take all updateMiniPlayer()s and add only one to tick() with the needed info
 -->
