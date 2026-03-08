@@ -112,10 +112,10 @@ function createMiniPlayer() {
 
 	miniPlayer = new BrowserWindow({
 		width: 320,
-		height: 120,
+		height: 244,
 		title: "TaratorMusic PiP",
 		icon: path.join(__dirname, "assets/tarator16_icon.png"),
-		resizable: false,
+		resizable: true,
 		frame: false,
 		alwaysOnTop: true,
 		skipTaskbar: true,
