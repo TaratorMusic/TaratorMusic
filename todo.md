@@ -1,5 +1,6 @@
 ## Version 1.8.4 Planned Features
 
+-   Add PiP and lyrics to the features list in README
 -   PiP in settings isnt toggled when the window is closed
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Total Time Spent in TaratorMusic: NaN minutes
