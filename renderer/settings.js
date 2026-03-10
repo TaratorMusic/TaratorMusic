@@ -21,6 +21,9 @@ async function saveKeybinds() {
 	callSqlite({ db: "settings", query: "UPDATE settings SET key_RandomSong = ?", args: [document.getElementById("settingsRandomSong").innerHTML] });
 	callSqlite({ db: "settings", query: "UPDATE settings SET key_RandomPlaylist = ?", args: [document.getElementById("settingsRandomPlaylist").innerHTML] });
 	callSqlite({ db: "settings", query: "UPDATE settings SET key_LastPlaylist = ?", args: [document.getElementById("settingsLastPlaylist").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_searchPlaylist = ?", args: [document.getElementById("settingsSearchPlaylist").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_searchShuffle = ?", args: [document.getElementById("settingsSearchShuffle").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_lyrics = ?", args: [document.getElementById("settingsOpenLyrics").innerHTML] });
 
 	key_Rewind = document.getElementById("settingsRewind").innerHTML;
 	key_Previous = document.getElementById("settingsPrevious").innerHTML;
@@ -36,6 +39,9 @@ async function saveKeybinds() {
 	key_RandomSong = document.getElementById("settingsRandomSong").innerHTML;
 	key_RandomPlaylist = document.getElementById("settingsRandomPlaylist").innerHTML;
 	key_LastPlaylist = document.getElementById("settingsLastPlaylist").innerHTML;
+	key_searchPlaylist = document.getElementById("settingsSearchPlaylist").innerHTML;
+	key_searchShuffle = document.getElementById("settingsSearchShuffle").innerHTML;
+	key_lyrics = document.getElementById("settingsOpenLyrics").innerHTML;
 }
 
 document.querySelectorAll(".settingsKeybinds button").forEach(button => {

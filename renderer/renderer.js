@@ -150,6 +150,9 @@ let stabiliseVolumeToggle;
 let current_version;
 let recommendationsAfterDownload;
 let pictureInPicture;
+let key_searchPlaylist;
+let key_searchShuffle;
+let key_lyrics;
 
 let popularityFactor;
 let artistStrengthFactor;
@@ -188,6 +191,9 @@ async function initialiseDatabases() {
 	document.getElementById("settingsRandomSong").innerHTML = settingsRow.key_randomSong;
 	document.getElementById("settingsRandomPlaylist").innerHTML = settingsRow.key_randomPlaylist;
 	document.getElementById("settingsLastPlaylist").innerHTML = settingsRow.key_lastPlaylist;
+	document.getElementById("settingsSearchPlaylist").innerHTML = settingsRow.key_searchPlaylist;
+	document.getElementById("settingsSearchShuffle").innerHTML = settingsRow.key_searchShuffle;
+	document.getElementById("settingsOpenLyrics").innerHTML = settingsRow.key_lyrics;
 
 	key_Rewind = settingsRow.key_Rewind;
 	key_Previous = settingsRow.key_Previous;
@@ -215,6 +221,10 @@ async function initialiseDatabases() {
 	current_version = settingsRow.current_version;
 	recommendationsAfterDownload = settingsRow.recommendationsAfterDownload;
 	pictureInPicture = settingsRow.pictureInPicture;
+	key_searchPlaylist = settingsRow.key_searchPlaylist;
+	key_searchShuffle = settingsRow.key_searchShuffle;
+	key_lyrics = settingsRow.key_lyrics;
+
 	if (pictureInPicture == 1) ipcRenderer.send("open-miniplayer");
 
 	if (settingsRow.background.includes("#")) {
@@ -1659,6 +1669,8 @@ document.addEventListener("keydown", event => {
 		randomPlaylistFunctionMainMenu();
 	} else if (event.key == key_lastPlaylist) {
 		playLastPlaylist();
+	} else if (event.key == key_lyrics) {
+		openLyricsModal(playingSongsID);
 	}
 });
 

@@ -1,6 +1,10 @@
 ## Version 1.8.4 Planned Features
 
+-   New shortcut --> x to search something, and the app will shuffle between the found results
+-   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   Add PiP and lyrics to the features list in README
+-   Fix streaming
+-   All musics disappearing after version updates?
 -   PiP in settings isnt toggled when the window is closed
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Total Time Spent in TaratorMusic: NaN minutes
@@ -11,12 +15,9 @@
 -   Adding to playlist after downloading a song is not working
 -   Merge stream and discovery modes
 -   Compiling JS Script
--   Add a shortcut for lyrics modal
 -   You need to swap back to offline mode to properly disable the buttons above
 -   Improve ytdlp speeds to compensate for ytdlcore somehow
 -   Dont check for song info if all three values are already filled
--   New shortcut --> x to search something, and the app will shuffle between the found results
--   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   Dc rich presence doesnt pause
 -   Lyrics storage for picture in picture
 -   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
