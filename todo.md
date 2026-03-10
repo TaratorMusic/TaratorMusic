@@ -4,6 +4,7 @@
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
 -   Add PiP and lyrics to the features list in README
 -   Fix streaming
+-   Fix issue where downloading after searching in stream mode
 -   All musics disappearing after version updates?
 -   PiP in settings isnt toggled when the window is closed
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted

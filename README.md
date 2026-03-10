@@ -110,9 +110,17 @@ Interested in your listen data? The statistics tab lets you see your favorite so
 
 You will be able to get special song recommendations based on what songs you have listened to, and for how long.
 
-### Stream songs directly without downloading
+### Stream Songs
 
 When you just want to browse, you will be able to quickly listen to your app recommended songs.
+
+### Picture in picture mode
+
+You can create a small window that will always be on top of your apps to keep track of your songs.
+
+### Lyrics Storage
+
+Store the lyrics of your favorite songs in the database and read them in one key press.
 
 ## Upcoming Features:
 
