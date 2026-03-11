@@ -551,7 +551,7 @@ async function myMusicOnClick() {
 		renderMusics();
 	};
 
-	const availableMusicModes = ["offline", "stream", "discover"];
+	const availableMusicModes = ["offline", "stream"];
 	availableMusicModes.forEach(mode => {
 		const optionElement = document.createElement("option");
 		optionElement.value = mode;
@@ -559,8 +559,6 @@ async function myMusicOnClick() {
 			optionElement.innerText = "Offline Mode";
 		} else if (mode == "stream") {
 			optionElement.innerText = "Stream Mode";
-		} else {
-			optionElement.innerText = "Discovery Mode";
 		}
 		if (mode == musicMode) optionElement.selected = true;
 		musicModeSelect.appendChild(optionElement);
@@ -639,7 +637,7 @@ function searchYoutubeInMusics() {
 	const container = document.getElementById("music-list-container");
 	const scrollPos = container.scrollTop;
 
-	if (musicMode != "offline" && document.getElementById("music-search").value != "") {
+	if (musicMode == "stream" && document.getElementById("music-search").value != "") {
 		container.innerHTML = "Loading...";
 		const searchedThing = document.getElementById("music-search").value;
 		const goal = Number(document.getElementById("musicSearchInputAmount").value);
@@ -763,8 +761,6 @@ function renderMusics() {
 			container.appendChild(musicElement);
 		});
 	} else if (musicMode == "stream") {
-		document.getElementById("music-search").placeholder = `Search in Youtube or already streamed songs...`;
-	} else if (musicMode == "discover") {
 		document.getElementById("music-search").placeholder = `Search in Youtube...`;
 		container.innerHTML = "Loading...";
 		const recommendationsCache = localStorage.getItem("recommendationsCache");
@@ -776,7 +772,7 @@ function renderMusics() {
 				const musicElement = createMusicElement(song);
 				if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 				musicElement.addEventListener("click", () => playMusic(song.id, null));
-				if (musicMode == "discover") {
+				if (musicMode == "stream") {
 					container.appendChild(musicElement);
 				} else {
 					return;
@@ -852,7 +848,7 @@ function refreshRecommendations() {
 				if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 				musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
 
-				if (musicMode == "discover") {
+				if (musicMode == "stream") {
 					container.appendChild(musicElement);
 				} else {
 					return;
@@ -1630,7 +1626,7 @@ document.addEventListener("keydown", event => {
 	if (event.key == "Escape") closeModal();
 	if (event.key == "Tab") event.preventDefault();
 	if (event.key == "Enter" && document.getElementById("downloadModal").style.display == "block") return loadNewPage("download");
-	if (event.key == "Enter" && document.activeElement == document.getElementById("music-search") && musicMode != "offline") searchYoutubeInMusics();
+	if (event.key == "Enter" && document.activeElement == document.getElementById("music-search") && musicMode == "stream") searchYoutubeInMusics();
 	if (event.key == "Enter" && document.getElementById("searchModal").style.display == "flex") return searchSong();
 
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {

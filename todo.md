@@ -2,7 +2,8 @@
 
 -   New shortcut --> x to search something, and the app will shuffle between the found results
 -   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
--   Add PiP and lyrics to the features list in README
+-   If PiP is closed via the close button it doesnt toggle off
+-   PiP bugs out when main process is minimised
 -   Fix streaming
 -   Fix issue where downloading after searching in stream mode
 -   All musics disappearing after version updates?
