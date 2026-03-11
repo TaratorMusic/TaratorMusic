@@ -1,11 +1,11 @@
 ## Version 1.8.4 Planned Features
 
--   New shortcut --> x to search something, and the app will shuffle between the found results
--   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH))
--   If PiP is closed via the close button it doesnt toggle off
+-   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH))
+-   Add shortcut of c for playlist with inputted name 
+-   If PiP is closed via the close button it doesnt toggle off --> Sleep 5 seconds then send query to SQL
 -   PiP bugs out when main process is minimised
 -   Fix streaming
--   Fix issue where downloading after searching in stream mode
+-   Keep getting the same recommendations???
 -   All musics disappearing after version updates?
 -   PiP in settings isnt toggled when the window is closed
 -   Total Time Spent in TaratorMusic: NaN minutes
@@ -23,6 +23,7 @@
 
 ### Version 1.8.5 Planned Features
 
+-   Customise Dc Rich Presence box in the settings
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Add search queries like || && ! "" + ,
 -   Stream seeking not working
@@ -73,7 +74,6 @@
 -   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
 -   Rework the download modal and three-way modal
 
--   Customise Dc Rich Presence box in the settings
 -   Edit app font
 -   If currently listening to a music outside a playlist, enter a playlist that the song is in without changing the song / its progress
 -   Add the .desktop and the wrapper script inside the app, it will run if the app is AppImage and the user doesnt have the wrapper script in the folder. Create a button in settings to create .desktop

@@ -1157,31 +1157,24 @@ async function commitStagedPlaylistAdds() {
 	pendingPlaylistAddsWithIds.clear();
 }
 
-function getVideoInfo(url) {
+function getVideoInfo(url, retryCount = 0) {
 	return new Promise((resolve, reject) => {
-		const args = [
-			"-J", // JSON output
-			"--skip-download",
-			"--no-playlist",
-			"--quiet",
-			"--no-warnings",
-			"--no-check-certificate",
-			"--youtube-skip-dash-manifest", // skips heavy manifest parsing
-			"--socket-timeout",
-			"5", // short timeout for slow connections
-		];
+		const args = ["-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5"];
 
 		const yt = spawn(getYtDlpPath(), [...args, url]);
-
 		let data = "";
 		let err = "";
-
 		yt.stdout.on("data", chunk => (data += chunk));
 		yt.stderr.on("data", chunk => (err += chunk));
-
 		yt.on("close", code => {
-			if (code != 0) return reject(new Error(err || `yt-dlp exited ${code}`));
-
+			if (code != 0) {
+				if (err.includes("This video is not available") && retryCount < 5) {
+					console.log(`Video unavailable, trying next result (attempt ${retryCount + 1})...`);
+					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
+					return resolve(getVideoInfo(nextUrl, retryCount + 1));
+				}
+				return reject(new Error(err || `yt-dlp exited ${code}`));
+			}
 			try {
 				resolve(JSON.parse(data));
 			} catch (e) {

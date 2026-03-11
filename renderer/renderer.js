@@ -1348,7 +1348,7 @@ async function opencustomiseModal(songsId) {
 			fetch: true,
 		});
 
-		({ song_name, thumbnail_url, artist, genre, language } = row);
+		({ song_name, thumbnail_url, artist, genre, language } = row[0]);
 
 		thumbnailPath = thumbnail_url;
 		song_url = `https://www.youtube.com/watch?v=${songsId}`;
