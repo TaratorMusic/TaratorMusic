@@ -111,13 +111,13 @@ let discordRPCstatus;
 let discordDaemon = null;
 let songDuration = 0;
 let isUserSeeking = false;
-let playing = false;
+let playing = false; // If the song should be playing at the moment
 let previousItemsPerRow;
 let currentPage = 1;
 let streamedSongsHtmlMap = new Map();
 let lastAuthoritativePosition = 0; // Playing songs position sent by miniaudio
 let lastSyncTimestamp = 0; // Current predicted timestamp in JS
-let isInterpolating = false; // If song is playing
+let isInterpolating = false; // If song is playing at the moment
 
 let songNameCache = new Map(); // Song cache
 let playlistsMap = new Map(); // Playlist cache

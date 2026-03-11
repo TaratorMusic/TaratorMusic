@@ -2,7 +2,7 @@
 
 -   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH))
 -   Add shortcut of c for playlist with inputted name 
--   If PiP is closed via the close button it doesnt toggle off --> Sleep 5 seconds then send query to SQL
+-   If PiP is closed via the close button it doesnt toggle off --> Sleep 5 seconds then recheck, if still closed send query to SQL
 -   PiP bugs out when main process is minimised
 -   Fix streaming
 -   Keep getting the same recommendations???
@@ -11,11 +11,11 @@
 -   Total Time Spent in TaratorMusic: NaN minutes
 -   "Using TaratorMusic since Invalid Date"
 -   if no stats, redirect to the main menu
--   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
 -   Adding to playlist after downloading a song is not working
 -   You need to swap back to offline mode to properly disable the buttons above
 -   Dont check for song info if all three values are already filled
 -   Dc rich presence doesnt pause
+-   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
 -   Fix streamed songs ids glitching inside playlists
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change

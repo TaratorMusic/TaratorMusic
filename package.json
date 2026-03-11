@@ -1,7 +1,7 @@
 {
 	"name": "taratormusic",
 	"version": "1.8.3",
-	"description": "A desktop music player application with playlist support, music downloading, volume stabilising and Discord integration.",
+	"description": "A cross-platform desktop music player application with playlists, music downloading from youtube and spotify, volume stabilisation, statistics and much more.",
 	"main": "index.js",
 	"bin": "index.js",
 	"author": {
@@ -72,12 +72,12 @@
 			"icon": "assets/tarator_icon.png",
 			"category": "Audio",
 			"maintainer": "Victiniiiii",
-			"synopsis": "A desktop music player application with playlist support, music downloading, volume stabilising and Discord integration.",
+			"synopsis": "A cross-platform desktop music player application with playlists, music downloading from youtube and spotify, volume stabilisation, statistics and much more.",
 			"asar": false,
 			"desktop": {
 				"entry": {
 					"Name": "TaratorMusic",
-					"Comment": "A desktop music player application with playlist support, music downloading, volume stabilising and Discord integration.",
+					"Comment": "A cross-platform desktop music player application with playlists, music downloading from youtube and spotify, volume stabilisation, statistics and much more.",
 					"StartupWMClass": "TaratorMusic",
 					"Terminal": false
 				}
