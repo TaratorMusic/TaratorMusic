@@ -1750,7 +1750,7 @@ function bottomRightFunctions(input) {
 async function saveUserProgress() {
 	if (songPauseStartTime) totalPausedTime += Math.floor(Date.now() / 1000 - songPauseStartTime);
 
-	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 1) {
+	if (songStartTime && Math.floor(Date.now() / 1000) - songStartTime - totalPausedTime >= 5) {
 		const theId = removeExtensions(playingSongsID).replace("tarator", "").replace("-", "");
 		const currentTimeUnix = Math.floor(Date.now() / 1000 - totalPausedTime);
 		const playlist = currentPlaylist ? currentPlaylist.replace("tarator-", "") : null;

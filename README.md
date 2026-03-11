@@ -114,7 +114,7 @@ You will be able to get special song recommendations based on what songs you hav
 
 When you just want to browse, you will be able to quickly listen to your app recommended songs.
 
-### Picture in picture mode
+### Picture In Picture
 
 You can create a small window that will always be on top of your apps to keep track of your songs.
 

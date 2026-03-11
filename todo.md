@@ -1,42 +1,40 @@
 ## Version 1.8.4 Planned Features
 
 -   New shortcut --> x to search something, and the app will shuffle between the found results
--   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL?)
+-   Add shortcut of c for playlist with inputted name (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH))
 -   If PiP is closed via the close button it doesnt toggle off
 -   PiP bugs out when main process is minimised
 -   Fix streaming
 -   Fix issue where downloading after searching in stream mode
 -   All musics disappearing after version updates?
 -   PiP in settings isnt toggled when the window is closed
--   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Total Time Spent in TaratorMusic: NaN minutes
 -   "Using TaratorMusic since Invalid Date"
 -   if no stats, redirect to the main menu
 -   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
--   Change so when a new song is added we properly rendermusics again
 -   Adding to playlist after downloading a song is not working
--   Merge stream and discovery modes
--   Compiling JS Script
 -   You need to swap back to offline mode to properly disable the buttons above
--   Improve ytdlp speeds to compensate for ytdlcore somehow
 -   Dont check for song info if all three values are already filled
 -   Dc rich presence doesnt pause
--   Lyrics storage for picture in picture
--   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
--   Fetch lyrics automatic function
 -   Fix streamed songs ids glitching inside playlists
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
--   Add search queries like || && ! "" + ,
 -   Fix app resizing removing all recommendations-fetched songs
--   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
--   Stream seeking not working
--   Search code for TODO'S
 
 ### Version 1.8.5 Planned Features
 
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
-
+-   Add search queries like || && ! "" + ,
+-   Stream seeking not working
+-   Search code for TODO'S
+-   Lyrics storage for picture in picture
+-   Improve ytdlp speeds to compensate for ytdlcore somehow
+-   Change so when a new song is added we properly rendermusics again
+-   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
+-   Compiling JS Script
+-   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
+-   Fetch lyrics automatic function
+-   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 
 ### Big updates remaining:
 
