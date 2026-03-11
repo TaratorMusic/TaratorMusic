@@ -633,7 +633,8 @@ function changeSearchBar() {
 	}
 }
 
-function searchYoutubeInMusics() {
+async function searchYoutubeInMusics() {
+	await loadJSFile("download_music");
 	const container = document.getElementById("music-list-container");
 	const scrollPos = container.scrollTop;
 
@@ -791,80 +792,67 @@ function renderMusics() {
 	container.scrollTop = scrollPos;
 }
 
-function refreshRecommendations() {
+async function refreshRecommendations() {
+	await loadJSFile("download_music");
 	const container = document.getElementById("music-list-container");
-	const recommendedMusicMap = getRecommendations();
-	if (recommendedMusicMap == 999) return alertModal("No songs listened yet to give recommendations of."); // TODO: Probably a problem here
+	const recommendedMusicMap = await getRecommendations();
+	if (!recommendedMusicMap) return;
 	const goal = document.getElementById("musicSearchInputAmount").value;
 	let count = 0;
 
-	(async () => {
-		streamedSongsHtmlMap = new Map();
-
-		for (const [key, value] of recommendedMusicMap) {
-			const ytQuery = `${key} by ${value[0]}`;
-			try {
-				const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
-				const info = result.entries[0];
-
-				const videoTitle = info.title;
-				const songID = info.id;
-				const songLength = info.duration;
-				const bestThumbnail = info.thumbnail;
-				const url = info.webpage_url;
-
+	streamedSongsHtmlMap = new Map();
+	for (const [key, value] of recommendedMusicMap) {
+		const ytQuery = `${key} by ${value[0]}`;
+		try {
+			const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
+			const info = result.entries[0];
+			const videoTitle = info.title;
+			const songID = info.id;
+			const songLength = info.duration;
+			const bestThumbnail = info.thumbnail;
+			const url = info.webpage_url;
+			await callSqlite({
+				db: "musics",
+				query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
+				args: [songID, videoTitle, bestThumbnail.url, songLength, null, null, null],
+				fetch: false,
+			});
+			if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
 				await callSqlite({
 					db: "musics",
-					query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
-					args: [songID, videoTitle, bestThumbnail.url, songLength, null, null, null],
+					query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
+					args: [songID, key],
 					fetch: false,
 				});
-
-				if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
-					await callSqlite({
-						db: "musics",
-						query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
-						args: [songID, key],
-						fetch: false,
-					});
-					notInterestedSongs.push({ song_id: songID });
-					continue;
-				}
-
-				if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() == key.toLowerCase().trim())) continue;
-
-				const fullSong = {
-					id: songID,
-					name: videoTitle,
-					thumbnail: bestThumbnail,
-					length: songLength,
-				};
-
-				streamedSongsHtmlMap.set(songID, fullSong);
-
-				if (count == 0) container.innerHTML = "";
-
-				const musicElement = createMusicElement(fullSong);
-				if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
-				musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
-
-				if (musicMode == "stream") {
-					container.appendChild(musicElement);
-				} else {
-					return;
-				}
-
-				setupLazyBackgrounds();
-
-				count++;
-				localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
-				if (count >= goal) break;
-			} catch (error) {
-				console.log(error);
-				await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
+				notInterestedSongs.push({ song_id: songID });
+				continue;
 			}
+			if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() == key.toLowerCase().trim())) continue;
+			const fullSong = {
+				id: songID,
+				name: videoTitle,
+				thumbnail: bestThumbnail,
+				length: songLength,
+			};
+			streamedSongsHtmlMap.set(songID, fullSong);
+			if (count == 0) container.innerHTML = "";
+			const musicElement = createMusicElement(fullSong);
+			if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+			musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
+			if (musicMode == "stream") {
+				container.appendChild(musicElement);
+			} else {
+				return;
+			}
+			setupLazyBackgrounds();
+			count++;
+			localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
+			if (count >= goal) break;
+		} catch (error) {
+			console.log(error);
+			await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 		}
-	})();
+	}
 }
 
 function createMusicElement(songFile) {

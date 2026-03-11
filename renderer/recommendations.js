@@ -8,17 +8,17 @@ async function getRecommendations() {
 	const notInterestedSet = new Set(notInterestedSongs.map(song => song.song_name));
 	const existingArtistSet = new Set(Array.from(songNameCache.values()).map(song => song.artist));
 
-	const listenTimesMap = await callSqlite({
-		db: "musics",
-		query: "SELECT songs.artist, SUM(end_time - start_time) AS totalListenTime FROM timers JOIN songs ON timers.song_id = songs.song_id GROUP BY songs.artist",
-		args: [],
-		fetch: true,
-	})
-		.all()
-		.reduce((acc, row) => {
-			acc[row.artist] = row.totalListenTime || 0;
-			return acc;
-		}, {});
+	const listenTimesMap = (
+		await callSqlite({
+			db: "musics",
+			query: "SELECT songs.artist, SUM(end_time - start_time) AS totalListenTime FROM timers JOIN songs ON timers.song_id = songs.song_id GROUP BY songs.artist",
+			args: [],
+			fetch: true,
+		})
+	).reduce((acc, row) => {
+		acc[row.artist] = row.totalListenTime || 0;
+		return acc;
+	}, {});
 
 	const maxListenTime = Math.max(...Object.values(listenTimesMap), 1);
 
@@ -30,13 +30,12 @@ async function getRecommendations() {
 	});
 
 	artists.forEach(artist => {
-		const songs = JSON.parse(artist.deezer_songs_array);
+		const songs = JSON.parse(artist.deezer_songs_array || "[]");
 		const similarArtists = JSON.parse(artist.similar_artists_array || "[]");
+		if (!songs || songs.length == 0) return;
 		const totalSongs = songs.length;
-
 		songs.forEach((song, index) => {
 			if (existingSongsSet.has(song) || notInterestedSet.has(song)) return;
-
 			const positionFraction = 1 - index / totalSongs;
 			songMap.set(song, [positionFraction, artist.artist_name, artist.artist_fan_amount, similarArtists]);
 		});
