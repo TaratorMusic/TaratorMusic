@@ -28,7 +28,6 @@
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
 -   Add search queries like || && ! "" + ,
--   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Fix app resizing removing all recommendations-fetched songs
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   Stream seeking not working
@@ -36,7 +35,8 @@
 
 ### Version 1.8.5 Planned Features
 
--   Will be updated.
+-   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
+
 
 ### Big updates remaining:
 

@@ -653,10 +653,10 @@ async function searchYoutubeInMusics() {
 			for (let i = 0; i < items.length; i++) {
 				try {
 					const info = items[i];
-					const videoTitle = info.name;
+					const videoTitle = info.title;
 					const songID = info.id;
 					const thumbnails = info.thumbnails || [];
-					const songLength = parseTimeToSeconds(info.duration);
+					const songLength = info.duration;
 					const bestThumbnail = thumbnails.reduce((max, thumb) => {
 						const size = (thumb.width || 0) * (thumb.height || 0);
 						const maxSize = (max.width || 0) * (max.height || 0);
