@@ -1,25 +1,19 @@
 ## Version 1.8.4 Planned Features
 
--   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH))
+-   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
 -   Add shortcut of c for playlist with inputted name 
--   If PiP is closed via the close button it doesnt toggle off --> Sleep 5 seconds then recheck, if still closed send query to SQL
+-   If PiP is closed via the close button it doesnt toggle off --> Sleep 5 seconds then recheck, if still closed send query to SQL (Any better way?)
 -   PiP bugs out when main process is minimised
--   Fix streaming
--   Keep getting the same recommendations???
--   All musics disappearing after version updates?
 -   PiP in settings isnt toggled when the window is closed
+-   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
+-   Fix streaming in windows
+-   Keep getting the same recommendations???
+-   Fetch song recommendations always finds the same number, is it saving it to the db?
+-   All musics disappearing after version updates?
 -   Total Time Spent in TaratorMusic: NaN minutes
 -   "Using TaratorMusic since Invalid Date"
--   if no stats, redirect to the main menu
 -   Adding to playlist after downloading a song is not working
--   You need to swap back to offline mode to properly disable the buttons above
--   Dont check for song info if all three values are already filled
--   Dc rich presence doesnt pause
--   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
 -   Fix streamed songs ids glitching inside playlists
--   Fetch song recommendations always finds the same number, is it saving it to the db?
--   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
--   Fix app resizing removing all recommendations-fetched songs
 
 ### Version 1.8.5 Planned Features
 
@@ -27,7 +21,14 @@
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Add search queries like || && ! "" + ,
 -   Stream seeking not working
+-   You need to swap back to offline mode to properly disable the buttons above
+-   if no stats, redirect to the main menu
+-   Fix app resizing removing all recommendations-fetched songs
 -   Search code for TODO'S
+-   Dont check for song info if all three values are already filled
+-   Dc rich presence doesnt pause
+-   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
+-   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
 -   Lyrics storage for picture in picture
 -   Improve ytdlp speeds to compensate for ytdlcore somehow
 -   Change so when a new song is added we properly rendermusics again
