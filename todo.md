@@ -8,10 +8,9 @@
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
 -   Fix streaming in windows
 -   Keep getting the same recommendations???
+-   Cant create playlists. Uncaught (in promise) ReferenceError: playlistsCache is not defined     at saveNewPlaylist (playlists.js:175:42)
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   All musics disappearing after version updates?
--   Total Time Spent in TaratorMusic: NaN minutes
--   "Using TaratorMusic since Invalid Date"
 -   Adding to playlist after downloading a song is not working
 -   Fix streamed songs ids glitching inside playlists
 
@@ -27,6 +26,7 @@
 -   Search code for TODO'S
 -   Dont check for song info if all three values are already filled
 -   Dc rich presence doesnt pause
+-   Rich presence doesnt close it just stops sending data
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
 -   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
 -   Lyrics storage for picture in picture

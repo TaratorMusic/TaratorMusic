@@ -335,6 +335,8 @@ async function generalStatistics() {
 		fetch: true,
 	});
 
+    const statisticsRow = row[0]
+
 	const leastListenRowRes = await callSqlite({
 		db: "musics",
 		query: `
@@ -362,7 +364,7 @@ async function generalStatistics() {
 	const counts = countsRes[0];
 
 	let totalvalue, totalunit, sessionvalue, sessionunit;
-	let totalTimeSpent = row.total_time_spent;
+	let totalTimeSpent = statisticsRow.total_time_spent;
 
 	if (totalTimeSpent >= 3600) {
 		totalvalue = (totalTimeSpent / 3600).toFixed(0);
@@ -386,15 +388,15 @@ async function generalStatistics() {
 
 	theBigText.innerHTML += `Total Time Spent in TaratorMusic: ${totalvalue} ${totalunit}<br>`;
 	theBigText.innerHTML += `Session Time Spent: ${sessionvalue} ${sessionunit}<br>`;
-	theBigText.innerHTML += `Using TaratorMusic since: ${formatUnixTime(row.app_install_date)}<br>`;
+	theBigText.innerHTML += `Using TaratorMusic since: ${formatUnixTime(statisticsRow.app_install_date)}<br>`;
 	theBigText.innerHTML += `First song listened at: ${formatUnixTime(leastListenRow.start_time) || "Never"}<br>`;
-	theBigText.innerHTML += `Amount of playlists formed: ${row.playlists_formed || 0}<br>`;
+	theBigText.innerHTML += `Amount of playlists formed: ${statisticsRow.playlists_formed || 0}<br>`;
 	theBigText.innerHTML += `Total amount of songs listened: ${counts.null_count + counts.not_null_count || 0}<br>`;
 	theBigText.innerHTML += `Amount of songs listened inside playlists: ${counts.not_null_count || 0}<br>`;
 	theBigText.innerHTML += `Amount of songs listened outside playlists: ${counts.null_count || 0}<br>`;
-	theBigText.innerHTML += `Total amount of songs downloaded: ${row.songs_downloaded_youtube + row.songs_downloaded_spotify || 0}<br>`;
-	theBigText.innerHTML += `Amount of songs downloaded from Youtube: ${row.songs_downloaded_youtube || 0}<br>`;
-	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${row.songs_downloaded_spotify || 0}<br>`;
+	theBigText.innerHTML += `Total amount of songs downloaded: ${statisticsRow.songs_downloaded_youtube + statisticsRow.songs_downloaded_spotify || 0}<br>`;
+	theBigText.innerHTML += `Amount of songs downloaded from Youtube: ${statisticsRow.songs_downloaded_youtube || 0}<br>`;
+	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${statisticsRow.songs_downloaded_spotify || 0}<br>`;
 }
 
 async function htmlTableStats(sortedData = null) {
