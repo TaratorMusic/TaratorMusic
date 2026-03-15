@@ -1,5 +1,5 @@
 async function getRecommendations() {
-	const artistPreferenceScore = calculateArtistPreference();
+	const artistPreferenceScore = await calculateArtistPreference();
 	if (artistPreferenceScore == 999) return alertModal("No songs listened yet to give recommendations of.");
 	const songMap = new Map();
 	const pointsMap = new Map();
@@ -62,11 +62,8 @@ async function getRecommendations() {
 
 		const artistListenTime = listenTimesMap[artistName] || 0;
 		const artistListenTimePoints = artistListenTime > 0 ? (Math.log(1 + artistListenTime) / Math.log(1 + maxListenTime)) * artistListenTimeFactor : 0;
-
 		const userPreferencePoints = existingArtistSet.has(artistName) ? artistPreferenceScore * userPreferenceFactor : (1 - artistPreferenceScore) * userPreferenceFactor;
-
 		const randomPoints = Math.random() * randomFactor;
-
 		const totalPoints = popularityPoints + artistStrengthPoints + similarArtistsPoints + userPreferencePoints + artistListenTimePoints + randomPoints;
 
 		pointsMap.set(song, [artistName, totalPoints]);

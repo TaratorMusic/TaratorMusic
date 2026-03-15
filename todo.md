@@ -7,7 +7,6 @@
 -   PiP in settings isnt toggled when the window is closed
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
 -   Fix streaming in windows
--   Keep getting the same recommendations???
 -   Cant create playlists. Uncaught (in promise) ReferenceError: playlistsCache is not defined     at saveNewPlaylist (playlists.js:175:42)
 -   Fetch song recommendations always finds the same number, is it saving it to the db?
 -   All musics disappearing after version updates?
