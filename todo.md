@@ -6,8 +6,8 @@
 -   PiP bugs out when main process is minimised
 -   PiP in settings isnt toggled when the window is closed
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
+-   While editing streamed songs some thumbnail doesnt show up???
 -   Fix streaming in windows
--   Fetch song recommendations inserts undefined into the database. Its usings "artists" instead of "artistData"
 -   tick() doesnt work with streamed songs
 -   All musics disappearing after version updates?
 -   Fix streamed songs ids glitching inside playlists
@@ -17,6 +17,7 @@
 -   Customise Dc Rich Presence box in the settings
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Add search queries like || && ! "" + ,
+-   Prevent live streams from showing up in the ytdlp search results
 -   Stream seeking not working
 -   You need to swap back to offline mode to properly disable the buttons above
 -   if no stats, redirect to the main menu

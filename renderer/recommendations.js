@@ -198,12 +198,12 @@ async function fetchRecommendationsData(input) {
 	}
 
 	if (artistsData.length > 0) {
-		for (const artist of artists) {
-			callSqlite({
+		for (const artist of artistsData) {
+			await callSqlite({
 				db: "musics",
 				query: "INSERT OR REPLACE INTO recommendations (artist_id, artist_name, artist_fan_amount, similar_artists_array, deezer_songs_array) VALUES (?, ?, ?, ?, ?)",
 				args: [artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array)],
-				fetch: true,
+				fetch: false,
 			});
 			console.log("Inserted: ", artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array));
 		}
