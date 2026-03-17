@@ -7,8 +7,8 @@
 -   PiP in settings isnt toggled when the window is closed
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
 -   Fix streaming in windows
--   Cant create playlists. Uncaught (in promise) ReferenceError: playlistsCache is not defined     at saveNewPlaylist (playlists.js:175:42)
--   Fetch song recommendations always finds the same number, is it saving it to the db?
+-   Fetch song recommendations inserts undefined into the database. Its usings "artists" instead of "artistData"
+-   tick() doesnt work with streamed songs
 -   All musics disappearing after version updates?
 -   Adding to playlist after downloading a song is not working
 -   Fix streamed songs ids glitching inside playlists

@@ -170,34 +170,28 @@ async function saveNewPlaylist() {
 	}
 
 	const dest = path.join(thumbnailFolder, `${id}playlist.${ext}`);
-	const existingRes = [];
 
-	for (const [id, data] of playlistsCache.entries()) {
+	for (const [id, data] of playlistsMap.entries()) {
 		if (data.name == name) {
-			existingRes.push({ id });
-			break;
+			const proceed = await confirmModal("A playlist with the same name exists, continue?", "Continue", "Return");
+			if (!proceed) return;
+            break;
 		}
 	}
 
-	existingRes.then(async existingRows => {
-		if (existingRows.length) {
-			const proceed = await confirmModal("A playlist with the same name exists, continue?", "Continue", "Return");
-			if (!proceed) return;
-		}
-
-		callSqlite({
-			db: "playlists",
-			query: "INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)",
-			args: [id, name, JSON.stringify([]), ext],
-		});
-
-		playlistsMap.set(id, {
-			id: id,
-			name: name,
-			songs: [],
-			thumbnail_extension: ext,
-		});
+	await callSqlite({
+		db: "playlists",
+		query: "INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)",
+		args: [id, name, JSON.stringify([]), ext],
 	});
+
+	playlistsMap.set(id, {
+		id: id,
+		name: name,
+		songs: [],
+		thumbnail_extension: ext,
+	});
+
 	fs.copyFileSync(srcPath, dest);
 
 	closeModal();
@@ -313,7 +307,7 @@ function addToSelectedPlaylists(songName) {
 		.map(cb => cb.id);
 
 	selectedPlaylists.forEach(playlistId => {
-		const playlist = playlistsCache.get(playlistId);
+		const playlist = playlistsMap.get(playlistId);
 		if (!playlist) return;
 
 		let songsInPlaylist = playlist.songs ? [...playlist.songs] : [];
@@ -325,7 +319,7 @@ function addToSelectedPlaylists(songName) {
 				query: "UPDATE playlists SET songs = ? WHERE id = ?",
 				args: [JSON.stringify(songsInPlaylist), playlistId],
 			});
-			playlistsCache.set(playlistId, {
+			playlistsMap.set(playlistId, {
 				...playlist,
 				songs: songsInPlaylist,
 			});
@@ -335,7 +329,7 @@ function addToSelectedPlaylists(songName) {
 		}
 	});
 
-	for (const [playlistId, playlist] of playlistsCache.entries()) {
+	for (const [playlistId, playlist] of playlistsMap.entries()) {
 		if (!selectedPlaylists.includes(playlistId)) {
 			let songsInPlaylist = playlist.songs ? [...playlist.songs] : [];
 			if (songsInPlaylist.includes(songName)) {
@@ -345,7 +339,7 @@ function addToSelectedPlaylists(songName) {
 					query: "UPDATE playlists SET songs = ? WHERE id = ?",
 					args: [JSON.stringify(updatedSongs), playlistId],
 				});
-				playlistsCache.set(playlistId, {
+				playlistsMap.set(playlistId, {
 					...playlist,
 					songs: updatedSongs,
 				});

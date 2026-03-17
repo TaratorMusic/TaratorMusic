@@ -1093,7 +1093,7 @@ function openAddToPlaylistModalStaging(songId) {
 	checkboxContainer.innerHTML = "";
 
 	const allPlaylists =
-		Array.from(playlistsCache.entries()).map(([id, data]) => ({
+		Array.from(playlistsMap.entries()).map(([id, data]) => ({
 			id,
 			...data,
 		})) || [];
@@ -1131,7 +1131,7 @@ async function commitStagedPlaylistAdds() {
 		for (const listID of lists) {
 			const playlistRes = [];
 
-			const cached = playlistsCache.get(listID);
+			const cached = playlistsMap.get(listID);
 			if (cached) {
 				playlistRes.push({
 					id: listID,
