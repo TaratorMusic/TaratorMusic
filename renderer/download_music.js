@@ -1102,7 +1102,7 @@ function openAddToPlaylistModalStaging(songId) {
 		checkbox.type = "checkbox";
 		checkbox.id = playlist.id;
 		checkbox.value = songId;
-		if ((pendingPlaylistAddsWithIds.get(songId) || []).includes(playlist.name)) checkbox.checked = true;
+		if ((pendingPlaylistAddsWithIds.get(songId) || []).includes(playlist.id)) checkbox.checked = true;
 		const label = document.createElement("label");
 		label.textContent = playlist.name;
 		label.htmlFor = checkbox.id;

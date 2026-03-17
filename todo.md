@@ -10,7 +10,6 @@
 -   Fetch song recommendations inserts undefined into the database. Its usings "artists" instead of "artistData"
 -   tick() doesnt work with streamed songs
 -   All musics disappearing after version updates?
--   Adding to playlist after downloading a song is not working
 -   Fix streamed songs ids glitching inside playlists
 
 ### Version 1.8.5 Planned Features
