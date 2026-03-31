@@ -1,20 +1,25 @@
 ## Version 1.8.4 Planned Features
 
--   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
--   Add shortcut of c for playlist with inputted name 
+-   !!! BINARIES DONT SPAWN!!!!!!
+-   Playlist downloads are buggy
+-   After editing a song, scroll back
+-   Warn if a song with the same url already in our cache before downloading... Especially for playlists
 -   If PiP is closed via the close button it doesnt toggle off --> Sleep 5 seconds then recheck, if still closed send query to SQL (Any better way?)
 -   PiP bugs out when main process is minimised
 -   PiP in settings isnt toggled when the window is closed
--   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
--   While editing streamed songs some thumbnail doesnt show up???
--   Fix streaming in windows
 -   tick() doesnt work with streamed songs
 -   All musics disappearing after version updates?
 -   Fix streamed songs ids glitching inside playlists
 
-### Version 1.8.5 Planned Features
+### Version 1.8.x Planned Features
 
 -   Customise Dc Rich Presence box in the settings
+-   Update playlists tab
+-   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
+-   Fix streaming in windows
+-   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
+-   While editing streamed songs some thumbnail doesnt show up???
+-   Add shortcut of c for playlist with inputted name 
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Add search queries like || && ! "" + ,
 -   Prevent live streams from showing up in the ytdlp search results
