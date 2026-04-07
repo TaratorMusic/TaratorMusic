@@ -1864,7 +1864,9 @@ document.addEventListener("DOMContentLoaded", function () {
 	ipcRenderer.on("close-pip", async () => {
 		pictureInPicture = 0;
 		await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
+        document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1 ? true : false;
 	});
+
 	ipcRenderer.on("player-previous", () => playPreviousSong());
 	ipcRenderer.on("player-playpause", () => playPause());
 	ipcRenderer.on("player-next", () => playNextSong());
