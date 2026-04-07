@@ -950,7 +950,7 @@ function playMusic(songId, playlistId) {
 		}
 
 		if (songLyricsCache.has(songId)) {
-			document.getElementById("lyricsButtonBottomRight").style.color = "white";
+			document.getElementById("lyricsButtonBottomRight").style.color = "lime";
 		}
 
 		const songPath = offlineMode ? path.join(musicFolder, `${songId}.${songData.song_extension || "mp3"}`) : `https://www.youtube.com/watch?v=${songId}`;
