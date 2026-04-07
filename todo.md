@@ -1,7 +1,6 @@
 ## Version 1.8.4 Planned Features
 
 -   !!! BINARIES DONT SPAWN!!!!!!
--   Playlist downloads are buggy
 -   If PiP is closed via the close button it doesnt toggle off --> Sleep 5 seconds then recheck, if still closed send query to SQL (Any better way?)
 -   PiP bugs out when main process is minimised
 -   PiP in settings isnt toggled when the window is closed

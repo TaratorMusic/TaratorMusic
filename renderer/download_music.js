@@ -754,9 +754,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			const songLink = songLinks[i];
 			const songId = songIds[i];
 
-			artists[i] = document.getElementById(`artistInput${i + 1}`).value;
-			genres[i] = document.getElementById(`genreInput${i + 1}`).value;
-			languages[i] = document.getElementById(`languageInput${i + 1}`).value;
+			artists[i] = document.getElementById(`artistInput${i + 1}`)?.value ?? "";
+			genres[i] = document.getElementById(`genreInput${i + 1}`)?.value ?? "";
+			languages[i] = document.getElementById(`languageInput${i + 1}`)?.value ?? "";
 
 			if (!songTitle || !songLink || !songId) {
 				console.log(`Skipping index ${i}: missing title/link/id`);
