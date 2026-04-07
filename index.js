@@ -7,14 +7,14 @@ async function copyBinariesOutside() {
 	const isWin = process.platform == "win32";
 	const isMac = process.platform == "darwin";
 
-	const appDir = app.getPath("userData");
+	const appDir = app.getAppPath();
 	const binFolder = path.join(appDir, "bin");
 
 	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
 
 	const baseBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", "sqlite", "ytdlp_fetch"];
 	const platformBinaries = isWin ? ["yt-dlp.exe"] : isMac ? ["yt-dlp_macos"] : ["yt-dlp_linux"];
-	const backendBinaries = [...baseBinaries.map(b => (isWin ? `${b}.exe` : b)), ...platformBinaries];
+	const backendBinaries = [...baseBinaries.map(binary => (isWin ? `${binary}.exe` : binary)), ...platformBinaries];
 
 	backendBinaries.forEach(bin => {
 		const isDev = !app.isPackaged;
