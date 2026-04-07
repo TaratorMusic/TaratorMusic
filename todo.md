@@ -2,8 +2,6 @@
 
 -   !!! BINARIES DONT SPAWN!!!!!!
 -   Playlist downloads are buggy
--   After editing a song, scroll back
--   Warn if a song with the same url already in our cache before downloading... Especially for playlists
 -   If PiP is closed via the close button it doesnt toggle off --> Sleep 5 seconds then recheck, if still closed send query to SQL (Any better way?)
 -   PiP bugs out when main process is minimised
 -   PiP in settings isnt toggled when the window is closed
