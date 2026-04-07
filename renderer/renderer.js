@@ -1425,7 +1425,12 @@ async function saveLyrics() {
 }
 
 async function saveEditedSong() {
-	const customiseDiv = document.getElementById("customiseModal");
+	let customiseDiv = document.getElementById("customiseModal");
+	let scrollPos, element, thumbnailPath;
+
+	if (document.getElementById("my-music-content").style.display == "flex") {
+		scrollPos = document.getElementById("music-list-container").scrollTop;
+	}
 
 	const songID = removeExtensions(customiseDiv.dataset.songID);
 	const newNameInput = document.getElementById("customiseSongName").value.trim();
@@ -1436,14 +1441,14 @@ async function saveEditedSong() {
 
 	if (newNameInput.length < 1) return await alertModal("Please do not set a song name empty.");
 
-	let element, thumbnailPath;
-
 	if (songID.includes("tarator")) {
 		const row = songNameCache.get(songID);
 		if (!row) return await alertModal("Song not found in database.");
 
-		element = document.querySelector(`.music-item[data-file-name="${songID}"]`);
-		if (!element) return await alertModal("Song element not found.");
+		if (document.getElementById("my-music-content").style.display == "flex") {
+			element = document.querySelector(`.music-item[data-file-name="${songID}"]`);
+			if (!element) return await alertModal("Song element not found.");
+		}
 
 		thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
 
@@ -1478,33 +1483,34 @@ async function saveEditedSong() {
 			fetch: false,
 		});
 
-		element = document.querySelector(`div[data-file-name="${songID}"]`);
-		if (element) {
-			const nameEl = element.querySelector(".song-name");
-			if (nameEl) nameEl.textContent = newNameInput;
+		if (document.getElementById("my-music-content").style.display == "flex") {
+			element = document.querySelector(`div[data-file-name="${songID}"]`);
+			if (element) {
+				const nameEl = element.querySelector(".song-name");
+				if (nameEl) nameEl.textContent = newNameInput;
+			}
 		}
 	}
 
 	customiseDiv.style.display = "none";
-	document.getElementById("my-music").click();
 
-	if (playingSongsID == customiseDiv.dataset.songID) document.getElementById("song-name").innerText = newNameInput;
+	if (playingSongsID == customiseDiv.dataset.songID) {
+		document.getElementById("song-name").innerText = newNameInput;
+		if (songID.includes("tarator")) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
+	}
 
-	try {
-		if (newNameInput == removeExtensions(playingSongsID)) {
-			element.classList.add("playing");
-			if (songID.includes("tarator")) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
-		}
+	if (document.getElementById("my-music-content").style.display == "flex") {
+		document.getElementById("music-list-container").scrollTop = scrollPos;
 
-		const nameEl = element.querySelector(".song-name");
-		if (nameEl) nameEl.textContent = newNameInput;
+		if (newNameInput == removeExtensions(playingSongsID)) element.classList.add("playing");
 
 		if (songID.includes("tarator")) {
+			const nameEl = element.querySelector(".song-name");
+			if (nameEl) nameEl.textContent = newNameInput;
+
 			const bgEl = element.querySelector(".background-element");
 			if (bgEl) bgEl.style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 		}
-	} catch (err) {
-		console.log(err);
 	}
 }
 
@@ -1550,7 +1556,7 @@ function removeSong(fileToDelete) {
 			const divToRemove = document.querySelector(`div[alt="${fileToDelete}.${row.song_extension}"]`);
 			if (divToRemove) divToRemove.remove();
 
-			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
+			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 		});
 	});
 }
