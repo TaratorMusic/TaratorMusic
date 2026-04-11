@@ -14,9 +14,9 @@
 
 -   Free and open source, no ads
 -   Offline first, with online features
--   Download your Youtube and Spotify songs and playlists
 -   Real song shuffling
 -   Quick launch time
+-   Download your songs and playlists
 -   Many features while keeping the app light
 
 ## [LICENSE](LICENSE)
@@ -29,17 +29,9 @@ C and its miniaudio library for playing audio
 
 Electron to make it a cross platform desktop app, electron-updater to detect new versions and give the user the option to update
 
-yt-dlp and @distube/ytpl libraries for searching videos in youtube, installing youtube videos, thumbnails and playlists.
-
-cheerio and puppeteer to scrape song and playlist data from Spotify
-
 modernc.org/sqlite to store most listened songs, playlists and settings data
 
 Chart.js to show user stats in the statistics tab
-
-MusicBrainz API to fetch song genre, artist and language information
-
-Deezer API for song data and recommendations  
 
 FFmpeg and FFprobe to automatically stabilise audio levels
 
@@ -76,7 +68,7 @@ The randomness of the next song in TaratorMusic has been statistically proven by
 
 ### Download Your Own
 
-In this app, you can easily paste a link in the download section, change its name or thumbnail, and press download to make the music and its thumbnail appear in your folders. Works for playlists too! Or you can just carry your own mp3 files to the musics folder, and their thumbnails to the thumbnails folder.
+In this app, you can easily paste a link in the download section, change its name or thumbnail, and press download to make the music and its thumbnail appear in your folders. Works for playlists too! Or you can just carry your own .mp3 files to the musics folder, and their thumbnails to the thumbnails folder.
 
 ### Customisation
 

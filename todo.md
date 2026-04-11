@@ -1,4 +1,4 @@
-## Version 1.8.4 Planned Features
+## Version 1.8.5 Planned Features
 
 -   PiP bugs out when main process is minimised
 -   tick() doesnt work with streamed songs
