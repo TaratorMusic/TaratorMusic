@@ -1,28 +1,30 @@
 ## Version 1.8.5 Planned Features
 
+-   Some playlists give an error while downloading.
+-   Dc rich presence doesnt pause
+-   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   PiP bugs out when main process is minimised
 -   tick() doesnt work with streamed songs
 -   Fix streamed songs ids glitching inside playlists
+-   Fix streaming in windows
+-   if no stats, redirect to the main menu
+-   Add search queries like || && ! "" + ,
+-   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
+-   Add shortcut of c for playlist with inputted name 
+-   You need to swap back to offline mode to properly disable the buttons above
+-   Dont check for song info if all three values are already filled
 
 ### Version 1.8.x Planned Features
 
 -   Customise Dc Rich Presence box in the settings
 -   Update playlists tab
--   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
--   Fix streaming in windows
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
--   While editing streamed songs some thumbnail doesnt show up???
--   Add shortcut of c for playlist with inputted name 
+-   While editing streamed songs some thumbnails doesnt show up???
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
--   Add search queries like || && ! "" + ,
 -   Prevent live streams from showing up in the ytdlp search results
 -   Stream seeking not working
--   You need to swap back to offline mode to properly disable the buttons above
--   if no stats, redirect to the main menu
 -   Fix app resizing removing all recommendations-fetched songs
 -   Search code for TODO'S
--   Dont check for song info if all three values are already filled
--   Dc rich presence doesnt pause
 -   Rich presence doesnt close it just stops sending data
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
 -   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
@@ -32,8 +34,7 @@
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Compiling JS Script
 -   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
--   Fetch lyrics automatic function
--   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
+-   translate lyrics automatic function 
 
 ### Big updates remaining:
 
