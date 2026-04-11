@@ -1,9 +1,7 @@
 ## Version 1.8.4 Planned Features
 
--   !!! BINARIES DONT SPAWN!!!!!!
 -   PiP bugs out when main process is minimised
 -   tick() doesnt work with streamed songs
--   All musics disappearing after version updates?
 -   Fix streamed songs ids glitching inside playlists
 
 ### Version 1.8.x Planned Features

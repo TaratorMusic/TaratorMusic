@@ -66,23 +66,26 @@ func updateDiscordPresence(songName, artistName string, currentSec, totalSec int
 	} else {
 		activity.Details = songName
 		if paused {
-			if artistName != "" {
+			if artistName != "" && artistName != "unknown" {
 				activity.State = "⏸ Paused • by " + artistName
 			} else {
 				activity.State = "⏸ Paused"
 			}
+			
 		} else if totalSec > 0 {
 			if currentSec > totalSec {
 				currentSec = totalSec
 			}
+
 			startTime := now.Add(-time.Duration(currentSec) * time.Second)
 			endTime := startTime.Add(time.Duration(totalSec) * time.Second)
 
-			if artistName != "" {
+			if artistName != "" && artistName != "unknown" {
 				activity.State = "by " + artistName
 			} else {
 				activity.State = "──────────────────────────"
 			}
+
 			activity.Timestamps = &rpc.Timestamps{
 				Start: &startTime,
 				End:   &endTime,
