@@ -1,6 +1,11 @@
 ## Version 1.8.5 Planned Features
 
 -   Some playlists give an error while downloading.
+-   Binary spawn not working on linux.
+-   Song link comparation takes playlist additions to the link to account.
+-   Playing any buggy song breaks the song length bar forever
+-   Remove the ------ line in rich presence
+-   When you add new lyrics if not empty with .trim() the button should become green
 -   Dc rich presence doesnt pause
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   PiP bugs out when main process is minimised
