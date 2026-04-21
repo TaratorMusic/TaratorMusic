@@ -2,9 +2,8 @@
 
 -   Some playlists give an error while downloading.
 -   Binary spawn not working on linux.
--   Song link comparation takes playlist additions to the link to account.
+-   Song link comparation takes playlist additions of the link to account.
 -   Playing any buggy song breaks the song length bar forever
--   When you add new lyrics if not empty with .trim() the button should become green
 -   Playlist thumbnails dont appear
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   PiP bugs out when main process is minimised

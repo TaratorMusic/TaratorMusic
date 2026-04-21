@@ -1422,6 +1422,8 @@ async function saveLyrics() {
 		args: [savedSongId, document.getElementById("lyricsArea").value],
 		fetch: false,
 	});
+
+	if (document.getElementById("lyricsArea").value.trim() != "") document.getElementById("lyricsButtonBottomRight").style.color = "lime";
 }
 
 async function saveEditedSong() {
