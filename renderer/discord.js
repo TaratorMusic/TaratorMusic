@@ -91,6 +91,7 @@ function updateDiscordPresence() {
 	const songName = isIdle ? "" : document.getElementById("song-name").textContent;
 	const artistData = isIdle ? null : { artist: songNameCache.get(playingSongsID)?.artist || null };
 	const artistName = artistData ? artistData.artist : "";
+    const paused = !playing;
 
 	let currentSec = 0;
 	let totalSec = 0;
@@ -102,7 +103,7 @@ function updateDiscordPresence() {
 
 	const songData = artistName ? `${songName}|||${artistName}` : songName;
 
-	sendCommandToDaemon("update", [songData, currentSec.toString(), totalSec.toString(), !playing.toString(), isIdle.toString()]);
+	sendCommandToDaemon("update", [songData, currentSec.toString(), totalSec.toString(), paused, isIdle]);
 }
 
 function stopDaemon() {

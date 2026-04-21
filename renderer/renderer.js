@@ -1864,7 +1864,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	ipcRenderer.on("close-pip", async () => {
 		pictureInPicture = 0;
 		await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
-        document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1 ? true : false;
+		document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1 ? true : false;
 	});
 
 	ipcRenderer.on("player-previous", () => playPreviousSong());
@@ -1919,10 +1919,12 @@ document.addEventListener("DOMContentLoaded", function () {
 				pauseButton.style.display = "inline-block";
 				playing = true;
 			}
-
-			updateDiscordPresence();
 		}
 	});
+
+	setInterval(() => {
+		updateDiscordPresence();
+	}, 3000);
 
 	requestAnimationFrame(tick);
 

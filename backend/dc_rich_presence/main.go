@@ -49,7 +49,7 @@ func destroyRPC() {
 	sendStatus("disabled")
 }
 
-func updateDiscordPresence(songName, artistName string, currentSec, totalSec int, paused, idle bool) {
+func updateDiscordPresence(songName, artistName string, currentSec, totalSec int, paused bool, idle bool) {
 	if RPC == nil {
 		sendStatus("disabled")
 		return
@@ -67,7 +67,7 @@ func updateDiscordPresence(songName, artistName string, currentSec, totalSec int
 		activity.Details = songName
 		if paused {
 			if artistName != "" && artistName != "unknown" {
-				activity.State = "⏸ Paused • by " + artistName
+				activity.State = "⏸ Paused - by " + artistName
 			} else {
 				activity.State = "⏸ Paused"
 			}
@@ -83,7 +83,7 @@ func updateDiscordPresence(songName, artistName string, currentSec, totalSec int
 			if artistName != "" && artistName != "unknown" {
 				activity.State = "by " + artistName
 			} else {
-				activity.State = "──────────────────────────"
+				activity.State = ""
 			}
 
 			activity.Timestamps = &rpc.Timestamps{
