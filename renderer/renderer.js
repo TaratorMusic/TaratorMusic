@@ -991,6 +991,7 @@ function playMusic(songId, playlistId) {
 		}
 
 		playing = true;
+        updateDiscordPresence();
 
 		if (playlistId) {
 			const pid = playlistId.id || playlistId;
@@ -1185,6 +1186,8 @@ function playPause() {
 			isPlaying: true,
 		});
 	}
+
+    updateDiscordPresence();
 }
 
 function toggleAutoplay() {
@@ -1923,10 +1926,6 @@ document.addEventListener("DOMContentLoaded", function () {
 			}
 		}
 	});
-
-	setInterval(() => {
-		updateDiscordPresence();
-	}, 3000);
 
 	requestAnimationFrame(tick);
 
