@@ -1,6 +1,5 @@
 ## Version 1.8.5 Planned Features
 
--   Some playlists give an error while downloading.
 -   Binary spawn not working on linux.
 -   Song link comparation takes playlist additions of the link to account.
 -   Playing any buggy song breaks the song length bar forever
@@ -10,12 +9,12 @@
 -   tick() doesnt work with streamed songs
 -   Fix streamed songs ids glitching inside playlists
 -   Fix streaming in windows
--   if no stats, redirect to the main menu
 -   Add search queries like || && ! "" + ,
 -   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
 -   Add shortcut of c for playlist with inputted name 
 -   You need to swap back to offline mode to properly disable the buttons above
 -   Dont check for song info if all three values are already filled
+-   New option while downloading: Start playing the song after the download is finished
 
 APPIMAGE env is not defined, current application is not an AppImage
 [8051:0421/171242.867897:ERROR:dbus/object_proxy.cc:573] Failed to call method: org.freedesktop.systemd1.Manager.StartTransientUnit: object_path= /org/freedesktop/systemd1: org.freedesktop.systemd1.UnitExists: Unit app-org.chromium.Chromium-8051.scope was already loaded or has a fragment file.

@@ -18,7 +18,10 @@ async function renderStatistics() {
 			fetch: true,
 		});
 
-		if (!timersTable.length) return alertModal("You haven't listened to any songs yet.");
+		if (!timersTable.length) {
+			document.getElementById("main-menu").click();
+			return alertModal("You haven't listened to any songs yet.");
+		}
 
 		songsTable = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
 			song_id,
@@ -335,7 +338,7 @@ async function generalStatistics() {
 		fetch: true,
 	});
 
-    const statisticsRow = row[0]
+	const statisticsRow = row[0];
 
 	const leastListenRowRes = await callSqlite({
 		db: "musics",
