@@ -740,16 +740,105 @@ function renderMusics() {
 			.sort((a, b) => (a.song_name || "").toLowerCase().localeCompare((b.song_name || "").toLowerCase()))
 			.filter(song => {
 				let searchValue = document.getElementById("music-search").value.trim().toLowerCase();
-				const exactMatch = searchValue.startsWith('"') && searchValue.endsWith('"');
-				if (exactMatch) searchValue = searchValue.slice(1, -1);
-				if (!searchValue) return true;
-				const id = song.id.toString();
-				const compare = fieldValue => {
-					if (!fieldValue) return false;
-					const value = String(fieldValue).toLowerCase();
-					return exactMatch ? value == searchValue : value.includes(searchValue);
+
+				const fields = [song.song_name, song.artist, song.genre, song.language, song.id?.toString()];
+
+				const tokenize = input => {
+					const tokens = [];
+					let i = 0;
+					while (i < input.length) {
+						if (input[i] == " ") {
+							i++;
+							continue;
+						}
+						if (input[i] == '"') {
+							let j = i + 1;
+							while (j < input.length && input[j] != '"') j++;
+							tokens.push({ type: "term", value: input.slice(i + 1, j), exact: true });
+							i = j + 1;
+						} else if (input.slice(i, i + 2) == "&&" || input.slice(i, i + 2) == "||") {
+							tokens.push({ type: "op", value: input.slice(i, i + 2) });
+							i += 2;
+						} else if (input[i] == "!") {
+							tokens.push({ type: "op", value: "!" });
+							i++;
+						} else if (input[i] == "+") {
+							tokens.push({ type: "op", value: "&&" });
+							i++;
+						} else if (input[i] == ",") {
+							tokens.push({ type: "op", value: "||" });
+							i++;
+						} else {
+							let j = i;
+							while (j < input.length && !' "!+,&|'.includes(input[j])) j++;
+							if (j > i) tokens.push({ type: "term", value: input.slice(i, j), exact: false });
+							i = j;
+						}
+					}
+					return tokens;
 				};
-				return compare(song.song_name) || (exactMatch ? id == searchValue : id.includes(searchValue)) || compare(song.artist) || compare(song.genre) || compare(song.language);
+
+				const matchTerm = (term, exact) => {
+					if (term == " ") return fields.some(f => !f || String(f).trim() == "");
+					return fields.some(f => {
+						if (!f) return false;
+						const v = String(f).toLowerCase();
+						return exact ? v == term : v.includes(term);
+					});
+				};
+
+				const parse = tokens => {
+					let pos = 0;
+
+					const parseOr = () => {
+						let left = parseAnd();
+						while (pos < tokens.length && tokens[pos]?.value == "||") {
+							pos++;
+							left = left || parseAnd();
+						}
+						return left;
+					};
+
+					const parseAnd = () => {
+						let left = parseUnary();
+						while (pos < tokens.length && tokens[pos]?.value == "&&") {
+							pos++;
+							left = left && parseUnary();
+						}
+						return left;
+					};
+
+					const parseUnary = () => {
+						if (pos < tokens.length && tokens[pos]?.value == "!") {
+							pos++;
+							return !parseUnary();
+						}
+						return parsePrimary();
+					};
+
+					const parsePrimary = () => {
+						if (pos >= tokens.length) return false;
+						const token = tokens[pos++];
+						if (token.type == "term") return matchTerm(token.value, token.exact);
+						return false;
+					};
+
+					return parseOr();
+				};
+
+				if (!searchValue) return true;
+				const tokens = tokenize(searchValue);
+				if (!tokens.length) return true;
+
+				const implicitAnded = [];
+				for (let i = 0; i < tokens.length; i++) {
+					implicitAnded.push(tokens[i]);
+					if (tokens[i].type == "term" && i + 1 < tokens.length && tokens[i + 1].type == "term") {
+						implicitAnded.push({ type: "op", value: "&&" });
+					}
+				}
+
+				return parse(implicitAnded);
 			});
 
 		const maxVisible = displayPage == "scroll" ? filteredSongs.length : parseInt(3 * previousItemsPerRow * currentPage);
@@ -991,7 +1080,7 @@ function playMusic(songId, playlistId) {
 		}
 
 		playing = true;
-        updateDiscordPresence();
+		updateDiscordPresence();
 
 		if (playlistId) {
 			const pid = playlistId.id || playlistId;
@@ -1187,7 +1276,7 @@ function playPause() {
 		});
 	}
 
-    updateDiscordPresence();
+	updateDiscordPresence();
 }
 
 function toggleAutoplay() {

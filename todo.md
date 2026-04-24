@@ -9,7 +9,6 @@
 -   tick() doesnt work with streamed songs
 -   Fix streamed songs ids glitching inside playlists
 -   Fix streaming in windows
--   Add search queries like || && ! "" + ,
 -   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
 -   Add shortcut of c for playlist with inputted name 
 -   You need to swap back to offline mode to properly disable the buttons above
