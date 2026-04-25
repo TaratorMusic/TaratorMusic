@@ -4,14 +4,19 @@ function startDaemon() {
 	discordDaemon = spawn(path.join(backendFolder, "dc_rich_presence"), ["daemon"]);
 
 	discordDaemon.stdout.on("data", data => {
-		const dataString = data.toString().trim();
+		const lines = data
+			.toString()
+			.split("\n")
+			.filter(l => l.trim());
 
-		try {
-			const response = JSON.parse(dataString);
-			updateDiscordStatus(response.status);
-		} catch (e) {
-			console.error("Failed to parse daemon response:", dataString);
-			updateDiscordStatus("error");
+		for (const line of lines) {
+			try {
+				const response = JSON.parse(line.trim());
+				updateDiscordStatus(response.status);
+			} catch (e) {
+				console.error("Failed to parse daemon response:", line);
+				updateDiscordStatus("error");
+			}
 		}
 	});
 
@@ -82,7 +87,7 @@ function toggleDiscordAPI() {
 		fetch: false,
 	});
 
-    console.log("New RPC status", discordRPCstatus);
+	console.log("New RPC status", discordRPCstatus);
 }
 
 function updateDiscordPresence() {
@@ -91,7 +96,7 @@ function updateDiscordPresence() {
 	const songName = isIdle ? "" : document.getElementById("song-name").textContent;
 	const artistData = isIdle ? null : { artist: songNameCache.get(playingSongsID)?.artist || null };
 	const artistName = artistData ? artistData.artist : "";
-    const paused = !playing;
+	const paused = !playing;
 
 	let currentSec = 0;
 	let totalSec = 0;

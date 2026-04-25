@@ -46,7 +46,6 @@ APPIMAGE env is not defined, current application is not an AppImage
 -   Search code for TODO'S
 -   Rich presence doesnt close it just stops sending data
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
--   discord.js:13 Failed to parse daemon response: {"status":"online"} {"status":"error"}
 -   Lyrics storage for picture in picture
 -   Improve ytdlp speeds to compensate for ytdlcore somehow
 -   Change so when a new song is added we properly rendermusics again
