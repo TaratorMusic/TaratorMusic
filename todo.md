@@ -1,8 +1,7 @@
 ## Version 1.8.5 Planned Features
 
--   Binary spawn not working on linux.
 -   Song link comparation takes playlist additions of the link to account.
--   Playing any buggy song breaks the song length bar forever
+-   Dont check for song info if all three values are already filled
 
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   PiP bugs out when main process is minimised
@@ -12,25 +11,9 @@
 -   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
 -   Add shortcut of c for playlist with inputted name 
 -   You need to swap back to offline mode to properly disable the buttons above
--   Dont check for song info if all three values are already filled
 -   New option while downloading: Start playing the song after the download is finished
-
-APPIMAGE env is not defined, current application is not an AppImage
-[8051:0421/171242.867897:ERROR:dbus/object_proxy.cc:573] Failed to call method: org.freedesktop.systemd1.Manager.StartTransientUnit: object_path= /org/freedesktop/systemd1: org.freedesktop.systemd1.UnitExists: Unit app-org.chromium.Chromium-8051.scope was already loaded or has a fragment file.
-(node:8051) UnhandledPromiseRejectionWarning: Error: ETXTBSY: text file is busy, copyfile '/TaratorMusic/bin/dc_rich_presence' -> '/TaratorMusic/bin/dc_rich_presence'
-    at Object.copyFileSync (node:fs:3104:11)
-    at Object.func [as copyFileSync] (node:electron/js2c/node_init:2:2617)
-    at /TaratorMusic/index.js:29:6
-    at Array.forEach (<anonymous>)
-    at copyBinariesOutside (/TaratorMusic/index.js:19:18)
-    at IpcMainImpl.<anonymous> (/TaratorMusic/index.js:169:9)
-    at IpcMainImpl.emit (node:events:508:28)
-    at Session.<anonymous> (node:electron/js2c/browser_init:2:116005)
-    at Session.emit (node:events:508:28)
-(Use `electron --trace-warnings ...` to show where the warning was created)
-(node:8051) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). To terminate the node process on unhandled promise rejection, use the CLI flag `--unhandled-rejections=strict` (see https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode). (rejection id: 2)
-
-
+-   Add "logs" database
+-   Playing any buggy song breaks the song length bar forever
 
 ### Version 1.8.x Planned Features
 

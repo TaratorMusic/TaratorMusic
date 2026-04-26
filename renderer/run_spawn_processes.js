@@ -111,10 +111,6 @@ async function grabAndStoreSongInfo(songId) {
 
 async function startupCheck() {
 	return new Promise(async (resolve, reject) => {
-		callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL", fetch: false });
-		callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = LTRIM(song_extension, '.')", fetch: false });
-		callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')", fetch: false });
-
 		if (!fs.existsSync(appThumbnailFolder)) {
 			loadNewPage("createAppThumbnailsFolder");
 			return;
@@ -209,10 +205,63 @@ async function startupCheck() {
 		proc.on("close", code => {
 			if (code != 0) return reject(new Error(`Go process exited with code ${code}`));
 			try {
+				sqliteBinary = spawn(path.join(backendFolder, "./sqlite"), [databasesFolder], {
+					stdio: ["pipe", "pipe", "pipe"],
+				});
+
+				sqliteBinary.stdout.on("data", chunk => {
+					sqliteBuffer += chunk.toString();
+					const lines = sqliteBuffer.split("\n");
+					sqliteBuffer = lines.pop();
+					for (const line of lines) {
+						if (!line.trim()) continue;
+
+						const trimmed = line.trim();
+						if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+							console.log("non-JSON output from sqlite:", trimmed);
+							continue;
+						}
+
+						try {
+							const res = JSON.parse(trimmed);
+							if (sqlitePending[res.id]) {
+								sqlitePending[res.id](res);
+								delete sqlitePending[res.id];
+							} else {
+								// fallback for windows, possibly mac too
+								const firstKey = Object.keys(sqlitePending)[0];
+								if (firstKey) {
+									sqlitePending[firstKey](res);
+									delete sqlitePending[firstKey];
+								} else {
+									console.warn("Received response but no pending requests:", res);
+								}
+							}
+						} catch (e) {
+							console.error("failed to parse response:", e, "line:", trimmed);
+						}
+					}
+				});
+
+				sqliteBinary.stderr.on("data", data => {
+					console.error("go stderr:", data.toString());
+				});
+
+				sqliteBinary.on("error", err => {
+					console.error("failed to start sqlite binary:", err);
+				});
+
+				sqliteBinary.on("close", code => {
+					console.log("go process exited with code", code);
+				});
+
+				callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL", fetch: false });
+				callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = LTRIM(song_extension, '.')", fetch: false });
+				callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')", fetch: false });
+
 				data = JSON.parse(data);
-				if (Object.keys(data).length != allMusics.length) {
-					foundNewSongs(data, musicMap);
-				}
+				initialiseDatabases(data);
+
 				resolve(data);
 			} catch (e) {
 				reject(e);

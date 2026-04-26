@@ -24,56 +24,6 @@ let sqliteBinary;
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
-
-	sqliteBinary = spawn(path.join(backendFolder, "./sqlite"), [databasesFolder], {
-		stdio: ["pipe", "pipe", "pipe"],
-	});
-
-	sqliteBinary.stdout.on("data", chunk => {
-		sqliteBuffer += chunk.toString();
-		const lines = sqliteBuffer.split("\n");
-		sqliteBuffer = lines.pop();
-		for (const line of lines) {
-			if (!line.trim()) continue;
-
-			const trimmed = line.trim();
-			if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-				console.log("non-JSON output from sqlite:", trimmed);
-				continue;
-			}
-
-			try {
-				const res = JSON.parse(trimmed);
-				if (sqlitePending[res.id]) {
-					sqlitePending[res.id](res);
-					delete sqlitePending[res.id];
-				} else {
-					// fallback for windows, possibly mac too
-					const firstKey = Object.keys(sqlitePending)[0];
-					if (firstKey) {
-						sqlitePending[firstKey](res);
-						delete sqlitePending[firstKey];
-					} else {
-						console.warn("Received response but no pending requests:", res);
-					}
-				}
-			} catch (e) {
-				console.error("failed to parse response:", e, "line:", trimmed);
-			}
-		}
-	});
-
-	sqliteBinary.stderr.on("data", data => {
-		console.error("go stderr:", data.toString());
-	});
-
-	sqliteBinary.on("error", err => {
-		console.error("failed to start sqlite binary:", err);
-	});
-
-	sqliteBinary.on("close", code => {
-		console.log("go process exited with code", code);
-	});
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");
@@ -169,7 +119,7 @@ function callSqlite({ db, query, args = [], fetch = false }) {
 	});
 }
 
-async function initialiseDatabases() {
+async function initialiseDatabases(data) {
 	const settingsRows = await callSqlite({
 		db: "settings",
 		query: "SELECT * FROM settings LIMIT 1",
@@ -372,8 +322,9 @@ async function initialiseDatabases() {
 		});
 	}
 
+	if (Object.keys(data).length != songNameCache.size) foundNewSongs(data, musicMap);
+	getPlaylists(false);
 	setupLazyBackgrounds();
-	startupCheck();
 }
 
 setInterval(async () => {
@@ -1924,7 +1875,7 @@ function updateMiniPlayer(state) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-	initialiseDatabases();
+	startupCheck();
 
 	if (platform == "linux") loadJSFile("mpris");
 
@@ -2064,5 +2015,4 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
-	getPlaylists(false);
 });
