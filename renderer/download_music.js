@@ -25,7 +25,18 @@ function differentiateMediaLinks(url) {
 function extractYoutubeVideoId(url) {
 	try {
 		const u = new URL(url.trim());
-		return u.searchParams.get("v") || null;
+
+		if (u.hostname.includes("youtu.be")) {
+			const id = u.pathname.slice(1);
+			return id.length == 11 ? id : null;
+		}
+
+		if (u.hostname.includes("youtube.com")) {
+			const id = u.searchParams.get("v") || u.pathname.split("/").pop();
+			return id && id.length == 11 ? id : null;
+		}
+
+		return null;
 	} catch {
 		return null;
 	}
@@ -900,7 +911,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			if (!artists[i] || !genres[i] || !languages[i]) idsNeedingInfo.push(songIds[i]);
 		}
 
-		if (idsNeedingInfo.length > 0) grabAndStoreSongInfo(idsNeedingInfo);    
+		if (idsNeedingInfo.length > 0) grabAndStoreSongInfo(idsNeedingInfo);
 		if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;

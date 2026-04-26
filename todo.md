@@ -1,4 +1,4 @@
-## Version 1.8.5 Planned Features
+## Version 1.8.6 Planned Features
 
 -   Song link comparation takes playlist additions of the link to account.
 
