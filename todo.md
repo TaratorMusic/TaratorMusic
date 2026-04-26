@@ -4,6 +4,7 @@
 -   Song link comparation takes playlist additions of the link to account.
 -   Playing any buggy song breaks the song length bar forever
 -   Playlist thumbnails dont appear
+
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   PiP bugs out when main process is minimised
 -   tick() doesnt work with streamed songs
