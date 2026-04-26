@@ -1,6 +1,6 @@
 {
 	"name": "taratormusic",
-	"version": "1.8.4",
+	"version": "1.8.5",
 	"description": "A cross-platform desktop music player application with playlists, music downloading from youtube and spotify, volume stabilisation, statistics and much more.",
 	"main": "index.js",
 	"bin": "index.js",
