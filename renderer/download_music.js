@@ -695,7 +695,12 @@ async function actuallyDownloadTheSong() {
 
 		try {
 			document.getElementById("downloadModalText").innerText = totalSongs > 50 ? "Downloading... This might take some time..." : "Downloading...";
-			downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID);
+
+			const playlistThumbnailEl = document.getElementById("thumbnailImage0");
+			const bgImage = playlistThumbnailEl?.style?.backgroundImage || "";
+			const playlistThumbnailUrl = bgImage.replace(/^url\(['"]?(.+?)['"]?\)$/, "$1") || "";
+
+			downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID, playlistThumbnailUrl);
 		} catch (err) {
 			document.getElementById("downloadModalText").innerText = "Database error: " + err.message;
 			document.getElementById("finalDownloadButton").disabled = false;
@@ -703,7 +708,7 @@ async function actuallyDownloadTheSong() {
 	}
 }
 
-async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID) {
+async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID, playlistThumbnailUrl) {
 	const fetch = require("node-fetch");
 
 	for (const [key, _] of pendingPlaylistAddsWithIds) {
@@ -724,26 +729,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 	let completedDownloads = 0;
 
 	try {
-		if (window.isSaveAsPlaylistActive) {
-			const playlistThumbnailElement = document.getElementById("thumbnailImage0");
-			if (playlistThumbnailElement && playlistThumbnailElement.style && playlistThumbnailElement.style.backgroundImage) {
-				const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
-				const bgImage = playlistThumbnailElement.style.backgroundImage;
-				const thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
-				if (thumbnailUrl.startsWith("data:image")) {
-					const base64Data = thumbnailUrl.split(",")[1];
-					const buffer = Buffer.from(base64Data, "base64");
-					fs.writeFileSync(thumbnailPath, buffer);
-				} else if (thumbnailUrl.startsWith("http://") || thumbnailUrl.startsWith("https://")) {
-					const response = await fetch(thumbnailUrl);
-					if (response.ok) {
-						const arrayBuffer = await response.arrayBuffer();
-						const buffer = Buffer.from(arrayBuffer);
-						fs.writeFileSync(thumbnailPath, buffer);
-					}
-				}
-			}
-		}
+		if (window.isSaveAsPlaylistActive) await processThumbnail(playlistThumbnailUrl, playlistID);
 
 		let artists = [];
 		let genres = [];
@@ -831,7 +817,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					callSqlite({
 						db: "musics",
 						query: `INSERT INTO songs (song_id, song_name, song_url, song_length, seconds_played, times_listened, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-						args: [songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", artists[i], genres[i],  languages[i]],
+						args: [songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", artists[i], genres[i], languages[i]],
 						fetch: false,
 					});
 
@@ -873,6 +859,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 		if (window.isSaveAsPlaylistActive) {
 			const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
+			await processThumbnail(playlistThumbnailUrl, playlistID);
 			const songsJson = JSON.stringify(songIds.map(id => id.trim()));
 
 			try {

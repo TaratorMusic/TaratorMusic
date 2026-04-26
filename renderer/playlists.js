@@ -75,7 +75,7 @@ function displayPlaylists(playlists) {
 		playlistElement.className = "playlist";
 		playlistElement.setAttribute("data-playlist-id", playlist.id);
 
-		const thumbnailPath = path.join(thumbnailFolder, `${playlist.id}playlist.${playlist.thumbnail_extension}`);
+		const thumbnailPath = path.join(thumbnailFolder, `${playlist.id}.${playlist.thumbnail_extension}`);
 		let thumbnailSrc = "";
 
 		if (playlist.id == "Favorites") {
@@ -162,20 +162,20 @@ async function saveNewPlaylist() {
 	let srcPath, ext;
 
 	if (fileInput) {
-		srcPath = `${fileInput.path}playlist`;
+		srcPath = fileInput.path;
 		ext = path.extname(fileInput.name).slice(1);
 	} else {
 		srcPath = path.join(appThumbnailFolder, "placeholder.jpg");
 		ext = path.extname(srcPath).slice(1);
 	}
 
-	const dest = path.join(thumbnailFolder, `${id}playlist.${ext}`);
+	const dest = path.join(thumbnailFolder, `${id}.${ext}`);
 
 	for (const [id, data] of playlistsMap.entries()) {
 		if (data.name == name) {
 			const proceed = await confirmModal("A playlist with the same name exists, continue?", "Continue", "Return");
 			if (!proceed) return;
-            break;
+			break;
 		}
 	}
 
@@ -202,7 +202,6 @@ async function saveNewPlaylist() {
 async function saveEditedPlaylist() {
 	const newName = document.getElementById("editPlaylistNameInput").value.trim();
 	const playlistID = document.getElementById("editInvisibleId").value;
-	const playlistThumbnailExtension = document.getElementById("editInvisibleExtension").value;
 	const newThumbnail = document.getElementById("editPlaylistThumbnail").src;
 	const playlistElement = document.querySelector(`.playlist[data-playlist-id="${playlistID}"]`);
 	playlistElement.querySelector(".playlist-info div:first-child").textContent = newName;
@@ -216,7 +215,7 @@ async function saveEditedPlaylist() {
 		}
 	}
 
-	let thumbnailPath = path.join(thumbnailFolder, `${playlistID}playlist.${newThumbnailExtension}`);
+	let thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${newThumbnailExtension}`);
 	const writeOrRenameThumbnailPromise = new Promise((resolve, reject) => {
 		if (newThumbnail.startsWith("data:image")) {
 			const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
@@ -359,7 +358,7 @@ function deletePlaylist() {
 		const playlistName = document.getElementById("editInvisibleName").value;
 		const playlistID = document.getElementById("editInvisibleId").value;
 		const playlistThumbnailExtension = document.getElementById("editInvisibleExtension").value;
-		const thumbnailPath = path.join(thumbnailFolder, playlistID + "playlist." + playlistThumbnailExtension);
+		const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${playlistThumbnailExtension}`);
 
 		fs.unlink(thumbnailPath, err => {
 			if (err) console.log(`Failed to delete file: ${err.message}`);

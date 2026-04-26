@@ -199,7 +199,8 @@ async function startupCheck() {
 		}
 
 		const goBinary = path.join(backendFolder, "startup_check");
-		const proc = spawn(goBinary, [musicFolder, thumbnailFolder], { windowsHide: true, stdio: ["pipe", "pipe", "inherit"] });
+		const playlistIds = JSON.stringify([...playlistsMap.keys()]);
+		const proc = spawn(goBinary, [musicFolder, thumbnailFolder, playlistIds], { windowsHide: true, stdio: ["pipe", "pipe", "inherit"] });
 		let data = "";
 
 		proc.on("error", reject);

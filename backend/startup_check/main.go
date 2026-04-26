@@ -12,13 +12,23 @@ import (
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: go run script.go <musicFolder> <thumbnailFolder>")
+		fmt.Println("Usage: go run script.go <musicFolder> <thumbnailFolder> [playlistIds]")
 		return
 	}
 
 	musicFolder := os.Args[1]
 	thumbnailFolder := os.Args[2]
 	debugPattern := regexp.MustCompile(`^\d+-player-script\.js$`)
+
+	playlistIds := make(map[string]bool)
+	if len(os.Args) >= 4 {
+		var ids []string
+		if err := json.Unmarshal([]byte(os.Args[3]), &ids); err == nil {
+			for _, id := range ids {
+				playlistIds[id] = true
+			}
+		}
+	}
 
 	parentDir := filepath.Dir(musicFolder)
 
@@ -58,27 +68,22 @@ func main() {
 
 	thumbMap := make(map[string]string)
 	filepath.WalkDir(thumbnailFolder, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-
-		if d.IsDir() {
+		if err != nil || d.IsDir() {
 			return nil
 		}
 
 		name := d.Name()
-
-		if strings.Contains(strings.ToLower(name), "playlist") {
-			return nil
-		}
-
 		ext := filepath.Ext(name)
 		id := strings.TrimSuffix(name, ext)
+
+		if playlistIds[id] {
+			return nil
+		}
 
 		if _, ok := musicMap[id]; ok {
 			thumbMap[id] = ext
 		} else {
-			_ = os.Remove(path) 
+			_ = os.Remove(path)
 		}
 
 		return nil
