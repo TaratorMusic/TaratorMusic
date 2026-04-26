@@ -36,7 +36,6 @@ async function grabAndStoreSongInfo(songId) {
 				}
 			}
 
-			alertModal("Checking for song info... You can close this window.");
 		} else {
 			songs = Array.from(songNameCache.values())
 				.filter(song => !song.artist || !song.genre || !song.language)

@@ -1,7 +1,6 @@
 ## Version 1.8.5 Planned Features
 
 -   Song link comparation takes playlist additions of the link to account.
--   Dont check for song info if all three values are already filled
 
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   PiP bugs out when main process is minimised
