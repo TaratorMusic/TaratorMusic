@@ -176,7 +176,14 @@ async function startupCheck() {
 
 		const allMusics = [...songNameCache.entries()].map(([song_id, v]) => ({ song_id, ...v }));
 		const musicMap = Object.fromEntries(allMusics.map(({ song_id, ...rest }) => [song_id, rest]));
-		const validSongIds = new Set(songNameCache.keys());
+
+		const streamedIds = await callSqlite({
+			db: "musics",
+			query: "SELECT song_id FROM streams",
+			fetch: true,
+		});
+
+		const validSongIds = new Set([...songNameCache.keys(), ...streamedIds.map(row => row.song_id)]);
 
 		for (const [playlistId, playlist] of playlistsMap.entries()) {
 			const filtered = playlist.songs.filter(id => validSongIds.has(id));

@@ -648,7 +648,7 @@ async function searchYoutubeInMusics() {
 						const maxSize = (max.width || 0) * (max.height || 0);
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
-                    const thumbnailUrl = bestThumbnail.url ?? bestThumbnail;
+					const thumbnailUrl = bestThumbnail.url ?? bestThumbnail;
 
 					await callSqlite({
 						db: "musics",
@@ -886,7 +886,7 @@ async function refreshRecommendations() {
 			const songID = info.id;
 			const songLength = info.duration;
 			const bestThumbnail = info.thumbnail.url ?? info.thumbnail;
-            
+
 			await callSqlite({
 				db: "musics",
 				query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -958,11 +958,11 @@ function createMusicElement(songFile) {
 	} else {
 		const backgroundElement = document.createElement("div");
 		backgroundElement.classList.add("background-element");
-		backgroundElement.dataset.bg = songFile.thumbnail.url || songFile.thumbnail;
+		backgroundElement.dataset.bg = songFile.thumbnail.url ?? songFile.thumbnail;
 		musicElement.appendChild(backgroundElement);
 		songNameElement.classList.add("song-name");
 		songNameElement.innerText = songFile.name;
-		fileNameWithoutExtension = songFile.name;
+		fileNameWithoutExtension = songFile.id;
 	}
 
 	const songLengthElement = document.createElement("div");
@@ -1804,6 +1804,15 @@ function handleDropdownChange(option, selectElement) {
 function getSongNameById(songId) {
 	const row = songNameCache.get(songId);
 	return row ? row.song_name : null;
+}
+
+async function getStreamedSongNameById(songId) {
+	return callSqlite({
+		db: "musics",
+		query: "SELECT song_name FROM streams WHERE song_id = ?",
+		args: [songId],
+		fetch: true,
+	});
 }
 
 function bottomRightFunctions(input) {

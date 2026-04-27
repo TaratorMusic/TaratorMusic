@@ -32,7 +32,7 @@ async function getPlaylists(displaying) {
 				thumbnail_extension: playlist.thumbnail_extension,
 			});
 
-            playlistIdsForStartup.push(playlist.id)
+			playlistIdsForStartup.push(playlist.id);
 		}
 
 		if (displaying) displayPlaylists([...playlistsMap.values()]);
@@ -42,7 +42,7 @@ async function getPlaylists(displaying) {
 	}
 }
 
-function displayPlaylists(playlists) {
+async function displayPlaylists(playlists) {
 	const playlistsContent = document.getElementById("playlists-content");
 	playlistsContent.innerHTML = "";
 
@@ -72,7 +72,7 @@ function displayPlaylists(playlists) {
 
 	const playlistElements = [];
 
-	playlists.forEach(playlist => {
+	for (const playlist of playlists) {
 		const playlistElement = document.createElement("div");
 		playlistElement.className = "playlist";
 		playlistElement.setAttribute("data-playlist-id", playlist.id);
@@ -104,7 +104,7 @@ function displayPlaylists(playlists) {
 		const playlistName = document.createElement("div");
 		playlistName.className = "playlistName";
 		playlistName.innerHTML = `<h2>${playlist.name} -&nbsp;</h2>`;
-		playlistName.innerHTML += `<h3> ${playlist.songs.length == 1 ? `${playlist.songs.length} song` : `${playlist.songs.length} songs`}</h3>`;
+		playlistName.innerHTML += `<h3>${playlist.songs.length == 1 ? `${playlist.songs.length} song` : `${playlist.songs.length} songs`}</h3>`;
 		playlistInfo.appendChild(playlistName);
 
 		const playlistSongs = document.createElement("div");
@@ -129,13 +129,23 @@ function displayPlaylists(playlists) {
 
 		for (let i = 0; i < playlist.songs.length; i++) {
 			const playlistSong = document.createElement("div");
-			playlistSong.innerText = getSongNameById(playlist.songs[i]);
-			playlistSongs.appendChild(playlistSong);
 			playlistSong.className = "playlist-song";
 
 			playlistSong.addEventListener("click", () => {
 				playPlaylist(playlist.id, i);
 			});
+
+			let name;
+
+			if (playlist.songs[i].includes("tarator")) {
+				name = await getSongNameById(playlist.songs[i]);
+				playlistSong.innerText = name;
+			} else {
+				const res = await getStreamedSongNameById(playlist.songs[i]);
+				playlistSong.innerText = res[0]?.song_name;
+			}
+
+			playlistSongs.appendChild(playlistSong);
 		}
 
 		thumbnail.addEventListener("click", () => {
@@ -144,7 +154,7 @@ function displayPlaylists(playlists) {
 
 		playlistsArea.appendChild(playlistElement);
 		playlistElements.push({ element: playlistElement, name: playlist.name.toLowerCase() });
-	});
+	}
 
 	searchInput.addEventListener("input", () => {
 		const query = searchInput.value.toLowerCase();

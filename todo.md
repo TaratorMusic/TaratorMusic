@@ -1,14 +1,14 @@
 ## Version 1.8.6 Planned Features
 
 -   Binary spawning not fixed. Move everything to /config folder or wherever
+-   You need to swap back to offline mode to properly disable the buttons above
 -   Add "logs" database and function
+-   play previous song and play next song do not detect streamed songs
 
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
--   Fix streamed songs ids glitching inside playlists
 -   Fix streaming in windows
 -   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
 -   Add shortcut of c for playlist with inputted name 
--   You need to swap back to offline mode to properly disable the buttons above
 -   New option while downloading: Start playing the song after the download is finished
 
 ### Version 1.8.x Planned Features
