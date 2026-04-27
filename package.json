@@ -81,7 +81,7 @@
 		}
 	},
 	"dependencies": {
-		"@distube/ytpl": "github:Victiniiiii/ytpl",
+		"@distube/ytpl": "github:Victiniiiii/ytpl#1d5414f75dbc03a70dd04b92facee9362c7ed5b5",
 		"@ffmpeg-installer/ffmpeg": "^1.1.0",
 		"chart.js": "^4.5.0",
 		"cheerio": "^1.1.0",

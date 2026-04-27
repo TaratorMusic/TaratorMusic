@@ -1,6 +1,10 @@
 ## Version 1.8.6 Planned Features
 
--   Song link comparation takes playlist additions of the link to account.
+-   Binary spawning not fixed. Move everything to /config folder or wherever
+-   playlist thumbnails still disappear
+-   if progress more than 5 seconds, play previous song should reset the song instead
+-   Add "logs" database
+-   Streaming just doesnt work. check logs
 
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   PiP bugs out when main process is minimised
@@ -11,13 +15,13 @@
 -   Add shortcut of c for playlist with inputted name 
 -   You need to swap back to offline mode to properly disable the buttons above
 -   New option while downloading: Start playing the song after the download is finished
--   Add "logs" database
 -   Playing any buggy song breaks the song length bar forever
 
 ### Version 1.8.x Planned Features
 
 -   Customise Dc Rich Presence box in the settings
 -   Update playlists tab
+-   Song link comparation takes playlist additions of the link to account ??
 -   Add a real counter in downloads text. Fix double lines
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
 -   While editing streamed songs some thumbnails doesnt show up???
@@ -29,7 +33,6 @@
 -   Rich presence doesnt close it just stops sending data
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
 -   Lyrics storage for picture in picture
--   Improve ytdlp speeds to compensate for ytdlcore somehow
 -   Change so when a new song is added we properly rendermusics again
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Compiling JS Script
