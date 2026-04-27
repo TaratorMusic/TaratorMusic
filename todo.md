@@ -1,7 +1,6 @@
 ## Version 1.8.6 Planned Features
 
 -   Binary spawning not fixed. Move everything to /config folder or wherever
--   playlist thumbnails still disappear
 -   Add "logs" database
 -   Streaming just doesnt work. check logs
 
@@ -14,7 +13,6 @@
 -   Add shortcut of c for playlist with inputted name 
 -   You need to swap back to offline mode to properly disable the buttons above
 -   New option while downloading: Start playing the song after the download is finished
--   Playing any buggy song breaks the song length bar forever
 
 ### Version 1.8.x Planned Features
 

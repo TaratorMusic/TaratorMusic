@@ -93,11 +93,6 @@
 		"mpris-service": "^2.1.2",
 		"puppeteer": "^24.12.1"
 	},
-	"overrides": {
-		"cheerio": {
-			"undici": "github:Victiniiiii/undici-fix"
-		}
-	},
 	"devDependencies": {
 		"electron": "^40.7.0",
 		"electron-builder": "^26.8.1"

@@ -740,8 +740,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 	let completedDownloads = 0;
 
 	try {
-		if (window.isSaveAsPlaylistActive) await processThumbnail(playlistThumbnailUrl, playlistID);
-
 		let artists = [];
 		let genres = [];
 		let languages = [];

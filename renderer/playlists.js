@@ -31,6 +31,8 @@ async function getPlaylists(displaying) {
 				songs: parsedSongs,
 				thumbnail_extension: playlist.thumbnail_extension,
 			});
+
+            playlistIdsForStartup.push(playlist.id)
 		}
 
 		if (displaying) displayPlaylists([...playlistsMap.values()]);

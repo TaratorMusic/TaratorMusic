@@ -35,7 +35,6 @@ async function grabAndStoreSongInfo(songId) {
 					songs = [songData.song_name];
 				}
 			}
-
 		} else {
 			songs = Array.from(songNameCache.values())
 				.filter(song => !song.artist || !song.genre || !song.language)
@@ -110,10 +109,7 @@ async function grabAndStoreSongInfo(songId) {
 
 async function startupCheck() {
 	return new Promise(async (resolve, reject) => {
-		if (!fs.existsSync(appThumbnailFolder)) {
-			loadNewPage("createAppThumbnailsFolder");
-			return;
-		}
+		if (!fs.existsSync(appThumbnailFolder)) return loadNewPage("createAppThumbnailsFolder");
 
 		const requiredFiles = [
 			"addtoplaylist.svg",
@@ -148,10 +144,7 @@ async function startupCheck() {
 		];
 
 		for (const file of requiredFiles) {
-			if (!fs.existsSync(path.join(appThumbnailFolder, file))) {
-				loadNewPage("createAppThumbnailsFolder");
-				return;
-			}
+			if (!fs.existsSync(path.join(appThumbnailFolder, file))) return loadNewPage("createAppThumbnailsFolder");
 		}
 
 		const missingSongExts = [...songNameCache.entries()].filter(([, v]) => !v.song_extension);
@@ -194,78 +187,22 @@ async function startupCheck() {
 		}
 
 		const goBinary = path.join(backendFolder, "startup_check");
-		const playlistIds = JSON.stringify([...playlistsMap.keys()]);
-		const proc = spawn(goBinary, [musicFolder, thumbnailFolder, playlistIds], { windowsHide: true, stdio: ["pipe", "pipe", "inherit"] });
+		const proc = spawn(goBinary, [musicFolder, thumbnailFolder, JSON.stringify(playlistIdsForStartup)], { windowsHide: true, stdio: ["pipe", "pipe", "inherit"] });
 		let data = "";
 
 		proc.on("error", reject);
 		proc.stdout.on("data", chunk => (data += chunk));
 
 		proc.on("close", code => {
+			data = JSON.parse(data);
+			if (Object.keys(data).length != songNameCache.size) foundNewSongs(data, musicMap);
 			if (code != 0) return reject(new Error(`Go process exited with code ${code}`));
-			try {
-				sqliteBinary = spawn(path.join(backendFolder, "./sqlite"), [databasesFolder], {
-					stdio: ["pipe", "pipe", "pipe"],
-				});
-
-				sqliteBinary.stdout.on("data", chunk => {
-					sqliteBuffer += chunk.toString();
-					const lines = sqliteBuffer.split("\n");
-					sqliteBuffer = lines.pop();
-					for (const line of lines) {
-						if (!line.trim()) continue;
-
-						const trimmed = line.trim();
-						if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-							console.log("non-JSON output from sqlite:", trimmed);
-							continue;
-						}
-
-						try {
-							const res = JSON.parse(trimmed);
-							if (sqlitePending[res.id]) {
-								sqlitePending[res.id](res);
-								delete sqlitePending[res.id];
-							} else {
-								// fallback for windows, possibly mac too
-								const firstKey = Object.keys(sqlitePending)[0];
-								if (firstKey) {
-									sqlitePending[firstKey](res);
-									delete sqlitePending[firstKey];
-								} else {
-									console.warn("Received response but no pending requests:", res);
-								}
-							}
-						} catch (e) {
-							console.error("failed to parse response:", e, "line:", trimmed);
-						}
-					}
-				});
-
-				sqliteBinary.stderr.on("data", data => {
-					console.error("go stderr:", data.toString());
-				});
-
-				sqliteBinary.on("error", err => {
-					console.error("failed to start sqlite binary:", err);
-				});
-
-				sqliteBinary.on("close", code => {
-					console.log("go process exited with code", code);
-				});
-
-				callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL", fetch: false });
-				callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = LTRIM(song_extension, '.')", fetch: false });
-				callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')", fetch: false });
-
-				data = JSON.parse(data);
-				initialiseDatabases(data);
-
-				resolve(data);
-			} catch (e) {
-				reject(e);
-			}
+			else resolve();
 		});
+
+		callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL", fetch: false });
+		callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = LTRIM(song_extension, '.')", fetch: false });
+		callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')", fetch: false });
 	});
 }
 

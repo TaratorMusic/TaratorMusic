@@ -68,6 +68,7 @@ let streamedSongsHtmlMap = new Map();
 let lastAuthoritativePosition = 0; // Playing songs position sent by miniaudio
 let lastSyncTimestamp = 0; // Current predicted timestamp in JS
 let isInterpolating = false; // If song is playing at the moment
+let playlistIdsForStartup = []; // At app launch, makes all playlist ID's an array to send to startup_check
 
 let songNameCache = new Map(); // Song cache
 let playlistsMap = new Map(); // Playlist cache
@@ -119,7 +120,57 @@ function callSqlite({ db, query, args = [], fetch = false }) {
 	});
 }
 
-async function initialiseDatabases(data) {
+async function initialiseDatabases() {
+	sqliteBinary = spawn(path.join(backendFolder, "./sqlite"), [databasesFolder], {
+		stdio: ["pipe", "pipe", "pipe"],
+	});
+
+	sqliteBinary.stdout.on("data", chunk => {
+		sqliteBuffer += chunk.toString();
+		const lines = sqliteBuffer.split("\n");
+		sqliteBuffer = lines.pop();
+		for (const line of lines) {
+			if (!line.trim()) continue;
+
+			const trimmed = line.trim();
+			if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+				console.log("non-JSON output from sqlite:", trimmed);
+				continue;
+			}
+
+			try {
+				const res = JSON.parse(trimmed);
+				if (sqlitePending[res.id]) {
+					sqlitePending[res.id](res);
+					delete sqlitePending[res.id];
+				} else {
+					// fallback for windows, possibly mac too
+					const firstKey = Object.keys(sqlitePending)[0];
+					if (firstKey) {
+						sqlitePending[firstKey](res);
+						delete sqlitePending[firstKey];
+					} else {
+						console.warn("Received response but no pending requests:", res);
+					}
+				}
+			} catch (e) {
+				console.error("failed to parse response:", e, "line:", trimmed);
+			}
+		}
+	});
+
+	sqliteBinary.stderr.on("data", data => {
+		console.error("go stderr:", data.toString());
+	});
+
+	sqliteBinary.on("error", err => {
+		console.error("failed to start sqlite binary:", err);
+	});
+
+	sqliteBinary.on("close", code => {
+		console.log("go process exited with code", code);
+	});
+
 	const settingsRows = await callSqlite({
 		db: "settings",
 		query: "SELECT * FROM settings LIMIT 1",
@@ -322,8 +373,8 @@ async function initialiseDatabases(data) {
 		});
 	}
 
-	if (Object.keys(data).length != songNameCache.size) foundNewSongs(data, musicMap);
-	getPlaylists(false);
+	await getPlaylists(false);
+	startupCheck();
 	setupLazyBackgrounds();
 }
 
@@ -1880,7 +1931,7 @@ function updateMiniPlayer(state) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-	startupCheck();
+	initialiseDatabases();
 
 	if (platform == "linux") loadJSFile("mpris");
 
