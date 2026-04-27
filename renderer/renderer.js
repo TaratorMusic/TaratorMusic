@@ -648,11 +648,12 @@ async function searchYoutubeInMusics() {
 						const maxSize = (max.width || 0) * (max.height || 0);
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
+                    const thumbnailUrl = bestThumbnail.url ?? bestThumbnail;
 
 					await callSqlite({
 						db: "musics",
 						query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
-						args: [songID, videoTitle, bestThumbnail.url, songLength, null, null, null],
+						args: [songID, videoTitle, thumbnailUrl, songLength, null, null, null],
 						fetch: false,
 					});
 
@@ -884,14 +885,15 @@ async function refreshRecommendations() {
 			const videoTitle = info.title;
 			const songID = info.id;
 			const songLength = info.duration;
-			const bestThumbnail = info.thumbnail;
-			const url = info.webpage_url;
+			const bestThumbnail = info.thumbnail.url ?? info.thumbnail;
+            
 			await callSqlite({
 				db: "musics",
 				query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
-				args: [songID, videoTitle, bestThumbnail.url, songLength, null, null, null],
+				args: [songID, videoTitle, bestThumbnail, songLength, null, null, null],
 				fetch: false,
 			});
+
 			if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
 				await callSqlite({
 					db: "musics",
@@ -902,7 +904,9 @@ async function refreshRecommendations() {
 				notInterestedSongs.push({ song_id: songID });
 				continue;
 			}
+
 			if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() == key.toLowerCase().trim())) continue;
+
 			const fullSong = {
 				id: songID,
 				name: videoTitle,
@@ -910,6 +914,7 @@ async function refreshRecommendations() {
 				length: songLength,
 			};
 			streamedSongsHtmlMap.set(songID, fullSong);
+
 			if (count == 0) container.innerHTML = "";
 			const musicElement = createMusicElement(fullSong);
 			if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
@@ -1398,6 +1403,40 @@ function skipBackward() {
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 }
 
+function openLyricsModal() {
+	document.getElementById("lyricsModal").style.display = "block";
+
+	const cached = songLyricsCache.get(playingSongsID);
+	if (cached) {
+		console.log("Lyrics:", cached.lyrics);
+		document.getElementById("lyricsArea").value = cached.lyrics;
+	} else {
+		document.getElementById("lyricsArea").value = "";
+	}
+}
+
+async function saveLyrics() {
+	const savedSongId = playingSongsID; // Saving the ID just in case the song ends before the modal is confirmed / function is finished
+	if (!(await confirmModal(`Would you like to set these lyrics for ${getSongNameById(savedSongId)}`, "Yes", "No"))) return;
+
+	songLyricsCache.set(savedSongId, {
+		lyrics: document.getElementById("lyricsArea").value,
+	});
+
+	await callSqlite({
+		db: "musics",
+		query: `
+            INSERT INTO lyrics (song_id, lyrics)
+            VALUES (?, ?)
+            ON CONFLICT(song_id) DO UPDATE SET lyrics = excluded.lyrics
+        `,
+		args: [savedSongId, document.getElementById("lyricsArea").value],
+		fetch: false,
+	});
+
+	if (document.getElementById("lyricsArea").value.trim() != "") document.getElementById("lyricsButtonBottomRight").style.color = "lime";
+}
+
 async function opencustomiseModal(songsId) {
 	let song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url, thumbnailPath;
 
@@ -1466,40 +1505,6 @@ async function opencustomiseModal(songsId) {
 	customiseDiv.dataset.oldThumbnailPath = thumbnailPath;
 	customiseDiv.dataset.songID = songsId;
 	customiseDiv.style.display = "block";
-}
-
-function openLyricsModal() {
-	document.getElementById("lyricsModal").style.display = "block";
-
-	const cached = songLyricsCache.get(playingSongsID);
-	if (cached) {
-		console.log("Lyrics:", cached.lyrics);
-		document.getElementById("lyricsArea").value = cached.lyrics;
-	} else {
-		document.getElementById("lyricsArea").value = "";
-	}
-}
-
-async function saveLyrics() {
-	const savedSongId = playingSongsID; // Saving the ID just in case the song ends before the modal is confirmed / function is finished
-	if (!(await confirmModal(`Would you like to set these lyrics for ${getSongNameById(savedSongId)}`, "Yes", "No"))) return;
-
-	songLyricsCache.set(savedSongId, {
-		lyrics: document.getElementById("lyricsArea").value,
-	});
-
-	await callSqlite({
-		db: "musics",
-		query: `
-            INSERT INTO lyrics (song_id, lyrics)
-            VALUES (?, ?)
-            ON CONFLICT(song_id) DO UPDATE SET lyrics = excluded.lyrics
-        `,
-		args: [savedSongId, document.getElementById("lyricsArea").value],
-		fetch: false,
-	});
-
-	if (document.getElementById("lyricsArea").value.trim() != "") document.getElementById("lyricsButtonBottomRight").style.color = "lime";
 }
 
 async function saveEditedSong() {

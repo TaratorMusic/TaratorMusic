@@ -191,7 +191,7 @@ async function processVideoLink(videoUrl, songId = null) {
 		const thumbnailImage = document.createElement("img");
 		thumbnailImage.id = "thumbnailImage";
 		thumbnailImage.className = "thumbnailImage";
-		thumbnailImage.src = thumbnailUrl.trim();
+		thumbnailImage.src = thumbnailUrl.url ?? thumbnailUrl;
 		thumbnailImage.alt = "";
 		thumbnailImage.onerror = function () {
 			console.log("Error loading thumbnail image:", thumbnailUrl);

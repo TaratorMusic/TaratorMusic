@@ -2,7 +2,6 @@
 
 -   Binary spawning not fixed. Move everything to /config folder or wherever
 -   Add "logs" database and function
--   While editing streamed songs some thumbnails doesnt show up???
 
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   Fix streamed songs ids glitching inside playlists
