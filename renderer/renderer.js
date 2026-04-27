@@ -422,22 +422,6 @@ tabs.forEach(tab => {
 	});
 });
 
-async function getSongNameCached(songId) {
-	if (!songNameCache.has(songId)) {
-		// TODO: Test this
-		const { rows } = await callSqlite({
-			db: "musics",
-			query: "SELECT song_name, song_length, song_url, song_extension, thumbnail_extension, genre, artist, language FROM songs WHERE song_id = ?",
-			args: [songId],
-			fetch: true,
-		});
-
-		console.log("songs:", rows);
-		songNameCache.set(songId, rows || { song_name: null, song_length: null, song_url: null, song_extension: null, thumbnail_extension: null, genre: null, artist: null, language: null });
-	}
-	return songNameCache.get(songId);
-}
-
 async function myMusicOnClick() {
 	const myMusicContent = document.getElementById("my-music-content");
 	myMusicContent.innerHTML = "";
@@ -1014,10 +998,7 @@ function playMusic(songId, playlistId) {
 		currentPlaylist = playlistId || null;
 
 		const songData = offlineMode ? songNameCache.get(songId) : streamedSongsHtmlMap.get(songId);
-		if (!songData) {
-			console.warn("Song not found in cache or stream map:", songId);
-			return;
-		}
+		if (!songData) return console.log("Song not found in cache or stream map:", songId);
 
 		const songName = offlineMode ? songData.song_name : songData.name;
 		songNameEl.setAttribute("data-file-name", playingSongsID);
@@ -1066,7 +1047,7 @@ function playMusic(songId, playlistId) {
 				console.log("Tried to get thumbnail from", thumbnailPath, "but failed. Used placeholder.");
 			}
 		} else {
-			thumbnailUrl = songData.thumbnail?.url || "";
+			thumbnailUrl = songData?.thumbnail || "";
 		}
 
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url('${thumbnailUrl}')`;
@@ -1908,14 +1889,28 @@ function tick() {
 			const clamped = Math.min(pos, songDuration);
 			videoLength.textContent = `${formatTime(clamped)} / ${formatTime(songDuration)}`;
 			videoProgress.value = (clamped / songDuration) * 100;
-			const row = songNameCache.get(playingSongsID);
 
-			updateMiniPlayer({
-				progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
-				thumbnail: path.join(thumbnailFolder, `${playingSongsID}.${row.thumbnail_extension}`),
-				songName: row.song_name,
-				isPlaying: playing,
-			});
+			if (playingSongsID.length != 11) {
+				// Local song. Youtube link ID's consist of 11 digits.
+				const row = songNameCache.get(playingSongsID);
+
+				updateMiniPlayer({
+					progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
+					thumbnail: path.join(thumbnailFolder, `${playingSongsID}.${row.thumbnail_extension}`),
+					songName: row.song_name,
+					isPlaying: playing,
+				});
+			} else {
+				// Youtube song
+				const row = streamedSongsHtmlMap.get(playingSongsID);
+
+				updateMiniPlayer({
+					progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
+					thumbnail: row.thumbnail,
+					songName: row.name,
+					isPlaying: playing,
+				});
+			}
 
 			if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
 		}

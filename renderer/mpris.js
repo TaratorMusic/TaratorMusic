@@ -36,7 +36,7 @@ events.forEach(eventName => {
 });
 
 function editMPRIS() {
-	if (playingSongsID.includes("tarator")) {
+	if (playingSongsID.length != 11) {
 		const row = songNameCache.get(playingSongsID) || {};
 		player.metadata = {
 			"mpris:trackid": player.objectPath("track/0"),
@@ -46,11 +46,12 @@ function editMPRIS() {
 			"xesam:artist": [row.artist],
 		};
 	} else {
+        const row = streamedSongsHtmlMap.get(playingSongsID) || {};
 		player.metadata = {
 			"mpris:trackid": player.objectPath("track/0"),
-			"mpris:length": streamedSongsHtmlMap.get(playingSongsID)?.length * 1000000,
-			"mpris:artUrl": streamedSongsHtmlMap.get(playingSongsID)?.thumbnail.url,
-			"xesam:title": streamedSongsHtmlMap.get(playingSongsID)?.name,
+			"mpris:length": row?.length * 1000000,
+			"mpris:artUrl": row?.thumbnail,
+			"xesam:title": row?.name,
 			"xesam:artist": "TaratorMusic", // Not doing this
 		};
 	}

@@ -1,12 +1,10 @@
 ## Version 1.8.6 Planned Features
 
 -   Binary spawning not fixed. Move everything to /config folder or wherever
--   Add "logs" database
--   Streaming just doesnt work. check logs
+-   Add "logs" database and function
+-   While editing streamed songs some thumbnails doesnt show up???
 
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
--   PiP bugs out when main process is minimised
--   tick() doesnt work with streamed songs
 -   Fix streamed songs ids glitching inside playlists
 -   Fix streaming in windows
 -   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
@@ -18,10 +16,10 @@
 
 -   Customise Dc Rich Presence box in the settings
 -   Update playlists tab
+-   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Song link comparation takes playlist additions of the link to account ??
 -   Add a real counter in downloads text. Fix double lines
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
--   While editing streamed songs some thumbnails doesnt show up???
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Prevent live streams from showing up in the ytdlp search results
 -   Stream seeking not working
@@ -46,8 +44,8 @@
 
 ### Planned Features
 
--   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   If the app is pre-release, the version button doesnt light up
+-   PiP bugs out when main process is minimised
 -   refresh recommendations table each month (Needs to re-do all rows)
 -   initialiseSettingsDatabase has duplicate code
 -   The "x" button in modals should close that modal, not the modal with the highest z-index

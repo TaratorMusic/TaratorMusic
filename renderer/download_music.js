@@ -143,10 +143,10 @@ async function processVideoLink(videoUrl, songId = null) {
 			downloadModalText.innerHTML = "Checking...";
 		}
 
-		let videoTitle, thumbnailUrl;
+        let videoTitle, thumbnailUrl;
 		if (songId) {
 			videoTitle = streamedSongsHtmlMap.get(songId)?.name;
-			thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail.url || "";
+			thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail || "";
 		} else {
 			const info = await getVideoInfo(videoUrl);
 			videoTitle = info.title;
