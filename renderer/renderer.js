@@ -1063,6 +1063,7 @@ async function playPlaylist(playlistId, startingIndex = 0) {
 
 async function playPreviousSong() {
 	if (!playingSongsID) return;
+	if (getInterpolatedPosition() > 5) return audioPlayer.stdin.write(`seek 0\n`);
 
 	const allMusics = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
 		song_id,
@@ -1850,24 +1851,28 @@ function getInterpolatedPosition() {
 }
 
 function tick() {
-	if (!isUserSeeking && songDuration > 0) {
-		const pos = getInterpolatedPosition();
-		const clamped = Math.min(pos, songDuration);
-		videoLength.textContent = `${formatTime(clamped)} / ${formatTime(songDuration)}`;
-		videoProgress.value = (clamped / songDuration) * 100;
-		const row = songNameCache.get(playingSongsID);
+	try {
+		if (!isUserSeeking && songDuration > 0) {
+			const pos = getInterpolatedPosition();
+			const clamped = Math.min(pos, songDuration);
+			videoLength.textContent = `${formatTime(clamped)} / ${formatTime(songDuration)}`;
+			videoProgress.value = (clamped / songDuration) * 100;
+			const row = songNameCache.get(playingSongsID);
 
-		updateMiniPlayer({
-			progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
-			thumbnail: path.join(thumbnailFolder, `${playingSongsID}.${row.thumbnail_extension}`),
-			songName: row.song_name,
-			isPlaying: playing,
-		});
+			updateMiniPlayer({
+				progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
+				thumbnail: path.join(thumbnailFolder, `${playingSongsID}.${row.thumbnail_extension}`),
+				songName: row.song_name,
+				isPlaying: playing,
+			});
 
-		if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
+			if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
+		}
+
+		requestAnimationFrame(tick);
+	} catch (error) {
+		console.log(error);
 	}
-
-	requestAnimationFrame(tick);
 }
 
 function updateMiniPlayer(state) {

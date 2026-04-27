@@ -2,7 +2,6 @@
 
 -   Binary spawning not fixed. Move everything to /config folder or wherever
 -   playlist thumbnails still disappear
--   if progress more than 5 seconds, play previous song should reset the song instead
 -   Add "logs" database
 -   Streaming just doesnt work. check logs
 
