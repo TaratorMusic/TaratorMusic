@@ -3,48 +3,17 @@ const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 
-async function copyBinariesOutside() {
-	const isWin = process.platform == "win32";
-	const isMac = process.platform == "darwin";
+const isDev = !app.isPackaged;
+const appDir = isDev ? app.getAppPath() : app.getPath("userData");
+const processDir = isDev ? app.getAppPath() : process.resourcesPath;
 
-	const appDir = app.getAppPath();
-	const binFolder = path.join(appDir, "bin");
-
-	if (!fs.existsSync(binFolder)) fs.mkdirSync(binFolder, { recursive: true });
-
-	const baseBinaries = ["check_dupe_songs", "create_app_thumbnails_folder", "dc_rich_presence", "musicbrainz_fetch", "player", "shorten_song_ids", "startup_check", "sqlite", "ytdlp_fetch"];
-	const platformBinaries = isWin ? ["yt-dlp.exe"] : isMac ? ["yt-dlp_macos"] : ["yt-dlp_linux"];
-	const backendBinaries = [...baseBinaries.map(binary => (isWin ? `${binary}.exe` : binary)), ...platformBinaries];
-
-	backendBinaries.forEach(bin => {
-		const isDev = !app.isPackaged;
-
-		const sourceBinary = isDev ? path.join(__dirname, "bin", bin) : path.join(process.resourcesPath, "bin", bin);
-		const targetPath = path.join(binFolder, bin);
-
-		if (!fs.existsSync(sourceBinary)) {
-			throw new Error(`Binary not found at ${sourceBinary}`);
-		}
-
-		fs.copyFileSync(sourceBinary, targetPath);
-
-		if (!isWin) {
-			fs.chmodSync(targetPath, 0o755);
-		}
-	});
-}
-
-async function restart() {
-	app.relaunch();
-	app.exit(0);
-}
-
-app.commandLine.appendSwitch("disk-cache-dir", path.join(__dirname, "cache"));
+app.setName("TaratorMusic");
+app.commandLine.appendSwitch("disk-cache-dir", path.join(appDir, "cache"));
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 app.commandLine.appendSwitch("disable-features", "Win32kLockdown");
-app.setPath("cache", path.join(__dirname, "cache"));
+app.setPath("cache", path.join(appDir, "cache"));
 
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
@@ -57,7 +26,7 @@ function createWindow() {
 		width: 1600,
 		height: 850,
 		title: "TaratorMusic",
-		icon: path.join(__dirname, "assets/tarator16_icon.png"),
+		icon: path.join(processDir, "assets/tarator16_icon.png"),
 		frame: false,
 		closable: true,
 		transparent: true,
@@ -77,7 +46,7 @@ function createWindow() {
 		width: 1600,
 		height: 850,
 		title: "TaratorMusic",
-		icon: path.join(__dirname, "assets/tarator16_icon.png"),
+		icon: path.join(processDir, "assets/tarator16_icon.png"),
 		show: false,
 		webPreferences: {
 			contextIsolation: false,
@@ -114,7 +83,7 @@ function createMiniPlayer() {
 		width: 320,
 		height: 244,
 		title: "TaratorMusic PiP",
-		icon: path.join(__dirname, "assets/tarator16_icon.png"),
+		icon: path.join(processDir, "assets/tarator16_icon.png"),
 		resizable: true,
 		frame: false,
 		alwaysOnTop: true,
@@ -135,11 +104,9 @@ function createMiniPlayer() {
 }
 
 app.whenReady().then(() => {
-	app.setName("TaratorMusic");
-	copyBinariesOutside();
-
 	let menuShown = true;
 	const originalMenu = Menu.getApplicationMenu();
+
 	if (app.isPackaged) {
 		Menu.setApplicationMenu(null);
 		menuShown = false;
@@ -165,16 +132,14 @@ app.whenReady().then(() => {
 		}
 	});
 
-	ipcMain.on("copy-binaries", async () => {
-		await copyBinariesOutside();
-		restart();
-	});
-
 	ipcMain.handle("get-app-version", () => app.getVersion());
 
 	ipcMain.handle("get-app-base-path", () => {
-		if (process.env.APPIMAGE) return path.dirname(process.env.APPIMAGE);
-		return app.getAppPath();
+		return appDir;
+	});
+
+	ipcMain.handle("get-app-process-path", () => {
+		return processDir;
 	});
 
 	ipcMain.handle("raise-window", () => {
@@ -187,7 +152,8 @@ app.whenReady().then(() => {
 	});
 
 	ipcMain.on("restart-app", () => {
-		restart();
+		app.relaunch();
+		app.exit(0);
 	});
 
 	autoUpdater.on("update-downloaded", () => {

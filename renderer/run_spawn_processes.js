@@ -1,19 +1,3 @@
-async function createAppThumbnailsFolder() {
-	await alertModal("Some app assets not found, they will now be fetched from the repository. Click the button to continue.");
-	return new Promise((resolve, reject) => {
-		const goBinary = path.join(backendFolder, "create_app_thumbnails_folder");
-		const proc = spawn(goBinary, [appThumbnailFolder], { windowsHide: true, stdio: "inherit" });
-
-		proc.on("error", reject);
-		proc.on("close", async code => {
-			if (code != 0) return reject(alertModal(`Go process exited with code ${code}`));
-			await alertModal("App thumbnails installed. App restart required for the effects.");
-			ipcRenderer.send("restart-app");
-			resolve();
-		});
-	});
-}
-
 async function grabAndStoreSongInfo(songId) {
 	let fetchedId = songId;
 	if (fetchedId == "html") fetchedId = document.getElementById("customiseModal").dataset.songID;
@@ -109,44 +93,6 @@ async function grabAndStoreSongInfo(songId) {
 
 async function startupCheck() {
 	return new Promise(async (resolve, reject) => {
-		if (!fs.existsSync(appThumbnailFolder)) return loadNewPage("createAppThumbnailsFolder");
-
-		const requiredFiles = [
-			"addtoplaylist.svg",
-			"adjustments.svg",
-			"backward.svg",
-			"custom.svg",
-			"customise.svg",
-			"forward.svg",
-			"greenAutoplay.svg",
-			"greenLoop.svg",
-			"greenShuffle.svg",
-			"mute_on.svg",
-			"mute_off.svg",
-			"next.svg",
-			"pause.svg",
-			"placeholder.jpg",
-			"play.svg",
-			"previous.svg",
-			"redAutoplay.svg",
-			"redLoop.svg",
-			"redShuffle.svg",
-			"refresh.svg",
-			"speed.svg",
-			"star.svg",
-			"tarator_icon.icns",
-			"tarator_icon.ico",
-			"tarator_icon.png",
-			"tarator16_icon.png",
-			"tarator512_icon.png",
-			"tarator1024_icon.png",
-			"trash.svg",
-		];
-
-		for (const file of requiredFiles) {
-			if (!fs.existsSync(path.join(appThumbnailFolder, file))) return loadNewPage("createAppThumbnailsFolder");
-		}
-
 		const missingSongExts = [...songNameCache.entries()].filter(([, v]) => !v.song_extension);
 		const missingThumbExts = [...songNameCache.entries()].filter(([, v]) => !v.thumbnail_extension);
 

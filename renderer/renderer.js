@@ -14,12 +14,14 @@ let sqliteBinary;
 
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
+	processFolder = await ipcRenderer.invoke("get-app-process-path");
+
+	backendFolder = path.join(processFolder, "bin");
+	appThumbnailFolder = path.join(processFolder, "assets");
 
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
-	appThumbnailFolder = path.join(taratorFolder, "assets");
 	databasesFolder = path.join(taratorFolder, "databases");
-	backendFolder = path.join(taratorFolder, "bin");
 
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
@@ -327,11 +329,6 @@ async function initialiseDatabases() {
 			args: [current_version],
 			fetch: false,
 		});
-
-		if (willUpdate) {
-			await alertModal("Version change detected. Binaries being rebuilt...");
-			ipcRenderer.send("copy-binaries");
-		}
 	});
 
 	notInterestedSongs = await callSqlite({

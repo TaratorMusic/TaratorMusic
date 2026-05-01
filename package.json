@@ -39,12 +39,20 @@
 			"**/*",
 			"!musics/**",
 			"!thumbnails/**",
-			"!databases/**"
+			"!databases/**",
+			"!bin/**"
 		],
 		"extraResources": [
 			{
 				"from": "bin/",
 				"to": "bin",
+				"filter": [
+					"**/*"
+				]
+			},
+			{
+				"from": "assets/",
+				"to": "assets",
 				"filter": [
 					"**/*"
 				]

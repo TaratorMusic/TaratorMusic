@@ -1,6 +1,5 @@
 ## Version 1.8.6 Planned Features
 
--   Binary spawning not fixed. Move everything to /config folder or wherever
 -   You need to swap back to offline mode to properly disable the buttons above
 -   Add "logs" database and function
 -   play previous song and play next song do not detect streamed songs
