@@ -1,4 +1,4 @@
-## Version 1.8.6 Planned Features
+## Version 1.8.7 Planned Features
 
 -   You need to swap back to offline mode to properly disable the buttons above
 -   Add "logs" database and function
