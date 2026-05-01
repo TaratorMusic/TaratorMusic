@@ -7,7 +7,7 @@ const isDev = !app.isPackaged;
 const appDir = isDev ? app.getAppPath() : app.getPath("userData");
 const processDir = isDev ? app.getAppPath() : process.resourcesPath;
 
-app.setName("TaratorMusic");
+app.setName("taratormusic");
 app.commandLine.appendSwitch("disk-cache-dir", path.join(appDir, "cache"));
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-renderer-backgrounding");

@@ -1937,6 +1937,8 @@ function updateMiniPlayer(state) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+	document.querySelector("#mainmenulogo").style.backgroundImage = `url("file://${path.join(appThumbnailFolder, "tarator1024_icon.png").replace(/\\/g, "/")}")`;
+
 	initialiseDatabases();
 
 	if (platform == "linux") loadJSFile("mpris");
