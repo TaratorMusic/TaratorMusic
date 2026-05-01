@@ -21,7 +21,7 @@ let sqliteBinary;
 
 	musicFolder = path.join(taratorFolder, "musics");
 	thumbnailFolder = path.join(taratorFolder, "thumbnails");
-	databasesFolder = path.join(taratorFolder, "databases");
+	databasesFolder = path.join(taratorFolder, "taratordb");
 
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);

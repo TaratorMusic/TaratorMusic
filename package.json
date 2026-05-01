@@ -39,11 +39,9 @@
 		"files": [
 			"**/*",
 			"!musics/**",
-			"!musics",
 			"!thumbnails/**",
-			"!thumbnails",
 			"!databases/**",
-			"!databases"
+			"!bin/**"
 		],
 		"extraResources": [
 			{
