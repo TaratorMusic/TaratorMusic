@@ -143,7 +143,7 @@ async function processVideoLink(videoUrl, songId = null) {
 			downloadModalText.innerHTML = "Checking...";
 		}
 
-        let videoTitle, thumbnailUrl;
+		let videoTitle, thumbnailUrl;
 		if (songId) {
 			videoTitle = streamedSongsHtmlMap.get(songId)?.name;
 			thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail || "";
@@ -761,7 +761,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
 			const result = await downloadAudio(songLink, outputPath, progressMsg => {
-				document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
+				document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Downloading: ${progressMsg}`;
 			});
 
 			if (result == "AGE_RESTRICTED") {
@@ -771,7 +771,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 			if (stabiliseVolumeToggle == 1) {
 				try {
-					document.getElementById("downloadModalText").innerText = `Stabilising volume for song ${i + 1} of ${totalSongs}: ${songTitle}`;
+					document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}`;
 					await normalizeAudio(outputPath);
 				} catch (error) {
 					stabiliseVolumeToggle = 0;
@@ -853,7 +853,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			}
 
 			completedDownloads++;
-			document.getElementById("downloadModalText").innerText = `Processed song ${i + 1} of ${totalSongs}.`;
+			document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Processed: ${songTitle}`;
 			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 
 			await sleep(500);
@@ -933,14 +933,22 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 		}
 
 		let stderrBuffer = "";
+		let lastLine = "";
 
 		const yt = spawn(getYtDlpPath(), ["--js-runtimes", "node", "-x", "--ignore-errors", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl.split("&")[0]]);
 
 		yt.stdout.on("data", data => {
-			const msg = data.toString();
-			if (msg.includes("[download]")) {
+			const chunks = data.toString().split("\r");
+
+			for (let msg of chunks) {
+				if (!msg.includes("[download]")) continue;
+
 				const cleanMsg = msg.replace("[download]", "").trim();
-				if (onProgress) onProgress(cleanMsg);
+
+				if (cleanMsg && cleanMsg !== lastLine) {
+					lastLine = cleanMsg;
+					if (onProgress) onProgress(cleanMsg);
+				}
 			}
 		});
 

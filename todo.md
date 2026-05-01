@@ -17,7 +17,6 @@
 -   Update playlists tab
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Song link comparation takes playlist additions of the link to account ??
--   Add a real counter in downloads text. Fix double lines
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   Prevent live streams from showing up in the ytdlp search results
