@@ -34,8 +34,12 @@ function createWindow() {
 		resizable: false,
 	});
 
-	splash.loadFile("renderer/splash.html");
-
+	splash.loadFile("renderer/splash.html", {
+		query: {
+			icon: path.join(processDir, "assets/tarator1024_icon.png").replace(/\\/g, "/"),
+		},
+	});
+    
 	ipcMain.on("renderer-domready", e => {
 		if (e.sender.id != mainWindow.webContents.id) return;
 		if (splash && !splash.isDestroyed()) splash.destroy();

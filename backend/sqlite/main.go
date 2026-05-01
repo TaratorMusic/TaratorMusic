@@ -38,8 +38,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	createDatabaseFiles()
-
 	for name, path := range map[string]string{
 		"settings":  settingsDbPath,
 		"musics":    musicsDbPath,
@@ -135,19 +133,6 @@ func scanRows(rows *sql.Rows) ([]map[string]interface{}, error) {
 		results = append(results, row)
 	}
 	return results, rows.Err()
-}
-
-func createDatabaseFiles() {
-	paths := []string{settingsDbPath, playlistsDbPath, musicsDbPath}
-	for _, p := range paths {
-		if _, err := os.Stat(p); os.IsNotExist(err) {
-			f, err := os.Create(p)
-			if err != nil {
-				panic(err)
-			}
-			f.Close()
-		}
-	}
 }
 
 func createTable(db *sql.DB, tableName string, columns []Column) error {

@@ -166,8 +166,6 @@ async function loadNewPage(query, info) {
 	} else if (query == "downloadModal") {
 		document.getElementById("downloadModal").style.display = "block";
 		document.getElementById("downloadFirstInput").focus();
-	} else if (query == "createAppThumbnailsFolder") {
-		createAppThumbnailsFolder();
 	} else if (query == "downloadStreamedSong") {
 		await loadJSFile("download_music");
 		await processVideoLink(null, info);

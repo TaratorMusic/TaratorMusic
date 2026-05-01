@@ -30,6 +30,7 @@
 		],
 		"appId": "com.yourdomain.taratormusic",
 		"productName": "TaratorMusic",
+        "artifactName": "${productName}.${ext}",
 		"npmRebuild": true,
 		"buildDependenciesFromSource": true,
 		"directories": {

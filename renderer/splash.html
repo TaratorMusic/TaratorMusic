@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 	<head>
 		<style>
@@ -26,7 +26,6 @@
 			#mainmenulogo {
 				width: 400px;
 				height: 400px;
-				background-image: url("../assets/tarator1024_icon.png");
 				background-size: contain;
 				background-repeat: no-repeat;
 				background-position: center;
@@ -57,4 +56,9 @@
 		<div id="mainmenuapptext">TaratorMusic</div>
 		<div class="loader"></div>
 	</body>
+	<script>
+		const params = new URLSearchParams(window.location.search);
+		const iconPath = params.get("icon");
+		if (iconPath) document.getElementById("mainmenulogo").style.backgroundImage = `url("file://${iconPath}")`;
+	</script>
 </html>
