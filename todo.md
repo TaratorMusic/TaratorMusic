@@ -1,13 +1,19 @@
 ## Version 1.8.7 Planned Features
 
--   You need to swap back to offline mode to properly disable the buttons above
+-   You need to swap back to offline mode to properly disable the buttons above (I think launching with stream mode causes this)
 -   Add "logs" database and function
 -   play previous song and play next song do not detect streamed songs
-
+-   Fix app resizing removing all recommendations-fetched songs
+-   Prevent live streams from showing up in the ytdlp search results
+-   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
+-   Lyrics storage for picture in picture
+-   Progress bar for lyrics possibly
+-   Change so when a new song is added we properly rendermusics again
+-   Compiling JS Script
+-   Search code for TODO'S
+-   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
+-   translate lyrics automatic function 
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
--   Fix streaming in windows
--   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
--   Add shortcut of c for playlist with inputted name 
 -   New option while downloading: Start playing the song after the download is finished
 
 ### Version 1.8.x Planned Features
@@ -18,18 +24,12 @@
 -   Song link comparation takes playlist additions of the link to account ??
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
--   Prevent live streams from showing up in the ytdlp search results
 -   Stream seeking not working
--   Fix app resizing removing all recommendations-fetched songs
--   Search code for TODO'S
 -   Rich presence doesnt close it just stops sending data
--   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
--   Lyrics storage for picture in picture
--   Change so when a new song is added we properly rendermusics again
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
--   Compiling JS Script
--   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
--   translate lyrics automatic function 
+-   Fix streaming in windows
+-   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
+-   Add shortcut of c for playlist with inputted name 
 
 ### Big updates remaining:
 
@@ -41,13 +41,10 @@
 
 ### Planned Features
 
--   If the app is pre-release, the version button doesnt light up
 -   PiP bugs out when main process is minimised
 -   refresh recommendations table each month (Needs to re-do all rows)
--   initialiseSettingsDatabase has duplicate code
 -   The "x" button in modals should close that modal, not the modal with the highest z-index
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
--   Some songs silently fail loading (probably age-restricted)
 -   Add a window, where in the left side you can see your songs and you can filter them via a search bar and sort them, on the right side there will be the playlists, and the users will be able to drag and drop all the songs to the playlists they desire.
 -   improve search section in the download modal. Add "amount of songs to search" and the ability to download them individually, and improve styling
 -   Add approximate time remaining for volume stabilisation.
@@ -60,9 +57,7 @@
 -   If the SQL query to search songs couldnt find the song, use the check_dupe_songs.go, which will return the closest song (still give points, and return nothing if under 0.7)
 
 -   Make three-way & two-way & one-way modal functions into one, because it wastes so much space
--   Data-tooltip on the action buttons are not working
 -   Use our check_dupe_songs go file while downloading songs to avoid duplications
--   What if the restart wasnt needed after downloading the assets, we can just force reload the app, or load the missing assets individually
 -   Factory Reset (With options like: only settings, remove all songs/playlists etc.)
 -   Redesign main menu
 -   Change the info fetch Go script, so its a daemon, and you can queue the songs on it (or fetch individual songs)
@@ -70,7 +65,6 @@
 
 -   Edit app font
 -   If currently listening to a music outside a playlist, enter a playlist that the song is in without changing the song / its progress
--   Add the .desktop and the wrapper script inside the app, it will run if the app is AppImage and the user doesnt have the wrapper script in the folder. Create a button in settings to create .desktop
 -   Ability to download from 0. to x. song, or x. song to y. song, or y. song to the end while downloading a playlist.
 -   Use main speed - Use custom speed for this song (in customisation modal)
 -   Changing backgrounds: Make a preview mode so it doesn't instantly change it
@@ -93,10 +87,10 @@
 -   Also it would be great if connecting the song data to last.fm is possible
 -   Disable thumbnails
 -   Change placeholder thumbnail --> if (userPlaceholderThumbnail) else (placeholderThumbnail)
--   Move app folders
+-   Move app folders / add more music folders
 -   Set time zone and time format preference
 -   Make splash screen better & cooler
--   Package Data to Desktop
+-   Package Data to Desktop + ability to repackage from a folder
 -   Could save data online
 -   Add cool animations
 -   Clip songs to cut out empty parts automatically?

@@ -1,5 +1,12 @@
 let pendingPlaylistAddsWithIds = new Map();
 
+function getYtDlpPath() {
+	if (platform == "win32") return path.join(backendFolder, "yt-dlp.exe");
+	if (platform == "darwin") return path.join(backendFolder, "yt-dlp_macos");
+	if (platform == "linux") return path.join(backendFolder, "yt-dlp_linux");
+	return alertModal("Unsupported platform. Please create an issue in github.");
+}
+
 function differentiateMediaLinks(url) {
 	const trimmedUrl = url.trim();
 
@@ -917,13 +924,6 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 	document.getElementById("finalDownloadButton").disabled = false;
 	if (document.getElementById("my-music-content").style.display == "block") renderMusics();
-}
-
-function getYtDlpPath() {
-	if (platform == "win32") return path.join(taratorFolder, "bin", "yt-dlp.exe");
-	if (platform == "darwin") return path.join(taratorFolder, "bin", "yt-dlp_macos");
-	if (platform == "linux") return path.join(taratorFolder, "bin", "yt-dlp_linux");
-	return alertModal("Unsupported platform. Please create an issue in github.");
 }
 
 async function downloadAudio(videoUrl, outputFilePath, onProgress) {
