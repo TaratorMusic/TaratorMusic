@@ -228,7 +228,7 @@ async function initialiseDatabases() {
 	key_searchShuffle = settingsRow.key_searchShuffle;
 	key_lyrics = settingsRow.key_lyrics;
 
-	if (pictureInPicture == 1) ipcRenderer.send("open-miniplayer");
+	if (pictureInPicture == 1) ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder });
 
 	if (settingsRow.background.includes("#")) {
 		document.body.style.background = settingsRow.background;

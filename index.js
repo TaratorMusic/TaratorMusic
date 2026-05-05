@@ -39,7 +39,7 @@ function createWindow() {
 			icon: path.join(processDir, "assets/tarator1024_icon.png").replace(/\\/g, "/"),
 		},
 	});
-    
+
 	ipcMain.on("renderer-domready", e => {
 		if (e.sender.id != mainWindow.webContents.id) return;
 		if (splash && !splash.isDestroyed()) splash.destroy();
@@ -77,7 +77,7 @@ function createWindow() {
 	mainWindow.show();
 }
 
-function createMiniPlayer() {
+function createMiniPlayer(initialData) {
 	if (miniPlayer && !miniPlayer.isDestroyed()) {
 		miniPlayer.focus();
 		return;
@@ -101,6 +101,10 @@ function createMiniPlayer() {
 	});
 
 	miniPlayer.loadFile("renderer/miniplayer.html");
+
+	miniPlayer.webContents.on("did-finish-load", () => {
+		if (initialData) miniPlayer.webContents.send("miniplayer-update", initialData);
+	});
 
 	miniPlayer.on("closed", () => {
 		miniPlayer = null;
@@ -177,7 +181,7 @@ app.whenReady().then(() => {
 	ipcMain.on("miniplayer-previous", () => mainWindow.webContents.send("player-previous"));
 	ipcMain.on("miniplayer-playpause", () => mainWindow.webContents.send("player-playpause"));
 	ipcMain.on("miniplayer-next", () => mainWindow.webContents.send("player-next"));
-	ipcMain.on("open-miniplayer", () => createMiniPlayer());
+	ipcMain.on("open-miniplayer", (_, data) => createMiniPlayer(data));
 	ipcMain.on("miniplayer-close", () => {
 		if (miniPlayer) miniPlayer.close();
 		mainWindow.webContents.send("close-pip");

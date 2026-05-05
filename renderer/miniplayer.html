@@ -85,17 +85,23 @@
 
 <script>
 	const { ipcRenderer } = require("electron");
+	const path = require("path");
 
 	let currentThumbnail; // To prevent reupdating the image every second
-
-	document.getElementById("previous-button").style.backgroundImage = "url(../assets/previous.svg)";
-	document.getElementById("next-button").style.backgroundImage = "url(../assets/next.svg)";
-	document.getElementById("pauseplay-button").style.backgroundImage = "url(../assets/play.svg)";
+	let assetsFolder;
 
 	ipcRenderer.on("miniplayer-update", (_, data) => {
+		if (data.assetsFolder != undefined && data.assetsFolder != assetsFolder) {
+			assetsFolder = data.assetsFolder;
+
+			document.getElementById("previous-button").style.backgroundImage = `url(${path.join(assetsFolder, "previous.svg")})`;
+			document.getElementById("next-button").style.backgroundImage = `url(${path.join(assetsFolder, "next.svg")})`;
+			document.getElementById("pauseplay-button").style.backgroundImage = `url(${path.join(assetsFolder, "play.svg")})`;
+		}
+
 		if (data.songName != undefined) document.getElementById("song-name").innerText = data.songName;
 		if (data.progress != undefined) document.getElementById("song-progress").innerText = data.progress;
-		if (data.isPlaying != undefined) document.getElementById("pauseplay-button").style.backgroundImage = data.isPlaying ? "url(../assets/pause.svg)" : "url(../assets/play.svg)";
+		if (data.isPlaying != undefined && assetsFolder) document.getElementById("pauseplay-button").style.backgroundImage = data.isPlaying ? `url(${path.join(assetsFolder, "pause.svg")})` : `url(${path.join(assetsFolder, "play.svg")})`;
 		if (data.thumbnail != undefined && data.thumbnail != currentThumbnail) {
 			currentThumbnail = data.thumbnail;
 			document.getElementById("thumbnail").style.backgroundImage = `url(${currentThumbnail})`;
