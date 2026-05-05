@@ -59,9 +59,15 @@ function getCachedVideoIds() {
 }
 
 async function searchInYoutube(songName) {
-	const info = await getVideoInfo(`ytsearch1:${songName}`);
-	searchedSongsUrl = info.entries[0].webpage_url;
-	return searchedSongsUrl;
+	try {
+		const info = await getVideoInfo(`ytsearch1:${songName}`);
+		console.log(info.entries[0]); // This sometimes returns "undefined" - but no retries made by the code
+		searchedSongsUrl = info.entries[0].webpage_url;
+		return searchedSongsUrl;
+	} catch (error) {
+		console.log(error);
+		return;
+	}
 }
 
 async function checkNameThumbnail(predetermined) {
@@ -1044,8 +1050,7 @@ async function commitStagedPlaylistAdds() {
 
 function getVideoInfo(url, retryCount = 0) {
 	return new Promise((resolve, reject) => {
-		const args = ["-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5"];
-
+		const args = ["-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5", "--match-filters", "live_status = not_live"];
 		const yt = spawn(getYtDlpPath(), [...args, url]);
 		let data = "";
 		let err = "";

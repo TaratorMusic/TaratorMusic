@@ -4,11 +4,10 @@
 -   Add "logs" database and function
 -   play previous song and play next song do not detect streamed songs
 -   Fix app resizing removing all recommendations-fetched songs
--   Prevent live streams from showing up in the ytdlp search results
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
 -   Lyrics storage for picture in picture
 -   Progress bar for lyrics possibly
--   Change so when a new song is added we properly rendermusics again
+-   Change so when a new song is added we properly rendermusics again // OR JUST ADD THE NEW DIV INSIDE!!
 -   Search code for TODO'S
 -   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
 -   translate lyrics automatic function 
