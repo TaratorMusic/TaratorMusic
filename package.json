@@ -9,12 +9,12 @@
 	},
 	"scripts": {
 		"start": "electron .",
-		"build": "npm run gobuild && npm run cbuild && npm run ytdlp_fetch",
+		"build": "node compiler.js build",
 		"dist": "electron-builder",
-        "testdist": "npx electron-builder --dir",
-		"gobuild": "bash -c 'for f in backend/**/main.go; do name=$(basename $(dirname \"$f\")); dir=$(dirname \"$f\"); if [ \"$OS\" = \"Windows_NT\" ]; then CGO_ENABLED=0 go build -o ./bin/$name.exe \"./$dir\"; else CGO_ENABLED=0 go build -o ./bin/$name \"./$dir\"; fi; done'",
-		"cbuild": "node -e \"require('child_process').execSync(process.platform == 'win32' ? 'gcc -O2 ./backend/miniaudio/player.c ./backend/miniaudio/miniaudio.c -o ./bin/player.exe -lpthread' : 'gcc -O2 ./backend/miniaudio/player.c ./backend/miniaudio/miniaudio.c -o ./bin/player -ldl -lpthread -lm', {stdio: 'inherit'})\"",
-		"ytdlp_fetch": "node -e \"const path = require('path'); const { execSync } = require('child_process'); const bin = path.join(process.cwd(), 'bin', process.platform == 'win32' ? 'ytdlp_fetch.exe' : 'ytdlp_fetch'); execSync(bin, {stdio: 'inherit'});\""
+		"testdist": "npx electron-builder --dir",
+		"gobuild": "node compiler.js gobuild",
+		"cbuild": "node compiler.js cbuild",
+		"ytdlp_fetch": "node compiler.js ytdlp_fetch"
 	},
 	"repository": {
 		"type": "git",

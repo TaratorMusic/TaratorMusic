@@ -9,7 +9,6 @@
 -   Lyrics storage for picture in picture
 -   Progress bar for lyrics possibly
 -   Change so when a new song is added we properly rendermusics again
--   Compiling JS Script
 -   Search code for TODO'S
 -   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
 -   translate lyrics automatic function 
