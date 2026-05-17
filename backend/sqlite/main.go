@@ -16,6 +16,7 @@ var databasesFolder = os.Args[1]
 var settingsDbPath = filepath.Join(databasesFolder, "settings.db")
 var musicsDbPath = filepath.Join(databasesFolder, "musics.db")
 var playlistsDbPath = filepath.Join(databasesFolder, "playlists.db")
+var logsDbPath = filepath.Join(databasesFolder, "logs.db")
 
 var databases = map[string]*sql.DB{}
 
@@ -42,6 +43,7 @@ func main() {
 		"settings":  settingsDbPath,
 		"musics":    musicsDbPath,
 		"playlists": playlistsDbPath,
+		"logs":      logsDbPath,
 	} {
 		db, err := sql.Open("sqlite", path)
 		if err != nil {
@@ -56,12 +58,19 @@ func main() {
 		fmt.Fprintln(os.Stderr, "failed to init settings db:", err)
 		os.Exit(1)
 	}
+	
 	if err := initialiseMusicsDatabase(); err != nil {
 		fmt.Fprintln(os.Stderr, "failed to init musics db:", err)
 		os.Exit(1)
 	}
+
 	if err := initialisePlaylistsDatabase(); err != nil {
 		fmt.Fprintln(os.Stderr, "failed to init playlists db:", err)
+		os.Exit(1)
+	}
+
+	if err := initialiseLogsDatabase(); err != nil {
+		fmt.Fprintln(os.Stderr, "failed to init logs db:", err)
 		os.Exit(1)
 	}
 
@@ -268,4 +277,8 @@ func initialisePlaylistsDatabase() error {
 	}
 
 	return nil
+}
+
+func initialiseLogsDatabase() error {
+	return syncTable(databases["logs"], "logs", logsColumns)
 }

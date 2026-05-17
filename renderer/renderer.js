@@ -1661,7 +1661,7 @@ async function updateThumbnailImage(event, mode) {
 
 async function searchSong(typed) {
 	try {
-        if (searchModalInput.value.trim() == "") return document.getElementById("searchModalFound").innerText = "Found: Nothing";
+		if (searchModalInput.value.trim() == "") return (document.getElementById("searchModalFound").innerText = "Found: Nothing");
 		const row = await callSqlite({
 			db: "musics",
 			query: "SELECT song_id, song_name FROM songs WHERE song_name LIKE ? COLLATE NOCASE ORDER BY LENGTH(song_name) LIMIT 1",
@@ -1669,7 +1669,7 @@ async function searchSong(typed) {
 			fetch: true,
 		});
 
-        document.getElementById("searchModalFound").innerText = `${"Found: " + (row[0]?.song_name || "Nothing")}`;
+		document.getElementById("searchModalFound").innerText = `${"Found: " + (row[0]?.song_name || "Nothing")}`;
 		if (typed) return;
 
 		searchModalInput.value = "";
@@ -1938,6 +1938,15 @@ function tick() {
 
 function updateMiniPlayer(state) {
 	ipcRenderer.send("renderer-miniplayer-update", state);
+}
+
+async function logChange(level, message) {
+	await callSqlite({
+		db: "logs",
+		query: "INSERT INTO logs (level, message) VALUES (?, ?)",
+		args: [level, message],
+		fetch: false,
+	});
 }
 
 document.addEventListener("DOMContentLoaded", function () {

@@ -127,3 +127,12 @@ var playlistsColumns = []Column{
 	{Name: "songs", Type: "TEXT"},
 	{Name: "thumbnail_extension", Type: "TEXT"},
 }
+
+// logs.db tables
+
+var logsColumns = []Column{
+	{Name: "id", Type: "INTEGER PRIMARY KEY AUTOINCREMENT"},
+	{Name: "timestamp", Type: "INTEGER", Default: "(strftime('%s','now'))"},
+	{Name: "level", Type: "TEXT"},
+	{Name: "message", Type: "TEXT"},
+}
