@@ -580,6 +580,7 @@ async function myMusicOnClick() {
 	myMusicContent.appendChild(musicListContainer);
 
 	renderMusics();
+	changeSearchBar();
 }
 
 function changeSearchBar() {
