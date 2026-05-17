@@ -61,7 +61,6 @@ function getCachedVideoIds() {
 async function searchInYoutube(songName) {
 	try {
 		const info = await getVideoInfo(`ytsearch1:${songName}`);
-		console.log(info.entries[0]); // This sometimes returns "undefined" - but no retries made by the code
 		searchedSongsUrl = info.entries[0].webpage_url;
 		return searchedSongsUrl;
 	} catch (error) {
@@ -1066,7 +1065,16 @@ function getVideoInfo(url, retryCount = 0) {
 				return reject(new Error(err || `yt-dlp exited ${code}`));
 			}
 			try {
-				resolve(JSON.parse(data));
+				const parsed = JSON.parse(data);
+				if (!parsed.entries?.[0]) {
+					if (retryCount < 5) {
+						console.log(`No results found, trying next result (attempt ${retryCount + 1})...`);
+						const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
+						return resolve(getVideoInfo(nextUrl, retryCount + 1));
+					}
+					return reject(new Error("No valid entries found after retries"));
+				}
+				resolve(parsed);
 			} catch (e) {
 				reject(e);
 			}
