@@ -32,7 +32,7 @@ function startDaemon() {
 	});
 
 	discordDaemon.on("error", error => {
-		logChange("error", `Daemon spawn error: ${error}`);
+		logChange("error", `Daemon spawn error: ${error?.message ?? String(error)}`);
 		discordDaemon = null;
 		updateDiscordStatus("error");
 	});

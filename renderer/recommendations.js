@@ -157,8 +157,8 @@ async function fetchRecommendationsData(input) {
 
 			logChange("log", `Processed ${exactMatch.name}: ${exactMatch.nb_fan} fans, ${similarArtists.length} similar artists, ${deezerSongs.length} songs`);
 			await sleep(1100);
-		} catch (err) {
-			logChange("error", `Error processing ${artist}: ${err}`);
+		} catch (error) {
+			logChange("error", `Error processing ${artist}: ${error.message ?? String(error)}`);
 		}
 	}
 
@@ -192,8 +192,8 @@ async function fetchRecommendationsData(input) {
 
 			logChange("log", `Processed ${exactMatch.name}: ${exactMatch.nb_fan} fans, ${similarArtists.length} similar artists, ${deezerSongs.length} songs`);
 			await sleep(1100);
-		} catch (err) {
-			logChange("error", `Error processing similar artist ${artist}: ${err}`);
+		} catch (error) {
+			logChange("error", `Error processing similar artist ${artist}: ${error.message ?? String(error)}`);
 		}
 	}
 

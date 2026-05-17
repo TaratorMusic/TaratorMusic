@@ -19,8 +19,8 @@ async function getPlaylists(displaying) {
 			if (playlist.songs) {
 				try {
 					parsedSongs = JSON.parse(playlist.songs);
-				} catch (e) {
-					logChange("error", `Invalid songs JSON for playlist ${playlist.id}: ${e}`);
+				} catch (error) {
+					logChange("error", `Invalid songs JSON for playlist ${playlist.id}: ${error.message ?? String(error)}`);
 				}
 			}
 
@@ -35,8 +35,8 @@ async function getPlaylists(displaying) {
 		}
 
 		if (displaying) displayPlaylists([...playlistsMap.values()]);
-	} catch (err) {
-		logChange("error", `Error fetching playlists from the database: ${err}`);
+	} catch (error) {
+		logChange("error", `Error fetching playlists from the database: ${error.message ?? String(error)}`);
 		if (displaying) displayPlaylists([]);
 	}
 }
@@ -262,8 +262,8 @@ async function saveEditedPlaylist() {
 
 			closeModal();
 		})
-		.catch(err => {
-			logChange("error", `Error saving or renaming thumbnail: ${err}`);
+		.catch(error => {
+			logChange("error", `Error saving or renaming thumbnail: ${error.message ?? String(error)}`);
 		});
 }
 
@@ -303,8 +303,8 @@ function openAddToPlaylistModal(songName) {
 		button.textContent = "Done";
 		button.onclick = () => addToSelectedPlaylists(songName);
 		playlistsContainer.appendChild(button);
-	} catch (err) {
-		logChange("error", `Error fetching playlists: ${err}`);
+	} catch (error) {
+		logChange("error", `Error fetching playlists: ${error.message ?? String(error)}`);
 		displayPlaylists([]);
 	}
 }
@@ -366,8 +366,8 @@ function deletePlaylist() {
 		const playlistThumbnailExtension = document.getElementById("editInvisibleExtension").value;
 		const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${playlistThumbnailExtension}`);
 
-		fs.unlink(thumbnailPath, err => {
-			if (err) logChange("error", `Failed to delete file: ${err.message}`);
+		fs.unlink(thumbnailPath, error => {
+			if (err) logChange("error", `Failed to delete file: ${error.message ?? String(error)}`);
 		});
 
 		callSqlite({ db: "playlists", query: "DELETE FROM playlists WHERE id = ?", args: [playlistID] });

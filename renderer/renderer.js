@@ -120,7 +120,6 @@ function callSqlite({ db, query, args = [], fetch = false }) {
 		sqlitePending[id] = res => (res.error ? reject(new Error(res.error)) : resolve(res.rows ?? []));
 		sqliteBinary.stdin.write(JSON.stringify({ id, db, query, args, fetch }) + "\n");
 	});
-	logChange("log", `${(db, query, args, fetch)}`);
 }
 
 async function initialiseDatabases() {
@@ -156,8 +155,8 @@ async function initialiseDatabases() {
 						logChange("warn", `Received response but no pending requests: ${res}`);
 					}
 				}
-			} catch (e) {
-				logChange("error", `failed to parse response: ${e} at line: ${trimmed}`);
+			} catch (error) {
+				logChange("error", `failed to parse response: ${error.message ?? String(error)} at line: ${trimmed}`);
 			}
 		}
 	});
@@ -166,8 +165,8 @@ async function initialiseDatabases() {
 		logChange("error", `go stderr: ${data.toString()}`);
 	});
 
-	sqliteBinary.on("error", err => {
-		logChange("error", `failed to start sqlite binary: ${err}`);
+	sqliteBinary.on("error", error => {
+		logChange("error", `failed to start sqlite binary: ${error.message ?? String(error)}`);
 	});
 
 	sqliteBinary.on("close", code => {
@@ -645,7 +644,7 @@ async function searchYoutubeInMusics() {
 						const maxSize = (max.width || 0) * (max.height || 0);
 						return size > maxSize ? thumb : max;
 					}, thumbnails[0] || {});
-					const thumbnailUrl = bestThumbnail.url ?? bestThumbnail;
+					const thumbnailUrl = bestThumbnail?.url ?? bestThumbnail ?? null;
 
 					await callSqlite({
 						db: "musics",
@@ -684,7 +683,7 @@ async function searchYoutubeInMusics() {
 					}
 					setupLazyBackgrounds();
 				} catch (error) {
-					logChange("error", error);
+					logChange("error", error?.message ?? String(error));
 					await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 				}
 			}
@@ -877,12 +876,11 @@ async function refreshRecommendations() {
 	for (const [key, value] of recommendedMusicMap) {
 		const ytQuery = `${key} by ${value[0]}`;
 		try {
-			const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
-			const info = result.entries[0];
+			const info = await getVideoInfo(`ytsearch1:${ytQuery}`);
 			const videoTitle = info.title;
 			const songID = info.id;
 			const songLength = info.duration;
-			const bestThumbnail = info.thumbnail.url ?? info.thumbnail;
+			const bestThumbnail = info.thumbnail?.url ?? info.thumbnail ?? null;
 
 			await callSqlite({
 				db: "musics",
@@ -926,7 +924,7 @@ async function refreshRecommendations() {
 			localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
 			if (count >= goal) break;
 		} catch (error) {
-			logChange("error", error);
+			logChange("error", error?.message ?? String(error));
 			await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 		}
 	}
@@ -955,7 +953,7 @@ function createMusicElement(songFile) {
 	} else {
 		const backgroundElement = document.createElement("div");
 		backgroundElement.classList.add("background-element");
-		backgroundElement.dataset.bg = songFile.thumbnail.url ?? songFile.thumbnail;
+		backgroundElement.dataset.bg = songFile.thumbnail?.url ?? songFile.thumbnail ?? "";
 		musicElement.appendChild(backgroundElement);
 		songNameElement.classList.add("song-name");
 		songNameElement.innerText = songFile.name;
@@ -1080,7 +1078,7 @@ function playMusic(songId, playlistId) {
 			if (playedSongs.length > 9999) playedSongs.pop();
 		}
 	} catch (error) {
-		logChange("error", error);
+		logChange("error", error?.message ?? String(error));
 	}
 }
 
@@ -1556,7 +1554,7 @@ async function saveEditedSong() {
 		await callSqlite({
 			db: "musics",
 			query: "UPDATE streams SET song_name = ?, genre = ?, artist = ?, language = ? WHERE song_id = ?",
-			args: [(newNameInput, songsGenre, songsArtist, songsLanguage, songID)],
+			args: [newNameInput, songsGenre, songsArtist, songsLanguage, songID],
 			fetch: false,
 		});
 
@@ -1652,7 +1650,7 @@ async function updateThumbnailImage(event, mode) {
 		};
 		reader.readAsDataURL(file);
 	} catch (error) {
-		await alertModal("Error changing thumbnail:", error);
+		await alertModal("Error changing thumbnail:", error.message ?? String(error));
 	}
 }
 
@@ -1928,7 +1926,7 @@ function tick() {
 
 		requestAnimationFrame(tick);
 	} catch (error) {
-		logChange("error", error);
+		logChange("error", error?.message ?? String(error));
 	}
 }
 

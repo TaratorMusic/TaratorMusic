@@ -64,7 +64,7 @@ async function searchInYoutube(songName) {
 		searchedSongsUrl = entry.webpage_url;
 		return searchedSongsUrl;
 	} catch (error) {
-		return logChange("error", error);
+		return logChange("error", error?.message ?? String(error));
 	}
 }
 
@@ -250,7 +250,7 @@ async function processVideoLink(videoUrl, songId = null) {
 		document.getElementById("downloadSecondPhase").style.display = "block";
 		if (songId) downloadingStyle = "youtube_video";
 	} catch (error) {
-		logChange("error", `Error in processVideoLink: ${error}`);
+		logChange("error", `Error in processVideoLink: ${error.message ?? String(error)}`);
 		document.getElementById("downloadFirstButton").disabled = false;
 		if (error.message.includes("age")) await alertModal("You can't download this song because it is age restricted.");
 		if (error.message.includes("private")) await alertModal("You can't download this song because it is a private video.");
@@ -292,7 +292,7 @@ async function fetchPlaylistData(url) {
 
 		renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems);
 	} catch (error) {
-		logChange("error", `Error fetching playlist data: ${error}`);
+		logChange("error", `Error fetching playlist data: ${error.message ?? String(error)}`);
 		document.getElementById("downloadModalText").innerHTML = `Error: ${error.message}`;
 		document.getElementById("downloadFirstButton").disabled = false;
 	}
@@ -470,8 +470,8 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 						await saveBufferFromUrl(imgElement.src, thumbnailPath);
 						logChange("log", `Saved thumbnail from DOM img src for ${songId}`);
 						return true;
-					} catch (e) {
-						logChange("error", `Error fetching thumbnail from DOM img: ${e}`);
+					} catch (error) {
+						logChange("error", `Error fetching thumbnail from DOM img: ${error.message ?? String(error)}`);
 					}
 				}
 			} else if (imgElement.style?.backgroundImage) {
@@ -528,8 +528,8 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 				const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
 				await saveBufferFromUrl(thumbnailUrl, thumbnailPath);
 				return true;
-			} catch (err) {
-				logChange("error", `Youtube thumbnail fetch failed: ${err}`);
+			} catch (error) {
+				logChange("error", `Youtube thumbnail fetch failed: ${error.message ?? String(error)}`);
 			}
 		}
 
@@ -587,7 +587,7 @@ async function actuallyDownloadTheSong() {
 					await normalizeAudio(outputFilePath);
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
 				} catch (error) {
-					logChange("error", `Audio normalisation failed: ${error}`);
+					logChange("error", `Audio normalisation failed: ${error.message ?? String(error)}`);
 					stabiliseVolumeToggle = 0;
 					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
 				}
@@ -606,7 +606,7 @@ async function actuallyDownloadTheSong() {
 
 				duration = Math.round(metadata.format.duration);
 			} catch (error) {
-				logChange("error", `Failed to retrieve metadata: ${error}`);
+				logChange("error", `Failed to retrieve metadata: ${error.message ?? String(error)}`);
 			}
 
 			const fileSize = fs.statSync(outputFilePath).size;
@@ -658,8 +658,8 @@ async function actuallyDownloadTheSong() {
 				});
 
 				await commitStagedPlaylistAdds();
-			} catch (err) {
-				logChange("error", `Failed to insert song into the database: ${err}`);
+			} catch (error) {
+				logChange("error", `Failed to insert song into the database: ${error.message ?? String(error)}`);
 			}
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
@@ -787,7 +787,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					await normalizeAudio(outputPath);
 				} catch (error) {
 					stabiliseVolumeToggle = 0;
-					logChange("error", `Audio normalization failed for ${songTitle}: ${error}`);
+					logChange("error", `Audio normalization failed for ${songTitle}: ${error.message ?? String(error)}`);
 				}
 			} else {
 				document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled.`;
@@ -852,8 +852,8 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 						artist: artists[i],
 						language: languages[i],
 					});
-				} catch (err) {
-					logChange("error", `DB insert failed for ${songTitle}: ${err.message}`);
+				} catch (error) {
+					logChange("error", `DB insert failed for ${songTitle}: ${error.message ?? String(error)}`);
 				}
 			} else {
 				logChange("error", `Data undefined at index ${i}:`, { songId, songTitle, songLink, duration });
@@ -903,8 +903,8 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					songs: parsedSongs,
 					thumbnail_extension: "jpg",
 				});
-			} catch (err) {
-				logChange("error", `Failed to save playlist: ${err}`);
+			} catch (error) {
+				logChange("error", `Failed to save playlist: ${error.message ?? String(error)}`);
 			}
 		}
 
@@ -956,7 +956,7 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 			stderrBuffer += data.toString();
 		});
 
-		yt.on("error", err => reject(err));
+		yt.on("error", error => reject(error));
 
 		yt.on("close", code => {
 			if (stderrBuffer.includes("confirm your age")) {

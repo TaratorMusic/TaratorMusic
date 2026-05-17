@@ -80,12 +80,12 @@ async function grabAndStoreSongInfo(songId) {
 
 					count++;
 				} catch (error) {
-					logChange("error", error);
+					logChange("error", error.message ?? String(error));
 				}
 			}
 		});
 
-		proc.stderr.on("data", error => logChange("error", error.toString()));
+		proc.stderr.on("data", error => logChange("error", error.message ?? String(error)));
 		proc.on("error", reject);
 		proc.on("close", code => (code == 0 ? resolve() : reject(new Error(`Go exited ${code}`))));
 	});
