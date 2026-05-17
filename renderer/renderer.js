@@ -120,6 +120,7 @@ function callSqlite({ db, query, args = [], fetch = false }) {
 		sqlitePending[id] = res => (res.error ? reject(new Error(res.error)) : resolve(res.rows ?? []));
 		sqliteBinary.stdin.write(JSON.stringify({ id, db, query, args, fetch }) + "\n");
 	});
+	logChange("log", `${(db, query, args, fetch)}`);
 }
 
 async function initialiseDatabases() {
@@ -136,7 +137,7 @@ async function initialiseDatabases() {
 
 			const trimmed = line.trim();
 			if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-				console.log("non-JSON output from sqlite:", trimmed);
+				logChange("warn", `non-JSON output from sqlite: ${trimmed}`);
 				continue;
 			}
 
@@ -152,25 +153,25 @@ async function initialiseDatabases() {
 						sqlitePending[firstKey](res);
 						delete sqlitePending[firstKey];
 					} else {
-						console.warn("Received response but no pending requests:", res);
+						logChange("warn", `Received response but no pending requests: ${res}`);
 					}
 				}
 			} catch (e) {
-				console.error("failed to parse response:", e, "line:", trimmed);
+				logChange("error", `failed to parse response: ${e} at line: ${trimmed}`);
 			}
 		}
 	});
 
 	sqliteBinary.stderr.on("data", data => {
-		console.error("go stderr:", data.toString());
+		logChange("error", `go stderr: ${data.toString()}`);
 	});
 
 	sqliteBinary.on("error", err => {
-		console.error("failed to start sqlite binary:", err);
+		logChange("error", `failed to start sqlite binary: ${err}`);
 	});
 
 	sqliteBinary.on("close", code => {
-		console.log("go process exited with code", code);
+		logChange("log", `go process exited with code ${code}`);
 	});
 
 	const settingsRows = await callSqlite({
@@ -523,7 +524,6 @@ async function myMusicOnClick() {
 
 	displayPageSelect.onchange = () => {
 		const selectedValue = displayPageSelect.value;
-		console.log("Selected:", selectedValue, "at displayPage");
 		callSqlite({
 			db: "settings",
 			query: "UPDATE settings SET displayPage = ?",
@@ -549,7 +549,6 @@ async function myMusicOnClick() {
 
 	musicModeSelect.onchange = () => {
 		const selectedValue = musicModeSelect.value;
-		console.log("Selected:", selectedValue, "at musicMode");
 		callSqlite({
 			db: "settings",
 			query: "UPDATE settings SET musicMode = ?",
@@ -684,7 +683,7 @@ async function searchYoutubeInMusics() {
 					}
 					setupLazyBackgrounds();
 				} catch (error) {
-					console.log(error);
+					logChange("error", error);
 					await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 				}
 			}
@@ -926,7 +925,7 @@ async function refreshRecommendations() {
 			localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
 			if (count >= goal) break;
 		} catch (error) {
-			console.log(error);
+			logChange("error", error);
 			await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 		}
 	}
@@ -1000,7 +999,7 @@ function playMusic(songId, playlistId) {
 		currentPlaylist = playlistId || null;
 
 		const songData = offlineMode ? songNameCache.get(songId) : streamedSongsHtmlMap.get(songId);
-		if (!songData) return console.log("Song not found in cache or stream map:", songId);
+		if (!songData) return logChange("warn", `Song not found in cache or stream map: ${songId}`);
 
 		const songName = offlineMode ? songData.song_name : songData.name;
 		songNameEl.setAttribute("data-file-name", playingSongsID);
@@ -1046,7 +1045,7 @@ function playMusic(songId, playlistId) {
 			if (fs.existsSync(thumbnailPath)) {
 				thumbnailUrl = `file://${thumbnailPath.replace(/\\/g, "/")}`;
 			} else {
-				console.log("Tried to get thumbnail from", thumbnailPath, "but failed. Used placeholder.");
+				logChange("warn", `Tried to get thumbnail from" ${thumbnailPath} but failed. Used placeholder.`);
 			}
 		} else {
 			thumbnailUrl = songData?.thumbnail || "";
@@ -1080,15 +1079,13 @@ function playMusic(songId, playlistId) {
 			if (playedSongs.length > 9999) playedSongs.pop();
 		}
 	} catch (error) {
-		console.error("Error in playMusic:", error);
+		logChange("error", error);
 	}
 }
 
 async function playPlaylist(playlistId, startingIndex = 0) {
 	const playlist = playlistsMap.get(playlistId);
-	if (!playlist.songs || playlist.songs.length == 0) {
-		return console.log(`Playlist ${playlist.name} is empty.`);
-	}
+	if (!playlist.songs || playlist.songs.length == 0) return;
 
 	currentPlaylistElement = startingIndex;
 	localStorage.setItem("lastPlaylist", playlist.id);
@@ -1405,7 +1402,6 @@ function openLyricsModal() {
 
 	const cached = songLyricsCache.get(playingSongsID);
 	if (cached) {
-		console.log("Lyrics:", cached.lyrics);
 		document.getElementById("lyricsArea").value = cached.lyrics;
 	} else {
 		document.getElementById("lyricsArea").value = "";
@@ -1791,7 +1787,6 @@ function setupLazyBackgrounds() {
 
 function handleDropdownChange(option, selectElement) {
 	const selectedValue = Number(selectElement.value);
-	console.log("Selected:", selectedValue, "at", option);
 	callSqlite({
 		db: "settings",
 		query: `UPDATE settings SET ${option} = ?`,
@@ -1861,7 +1856,7 @@ async function saveUserProgress() {
 			fetch: false,
 		});
 
-		console.log(`New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds. Playlist: ${playlist}`);
+		logChange("log", `New listen data: ${theId} --> ${songStartTime} - ${currentTimeUnix}, ${currentTimeUnix - songStartTime} seconds. Playlist: ${playlist}`);
 	}
 
 	songStartTime = Math.floor(Date.now() / 1000);
@@ -1932,7 +1927,7 @@ function tick() {
 
 		requestAnimationFrame(tick);
 	} catch (error) {
-		console.log(error);
+		logChange("error", error);
 	}
 }
 
@@ -1947,6 +1942,16 @@ async function logChange(level, message) {
 		args: [level, message],
 		fetch: false,
 	});
+
+	if (level == "log") {
+		console.log(message);
+	} else if (level == "warn") {
+		console.warn(message);
+	} else if (level == "error") {
+		console.error(message);
+	} else {
+		console.log("Log with an unknown level:", message);
+	}
 }
 
 document.addEventListener("DOMContentLoaded", function () {

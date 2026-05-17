@@ -14,25 +14,25 @@ function startDaemon() {
 				const response = JSON.parse(line.trim());
 				updateDiscordStatus(response.status);
 			} catch (e) {
-				console.error("Failed to parse daemon response:", line);
+				logChange("error", `Failed to parse daemon response: ${line}`);
 				updateDiscordStatus("error");
 			}
 		}
 	});
 
 	discordDaemon.stderr.on("data", data => {
-		console.error("Daemon error:", data.toString());
+		logChange("error", `Daemon error: ${data.toString()}`);
 		updateDiscordStatus("error");
 	});
 
 	discordDaemon.on("close", code => {
-		console.log("Daemon closed with code:", code);
+		logChange("log", `Daemon closed with code: ${code}`);
 		discordDaemon = null;
 		updateDiscordStatus("disabled");
 	});
 
 	discordDaemon.on("error", error => {
-		console.error("Daemon spawn error:", error);
+		logChange("error", `Daemon spawn error: ${error}`);
 		discordDaemon = null;
 		updateDiscordStatus("error");
 	});
@@ -87,7 +87,7 @@ function toggleDiscordAPI() {
 		fetch: false,
 	});
 
-	console.log("New RPC status", discordRPCstatus);
+	logChange("log", `New RPC status: ${discordRPCstatus}`);
 }
 
 function updateDiscordPresence() {

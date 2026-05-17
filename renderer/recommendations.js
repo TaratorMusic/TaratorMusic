@@ -103,7 +103,7 @@ async function calculateArtistPreference() {
 
 	const giniCoefficient = (2 * cumulativeWeightedSum) / (numArtists * totalDuration) - (numArtists + 1) / numArtists;
 
-	console.log("Gini Coefficient (0 = equal, 1 = concentrated):", giniCoefficient);
+	logChange("log", `Gini Coefficient (0 = equal, 1 = concentrated): ${giniCoefficient}`);
 	return Number.isNaN(giniCoefficient) ? 999 : giniCoefficient;
 }
 
@@ -121,7 +121,7 @@ async function fetchRecommendationsData(input) {
 	const artists = Array.isArray(input) ? input : input ? [input] : Array.from(new Set(Array.from(songNameCache.values()).map(song => song.artist)));
 	const artistsToProcess = artists.filter(artist => artist && !existingArtists.has(artist.toLowerCase()));
 
-	console.log(`Processing ${artistsToProcess.length} new artists (${existingArtists.size} already in db)`);
+	logChange("log", `Processing ${artistsToProcess.length} new artists (${existingArtists.size} already in db)`);
 
 	const artistsData = [];
 	const similarArtistsSet = new Set();
@@ -131,7 +131,7 @@ async function fetchRecommendationsData(input) {
 			const searchRes = await fetch(`https://api.deezer.com/search/artist?q=${encodeURIComponent(artist)}`);
 			const searchData = await searchRes.json();
 			if (!searchData.data || searchData.data.length == 0) {
-				console.log(`No match found for ${artist}`);
+				logChange("warn", `No match found for ${artist}`);
 				continue;
 			}
 
@@ -155,10 +155,10 @@ async function fetchRecommendationsData(input) {
 				deezer_songs_array: deezerSongs,
 			});
 
-			console.log(`Processed ${exactMatch.name}: ${exactMatch.nb_fan} fans, ${similarArtists.length} similar artists, ${deezerSongs.length} songs`);
+			logChange("log", `Processed ${exactMatch.name}: ${exactMatch.nb_fan} fans, ${similarArtists.length} similar artists, ${deezerSongs.length} songs`);
 			await sleep(1100);
 		} catch (err) {
-			console.error(`Error processing ${artist}:`, err);
+			logChange("error", `Error processing ${artist}: ${err}`);
 		}
 	}
 
@@ -190,10 +190,10 @@ async function fetchRecommendationsData(input) {
 				deezer_songs_array: deezerSongs,
 			});
 
-			console.log(`Processed ${exactMatch.name}: ${exactMatch.nb_fan} fans, ${similarArtists.length} similar artists, ${deezerSongs.length} songs`);
+			logChange("log", `Processed ${exactMatch.name}: ${exactMatch.nb_fan} fans, ${similarArtists.length} similar artists, ${deezerSongs.length} songs`);
 			await sleep(1100);
 		} catch (err) {
-			console.error(`Error processing similar artist ${artist}:`, err);
+			logChange("error", `Error processing similar artist ${artist}: ${err}`);
 		}
 	}
 
@@ -205,10 +205,10 @@ async function fetchRecommendationsData(input) {
 				args: [artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array)],
 				fetch: false,
 			});
-			console.log("Inserted: ", artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array));
+			logChange("log", `Inserted: ${(artist.artist_id, artist.artist_name, artist.artist_fan_amount, JSON.stringify(artist.similar_artists_array), JSON.stringify(artist.deezer_songs_array))}`);
 		}
 
-		console.log(`Saved ${artistsData.length} artists to recommendations table`);
+		logChange("log", `Saved ${artistsData.length} artists to recommendations table`);
 		if (!input) alertModal(`Saved ${artistsData.length} artists to recommendations table`);
 	} else {
 		if (!input) alertModal(`Fetch of recommendations done, no new artists found.`);

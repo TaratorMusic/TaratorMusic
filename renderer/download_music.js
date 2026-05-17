@@ -64,8 +64,7 @@ async function searchInYoutube(songName) {
 		searchedSongsUrl = entry.webpage_url;
 		return searchedSongsUrl;
 	} catch (error) {
-		console.log(error);
-		return;
+		return logChange("error", error);
 	}
 }
 
@@ -206,7 +205,7 @@ async function processVideoLink(videoUrl, songId = null) {
 		thumbnailImage.src = thumbnailUrl.url ?? thumbnailUrl;
 		thumbnailImage.alt = "";
 		thumbnailImage.onerror = function () {
-			console.log("Error loading thumbnail image:", thumbnailUrl);
+			logChange("error", `Error loading thumbnail image: ${thumbnailUrl}`);
 		};
 		songAndThumbnail.appendChild(thumbnailImage);
 
@@ -251,7 +250,7 @@ async function processVideoLink(videoUrl, songId = null) {
 		document.getElementById("downloadSecondPhase").style.display = "block";
 		if (songId) downloadingStyle = "youtube_video";
 	} catch (error) {
-		console.log("Error in processVideoLink:", error);
+		logChange("error", `Error in processVideoLink: ${error}`);
 		document.getElementById("downloadFirstButton").disabled = false;
 		if (error.message.includes("age")) await alertModal("You can't download this song because it is age restricted.");
 		if (error.message.includes("private")) await alertModal("You can't download this song because it is a private video.");
@@ -293,7 +292,7 @@ async function fetchPlaylistData(url) {
 
 		renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems);
 	} catch (error) {
-		console.log("Error fetching playlist data:", error);
+		logChange("error", `Error fetching playlist data: ${error}`);
 		document.getElementById("downloadModalText").innerHTML = `Error: ${error.message}`;
 		document.getElementById("downloadFirstButton").disabled = false;
 	}
@@ -426,7 +425,7 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 
 async function processThumbnail(imageUrl, songId, songIndex = null) {
 	try {
-		console.log(`Processing thumbnail for ${songId}`);
+		logChange("log", `Processing thumbnail for ${songId}`);
 
 		const thumbnailPath = path.join(thumbnailFolder, `${songId}.jpg`);
 
@@ -464,15 +463,15 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 				if (imgElement.src.startsWith("data:image")) {
 					const base64data = imgElement.src.split(",")[1];
 					fs.writeFileSync(thumbnailPath, Buffer.from(base64data, "base64"));
-					console.log(`Saved thumbnail from DOM img element for ${songId}`);
+					logChange("log", `Saved thumbnail from DOM img element for ${songId}`);
 					return true;
 				} else if (imgElement.src.startsWith("http")) {
 					try {
 						await saveBufferFromUrl(imgElement.src, thumbnailPath);
-						console.log(`Saved thumbnail from DOM img src for ${songId}`);
+						logChange("log", `Saved thumbnail from DOM img src for ${songId}`);
 						return true;
 					} catch (e) {
-						console.log(`Error fetching thumbnail from DOM img: ${e.message}`);
+						logChange("error", `Error fetching thumbnail from DOM img: ${e}`);
 					}
 				}
 			} else if (imgElement.style?.backgroundImage) {
@@ -481,15 +480,16 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 					if (bgUrl.startsWith("data:image")) {
 						const base64data = bgUrl.split(",")[1];
 						fs.writeFileSync(thumbnailPath, Buffer.from(base64data, "base64"));
-						console.log(`Saved thumbnail from DOM background image base64 for ${songId}`);
+						logChange("log", `Saved thumbnail from DOM background image base64 for ${songId}`);
 						return true;
 					} else if (bgUrl.startsWith("http")) {
 						try {
 							await saveBufferFromUrl(bgUrl, thumbnailPath);
-							console.log(`Saved thumbnail from DOM background image URL for ${songId}`);
+							logChange("log", `Saved thumbnail from DOM background image URL for ${songId}`);
+
 							return true;
 						} catch (e) {
-							console.log(`Error fetching background image: ${e.message}`);
+							logChange("log", `Error fetching background image: ${e}`);
 						}
 					}
 				}
@@ -500,15 +500,16 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 			if (imageUrl.startsWith("data:image")) {
 				const base64data = imageUrl.split(",")[1];
 				fs.writeFileSync(thumbnailPath, Buffer.from(base64data, "base64"));
-				console.log(`Saved thumbnail from passed imageUrl base64 for ${songId}`);
+				logChange("log", `Saved thumbnail from passed imageUrl base64 for ${songId}`);
 				return true;
 			} else if (imageUrl.startsWith("http")) {
 				try {
 					await saveBufferFromUrl(imageUrl, thumbnailPath);
-					console.log(`Saved thumbnail from passed imageUrl for ${songId}`);
+					logChange("log", `Saved thumbnail from passed imageUrl for ${songId}`);
+
 					return true;
 				} catch (e) {
-					console.log(`Error fetching thumbnail from imageUrl: ${e.message}`);
+					logChange("log", `Error fetching thumbnail from imageUrl: ${e.message}`);
 				}
 			}
 		}
@@ -526,19 +527,18 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 				if (!thumbnails?.length) throw new Error("No thumbnails found");
 				const thumbnailUrl = thumbnails[thumbnails.length - 1].url;
 				await saveBufferFromUrl(thumbnailUrl, thumbnailPath);
-				console.log("Thumbnail fetch succeeded");
 				return true;
 			} catch (err) {
-				console.log("YouTube thumbnail fetch failed:", err.message);
+				logChange("error", `Youtube thumbnail fetch failed: ${err}`);
 			}
 		}
 
 		const placeholderData = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAsTAAALEwEAmpwYAAAJC0lEQVR4nO3d0XLbRhJAUWjz/395v5JsecnuFkWCGKB7+pwXV1I71dXpHg4Jiv75+fkHFP1v9gZgJgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAMgGgTAAoEwDKBIAyAaBMACgTAMoEgDIBoEwAKBMAygSAst+zN9Dy8/Mzewt", "base64");
 		fs.writeFileSync(thumbnailPath, placeholderData);
-		console.log(`Created placeholder thumbnail for ${songId}`);
+		logChange("log", `Created placeholder thumbnail for ${songId}`);
 		return true;
 	} catch (error) {
-		console.log(`Error in processThumbnail for ${songId}:`, error);
+		logChange("error", `Error in processThumbnail for ${songId}: ${error}`);
 		return false;
 	}
 }
@@ -587,7 +587,7 @@ async function actuallyDownloadTheSong() {
 					await normalizeAudio(outputFilePath);
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
 				} catch (error) {
-					console.log("Audio normalization failed:", error);
+					logChange("error", `Audio normalisation failed: ${error}`);
 					stabiliseVolumeToggle = 0;
 					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
 				}
@@ -606,7 +606,7 @@ async function actuallyDownloadTheSong() {
 
 				duration = Math.round(metadata.format.duration);
 			} catch (error) {
-				console.log("Failed to retrieve metadata:", error);
+				logChange("error", `Failed to retrieve metadata: ${error}`);
 			}
 
 			const fileSize = fs.statSync(outputFilePath).size;
@@ -659,7 +659,7 @@ async function actuallyDownloadTheSong() {
 
 				await commitStagedPlaylistAdds();
 			} catch (err) {
-				console.log("Failed to insert song into DB:", err);
+				logChange("error", `Failed to insert song into the database: ${err}`);
 			}
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
@@ -668,8 +668,8 @@ async function actuallyDownloadTheSong() {
 			if (!genre || !artist || !language) grabAndStoreSongInfo(songID);
 			if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
 		} catch (error) {
-			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error.message}`;
-			console.log(error);
+			logChange("error", error);
+			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error}`;
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
 		}
@@ -766,7 +766,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			languages[i] = document.getElementById(`languageInput${i + 1}`)?.value ?? "";
 
 			if (!songTitle || !songLink || !songId) {
-				console.log(`Skipping index ${i}: missing title/link/id`);
+				logChange("warn", `Skipping index ${i}: missing title/link/id`);
 				continue;
 			}
 
@@ -787,7 +787,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					await normalizeAudio(outputPath);
 				} catch (error) {
 					stabiliseVolumeToggle = 0;
-					console.log(`Audio normalization failed for ${songTitle}:`, error);
+					logChange("error", `Audio normalization failed for ${songTitle}: ${error}`);
 				}
 			} else {
 				document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled.`;
@@ -853,15 +853,10 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 						language: languages[i],
 					});
 				} catch (err) {
-					console.log(`DB insert failed for ${songTitle}: ${err.message}`);
+					logChange("error", `DB insert failed for ${songTitle}: ${err.message}`);
 				}
 			} else {
-				console.log(`Data undefined at index ${i}:`, {
-					songId,
-					songTitle,
-					songLink,
-					duration,
-				});
+				logChange("error", `Data undefined at index ${i}:`, { songId, songTitle, songLink, duration });
 			}
 
 			completedDownloads++;
@@ -909,7 +904,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 					thumbnail_extension: "jpg",
 				});
 			} catch (err) {
-				console.log("Failed to save playlist:", err);
+				logChange("error", `Failed to save playlist: ${err}`);
 			}
 		}
 
@@ -1058,7 +1053,7 @@ function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 		yt.on("close", code => {
 			if (code != 0) {
 				if (err.includes("This video is not available") && retryCount < 5) {
-					console.log(`Video unavailable, trying next result (attempt ${retryCount + 1})...`);
+					logChange("warn", `Video unavailable, trying next result (attempt ${retryCount + 1})...`);
 					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
 					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
 				}
@@ -1070,14 +1065,14 @@ function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 
 				if (!entry) {
 					if (retryCount >= 5) return reject(new Error("No valid entries found after retries"));
-					console.log(`No results found, trying next result (attempt ${retryCount + 1})...`);
+					logChange("warn", `No results found, trying next result (attempt ${retryCount + 1})...`);
 					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
 					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
 				}
 
 				if (entry.is_live || entry.live_status === "is_live") {
 					if (retryCount >= 5) return reject(new Error("No valid entries found after retries"));
-					console.log(`Live video, skipping (attempt ${retryCount + 1})...`);
+					logChange("warn", `Live video, skipping (attempt ${retryCount + 1})...`);
 					seenIds.add(entry.id);
 					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
 					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
@@ -1085,7 +1080,7 @@ function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 
 				if (seenIds.has(entry.id)) {
 					if (retryCount >= 5) return reject(new Error("No valid entries found after retries"));
-					console.log(`Duplicate result, skipping (attempt ${retryCount + 1})...`);
+					logChange("warn", `Duplicate result, skipping (attempt ${retryCount + 1})...`);
 					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
 					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
 				}

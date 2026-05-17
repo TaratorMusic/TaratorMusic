@@ -9,7 +9,6 @@ async function getPlaylists(displaying) {
 		playlistsMap.clear();
 
 		if (!playlists || playlists.length == 0) {
-			console.log("No playlists found in the database.");
 			if (displaying) displayPlaylists([]);
 			return;
 		}
@@ -21,7 +20,7 @@ async function getPlaylists(displaying) {
 				try {
 					parsedSongs = JSON.parse(playlist.songs);
 				} catch (e) {
-					console.warn(`Invalid songs JSON for playlist ${playlist.id}`);
+					logChange("error", `Invalid songs JSON for playlist ${playlist.id}: ${e}`);
 				}
 			}
 
@@ -37,7 +36,7 @@ async function getPlaylists(displaying) {
 
 		if (displaying) displayPlaylists([...playlistsMap.values()]);
 	} catch (err) {
-		console.log("Error fetching playlists from the database:", err);
+		logChange("error", `Error fetching playlists from the database: ${err}`);
 		if (displaying) displayPlaylists([]);
 	}
 }
@@ -264,7 +263,7 @@ async function saveEditedPlaylist() {
 			closeModal();
 		})
 		.catch(err => {
-			console.log("Error saving or renaming thumbnail:", err);
+			logChange("error", `Error saving or renaming thumbnail: ${err}`);
 		});
 }
 
@@ -277,7 +276,6 @@ function openAddToPlaylistModal(songName) {
 		const playlists = Array.from(playlistsMap.values());
 
 		if (!playlists || playlists.length == 0) {
-			console.log("No playlists found.");
 			displayPlaylists([]);
 			return;
 		}
@@ -306,7 +304,7 @@ function openAddToPlaylistModal(songName) {
 		button.onclick = () => addToSelectedPlaylists(songName);
 		playlistsContainer.appendChild(button);
 	} catch (err) {
-		console.log("Error fetching playlists:", err);
+		logChange("error", `Error fetching playlists: ${err}`);
 		displayPlaylists([]);
 	}
 }
@@ -334,9 +332,6 @@ function addToSelectedPlaylists(songName) {
 				...playlist,
 				songs: songsInPlaylist,
 			});
-			console.log(`Song '${songName}' added to playlist '${playlistId}'.`);
-		} else {
-			console.log(`Song '${songName}' already exists in playlist '${playlistId}'.`);
 		}
 	});
 
@@ -354,7 +349,6 @@ function addToSelectedPlaylists(songName) {
 					...playlist,
 					songs: updatedSongs,
 				});
-				console.log(`Song '${songName}' removed from playlist '${playlistId}'.`);
 			}
 		}
 	}
@@ -373,13 +367,11 @@ function deletePlaylist() {
 		const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${playlistThumbnailExtension}`);
 
 		fs.unlink(thumbnailPath, err => {
-			if (err) console.log(`Failed to delete file: ${err.message}`);
-			else console.log("File deleted successfully!");
+			if (err) logChange("error", `Failed to delete file: ${err.message}`);
 		});
 
 		callSqlite({ db: "playlists", query: "DELETE FROM playlists WHERE id = ?", args: [playlistID] });
 		playlistsMap.delete(playlistID);
-		console.log(`Deleted playlist "${playlistName}" and its song links.`);
 
 		closeModal();
 		document.getElementById("settings").click();

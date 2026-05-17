@@ -69,7 +69,7 @@ async function grabAndStoreSongInfo(songId) {
 						if (cached.genre == null || cached.genre == "") cached.genre = meta.genre;
 						if (cached.language == null || cached.language == "") cached.language = meta.language;
 
-						console.log("New song info added for", cached.song_name, ":", meta.artist, meta.genre, meta.language, songIdUsed);
+						logChange("log", `New song info added for ${(cached.song_name, ":", meta.artist, meta.genre, meta.language, songIdUsed)}`);
 
 						if (document.getElementById("customiseModal").style.display == "block" && songIdUsed == document.getElementById("customiseModal").dataset.songID) {
 							document.getElementById("customiseSongGenre").value = meta.genre;
@@ -80,12 +80,12 @@ async function grabAndStoreSongInfo(songId) {
 
 					count++;
 				} catch (error) {
-					console.error(error);
+					logChange("error", error);
 				}
 			}
 		});
 
-		proc.stderr.on("data", error => console.error(error.toString()));
+		proc.stderr.on("data", error => logChange("error", error.toString()));
 		proc.on("error", reject);
 		proc.on("close", code => (code == 0 ? resolve() : reject(new Error(`Go exited ${code}`))));
 	});

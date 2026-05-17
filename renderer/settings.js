@@ -202,18 +202,19 @@ async function resetRecommendationWeights() {
 async function stabiliseVolumeToggleTogglerFunction() {
 	stabiliseVolumeToggle = stabiliseVolumeToggle == 1 ? 0 : 1;
 	await callSqlite({ db: "settings", query: "UPDATE settings SET stabiliseVolumeToggle = ?", args: [stabiliseVolumeToggle] });
-	console.log("New stabiliseVolumeToggle", stabiliseVolumeToggle);
+	logChange("log", `New stabiliseVolumeToggle: ${stabiliseVolumeToggle}`);
 }
 
 async function recommendationsToggleTogglerFunction() {
 	recommendationsAfterDownload = recommendationsAfterDownload == 1 ? 0 : 1;
 	await callSqlite({ db: "settings", query: "UPDATE settings SET recommendationsAfterDownload = ?", args: [recommendationsAfterDownload] });
-	console.log("New recommendationsAfterDownload", recommendationsAfterDownload);
+	logChange("log", `New recommendationsAfterDownload: ${recommendationsAfterDownload}`);
 }
 
 async function pictureInPictureTogglerFunction() {
 	pictureInPicture = pictureInPicture == 1 ? 0 : 1;
 	await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
-	console.log("New pictureInPicture", pictureInPicture);
+	logChange("log", `New pictureInPicture: ${pictureInPicture}`);
+
 	pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer") : ipcRenderer.send("miniplayer-close");
 }
