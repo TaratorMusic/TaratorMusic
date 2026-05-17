@@ -60,8 +60,8 @@ function getCachedVideoIds() {
 
 async function searchInYoutube(songName) {
 	try {
-		const info = await getVideoInfo(`ytsearch1:${songName}`);
-		searchedSongsUrl = info.entries[0].webpage_url;
+		const entry = await getVideoInfo(`ytsearch1:${songName}`);
+		searchedSongsUrl = entry.webpage_url;
 		return searchedSongsUrl;
 	} catch (error) {
 		console.log(error);
@@ -1047,9 +1047,9 @@ async function commitStagedPlaylistAdds() {
 	pendingPlaylistAddsWithIds.clear();
 }
 
-function getVideoInfo(url, retryCount = 0) {
+function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 	return new Promise((resolve, reject) => {
-		const args = ["-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5", "--match-filters", "live_status = not_live"];
+		const args = ["-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5"];
 		const yt = spawn(getYtDlpPath(), [...args, url]);
 		let data = "";
 		let err = "";
@@ -1060,21 +1060,37 @@ function getVideoInfo(url, retryCount = 0) {
 				if (err.includes("This video is not available") && retryCount < 5) {
 					console.log(`Video unavailable, trying next result (attempt ${retryCount + 1})...`);
 					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
-					return resolve(getVideoInfo(nextUrl, retryCount + 1));
+					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
 				}
 				return reject(new Error(err || `yt-dlp exited ${code}`));
 			}
 			try {
 				const parsed = JSON.parse(data);
-				if (!parsed.entries?.[0]) {
-					if (retryCount < 5) {
-						console.log(`No results found, trying next result (attempt ${retryCount + 1})...`);
-						const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
-						return resolve(getVideoInfo(nextUrl, retryCount + 1));
-					}
-					return reject(new Error("No valid entries found after retries"));
+				const entry = parsed.entries?.[0] ?? (parsed._type === "video" ? parsed : null);
+
+				if (!entry) {
+					if (retryCount >= 5) return reject(new Error("No valid entries found after retries"));
+					console.log(`No results found, trying next result (attempt ${retryCount + 1})...`);
+					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
+					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
 				}
-				resolve(parsed);
+
+				if (entry.is_live || entry.live_status === "is_live") {
+					if (retryCount >= 5) return reject(new Error("No valid entries found after retries"));
+					console.log(`Live video, skipping (attempt ${retryCount + 1})...`);
+					seenIds.add(entry.id);
+					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
+					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
+				}
+
+				if (seenIds.has(entry.id)) {
+					if (retryCount >= 5) return reject(new Error("No valid entries found after retries"));
+					console.log(`Duplicate result, skipping (attempt ${retryCount + 1})...`);
+					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
+					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
+				}
+
+				resolve(entry);
 			} catch (e) {
 				reject(e);
 			}

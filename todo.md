@@ -5,20 +5,21 @@
 -   play previous song and play next song do not detect streamed songs
 -   Fix app resizing removing all recommendations-fetched songs
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
--   Lyrics storage for picture in picture
--   Progress bar for lyrics possibly
 -   Change so when a new song is added we properly rendermusics again // OR JUST ADD THE NEW DIV INSIDE!!
--   Search code for TODO'S
--   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
--   translate lyrics automatic function 
--   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
--   New option while downloading: Start playing the song after the download is finished
--   Add a progress bar in the lyrics page. Maybe use soundwaves?
+
 
 ### Version 1.8.x Planned Features
 
 -   Customise Dc Rich Presence box in the settings
--   Update playlists tab
+-   Update playlists tab - a general UI update would be great
+-   Search code for TODO'S
+-   Progress bar for lyrics possibly
+-   Add a progress bar in the lyrics page. Maybe use soundwaves?
+-   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
+-   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
+-   translate lyrics automatic function 
+-   Lyrics storage for picture in picture
+-   New option while downloading: Start playing the song after the download is finished
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Song link comparation takes playlist additions of the link to account ??
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
