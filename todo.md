@@ -13,6 +13,7 @@
 -   translate lyrics automatic function 
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   New option while downloading: Start playing the song after the download is finished
+-   Add a progress bar in the lyrics page. Maybe use soundwaves?
 
 ### Version 1.8.x Planned Features
 

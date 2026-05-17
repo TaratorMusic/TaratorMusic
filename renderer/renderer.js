@@ -1659,14 +1659,17 @@ async function updateThumbnailImage(event, mode) {
 	}
 }
 
-async function searchSong() {
+async function searchSong(typed) {
 	try {
 		const row = await callSqlite({
 			db: "musics",
-			query: "SELECT song_id FROM songs WHERE song_name LIKE ? COLLATE NOCASE ORDER BY LENGTH(song_name) LIMIT 1",
+			query: "SELECT song_id, song_name FROM songs WHERE song_name LIKE ? COLLATE NOCASE ORDER BY LENGTH(song_name) LIMIT 1",
 			args: [`%${searchModalInput.value}%`],
 			fetch: true,
 		});
+
+        document.getElementById("searchModalFound").innerText = `${"Found: " + (row[0]?.song_name || "Nothing")}`;
+		if (typed) return;
 
 		searchModalInput.value = "";
 		searchModalInput.classList.add("red-placeholder");
@@ -1960,6 +1963,10 @@ document.addEventListener("DOMContentLoaded", function () {
 			clearTimeout(timeoutId);
 			tooltip.style.display = "none";
 		});
+	});
+
+	document.getElementById("searchModalInput").addEventListener("input", event => {
+		searchSong(true);
 	});
 
 	document.getElementById("debugButton").addEventListener("click", () => {
