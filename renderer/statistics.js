@@ -264,8 +264,6 @@ async function daysHeatMap() {
 		counts[day][hour] += 1;
 	}
 
-	const averages = days.map((day, d) => day.map((total, h) => (counts[d][h] ? Math.round(total / counts[d][h]) : 0)));
-
 	const options = Intl.DateTimeFormat().resolvedOptions();
 	const hourFormat = options.hour12 ? UShours : EUhours;
 
@@ -284,7 +282,7 @@ async function daysHeatMap() {
 		},
 	};
 
-	const globalMax = Math.max(...averages.flat()) * 1.1 || 1;
+	const globalMax = Math.max(...days.flat()) * 1.1 || 1;
 
 	for (let i = 0; i < 7; i++) {
 		const activityBox = document.createElement("div");
@@ -314,7 +312,7 @@ async function daysHeatMap() {
 
 		config.data.datasets.push({
 			label: daysoftheweek[i],
-			data: averages[i],
+			data: days[i],
 			borderColor: "red",
 			backgroundColor: "rgba(255,0,0,0.3)",
 			fill: "origin",
