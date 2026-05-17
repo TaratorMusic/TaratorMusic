@@ -1661,6 +1661,7 @@ async function updateThumbnailImage(event, mode) {
 
 async function searchSong(typed) {
 	try {
+        if (searchModalInput.value.trim() == "") return document.getElementById("searchModalFound").innerText = "Found: Nothing";
 		const row = await callSqlite({
 			db: "musics",
 			query: "SELECT song_id, song_name FROM songs WHERE song_name LIKE ? COLLATE NOCASE ORDER BY LENGTH(song_name) LIMIT 1",

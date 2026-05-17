@@ -2,6 +2,7 @@
 
 -   You need to swap back to offline mode to properly disable the buttons above (I think launching with stream mode causes this)
 -   Add "logs" database and function
+-   Statistics hour charts feel bugged
 -   play previous song and play next song do not detect streamed songs
 -   Fix app resizing removing all recommendations-fetched songs
 -   Fix the song timer continuing while the streamed song is loading, and not resetting instantly to 0 on song change
