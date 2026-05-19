@@ -71,6 +71,7 @@ let lastAuthoritativePosition = 0; // Playing songs position sent by miniaudio
 let lastSyncTimestamp = 0; // Current predicted timestamp in JS
 let isInterpolating = false; // If song is playing at the moment
 let playlistIdsForStartup = []; // At app launch, makes all playlist ID's an array to send to startup_check
+let isLoadingRecommendations = false; // If the app is currently loading recommendations (prevents duplication)
 
 let songNameCache = new Map(); // Song cache
 let playlistsMap = new Map(); // Playlist cache
@@ -835,25 +836,36 @@ function renderMusics() {
 		});
 	} else if (musicMode == "stream") {
 		document.getElementById("music-search").placeholder = `Search in Youtube...`;
-		container.innerHTML = "Loading...";
-		const recommendationsCache = localStorage.getItem("recommendationsCache");
-		if (recommendationsCache != "null") {
-			const cachedMap = new Map(JSON.parse(recommendationsCache));
-			streamedSongsHtmlMap = cachedMap;
+		if (isLoadingRecommendations) {
 			container.innerHTML = "";
-			for (const [id, song] of cachedMap) {
+			for (const [id, song] of streamedSongsHtmlMap) {
 				const musicElement = createMusicElement(song);
 				if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 				musicElement.addEventListener("click", () => playMusic(song.id, null));
-				if (musicMode == "stream") {
-					container.appendChild(musicElement);
-				} else {
-					return;
-				}
+				container.appendChild(musicElement);
 			}
 			setupLazyBackgrounds();
 		} else {
-			refreshRecommendations();
+			container.innerHTML = "Loading...";
+			const recommendationsCache = localStorage.getItem("recommendationsCache");
+			if (recommendationsCache != "null") {
+				const cachedMap = new Map(JSON.parse(recommendationsCache));
+				streamedSongsHtmlMap = cachedMap;
+				container.innerHTML = "";
+				for (const [id, song] of cachedMap) {
+					const musicElement = createMusicElement(song);
+					if (song.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+					musicElement.addEventListener("click", () => playMusic(song.id, null));
+					if (musicMode == "stream") {
+						container.appendChild(musicElement);
+					} else {
+						return;
+					}
+				}
+				setupLazyBackgrounds();
+			} else {
+				refreshRecommendations();
+			}
 		}
 	}
 
@@ -872,8 +884,12 @@ async function refreshRecommendations() {
 	const goal = document.getElementById("musicSearchInputAmount").value;
 	let count = 0;
 
+	isLoadingRecommendations = true;
 	streamedSongsHtmlMap = new Map();
+	container.innerHTML = "Loading...";
+
 	for (const [key, value] of recommendedMusicMap) {
+		if (!isLoadingRecommendations) return;
 		const ytQuery = `${key} by ${value[0]}`;
 		try {
 			const info = await getVideoInfo(`ytsearch1:${ytQuery}`);
@@ -910,15 +926,18 @@ async function refreshRecommendations() {
 			};
 			streamedSongsHtmlMap.set(songID, fullSong);
 
-			if (count == 0) container.innerHTML = "";
 			const musicElement = createMusicElement(fullSong);
-			if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+            if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 			musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
+
 			if (musicMode == "stream") {
+				if (container.innerHTML == "Loading...") container.innerHTML = "";
 				container.appendChild(musicElement);
 			} else {
+				isLoadingRecommendations = false;
 				return;
 			}
+            
 			setupLazyBackgrounds();
 			count++;
 			localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
@@ -928,6 +947,7 @@ async function refreshRecommendations() {
 			await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
 		}
 	}
+	isLoadingRecommendations = false;
 }
 
 function createMusicElement(songFile) {
