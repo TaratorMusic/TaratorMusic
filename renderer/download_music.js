@@ -10,23 +10,47 @@ function getYtDlpPath() {
 function differentiateMediaLinks(url) {
 	const trimmedUrl = url.trim();
 
-	const ytVideoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/;
-	const ytPlaylistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([^&]+)/;
-
+	const ytVideoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+	const ytPlaylistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([a-zA-Z0-9_-]+)/;
 	const spotifyTrackRegex = /(?:https?:\/\/)?open\.spotify\.com\/track\/([a-zA-Z0-9]+)/;
 	const spotifyPlaylistRegex = /(?:https?:\/\/)?open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/;
+	const spotifyAlbumRegex = /(?:https?:\/\/)?open\.spotify\.com\/album\/([a-zA-Z0-9]+)/;
 
-	if (ytVideoRegex.test(trimmedUrl)) {
-		return "youtube_video";
-	} else if (ytPlaylistRegex.test(trimmedUrl)) {
-		return "youtube_playlist";
-	} else if (spotifyTrackRegex.test(trimmedUrl)) {
-		return "spotify_track";
-	} else if (spotifyPlaylistRegex.test(trimmedUrl)) {
-		return "spotify_playlist";
-	} else {
-		return "search";
+	let cleanUrl = trimmedUrl;
+
+	const ytVideoMatch = trimmedUrl.match(ytVideoRegex);
+	if (ytVideoMatch) {
+		const videoId = ytVideoMatch[1];
+		const listMatch = trimmedUrl.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+		cleanUrl = listMatch ? `https://www.youtube.com/watch?v=${videoId}&list=${listMatch[1]}` : `https://www.youtube.com/watch?v=${videoId}`;
+		return { type: "youtube_video", url: cleanUrl };
 	}
+
+	const ytPlaylistMatch = trimmedUrl.match(ytPlaylistRegex);
+	if (ytPlaylistMatch) {
+		cleanUrl = `https://www.youtube.com/playlist?list=${ytPlaylistMatch[1]}`;
+		return { type: "youtube_playlist", url: cleanUrl };
+	}
+
+	const spotifyTrackMatch = trimmedUrl.match(spotifyTrackRegex);
+	if (spotifyTrackMatch) {
+		cleanUrl = `https://open.spotify.com/track/${spotifyTrackMatch[1]}`;
+		return { type: "spotify_track", url: cleanUrl };
+	}
+
+	const spotifyPlaylistMatch = trimmedUrl.match(spotifyPlaylistRegex);
+	if (spotifyPlaylistMatch) {
+		cleanUrl = `https://open.spotify.com/playlist/${spotifyPlaylistMatch[1]}`;
+		return { type: "spotify_playlist", url: cleanUrl };
+	}
+
+	const spotifyAlbumMatch = trimmedUrl.match(spotifyAlbumRegex);
+	if (spotifyAlbumMatch) {
+		cleanUrl = `https://open.spotify.com/album/${spotifyAlbumMatch[1]}`;
+		return { type: "spotify_album", url: cleanUrl };
+	}
+
+	return { type: "search", url: trimmedUrl };
 }
 
 function extractYoutubeVideoId(url) {
@@ -95,11 +119,12 @@ async function checkNameThumbnail(predetermined) {
 		return;
 	}
 
-	downloadingStyle = differentiateMediaLinks(userInput);
+	const { type: linkType, url: cleanedUrl } = differentiateMediaLinks(userInput);
+	downloadingStyle = linkType;
 
-	if (downloadingStyle == "youtube_video") {
+	if (linkType == "youtube_video") {
 		const cachedIds = getCachedVideoIds();
-		const vid = extractYoutubeVideoId(userInput);
+		const vid = extractYoutubeVideoId(cleanedUrl);
 		if (vid && cachedIds.has(vid)) {
 			const proceed = await confirmModal("Duplicate songs detected. Show them or hide them?", "Show", "Hide");
 			if (!proceed) {
@@ -108,13 +133,15 @@ async function checkNameThumbnail(predetermined) {
 				return;
 			}
 		}
-		processVideoLink(userInput);
-	} else if (downloadingStyle == "youtube_playlist") {
-		fetchPlaylistData(userInput);
-	} else if (downloadingStyle == "spotify_track") {
-		getSpotifySongName(userInput);
-	} else if (downloadingStyle == "spotify_playlist") {
-		getPlaylistSongsAndArtists(userInput);
+		processVideoLink(cleanedUrl);
+	} else if (linkType == "youtube_playlist") {
+		fetchPlaylistData(cleanedUrl);
+	} else if (linkType == "spotify_track") {
+		getSpotifySongName(cleanedUrl);
+	} else if (linkType == "spotify_playlist") {
+		getPlaylistSongsAndArtists(cleanedUrl);
+	} else if (linkType == "spotify_album") {
+		getPlaylistSongsAndArtists(cleanedUrl, true);
 	} else {
 		const resolvedUrl = await searchInYoutube(userInput);
 		const cachedIds = getCachedVideoIds();
@@ -868,7 +895,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 		callSqlite({
 			db: "settings",
-			query: `UPDATE statistics SET ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} = ${["spotify_track", "spotify_playlist"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${totalSongs}`,
+			query: `UPDATE statistics SET ${["spotify_track", "spotify_playlist", "spotify_album"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} = ${["spotify_track", "spotify_playlist", "spotify_album"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${totalSongs}`,
 			args: [],
 			fetch: false,
 		});
@@ -1097,7 +1124,11 @@ async function getSpotifySongName(link) {
 	const fetch = require("node-fetch");
 	const cheerio = require("cheerio");
 
-	const response = await fetch(link, {
+	const trackMatch = link.match(/open\.spotify\.com\/track\/([a-zA-Z0-9]+)/);
+	if (!trackMatch) throw new Error("Invalid Spotify track URL.");
+	const cleanLink = `https://open.spotify.com/track/${trackMatch[1]}`;
+
+	const response = await fetch(cleanLink, {
 		headers: {
 			"User-Agent": "Mozilla/5.0",
 		},
@@ -1125,8 +1156,13 @@ async function getSpotifySongName(link) {
 	processVideoLink(resolvedUrl);
 }
 
-async function getPlaylistSongsAndArtists(link) {
+async function getPlaylistSongsAndArtists(link, isAlbum = false) {
 	const puppeteer = require("puppeteer");
+
+	const typeRegex = isAlbum ? /open\.spotify\.com\/album\/([a-zA-Z0-9]+)/ : /open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/;
+	const typeMatch = link.match(typeRegex);
+	if (!typeMatch) throw new Error(`Invalid Spotify ${isAlbum ? "album" : "playlist"} URL.`);
+	const cleanLink = `https://open.spotify.com/${isAlbum ? "album" : "playlist"}/${typeMatch[1]}`;
 
 	document.getElementById("downloadModalText").innerText = "Launching browser...";
 	const browser = await puppeteer.launch({ headless: true });
@@ -1136,7 +1172,7 @@ async function getPlaylistSongsAndArtists(link) {
 	await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
 
 	document.getElementById("downloadModalText").innerText = "Navigating to playlist page...";
-	await page.goto(link, { waitUntil: "networkidle2" });
+	await page.goto(cleanLink, { waitUntil: "networkidle2" });
 
 	document.getElementById("downloadModalText").innerText = "Waiting for the tracks to load...";
 	await page.waitForSelector('a[data-testid="internal-track-link"]', { timeout: 30000 });
@@ -1165,11 +1201,12 @@ async function getPlaylistSongsAndArtists(link) {
 	});
 
 	const playlistNameRaw = await page.title();
-	const playlistName = playlistNameRaw.replace(/\s*-\s*playlist by .*?\| Spotify$/, "");
+	const playlistName = isAlbum ? playlistNameRaw.replace(/\s*[-–]\s*.*?\|\s*Spotify\s*$/i, "").trim() : playlistNameRaw.replace(/\s*-\s*playlist by .*?\| Spotify$/, "").trim();
 
-	const { imageUrl } = await page.evaluate(() => {
+	const { imageUrl } = await page.evaluate(isAlbum => {
 		let imageUrl = null;
-		const thumbnailElement = document.querySelector('[data-testid="playlist-image"] img');
+		const testId = isAlbum ? "album-image" : "playlist-image";
+		const thumbnailElement = document.querySelector(`[data-testid="${testId}"] img`);
 
 		if (thumbnailElement && thumbnailElement.src) {
 			imageUrl = thumbnailElement.src;
@@ -1188,54 +1225,68 @@ async function getPlaylistSongsAndArtists(link) {
 		}
 
 		return { imageUrl };
-	});
+	}, isAlbum);
 
 	const playlistThumbnail = imageUrl || path.join(appThumbnailFolder, "placeholder.jpg");
 
-	const songs = await page.evaluate(async container => {
-		const seen = new Map();
-		let sameCount = 0;
-		let lastRowIndex = 0;
+	const songs = await page.evaluate(
+		async (container, isAlbum) => {
+			const seen = new Map();
+			let sameCount = 0;
+			let lastRowIndex = 0;
 
-		while (sameCount < 3) {
-			container.scrollBy(0, 800);
-			await new Promise(resolve => setTimeout(resolve, 800));
+			while (sameCount < 3) {
+				container.scrollBy(0, 800);
+				await new Promise(resolve => setTimeout(resolve, 800));
 
-			const rows = container.querySelectorAll("[aria-rowindex]");
-			let newFound = 0;
+				const rows = container.querySelectorAll("[aria-rowindex]");
+				let newFound = 0;
 
-			rows.forEach(row => {
-				const rowIndex = parseInt(row.getAttribute("aria-rowindex"), 10);
+				rows.forEach(row => {
+					const rowIndex = parseInt(row.getAttribute("aria-rowindex"), 10);
 
-				if (rowIndex <= lastRowIndex) return;
+					if (rowIndex <= lastRowIndex) return;
 
-				const trackLink = row.querySelector('a[data-testid="internal-track-link"]');
-				if (!trackLink) return;
+					const trackLink = row.querySelector('a[data-testid="internal-track-link"]');
+					if (!trackLink) return;
 
-				const title = row.querySelector("div[data-encore-id='text']")?.textContent.trim();
-				const artistLink = row.querySelector("span a[href^='/artist']");
-				const artist = artistLink?.textContent.trim();
+					const title = row.querySelector("div[data-encore-id='text']")?.textContent.trim();
 
-				if (title && artist) {
-					const key = title + "||" + artist;
-
-					if (!seen.has(key)) {
-						seen.set(key, { title, artist });
-						newFound++;
-						lastRowIndex = Math.max(lastRowIndex, rowIndex);
+					let artist;
+					if (isAlbum) {
+						const artistLink = row.querySelector("span a[href^='/artist'], a[href^='/artist']");
+						artist = artistLink?.textContent.trim();
+						if (!artist) {
+							artist = row.querySelector("span[data-encore-id='text'] a")?.textContent.trim();
+						}
+					} else {
+						const artistLink = row.querySelector("span a[href^='/artist']");
+						artist = artistLink?.textContent.trim();
 					}
+
+					if (title && artist) {
+						const key = title + "||" + artist;
+
+						if (!seen.has(key)) {
+							seen.set(key, { title, artist });
+							newFound++;
+							lastRowIndex = Math.max(lastRowIndex, rowIndex);
+						}
+					}
+				});
+
+				if (newFound == 0) {
+					sameCount++;
+				} else {
+					sameCount = 0;
 				}
-			});
-
-			if (newFound == 0) {
-				sameCount++;
-			} else {
-				sameCount = 0;
 			}
-		}
 
-		return Array.from(seen.values());
-	}, scrollContainer);
+			return Array.from(seen.values());
+		},
+		scrollContainer,
+		isAlbum,
+	);
 
 	document.getElementById("downloadModalText").innerText = `Extracted ${songs.length} tracks. Searching for the tracks in Youtube...`;
 
