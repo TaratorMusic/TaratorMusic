@@ -927,7 +927,7 @@ async function refreshRecommendations() {
 			streamedSongsHtmlMap.set(songID, fullSong);
 
 			const musicElement = createMusicElement(fullSong);
-            if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
+			if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
 			musicElement.addEventListener("click", () => playMusic(fullSong.id, null));
 
 			if (musicMode == "stream") {
@@ -937,7 +937,7 @@ async function refreshRecommendations() {
 				isLoadingRecommendations = false;
 				return;
 			}
-            
+
 			setupLazyBackgrounds();
 			count++;
 			localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
@@ -1113,7 +1113,15 @@ async function playPlaylist(playlistId, startingIndex = 0) {
 
 async function playPreviousSong() {
 	if (!playingSongsID) return;
-	if (getInterpolatedPosition() > 5) return audioPlayer.stdin.write(`seek 0\n`);
+	if (getInterpolatedPosition() > 5) {
+		isUserSeeking = true;
+
+		videoProgress.value = 0;
+		videoProgress.dispatchEvent(new Event("input", { bubbles: true }));
+
+		isUserSeeking = false;
+		return;
+	}
 
 	const allMusics = Array.from(songNameCache.entries()).map(([song_id, data]) => ({
 		song_id,
