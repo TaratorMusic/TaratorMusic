@@ -1,8 +1,6 @@
 ## Version 1.8.7 Planned Features
 
 -   play previous song and play next song do not detect streamed songs
--   Change so when a new song is added we properly rendermusics again // OR JUST ADD THE NEW DIV INSIDE!!
-
 
 ### Version 1.8.x Planned Features
 
@@ -37,6 +35,7 @@
 
 ### Planned Features
 
+-   Add sorting to the music tab. But each category will have a blob background with different color
 -   PiP bugs out when main process is minimised
 -   refresh recommendations table each month (Needs to re-do all rows)
 -   The "x" button in modals should close that modal, not the modal with the highest z-index

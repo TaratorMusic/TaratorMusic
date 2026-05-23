@@ -78,6 +78,9 @@ let playlistsMap = new Map(); // Playlist cache
 let notInterestedSongs; // Not interested songs cache
 let songLyricsCache = new Map(); // Cache for song lyrics
 
+let musicScrollPos; // Cached value for the scroll position inside the My Music tab
+let musicSearchValue; // Cached value for the search bar inside the My Music tab
+
 let sessionTimeSpent = 0;
 let rememberautoplay;
 let remembershuffle;
@@ -388,6 +391,9 @@ setInterval(async () => {
 
 tabs.forEach(tab => {
 	tab.addEventListener("click", () => {
+		if (document.getElementById("my-music-content").style.display == "flex") {
+			musicScrollPos = document.getElementById("music-list-container").scrollTop;
+		}
 		tabs.forEach(div => div.classList.remove("active"));
 		tab.classList.add("active");
 
@@ -407,6 +413,7 @@ tabs.forEach(tab => {
 					document.getElementById("main-menu-content").style.display = "flex";
 				} else if (content.id == "my-music-content") {
 					document.getElementById("my-music-content").style.display = "flex";
+					myMusicOnClick();
 				} else if (content.id == "playlists-content") {
 					document.getElementById("playlists-content").style.display = "grid";
 				} else if (content.id == "settings-content") {
@@ -414,6 +421,7 @@ tabs.forEach(tab => {
 				} else if (content.id == "statistics-content") {
 					loadNewPage("statistics");
 				}
+
 				setupLazyBackgrounds();
 			}
 		});
@@ -436,6 +444,7 @@ async function myMusicOnClick() {
 	musicSearchInput.id = "music-search";
 
 	musicSearchInput.addEventListener("input", () => {
+		musicSearchValue = musicSearchInput.value;
 		musicMode == "offline" && renderMusics();
 	});
 
@@ -579,7 +588,7 @@ async function myMusicOnClick() {
 
 	myMusicContent.appendChild(musicListContainer);
 
-	renderMusics();
+	renderMusics(true);
 	changeSearchBar();
 }
 
@@ -619,7 +628,6 @@ function changeSearchBar() {
 async function searchYoutubeInMusics() {
 	await loadJSFile("download_music");
 	const container = document.getElementById("music-list-container");
-	const scrollPos = container.scrollTop;
 
 	if (musicMode == "stream" && document.getElementById("music-search").value != "") {
 		container.innerHTML = "Loading...";
@@ -695,12 +703,18 @@ async function searchYoutubeInMusics() {
 	});
 
 	setupLazyBackgrounds();
-	container.scrollTop = scrollPos;
+	if (musicScrollPos) document.getElementById("music-list-container").scrollTop = musicScrollPos;
+	if (musicSearchValue) document.getElementById("music-search").value = musicSearchValue;
 }
 
-function renderMusics() {
+function renderMusics(skipScrollSave = false) {
 	const container = document.getElementById("music-list-container");
-	const scrollPos = container.scrollTop;
+	let searchValue = musicSearchValue ?? document.getElementById("music-search").value.trim().toLowerCase();
+
+	if (!skipScrollSave && document.getElementById("my-music-content").style.display == "flex") {
+		musicScrollPos = container.scrollTop; // If the My Music tab is loading and hasn't finished yet, the scrollTop might be 0, thus we prevent it with skipScrollSave
+	}
+
 	container.innerHTML = "";
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 	if (Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) < currentPage) currentPage = Math.ceil(songNameCache.size / (3 * previousItemsPerRow));
@@ -723,8 +737,6 @@ function renderMusics() {
 			}))
 			.sort((a, b) => (a.song_name || "").toLowerCase().localeCompare((b.song_name || "").toLowerCase()))
 			.filter(song => {
-				let searchValue = document.getElementById("music-search").value.trim().toLowerCase();
-
 				const fields = [song.song_name, song.artist, song.genre, song.language, song.id?.toString()];
 
 				const tokenize = input => {
@@ -873,7 +885,11 @@ function renderMusics() {
 		button.disabled = displayPage == "scroll";
 	});
 	setupLazyBackgrounds();
-	container.scrollTop = scrollPos;
+
+	requestAnimationFrame(() => {
+		if (musicScrollPos) document.getElementById("music-list-container").scrollTop = musicScrollPos;
+		if (musicSearchValue) document.getElementById("music-search").value = musicSearchValue;
+	});
 }
 
 async function refreshRecommendations() {
@@ -1529,11 +1545,7 @@ async function opencustomiseModal(songsId) {
 
 async function saveEditedSong() {
 	let customiseDiv = document.getElementById("customiseModal");
-	let scrollPos, element, thumbnailPath;
-
-	if (document.getElementById("my-music-content").style.display == "flex") {
-		scrollPos = document.getElementById("music-list-container").scrollTop;
-	}
+	let element, thumbnailPath;
 
 	const songID = removeExtensions(customiseDiv.dataset.songID);
 	const newNameInput = document.getElementById("customiseSongName").value.trim();
@@ -1603,7 +1615,8 @@ async function saveEditedSong() {
 	}
 
 	if (document.getElementById("my-music-content").style.display == "flex") {
-		document.getElementById("music-list-container").scrollTop = scrollPos;
+		if (musicScrollPos) document.getElementById("music-list-container").scrollTop = musicScrollPos;
+		if (musicSearchValue) document.getElementById("music-search").value = musicSearchValue;
 
 		if (newNameInput == removeExtensions(playingSongsID)) element.classList.add("playing");
 

@@ -691,14 +691,14 @@ async function actuallyDownloadTheSong() {
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
-			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
+			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 			if (!genre || !artist || !language) grabAndStoreSongInfo(songID);
 			if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
 		} catch (error) {
 			logChange("error", error);
 			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error}`;
 			document.getElementById("finalDownloadButton").disabled = false;
-			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
+			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 		}
 	} else {
 		const playlistName = document.getElementById("playlistTitle0").value.trim();
@@ -888,7 +888,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 			completedDownloads++;
 			document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Processed: ${songTitle}`;
-			if (document.getElementById("my-music-content").style.display == "block") renderMusics();
+			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 
 			await sleep(500);
 		}
@@ -950,7 +950,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 	}
 
 	document.getElementById("finalDownloadButton").disabled = false;
-	if (document.getElementById("my-music-content").style.display == "block") renderMusics();
+	if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 }
 
 async function downloadAudio(videoUrl, outputFilePath, onProgress) {
