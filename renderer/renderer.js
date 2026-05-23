@@ -75,6 +75,7 @@ let isLoadingRecommendations = false; // If the app is currently loading recomme
 
 let songNameCache = new Map(); // Song cache
 let playlistsMap = new Map(); // Playlist cache
+let streamedSongsCache = new Map(); // Streamed songs cache
 let notInterestedSongs; // Not interested songs cache
 let songLyricsCache = new Map(); // Cache for song lyrics
 
@@ -374,6 +375,23 @@ async function initialiseDatabases() {
 		});
 	}
 
+	const streamsRows = await callSqlite({
+		db: "musics",
+		query: "SELECT song_id, song_name, thumbnail_url, length, artist, genre, language FROM streams",
+		fetch: true,
+	});
+
+	for (const row of streamsRows) {
+		streamedSongsCache.set(row.song_id, {
+			song_name: row.song_name,
+			thumbnail_url: row.thumbnail_url,
+			length: row.length,
+			artist: row.artist,
+			genre: row.genre,
+			language: row.language,
+		});
+	}
+
 	await getPlaylists(false);
 	startupCheck();
 	setupLazyBackgrounds();
@@ -662,6 +680,17 @@ async function searchYoutubeInMusics() {
 						fetch: false,
 					});
 
+					if (!streamedSongsCache.has(songID)) {
+						streamedSongsCache.set(songID, {
+							song_name: videoTitle,
+							thumbnail_url: thumbnailUrl,
+							length: songLength,
+							artist: null,
+							genre: null,
+							language: null,
+						});
+					}
+
 					if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
 						await callSqlite({
 							db: "musics",
@@ -923,6 +952,17 @@ async function refreshRecommendations() {
 				fetch: false,
 			});
 
+			if (!streamedSongsCache.has(songID)) {
+				streamedSongsCache.set(songID, {
+					song_name: videoTitle,
+					thumbnail_url: bestThumbnail,
+					length: songLength,
+					artist: null,
+					genre: null,
+					language: null,
+				});
+			}
+
 			if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
 				await callSqlite({
 					db: "musics",
@@ -1035,10 +1075,10 @@ function playMusic(songId, playlistId) {
 		playingSongsID = songId;
 		currentPlaylist = playlistId || null;
 
-		const songData = offlineMode ? songNameCache.get(songId) : streamedSongsHtmlMap.get(songId);
+		const songData = offlineMode ? songNameCache.get(songId) : streamedSongsCache.get(songId);
 		if (!songData) return logChange("warn", `Song not found in cache or stream map: ${songId}`);
 
-		const songName = offlineMode ? songData.song_name : songData.name;
+		const songName = songData.song_name;
 		songNameEl.setAttribute("data-file-name", playingSongsID);
 		songNameEl.textContent = songName;
 
@@ -1085,7 +1125,7 @@ function playMusic(songId, playlistId) {
 				logChange("warn", `Tried to get thumbnail from" ${thumbnailPath} but failed. Used placeholder.`);
 			}
 		} else {
-			thumbnailUrl = songData?.thumbnail || "";
+			thumbnailUrl = songData?.thumbnail_url || "";
 		}
 
 		document.getElementById("videothumbnailbox").style.backgroundImage = `url('${thumbnailUrl}')`;
@@ -1191,11 +1231,6 @@ async function playNextSong() {
 	if (isLooping) return playMusic(playingSongsID, null);
 
 	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
-	const sortedSongIds = [...songNameCache.entries()]
-		.filter(([id]) => !notInterestedIds.includes(id))
-		.sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || ""))
-		.map(entry => entry[0]);
-
 	let nextSongId;
 
 	if (isShuffleActive) {
@@ -1215,6 +1250,10 @@ async function playNextSong() {
 				currentPlaylistElement = playlistsMap.get(currentPlaylist).songs.indexOf(nextSongId);
 			}
 		} else {
+			const sortedSongIds = [...songNameCache.entries()]
+				.filter(([id]) => !notInterestedIds.includes(id))
+				.sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || ""))
+				.map(entry => entry[0]);
 			if (sortedSongIds.length == 0) return;
 			if (sortedSongIds.length == 1) {
 				nextSongId = sortedSongIds[0];
@@ -1494,14 +1533,8 @@ async function opencustomiseModal(songsId) {
 		document.getElementById("customiseSongLink").disabled = false;
 		document.getElementById("customiseThumbnail").disabled = false;
 	} else {
-		const row = await callSqlite({
-			db: "musics",
-			query: "SELECT song_name, thumbnail_url, artist, genre, language FROM streams WHERE song_id = ?",
-			args: [songsId],
-			fetch: true,
-		});
-
-		({ song_name, thumbnail_url, artist, genre, language } = row[0]);
+		const row = streamedSongsCache.get(songsId);
+		({ song_name, thumbnail_url, artist, genre, language } = row);
 
 		thumbnailPath = thumbnail_url;
 		song_url = `https://www.youtube.com/watch?v=${songsId}`;
@@ -1599,6 +1632,14 @@ async function saveEditedSong() {
 			args: [newNameInput, songsGenre, songsArtist, songsLanguage, songID],
 			fetch: false,
 		});
+
+		const cachedStream = streamedSongsCache.get(songID);
+		if (cachedStream) {
+			cachedStream.song_name = newNameInput;
+			cachedStream.genre = songsGenre;
+			cachedStream.artist = songsArtist;
+			cachedStream.language = songsLanguage;
+		}
 
 		if (document.getElementById("my-music-content").style.display == "flex") {
 			element = document.querySelector(`div[data-file-name="${songID}"]`);
@@ -1844,15 +1885,6 @@ function getSongNameById(songId) {
 	return row ? row.song_name : null;
 }
 
-async function getStreamedSongNameById(songId) {
-	return callSqlite({
-		db: "musics",
-		query: "SELECT song_name FROM streams WHERE song_id = ?",
-		args: [songId],
-		fetch: true,
-	});
-}
-
 function bottomRightFunctions(input) {
 	if (!playingSongsID) return;
 
@@ -1954,12 +1986,12 @@ function tick() {
 				});
 			} else {
 				// Youtube song
-				const row = streamedSongsHtmlMap.get(playingSongsID);
+				const row = streamedSongsCache.get(playingSongsID);
 
 				updateMiniPlayer({
 					progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
-					thumbnail: row.thumbnail,
-					songName: row.name,
+					thumbnail: row.thumbnail_url,
+					songName: row.song_name,
 					isPlaying: playing,
 				});
 			}

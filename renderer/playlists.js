@@ -41,7 +41,7 @@ async function getPlaylists(displaying) {
 	}
 }
 
-async function displayPlaylists(playlists) {
+function displayPlaylists(playlists) {
 	const playlistsContent = document.getElementById("playlists-content");
 	playlistsContent.innerHTML = "";
 
@@ -137,11 +137,11 @@ async function displayPlaylists(playlists) {
 			let name;
 
 			if (playlist.songs[i].includes("tarator")) {
-				name = await getSongNameById(playlist.songs[i]);
+				name = getSongNameById(playlist.songs[i]);
 				playlistSong.innerText = name;
 			} else {
-				const res = await getStreamedSongNameById(playlist.songs[i]);
-				playlistSong.innerText = res[0]?.song_name;
+				const res = streamedSongsCache.get(playlist.songs[i]);
+				playlistSong.innerText = res?.song_name;
 			}
 
 			playlistSongs.appendChild(playlistSong);

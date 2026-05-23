@@ -92,9 +92,10 @@ function toggleDiscordAPI() {
 
 function updateDiscordPresence() {
 	if (!discordRPCstatus) return;
+	const fullSongData = playingSongsID.startsWith("tarator") ? songNameCache.get(playingSongsID) : streamedSongsCache.get(playingSongsID);
 	const isIdle = !audioPlayer;
-	const songName = isIdle ? "" : document.getElementById("song-name").textContent;
-	const artistData = isIdle ? null : { artist: songNameCache.get(playingSongsID)?.artist || null };
+	const songName = isIdle ? "" : fullSongData.song_name;
+	const artistData = isIdle ? null : { artist: fullSongData?.artist || null };
 	const artistName = artistData ? artistData.artist : "";
 	const paused = !playing;
 

@@ -46,12 +46,12 @@ function editMPRIS() {
 			"xesam:artist": [row.artist],
 		};
 	} else {
-        const row = streamedSongsHtmlMap.get(playingSongsID) || {};
+        const row = streamedSongsCache.get(playingSongsID) || {};
 		player.metadata = {
 			"mpris:trackid": player.objectPath("track/0"),
 			"mpris:length": row?.length * 1000000,
-			"mpris:artUrl": row?.thumbnail,
-			"xesam:title": row?.name,
+			"mpris:artUrl": row?.thumbnail_url,
+			"xesam:title": row?.song_name,
 			"xesam:artist": "TaratorMusic", // Not doing this
 		};
 	}

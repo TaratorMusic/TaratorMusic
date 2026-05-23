@@ -1,10 +1,7 @@
-## Version 1.8.7 Planned Features
-
--   play previous song and play next song do not detect streamed songs
-
-### Version 1.8.x Planned Features
+### Version 1.8.8 Planned Features
 
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
+-   Editing streamed songs do not refresh anything
 -   Some streamed songs dont have thumbnails in menus
 -   Customise Dc Rich Presence box in the settings
 -   Update playlists tab - a general UI update would be great
