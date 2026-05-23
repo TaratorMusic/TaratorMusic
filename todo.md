@@ -4,6 +4,8 @@
 
 ### Version 1.8.x Planned Features
 
+-   If there is a search thing prevent recommendations taking its place upon rendermusics
+-   Some streamed songs dont have thumbnails in menus
 -   Customise Dc Rich Presence box in the settings
 -   Update playlists tab - a general UI update would be great
 -   Search code for TODO'S

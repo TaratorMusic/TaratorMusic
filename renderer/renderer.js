@@ -908,7 +908,9 @@ async function refreshRecommendations() {
 		if (!isLoadingRecommendations) return;
 		const ytQuery = `${key} by ${value[0]}`;
 		try {
-			const info = await getVideoInfo(`ytsearch1:${ytQuery}`);
+			const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
+			const info = result.entries ? result.entries[0] : result;
+			if (!info) continue;
 			const videoTitle = info.title;
 			const songID = info.id;
 			const songLength = info.duration;

@@ -84,8 +84,10 @@ function getCachedVideoIds() {
 
 async function searchInYoutube(songName) {
 	try {
-		const entry = await getVideoInfo(`ytsearch1:${songName}`);
-		searchedSongsUrl = entry.webpage_url;
+		const result = await getVideoInfo(`ytsearch1:${songName}`);
+		const entry = result.entries ? result.entries[0] : result;
+		if (!entry) throw new Error("No results found");
+		searchedSongsUrl = entry.webpage_url || entry.url;
 		return searchedSongsUrl;
 	} catch (error) {
 		return logChange("error", error?.message ?? String(error));
@@ -1088,8 +1090,14 @@ function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 			}
 			try {
 				const parsed = JSON.parse(data);
-				const entry = parsed.entries?.[0] ?? (parsed._type === "video" ? parsed : null);
 
+				if (parsed.entries) {
+					const filtered = parsed.entries.filter(e => e && !e.is_live && e.live_status !== "is_live" && !seenIds.has(e.id));
+					return resolve({ entries: filtered });
+				}
+
+				const entry = parsed._type === "video" ? parsed : null;
+                
 				if (!entry) {
 					if (retryCount >= 5) return reject(new Error("No valid entries found after retries"));
 					logChange("warn", `No results found, trying next result (attempt ${retryCount + 1})...`);
