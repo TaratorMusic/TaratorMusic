@@ -2175,4 +2175,28 @@ document.addEventListener("DOMContentLoaded", function () {
 	});
 
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
+
+	document.getElementById("songSettingsButton").addEventListener("mouseenter", () => {
+		document.getElementById("settingsMenu").style.display = "block";
+	});
+
+	document.getElementById("songSettingsButton").addEventListener("mouseleave", () => {
+		setTimeout(() => {
+			if (!document.getElementById("settingsMenu").matches(":hover") && !document.getElementById("songSettingsButton").matches(":hover")) {
+				document.getElementById("settingsMenu").style.display = "none";
+			}
+		}, 50);
+	});
+
+	document.getElementById("settingsMenu").addEventListener("mouseenter", () => {
+		document.getElementById("settingsMenu").style.display = "block";
+	});
+
+	document.getElementById("settingsMenu").addEventListener("mouseleave", () => {
+		setTimeout(() => {
+			if (!document.getElementById("settingsMenu").matches(":hover") && !document.getElementById("songSettingsButton").matches(":hover")) {
+				document.getElementById("settingsMenu").style.display = "none";
+			}
+		}, 50);
+	});
 });
