@@ -1099,7 +1099,7 @@ function playMusic(songId, playlistId) {
 			addToFavoritesButtonBottomRight.style.color = "red";
 		}
 
-		if (songLyricsCache.has(songId)) {
+		if (songLyricsCache.has(songId) && !!songLyricsCache.get(songId).lyrics) {
 			document.getElementById("lyricsButtonBottomRight").style.color = "lime";
 		}
 
@@ -1511,7 +1511,7 @@ async function saveLyrics() {
 		fetch: false,
 	});
 
-	if (document.getElementById("lyricsArea").value.trim() != "") document.getElementById("lyricsButtonBottomRight").style.color = "lime";
+	document.getElementById("lyricsButtonBottomRight").style.color = !!document.getElementById("lyricsArea").value.trim() ? "lime" : "white";
 }
 
 async function opencustomiseModal(songsId) {
