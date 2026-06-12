@@ -1,5 +1,27 @@
 ### Version 1.8.8 Planned Features
 
+-   What happens when you close the download modal by the X button while downloading?
+-   - Just add a cancel button instead.
+-   - Remove the x button.
+-   - That will cancel the current downloads and clean the modal.
+  
+-   song listen data in the customisation modal
+-   Opening a streamed song infinitely changes songs
+-   search categories in recommendations (can use a playlist)
+-   auto form playlist from artist-genre-language
+-   search at the same time while downloading, uses same text bar
+-   playlists bar font is black
+-   keeping the music tab open is lagging
+-   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
+-   when shuffle was off the song didnt continue
+-   go to x. page, also when something is searched you cant see if you are ahead 
+-   search song'da az şarkı bulursa yön tuşları ile thumbnail ve isme göre seçme olsun. ayrıca ararken benzer harfleri de alsın durdevdan
+-   page mode yön tuşları disabled olsun çalışmayacaksa
+-   add "..." to the search modal
+-   tooltip spawns wrongly then gets fixed afterwards
+-   playlist creation thumbnail is bugged
+-   found text doesnt reset in search song modal after the song starts playing
+-   recommendations just for a song or playlist
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
 -   Editing streamed songs do not refresh anything
 -   Some streamed songs dont have thumbnails in menus
