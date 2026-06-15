@@ -1,50 +1,52 @@
 ### Version 1.8.8 Planned Features
 
+-   UI Revamp. Draw every window and prepre them for every future update. Playlists tab should get a revamp, along with every modal
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
 -   - Remove the x button.
 -   - That will cancel the current downloads and clean the modal.
-  
+-   - Download modal should have a search section and a download section, download section should have the thumbnail & song name/info
+
+-   recommendations just for a song or playlist
 -   song listen data in the customisation modal
--   Opening a streamed song infinitely changes songs
+-   Statistics page is loading too slowly. Add pages inside
+-   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
 -   search categories in recommendations (can use a playlist)
--   auto form playlist from artist-genre-language
 -   search at the same time while downloading, uses same text bar
 -   playlists bar font is black
--   keeping the music tab open is lagging
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
 -   when shuffle was off the song didnt continue
--   go to x. page, also when something is searched you cant see if you are ahead 
--   search song'da az şarkı bulursa yön tuşları ile thumbnail ve isme göre seçme olsun. ayrıca ararken benzer harfleri de alsın durdevdan
+-   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)
 -   page mode yön tuşları disabled olsun çalışmayacaksa
 -   add "..." to the search modal
--   tooltip spawns wrongly then gets fixed afterwards
 -   playlist creation thumbnail is bugged
 -   found text doesnt reset in search song modal after the song starts playing
--   recommendations just for a song or playlist
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
--   Editing streamed songs do not refresh anything
--   Some streamed songs dont have thumbnails in menus
--   Customise Dc Rich Presence box in the settings
--   Update playlists tab - a general UI update would be great
+-   Editing streamed songs does not refresh anything
 -   Search code for TODO'S
--   Progress bar for lyrics possibly
 -   Add a progress bar in the lyrics page. Maybe use soundwaves?
--   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
 -   translate lyrics automatic function 
 -   Lyrics storage for picture in picture
 -   New option while downloading: Start playing the song after the download is finished
--   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Song link comparation takes playlist additions of the link to account ??
--   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
--   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
--   Stream seeking not working
--   Rich presence doesnt close it just stops sending data
--   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
--   Fix streaming in windows
 -   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
 -   Add shortcut of c for playlist with inputted name 
+
+### Version 1.9.0 Planned Features
+-   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
+-   Stream seeking not working
+-   Fix streaming in windows
+-   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
+-   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
+-   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
+-   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
+-   Some streamed songs dont have thumbnails in menus
+-   tooltip spawns wrongly then gets fixed afterwards
+-   Customise Dc Rich Presence box in the settings
+-   search song'da az şarkı bulursa yön tuşları ile thumbnail ve isme göre seçme olsun. ayrıca ararken benzer harfleri de alsın durdevdan
+-   keeping the music tab open is lagging
+-   auto form playlist from artist-genre-language
 
 ### Big updates remaining:
 
