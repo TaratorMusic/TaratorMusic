@@ -1,18 +1,21 @@
 ### Version 1.8.8 Planned Features
 
+-   In lyrics modal, wish to save? on close button.
+-   Lyrics modal should open for a specific song id instead of playing songs ID
+
 -   UI Revamp. Draw every window and prepre them for every future update. Playlists tab should get a revamp, along with every modal
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
 -   - Remove the x button.
 -   - That will cancel the current downloads and clean the modal.
 -   - Download modal should have a search section and a download section, download section should have the thumbnail & song name/info
+-   search at the same time while downloading, uses same text bar
 
 -   recommendations just for a song or playlist
 -   song listen data in the customisation modal
 -   Statistics page is loading too slowly. Add pages inside
 -   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
 -   search categories in recommendations (can use a playlist)
--   search at the same time while downloading, uses same text bar
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
 -   when shuffle was off the song didnt continue
 -   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)

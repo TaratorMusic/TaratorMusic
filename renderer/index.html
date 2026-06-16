@@ -164,8 +164,31 @@
 						<div class="modalTitle">Lyrics</div>
 						<span class="close" onclick="closeModal()">&times;</span>
 					</div>
-					<textarea name="lyricsArea" id="lyricsArea"></textarea>
-					<button id="lyricsConfirm" onclick="saveLyrics()">Confirm</button>
+					<div style="display: flex; flex-direction: row">
+						<div id="lyricsThumbnail"></div>
+						<div style="display: flex; flex-direction: column">
+							<div id="lyricsSongName"></div>
+							<div id="lyricsSongId"></div>
+						</div>
+						<button id="lyricsConfirm" onclick="saveLyrics()">Confirm</button>
+					</div>
+					<div style="display: flex; flex-direction: row; height: 50%">
+						<div style="display: flex; flex-direction: column">
+							<div id="originalLyricName"></div>
+							<textarea name="lyricsArea" id="lyricsArea"></textarea>
+						</div>
+						<div id="lyricsProgressBar"></div>
+						<div style="display: flex; flex-direction: column">
+							<div style="display: flex; flex-direction: row">
+								<div id="translatedLyricName">Translated Language</div>
+								<select name="translatedLyricName" id="translatedLyricInput">
+                                    <option value="none">None</option>
+                                    <option value="new">New</option>
+                                </select>
+							</div>
+							<textarea name="lyricsTranslationArea" id="lyricsTranslationArea"></textarea>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

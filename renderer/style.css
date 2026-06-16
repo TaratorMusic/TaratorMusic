@@ -240,17 +240,17 @@ audio {
 }
 
 #settingsMenu {
-    position: fixed;
-    bottom: 52px;
-    right: 10px;
-    padding: 5px;
-    display: none;
-    background-color: #333;
-    cursor: pointer;
-    font-size: 1.1em;
-    border-radius: 4px;
-    border: 1px solid white;
-    z-index: 101;
+	position: fixed;
+	bottom: 52px;
+	right: 10px;
+	padding: 5px;
+	display: none;
+	background-color: #333;
+	cursor: pointer;
+	font-size: 1.1em;
+	border-radius: 4px;
+	border: 1px solid white;
+	z-index: 101;
 }
 
 #titlerow {
@@ -661,7 +661,7 @@ audio {
 	background-color: rgba(0, 0, 0, 0.8);
 	transition: all 0.5s ease-in-out;
 	cursor: pointer;
-    color: white !important;
+	color: white !important;
 }
 
 #settings-content button {
@@ -1133,7 +1133,7 @@ input:checked + .slider:before {
 }
 
 #searchModalFound {
-    width: 100%;
+	width: 100%;
 	height: 4vh;
 	font-size: 1.4vw;
 	margin-top: 1vh;
@@ -1211,7 +1211,7 @@ th {
 	font-size: 2.2vh !important;
 	padding: 2vh 10px !important;
 	background-color: rgba(0, 0, 0, 0.8);
-    color: white !important;
+	color: white !important;
 	border: 1px solid white;
 	border-radius: 5px;
 }
@@ -1450,7 +1450,30 @@ th {
 }
 
 #lyricsArea {
-    width: 100%;
-    height: 90%;
-    color: black;
+	width: 45%;
+	height: 100%;
+	color: black;
 }
+
+#lyricsProgressBar {
+	width: 10%;
+	height: 100%;
+	background-color: lime;
+}
+
+#lyricsTranslationArea {
+	width: 45%;
+	height: 100%;
+	color: black;
+}
+
+#lyricsThumbnail {
+    width: 16vw;
+    height: 10vw;
+}
+
+#lyricsSongName {}
+#lyricsSongId {}
+#originalLyricName {}
+#translatedLyricName {}
+#translatedLyricInput {}

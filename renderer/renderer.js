@@ -1484,12 +1484,24 @@ function skipBackward() {
 function openLyricsModal() {
 	document.getElementById("lyricsModal").style.display = "block";
 
+	document.getElementById("lyricsArea").value = "";
+	document.getElementById("lyricsThumbnail").style.background = "";
+	document.getElementById("lyricsSongName").innerText = "";
+	document.getElementById("lyricsSongId").innerText = "";
+
 	const cached = songLyricsCache.get(playingSongsID);
-	if (cached) {
-		document.getElementById("lyricsArea").value = cached.lyrics;
-	} else {
-		document.getElementById("lyricsArea").value = "";
-	}
+	if (cached) document.getElementById("lyricsArea").value = cached.lyrics;
+
+	const songData = songNameCache.get(playingSongsID);
+	if (!songData) logChange("error", "No song data found for this song.");
+
+	thumbnailPath = path.join(thumbnailFolder, `${playingSongsID}.${songData.thumbnail_extension}`);
+	document.getElementById("lyricsThumbnail").style.background = `url("${thumbnailPath}?t=${Date.now()}")`;
+
+	document.getElementById("lyricsSongName").innerText = songData.song_name;
+	if (songData.artist) document.getElementById("lyricsSongName").innerText += ` by ${songData.artist}`;
+	document.getElementById("lyricsSongId").innerText = playingSongsID;
+	document.getElementById("originalLyricName").innerText = songData.language;
 }
 
 async function saveLyrics() {
