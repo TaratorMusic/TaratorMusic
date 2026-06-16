@@ -1211,6 +1211,7 @@ th {
 	font-size: 2.2vh !important;
 	padding: 2vh 10px !important;
 	background-color: rgba(0, 0, 0, 0.8);
+    color: white !important;
 	border: 1px solid white;
 	border-radius: 5px;
 }
