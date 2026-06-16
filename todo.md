@@ -2,8 +2,8 @@
 
 -   In lyrics modal, wish to save? on close button.
 -   Lyrics modal should open for a specific song id instead of playing songs ID
+-   Disable textareas being resizeable
 
--   UI Revamp. Draw every window and prepre them for every future update. Playlists tab should get a revamp, along with every modal
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
 -   - Remove the x button.
@@ -15,7 +15,6 @@
 -   song listen data in the customisation modal
 -   Statistics page is loading too slowly. Add pages inside
 -   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
--   search categories in recommendations (can use a playlist)
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
 -   when shuffle was off the song didnt continue
 -   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)
@@ -28,7 +27,7 @@
 -   Search code for TODO'S
 -   Add a progress bar in the lyrics page. Maybe use soundwaves?
 -   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
--   translate lyrics automatic function 
+-   translate lyrics automatic function (check gpt star)
 -   Lyrics storage for picture in picture
 -   New option while downloading: Start playing the song after the download is finished
 -   Song link comparation takes playlist additions of the link to account ??
@@ -36,6 +35,7 @@
 -   Add shortcut of c for playlist with inputted name 
 
 ### Version 1.9.0 Planned Features
+-   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
 -   Fix streaming in windows
