@@ -530,6 +530,7 @@ audio {
 	font-weight: bold;
 	font-size: 2vw;
 	display: flex;
+    border-bottom: 1px solid #888;
 }
 
 .modal button {
