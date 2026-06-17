@@ -87,6 +87,10 @@ body {
 	min-height: 100vh;
 }
 
+textarea {
+	resize: none;
+}
+
 select:focus {
 	outline: none;
 	box-shadow: none;
@@ -530,7 +534,7 @@ audio {
 	font-weight: bold;
 	font-size: 2vw;
 	display: flex;
-    border-bottom: 1px solid #888;
+	border-bottom: 1px solid #888;
 }
 
 .modal button {
@@ -1469,12 +1473,17 @@ th {
 }
 
 #lyricsThumbnail {
-    width: 16vw;
-    height: 10vw;
+	width: 16vw;
+	height: 10vw;
 }
 
-#lyricsSongName {}
-#lyricsSongId {}
-#originalLyricName {}
-#translatedLyricName {}
-#translatedLyricInput {}
+#lyricsSongName {
+}
+#lyricsSongId {
+}
+#originalLyricName {
+}
+#translatedLyricName {
+}
+#translatedLyricInput {
+}
