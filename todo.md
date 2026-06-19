@@ -2,7 +2,6 @@
 
 -   In lyrics modal, wish to save? on close button.
 -   Lyrics modal should open for a specific song id instead of playing songs ID
--   Disable textareas being resizeable
 
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
@@ -19,7 +18,6 @@
 -   when shuffle was off the song didnt continue
 -   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)
 -   page mode yön tuşları disabled olsun çalışmayacaksa
--   add "..." to the search modal
 -   playlist creation thumbnail is bugged
 -   found text doesnt reset in search song modal after the song starts playing
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
