@@ -2,6 +2,10 @@
 
 -   In lyrics modal, wish to save? on close button.
 -   Lyrics modal should open for a specific song id instead of playing songs ID
+-   Auto translate feature will be inside the create new translation modal
+-   translate lyrics automatic function (check gpt star)
+-   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
+-   MERGE Customisation modal and lyrics modal???? && ability to make the lyrics part bigger in height.
 
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
@@ -23,10 +27,6 @@
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
 -   Editing streamed songs does not refresh anything
 -   Search code for TODO'S
--   Add a progress bar in the lyrics page. Maybe use soundwaves?
--   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
--   translate lyrics automatic function (check gpt star)
--   Lyrics storage for picture in picture
 -   New option while downloading: Start playing the song after the download is finished
 -   Song link comparation takes playlist additions of the link to account ??
 -   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
@@ -47,6 +47,8 @@
 -   search song'da az şarkı bulursa yön tuşları ile thumbnail ve isme göre seçme olsun. ayrıca ararken benzer harfleri de alsın durdevdan
 -   keeping the music tab open is lagging
 -   auto form playlist from artist-genre-language
+-   Lyrics storage for picture in picture
+-   Add a progress bar in the lyrics page. Maybe use soundwaves?
 
 ### Big updates remaining:
 

@@ -510,7 +510,7 @@ audio {
 	width: 100vw;
 	height: 92vh;
 	overflow: auto;
-	background-color: rgba(0, 0, 0, 0.6);
+	background-color: rgba(0, 0, 0, 0.7);
 }
 
 #addToPlaylistModal {
@@ -1458,19 +1458,19 @@ th {
 }
 
 #lyricsArea {
-	width: 45%;
+	width: 38vw;
 	height: 100%;
 	color: black;
 }
 
 #lyricsProgressBar {
-	width: 10%;
+	width: 2vw;
 	height: 100%;
-	background-color: lime;
+	/* background-color: lime; */
 }
 
 #lyricsTranslationArea {
-	width: 45%;
+	width: 38vw;
 	height: 100%;
 	color: black;
 }
@@ -1488,5 +1488,15 @@ th {
 }
 #translatedLyricName {
 }
-#translatedLyricInput {
+#translatedLyricInput,
+#translatedLyricInput > option {
+	color: black;
+}
+
+#lyricsConfirm {
+	padding: 12px;
+	width: fit-content;
+	height: fit-content;
+	background-color: rgb(23, 179, 31);
+    border-radius: 4px;
 }

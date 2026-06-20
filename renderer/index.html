@@ -164,9 +164,9 @@
 						<div class="modalTitle">Lyrics</div>
 						<span class="close" onclick="closeModal()">&times;</span>
 					</div>
-					<div style="display: flex; flex-direction: row">
+					<div style="display: flex; flex-direction: row; height: 25vh; padding: 1vh;">
 						<div id="lyricsThumbnail"></div>
-						<div style="display: flex; flex-direction: column">
+						<div style="display: flex; flex-direction: column; padding: 1vh;">
                             <h3>Song Name:</h3>
 							<div id="lyricsSongName"></div>
                             <h5>Song ID:</h5>
@@ -174,20 +174,19 @@
 						</div>
 						<button id="lyricsConfirm" onclick="saveLyrics()">Confirm</button>
 					</div>
-					<div style="display: flex; flex-direction: row; height: 50%">
-						<div style="display: flex; flex-direction: column">
+					<div style="display: flex; flex-direction: row; height: 55vh; ">
+						<div style="display: flex; flex-direction: column; align-items: center; justify-content: start; text-align: center;">
 							<div id="originalLyricName"></div>
 							<textarea name="lyricsArea" id="lyricsArea"></textarea>
 						</div>
 						<div id="lyricsProgressBar"></div>
 						<div style="display: flex; flex-direction: column">
-							<div style="display: flex; flex-direction: row">
-								<div id="translatedLyricName">Translated Language</div>
+							<div style="display: flex; flex-direction: row; align-items: center; justify-content: start; text-align: center; gap: 10%;">
+								<div id="translatedLyricName">Translated Language: </div>
 								<select name="translatedLyricName" id="translatedLyricInput">
                                     <option value="none">None</option>
                                     <option value="new">New</option>
                                 </select>
-                                <button disabled>Auto Translate</button>
 							</div>
 							<textarea name="lyricsTranslationArea" id="lyricsTranslationArea"></textarea>
 						</div>

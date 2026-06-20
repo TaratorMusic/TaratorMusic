@@ -1499,7 +1499,7 @@ function openLyricsModal() {
 	document.getElementById("lyricsThumbnail").style.background = `url("${thumbnailPath}?t=${Date.now()}")`;
 
 	document.getElementById("lyricsSongName").innerText = songData.song_name;
-	if (songData.artist) document.getElementById("lyricsSongName").innerText += ` by ${songData.artist}`;
+	if (songData.artist && songData.artist != "unknown") document.getElementById("lyricsSongName").innerText += ` by ${songData.artist}`;
 	document.getElementById("lyricsSongId").innerText = playingSongsID;
 	document.getElementById("originalLyricName").innerText = `Original Language: ${songData.language}`;
 }
