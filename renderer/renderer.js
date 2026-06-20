@@ -1501,7 +1501,7 @@ function openLyricsModal() {
 	document.getElementById("lyricsSongName").innerText = songData.song_name;
 	if (songData.artist) document.getElementById("lyricsSongName").innerText += ` by ${songData.artist}`;
 	document.getElementById("lyricsSongId").innerText = playingSongsID;
-	document.getElementById("originalLyricName").innerText = songData.language;
+	document.getElementById("originalLyricName").innerText = `Original Language: ${songData.language}`;
 }
 
 async function saveLyrics() {
