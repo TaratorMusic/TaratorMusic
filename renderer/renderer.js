@@ -1083,7 +1083,7 @@ function playMusic(songId, playlistId) {
 		playingSongsID = songId;
 		currentPlaylist = playlistId || null;
 
-        if (playlistId != "SEARCH_SHUFFLE") playlistsMap.delete("SEARCH_SHUFFLE")
+		if (playlistId != "SEARCH_SHUFFLE") playlistsMap.delete("SEARCH_SHUFFLE");
 
 		const songData = offlineMode ? songNameCache.get(songId) : streamedSongsCache.get(songId);
 		if (!songData) return logChange("warn", `Song not found in cache or stream map: ${songId}`);
@@ -1242,6 +1242,10 @@ async function playNextSong() {
 
 	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
 	let nextSongId;
+	const sortedSongIds = [...songNameCache.entries()]
+		.filter(([id]) => !notInterestedIds.includes(id))
+		.sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || ""))
+		.map(entry => entry[0]);
 
 	if (isShuffleActive) {
 		if (currentPlaylist) {
@@ -1260,10 +1264,6 @@ async function playNextSong() {
 				currentPlaylistElement = playlistsMap.get(currentPlaylist).songs.indexOf(nextSongId);
 			}
 		} else {
-			const sortedSongIds = [...songNameCache.entries()]
-				.filter(([id]) => !notInterestedIds.includes(id))
-				.sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || ""))
-				.map(entry => entry[0]);
 			if (sortedSongIds.length == 0) return;
 			if (sortedSongIds.length == 1) {
 				nextSongId = sortedSongIds[0];

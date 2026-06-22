@@ -20,7 +20,6 @@
 -   Statistics page is loading too slowly. Add pages inside
 -   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
--   when shuffle was off the song didnt continue
 -   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)
 -   page mode yön tuşları disabled olsun çalışmayacaksa
 -   playlist creation thumbnail is bugged
