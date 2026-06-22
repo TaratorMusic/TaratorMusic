@@ -736,6 +736,126 @@ async function searchYoutubeInMusics() {
 	if (musicSearchValue) document.getElementById("music-search").value = musicSearchValue;
 }
 
+function filterSongs(searchValue) {
+	const songs = Array.from(songNameCache.entries())
+		.map(([song_id, data]) => ({
+			id: song_id,
+			name: `${song_id}.${data.song_extension}`,
+			thumbnail: `file://${song_id}.${data.thumbnail_extension}`,
+			length: data.song_length || 0,
+			song_name: data.song_name,
+			artist: data.artist,
+			genre: data.genre,
+			language: data.language,
+			thumbnail_extension: data.thumbnail_extension,
+		}))
+		.sort((a, b) => (a.song_name || "").toLowerCase().localeCompare((b.song_name || "").toLowerCase()));
+
+	if (!searchValue) return songs;
+
+	const tokenize = input => {
+		const tokens = [];
+		let i = 0;
+		while (i < input.length) {
+			if (input[i] == " ") {
+				i++;
+				continue;
+			}
+			if (input[i] == '"') {
+				let j = i + 1;
+				while (j < input.length && input[j] != '"') j++;
+				tokens.push({ type: "term", value: input.slice(i + 1, j), exact: true });
+				i = j + 1;
+			} else if (input.slice(i, i + 2) == "&&" || input.slice(i, i + 2) == "||") {
+				tokens.push({ type: "op", value: input.slice(i, i + 2) });
+				i += 2;
+			} else if (input[i] == "!") {
+				tokens.push({ type: "op", value: "!" });
+				i++;
+			} else if (input[i] == "+") {
+				tokens.push({ type: "op", value: "&&" });
+				i++;
+			} else if (input[i] == ",") {
+				tokens.push({ type: "op", value: "||" });
+				i++;
+			} else {
+				let j = i;
+				while (j < input.length && !' "!+,&|'.includes(input[j])) j++;
+				if (j > i) tokens.push({ type: "term", value: input.slice(i, j), exact: false });
+				i = j > i ? j : i + 1;
+			}
+		}
+		return tokens;
+	};
+
+	const matchSong = (song, tokens) => {
+		const fields = [song.song_name, song.artist, song.genre, song.language, song.id?.toString()];
+
+		const matchTerm = (term, exact) => {
+			if (term == " ") return fields.some(f => !f || String(f).trim() == "");
+			return fields.some(f => {
+				if (!f) return false;
+				const v = String(f).toLowerCase();
+				return exact ? v == term : v.includes(term);
+			});
+		};
+
+		const parse = tkns => {
+			let pos = 0;
+
+			const parseOr = () => {
+				let left = parseAnd();
+				while (pos < tkns.length && tkns[pos]?.value == "||") {
+					pos++;
+					left = left || parseAnd();
+				}
+				return left;
+			};
+
+			const parseAnd = () => {
+				let left = parseUnary();
+				while (pos < tkns.length && tkns[pos]?.value == "&&") {
+					pos++;
+					left = left && parseUnary();
+				}
+				return left;
+			};
+
+			const parseUnary = () => {
+				if (pos < tkns.length && tkns[pos]?.value == "!") {
+					pos++;
+					return !parseUnary();
+				}
+				return parsePrimary();
+			};
+
+			const parsePrimary = () => {
+				if (pos >= tkns.length) return false;
+				const token = tkns[pos++];
+				if (token.type == "term") return matchTerm(token.value, token.exact);
+				return false;
+			};
+
+			return parseOr();
+		};
+
+		const raw = tokenize(searchValue);
+		if (!raw.length) return true;
+
+		const implicitAnded = [];
+		for (let i = 0; i < raw.length; i++) {
+			implicitAnded.push(raw[i]);
+			if (raw[i].type == "term" && i + 1 < raw.length && raw[i + 1].type == "term") {
+				implicitAnded.push({ type: "op", value: "&&" });
+			}
+		}
+
+		return parse(implicitAnded);
+	};
+
+	return songs.filter(song => matchSong(song, tokenize(searchValue)));
+}
+
 function renderMusics(skipScrollSave = false) {
 	const container = document.getElementById("music-list-container");
 	let searchValue = musicSearchValue ?? document.getElementById("music-search").value.trim().toLowerCase();
@@ -752,119 +872,7 @@ function renderMusics(skipScrollSave = false) {
 	if (musicMode == "offline") {
 		document.getElementById("music-search").placeholder = `Search of ${songNameCache.size} songs in ${taratorFolder}...`;
 
-		filteredSongs = Array.from(songNameCache.entries())
-			.map(([song_id, data]) => ({
-				id: song_id,
-				name: `${song_id}.${data.song_extension}`,
-				thumbnail: `file://${song_id}.${data.thumbnail_extension}`,
-				length: data.song_length || 0,
-				song_name: data.song_name,
-				artist: data.artist,
-				genre: data.genre,
-				language: data.language,
-				thumbnail_extension: data.thumbnail_extension,
-			}))
-			.sort((a, b) => (a.song_name || "").toLowerCase().localeCompare((b.song_name || "").toLowerCase()))
-			.filter(song => {
-				const fields = [song.song_name, song.artist, song.genre, song.language, song.id?.toString()];
-
-				const tokenize = input => {
-					const tokens = [];
-					let i = 0;
-					while (i < input.length) {
-						if (input[i] == " ") {
-							i++;
-							continue;
-						}
-						if (input[i] == '"') {
-							let j = i + 1;
-							while (j < input.length && input[j] != '"') j++;
-							tokens.push({ type: "term", value: input.slice(i + 1, j), exact: true });
-							i = j + 1;
-						} else if (input.slice(i, i + 2) == "&&" || input.slice(i, i + 2) == "||") {
-							tokens.push({ type: "op", value: input.slice(i, i + 2) });
-							i += 2;
-						} else if (input[i] == "!") {
-							tokens.push({ type: "op", value: "!" });
-							i++;
-						} else if (input[i] == "+") {
-							tokens.push({ type: "op", value: "&&" });
-							i++;
-						} else if (input[i] == ",") {
-							tokens.push({ type: "op", value: "||" });
-							i++;
-						} else {
-							let j = i;
-							while (j < input.length && !' "!+,&|'.includes(input[j])) j++;
-							if (j > i) tokens.push({ type: "term", value: input.slice(i, j), exact: false });
-							i = j > i ? j : i + 1;
-						}
-					}
-					return tokens;
-				};
-
-				const matchTerm = (term, exact) => {
-					if (term == " ") return fields.some(f => !f || String(f).trim() == "");
-					return fields.some(f => {
-						if (!f) return false;
-						const v = String(f).toLowerCase();
-						return exact ? v == term : v.includes(term);
-					});
-				};
-
-				const parse = tokens => {
-					let pos = 0;
-
-					const parseOr = () => {
-						let left = parseAnd();
-						while (pos < tokens.length && tokens[pos]?.value == "||") {
-							pos++;
-							left = left || parseAnd();
-						}
-						return left;
-					};
-
-					const parseAnd = () => {
-						let left = parseUnary();
-						while (pos < tokens.length && tokens[pos]?.value == "&&") {
-							pos++;
-							left = left && parseUnary();
-						}
-						return left;
-					};
-
-					const parseUnary = () => {
-						if (pos < tokens.length && tokens[pos]?.value == "!") {
-							pos++;
-							return !parseUnary();
-						}
-						return parsePrimary();
-					};
-
-					const parsePrimary = () => {
-						if (pos >= tokens.length) return false;
-						const token = tokens[pos++];
-						if (token.type == "term") return matchTerm(token.value, token.exact);
-						return false;
-					};
-
-					return parseOr();
-				};
-
-				if (!searchValue) return true;
-				const tokens = tokenize(searchValue);
-				if (!tokens.length) return true;
-
-				const implicitAnded = [];
-				for (let i = 0; i < tokens.length; i++) {
-					implicitAnded.push(tokens[i]);
-					if (tokens[i].type == "term" && i + 1 < tokens.length && tokens[i + 1].type == "term") {
-						implicitAnded.push({ type: "op", value: "&&" });
-					}
-				}
-
-				return parse(implicitAnded);
-			});
+		filteredSongs = filterSongs(searchValue);
 
 		const maxVisible = displayPage == "scroll" ? filteredSongs.length : parseInt(3 * previousItemsPerRow * currentPage);
 		const startingSong = displayPage == "scroll" ? 0 : parseInt(3 * previousItemsPerRow * (currentPage - 1));
@@ -1773,6 +1781,53 @@ async function searchSong(typed) {
 	}
 }
 
+function searchPlaylist(typed) {
+	try {
+		const query = searchModalInput.value.trim().toLowerCase();
+		if (!query) return (document.getElementById("searchModalFound").innerText = "Found: Nothing");
+
+		const match = [...playlistsMap.values()].find(p => p.name.toLowerCase().includes(query));
+		document.getElementById("searchModalFound").innerText = `Found: ${match?.name ?? "Nothing"}`;
+		if (typed) return;
+
+		searchModalInput.value = "";
+		searchModalInput.classList.add("red-placeholder");
+		searchModalInput.placeholder = "Playlist not found.";
+		if (!match) return;
+		document.getElementById("searchModal").style.display = "none";
+		playPlaylist(match.id, 0);
+	} catch {
+		// To prevent console errors
+	}
+}
+
+function searchShuffle() {
+	try {
+		const query = searchModalInput.value.trim().toLowerCase();
+		if (!query) return;
+
+		const results = filterSongs(query);
+		if (!results.length) return;
+
+		searchModalInput.value = "";
+		document.getElementById("searchModal").style.display = "none";
+
+		const songIds = results.map(s => s.id);
+		playlistsMap.set("SEARCH_SHUFFLE", {
+			id: "SEARCH_SHUFFLE",
+			name: "SEARCH_SHUFFLE",
+			songs: songIds,
+			thumbnail_extension: null,
+		});
+
+		const randomIndex = Math.floor(Math.random() * songIds.length);
+		if (!isShuffleActive) toggleShuffle();
+		playPlaylist("SEARCH_SHUFFLE", randomIndex);
+	} catch {
+		// To prevent console errors
+	}
+}
+
 function playLastPlaylist() {
 	const lastPlaylistId = localStorage.getItem("lastPlaylist");
 	playPlaylist(lastPlaylistId, 0);
@@ -1796,7 +1851,12 @@ document.addEventListener("keydown", event => {
 	if (event.key == "Tab") event.preventDefault();
 	if (event.key == "Enter" && document.getElementById("downloadModal").style.display == "block") return loadNewPage("download");
 	if (event.key == "Enter" && document.activeElement == document.getElementById("music-search") && musicMode == "stream") searchYoutubeInMusics();
-	if (event.key == "Enter" && document.getElementById("searchModal").style.display == "flex") return searchSong();
+	if (event.key == "Enter" && document.getElementById("searchModal").style.display == "flex") {
+		const mode = document.getElementById("searchModal").dataset.mode;
+		if (mode == "playlist") return searchPlaylist();
+		if (mode == "shuffle") return searchShuffle();
+		return searchSong();
+	}
 
 	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
 		return;
@@ -1826,8 +1886,29 @@ document.addEventListener("keydown", event => {
 		event.preventDefault();
 		searchModalInput.classList.remove("red-placeholder");
 		searchModalInput.placeholder = "Type a song name, and press Enter";
+		document.getElementById("searchModalTitle").innerText = "Quick Song Search";
+		document.getElementById("searchModalFound").style.display = "";
+		document.getElementById("searchModal").dataset.mode = "song";
 		document.getElementById("searchModal").style.display = "flex";
-		document.getElementById("searchModalInput").focus();
+		searchModalInput.focus();
+	} else if (event.key == key_searchPlaylist) {
+		event.preventDefault();
+		searchModalInput.classList.remove("red-placeholder");
+		searchModalInput.placeholder = "Type a playlist name, and press Enter";
+		document.getElementById("searchModalTitle").innerText = "Quick Playlist Search";
+		document.getElementById("searchModalFound").style.display = "";
+		document.getElementById("searchModal").dataset.mode = "playlist";
+		document.getElementById("searchModal").style.display = "flex";
+		searchModalInput.focus();
+	} else if (event.key == key_searchShuffle) {
+		event.preventDefault();
+		searchModalInput.classList.remove("red-placeholder");
+		searchModalInput.placeholder = "Type a search query, and press Enter";
+		document.getElementById("searchModalTitle").innerText = "Search Shuffle";
+		document.getElementById("searchModalFound").style.display = "none";
+		document.getElementById("searchModal").dataset.mode = "shuffle";
+		document.getElementById("searchModal").style.display = "flex";
+		searchModalInput.focus();
 	} else if (event.key == key_randomSong) {
 		randomSongFunctionMainMenu();
 	} else if (event.key == key_randomPlaylist) {
@@ -2066,8 +2147,10 @@ document.addEventListener("DOMContentLoaded", function () {
 		});
 	});
 
-	document.getElementById("searchModalInput").addEventListener("input", event => {
-		searchSong(true);
+	document.getElementById("searchModalInput").addEventListener("input", () => {
+		const mode = document.getElementById("searchModal").dataset.mode;
+		if (mode == "playlist") searchPlaylist(true);
+		else if (mode != "shuffle") searchSong(true);
 	});
 
 	document.getElementById("debugButton").addEventListener("click", () => {

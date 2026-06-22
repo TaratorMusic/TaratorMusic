@@ -30,8 +30,6 @@
 -   Search code for TODO'S
 -   New option while downloading: Start playing the song after the download is finished
 -   Song link comparation takes playlist additions of the link to account ??
--   New shortcut --> x to search something, and the app will shuffle between the found results (or the closest, can use check_dupe_songs.go or a new Go binary or just SQL? (OR BOTH) or just filter and shuffle)
--   Add shortcut of c for playlist with inputted name 
 
 ### Version 1.9.0 Planned Features
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
