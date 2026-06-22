@@ -7,7 +7,6 @@
 -   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
 -   MERGE Customisation modal and lyrics modal???? && ability to make the lyrics part bigger in height.
 -   Auto pick if a translation exists upon opening the customisation modal
--   Search queries cause infinite loop
 
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.

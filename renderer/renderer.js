@@ -797,7 +797,7 @@ function renderMusics(skipScrollSave = false) {
 							let j = i;
 							while (j < input.length && !' "!+,&|'.includes(input[j])) j++;
 							if (j > i) tokens.push({ type: "term", value: input.slice(i, j), exact: false });
-							i = j;
+							i = j > i ? j : i + 1;
 						}
 					}
 					return tokens;
