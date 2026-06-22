@@ -118,6 +118,7 @@ var notInterestedColumns = []Column{
 var lyricsColumns = []Column{
 	{Name: "song_id", Type: "TEXT PRIMARY KEY"},
 	{Name: "lyrics", Type: "TEXT"},
+	{Name: "language", Type: "TEXT"},
 }
 
 // playlists.db tables

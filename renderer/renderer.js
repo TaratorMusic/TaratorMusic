@@ -365,13 +365,14 @@ async function initialiseDatabases() {
 
 	const lyricsRows = await callSqlite({
 		db: "musics",
-		query: "SELECT song_id, lyrics FROM lyrics",
+		query: "SELECT song_id, lyrics, language FROM lyrics",
 		fetch: true,
 	});
 
 	for (const row of lyricsRows) {
 		songLyricsCache.set(row.song_id, {
 			lyrics: row.lyrics,
+            language: row.language,
 		});
 	}
 
