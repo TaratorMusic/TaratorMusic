@@ -1083,6 +1083,8 @@ function playMusic(songId, playlistId) {
 		playingSongsID = songId;
 		currentPlaylist = playlistId || null;
 
+        if (playlistId != "SEARCH_SHUFFLE") playlistsMap.delete("SEARCH_SHUFFLE")
+
 		const songData = offlineMode ? songNameCache.get(songId) : streamedSongsCache.get(songId);
 		if (!songData) return logChange("warn", `Song not found in cache or stream map: ${songId}`);
 

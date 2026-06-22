@@ -27,7 +27,6 @@
 -   found text doesnt reset in search song modal after the song starts playing
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
 -   Editing streamed songs does not refresh anything
--   Search code for TODO'S
 -   New option while downloading: Start playing the song after the download is finished
 -   Song link comparation takes playlist additions of the link to account ??
 
@@ -48,6 +47,7 @@
 -   auto form playlist from artist-genre-language
 -   Lyrics storage for picture in picture
 -   Add a progress bar in the lyrics page. Maybe use soundwaves?
+-   Search code for TODO'S
 
 ### Big updates remaining:
 
