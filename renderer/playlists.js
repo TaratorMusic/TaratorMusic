@@ -167,21 +167,6 @@ async function saveNewPlaylist() {
 	const name = document.getElementById("playlistNameInput").value.trim();
 	if (!name) return await alertModal("Playlist name required.");
 
-	const id = await generateId();
-
-	const fileInput = document.getElementById("thumbnailInput").files[0];
-	let srcPath, ext;
-
-	if (fileInput) {
-		srcPath = fileInput.path;
-		ext = path.extname(fileInput.name).slice(1);
-	} else {
-		srcPath = path.join(appThumbnailFolder, "placeholder.jpg");
-		ext = path.extname(srcPath).slice(1);
-	}
-
-	const dest = path.join(thumbnailFolder, `${id}.${ext}`);
-
 	for (const [id, data] of playlistsMap.entries()) {
 		if (data.name == name) {
 			const proceed = await confirmModal("A playlist with the same name exists, continue?", "Continue", "Return");
@@ -190,6 +175,45 @@ async function saveNewPlaylist() {
 		}
 	}
 
+	const id = await generateId();
+	const fileInput = document.getElementById("thumbnailInput").files?.[0] ?? null;
+
+	fs.mkdirSync(thumbnailFolder, { recursive: true });
+
+	let ext = "jpg";
+	const dest = path.join(thumbnailFolder, `${id}.${ext}`);
+
+	if (fileInput) {
+		ext = path.extname(fileInput.name).slice(1).toLowerCase() || "png";
+		const finalDest = path.join(thumbnailFolder, `${id}.${ext}`);
+		const buffer = Buffer.from(await fileInput.arrayBuffer());
+		fs.writeFileSync(finalDest, buffer);
+
+		await callSqlite({
+			db: "playlists",
+			query: "INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)",
+			args: [id, name, JSON.stringify([]), ext],
+		});
+
+		playlistsMap.set(id, {
+			id,
+			name,
+			songs: [],
+			thumbnail_extension: ext,
+		});
+
+		closeModal();
+
+		if (document.getElementById("playlists-content").style.display == "grid") {
+			document.getElementById("playlists").click();
+		}
+		return;
+	}
+
+	const placeholderPath = path.join(appThumbnailFolder, "placeholder.jpg");
+	ext = path.extname(placeholderPath).slice(1).toLowerCase() || "jpg";
+	const finalDest = path.join(thumbnailFolder, `${id}.${ext}`);
+
 	await callSqlite({
 		db: "playlists",
 		query: "INSERT INTO playlists (id, name, songs, thumbnail_extension) VALUES (?, ?, ?, ?)",
@@ -197,74 +221,81 @@ async function saveNewPlaylist() {
 	});
 
 	playlistsMap.set(id, {
-		id: id,
-		name: name,
+		id,
+		name,
 		songs: [],
 		thumbnail_extension: ext,
 	});
 
-	fs.copyFileSync(srcPath, dest);
+	fs.copyFileSync(placeholderPath, finalDest);
 
 	closeModal();
 
-	if (document.getElementById("playlists-content").style.display == "grid") document.getElementById("playlists").click();
+	if (document.getElementById("playlists-content").style.display == "grid") {
+		document.getElementById("playlists").click();
+	}
 }
 
 async function saveEditedPlaylist() {
 	const newName = document.getElementById("editPlaylistNameInput").value.trim();
 	const playlistID = document.getElementById("editInvisibleId").value;
 	const newThumbnail = document.getElementById("editPlaylistThumbnail").src;
-	const playlistElement = document.querySelector(`.playlist[data-playlist-id="${playlistID}"]`);
-	playlistElement.querySelector(".playlist-info div:first-child").textContent = newName;
 
-	let newThumbnailExtension = null;
+	const playlistElement = document.querySelector(`.playlist[data-playlist-id="${playlistID}"]`);
+	if (!playlistElement) {
+		logChange("error", `Playlist element not found for ID: ${playlistID}`);
+		return;
+	}
+
+	const playlist = playlistsMap.get(playlistID);
+	const oldExt = playlist?.thumbnail_extension ?? null;
+
+	let newThumbnailExtension = oldExt;
+	let thumbnailPath = oldExt ? path.join(thumbnailFolder, `${playlistID}.${oldExt}`) : null;
+
 	if (newThumbnail.startsWith("data:image")) {
 		const mimeMatch = newThumbnail.match(/^data:image\/(\w+);base64,/);
-		if (mimeMatch) {
-			newThumbnailExtension = mimeMatch[1];
-			if (newThumbnailExtension == "jpeg") newThumbnailExtension = "jpg";
+		if (!mimeMatch) {
+			logChange("error", "Invalid thumbnail data URL.");
+			return;
+		}
+
+		newThumbnailExtension = mimeMatch[1].toLowerCase();
+		if (newThumbnailExtension == "jpeg") newThumbnailExtension = "jpg";
+
+		thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${newThumbnailExtension}`);
+
+		const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
+		const buffer = Buffer.from(base64Data, "base64");
+		fs.mkdirSync(thumbnailFolder, { recursive: true });
+		fs.writeFileSync(thumbnailPath, buffer);
+
+		if (oldExt && oldExt != newThumbnailExtension) {
+			const oldPath = path.join(thumbnailFolder, `${playlistID}.${oldExt}`);
+			if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
 		}
 	}
 
-	let thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${newThumbnailExtension}`);
-	const writeOrRenameThumbnailPromise = new Promise((resolve, reject) => {
-		if (newThumbnail.startsWith("data:image")) {
-			const base64Data = newThumbnail.replace(/^data:image\/\w+;base64,/, "");
-			const buffer = Buffer.from(base64Data, "base64");
-			fs.writeFile(thumbnailPath, buffer, err => {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(`${thumbnailPath}?timestamp=${Date.now()}`);
-				}
-			});
-		} else {
-			resolve(thumbnailPath);
-		}
+	if (thumbnailPath) {
+		const imgElement = playlistElement.querySelector("img");
+		imgElement.src = "";
+		imgElement.src = `${thumbnailPath}?timestamp=${Date.now()}`;
+	}
+
+	playlistElement.querySelector(".playlistName h2").innerHTML = `${newName} -&nbsp;`;
+
+	await callSqlite({
+		db: "playlists",
+		query: "UPDATE playlists SET name = ?, thumbnail_extension = ? WHERE id = ?",
+		args: [newName, newThumbnailExtension, playlistID],
 	});
-	writeOrRenameThumbnailPromise
-		.then(resolvedPath => {
-			const imgElement = playlistElement.querySelector("img");
-			imgElement.src = "";
-			imgElement.src = resolvedPath;
-			callSqlite({
-				db: "playlists",
-				query: "UPDATE playlists SET name = ?, thumbnail_extension = ? WHERE id = ?",
-				args: [newName, newThumbnailExtension, playlistID],
-			});
 
-			const playlist = playlistsMap.get(playlistID);
+	if (playlist) {
+		playlist.name = newName;
+		playlist.thumbnail_extension = newThumbnailExtension;
+	}
 
-			if (playlist) {
-				playlist.name = newName;
-				playlist.thumbnail_extension = newThumbnailExtension;
-			}
-
-			closeModal();
-		})
-		.catch(error => {
-			logChange("error", `Error saving or renaming thumbnail: ${error.message ?? String(error)}`);
-		});
+	closeModal();
 }
 
 function openAddToPlaylistModal(songName) {
@@ -367,7 +398,7 @@ function deletePlaylist() {
 		const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.${playlistThumbnailExtension}`);
 
 		fs.unlink(thumbnailPath, error => {
-			if (err) logChange("error", `Failed to delete file: ${error.message ?? String(error)}`);
+			if (error) logChange("error", `Failed to delete file: ${error.message ?? String(error)}`);
 		});
 
 		callSqlite({ db: "playlists", query: "DELETE FROM playlists WHERE id = ?", args: [playlistID] });
