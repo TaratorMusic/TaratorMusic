@@ -1,7 +1,6 @@
 ### Version 1.8.8 Planned Features
 
--   Auto translate feature will be inside the create new translation modal
--   translate lyrics automatic function (check gpt star)
+-   Auto translate feature will be inside the create new translation modal (use translateLyrics())
 -   Auto pick if a translation exists upon opening the customisation modal
 
 -   What happens when you close the download modal by the X button while downloading?

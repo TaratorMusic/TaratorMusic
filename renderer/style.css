@@ -596,17 +596,17 @@ audio {
 
 #playlists-content {
 	display: none;
-    width: calc(88vw - 3vh) !important;
+	width: calc(88vw - 3vh) !important;
 	grid-template-rows: 50px;
 	grid-auto-rows: 200px;
-    padding: 15px 0 15px 60px !important;
+	padding: 15px 0 15px 60px !important;
 }
 
 #settings-content {
 	display: none;
 	text-align: left;
 	align-items: flex-start;
-    padding: 0 0 15px 60px !important;
+	padding: 0 0 15px 60px !important;
 }
 
 #settings-content div {
@@ -1786,4 +1786,95 @@ th {
 #lyricsSongName,
 #lyricsSongId {
 	height: auto !important;
+}
+
+#deleteTranslationBtn {
+	padding: 3px 8px;
+	height: auto !important;
+	background: rgba(180, 40, 40, 0.6);
+	border: 1px solid rgba(255, 100, 100, 0.4);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.75vw;
+	color: white !important;
+	flex-shrink: 0;
+	transition: background 0.2s ease;
+}
+
+#deleteTranslationBtn:hover {
+	background: rgba(220, 50, 50, 0.8);
+}
+
+.lang-prompt-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.lang-prompt-box {
+	background: #1e1e1e;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 8px;
+	padding: 1.5vw 2vw;
+	display: flex;
+	flex-direction: column;
+	gap: 1vh;
+	min-width: 20vw;
+}
+
+.lang-prompt-title {
+	font-size: 1vw;
+	font-weight: 600;
+	color: white;
+}
+
+.lang-prompt-input {
+	padding: 6px 10px;
+	background: rgba(0, 0, 0, 0.5);
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 4px;
+	color: white;
+	font-size: 0.9vw;
+	outline: none;
+}
+
+.lang-prompt-input:focus {
+	border-color: rgba(255, 255, 255, 0.6);
+}
+
+.lang-prompt-actions {
+	display: flex;
+	flex-direction: row;
+	gap: 0.5vw;
+	justify-content: flex-end;
+}
+
+.lang-prompt-confirm,
+.lang-prompt-cancel {
+	padding: 5px 14px;
+	border-radius: 4px;
+	border: none;
+	cursor: pointer;
+	font-size: 0.8vw;
+	color: white !important;
+}
+
+.lang-prompt-confirm {
+	background: rgba(23, 179, 31, 0.8);
+}
+
+.lang-prompt-confirm:hover {
+	background: rgba(23, 179, 31, 1);
+}
+
+.lang-prompt-cancel {
+	background: rgba(80, 80, 80, 0.8);
+}
+
+.lang-prompt-cancel:hover {
+	background: rgba(110, 110, 110, 0.9);
 }

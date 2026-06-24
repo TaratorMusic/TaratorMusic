@@ -182,10 +182,11 @@
 								<div class="lyrics-translation-col">
 									<div class="lyrics-translation-header">
 										<div id="translatedLyricName">Translated Language:</div>
-										<select name="translatedLyricName" id="translatedLyricInput">
+										<select name="translatedLyricName" id="translatedLyricInput" onchange="onTranslationPickerChange()">
 											<option value="none">None</option>
 											<option value="new">New</option>
 										</select>
+										<button id="deleteTranslationBtn" onclick="deleteCurrentTranslation()">Delete</button>
 									</div>
 									<textarea name="lyricsTranslationArea" id="lyricsTranslationArea"></textarea>
 								</div>

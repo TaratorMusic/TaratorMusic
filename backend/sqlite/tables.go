@@ -98,7 +98,7 @@ var streamsColumns = []Column{
 	{Name: "song_name", Type: "TEXT"},
 	{Name: "thumbnail_url", Type: "TEXT"},
 	{Name: "length", Type: "INTEGER"},
-	{Name: "artist", Type: "TEXT"}, 
+	{Name: "artist", Type: "TEXT"},
 	{Name: "genre", Type: "TEXT"},
 	{Name: "language", Type: "TEXT"},
 }
@@ -116,7 +116,7 @@ var notInterestedColumns = []Column{
 }
 
 var lyricsColumns = []Column{
-	{Name: "song_id", Type: "TEXT"}, // A script to remove the PRIMARY KEY in main.go
+	{Name: "song_id", Type: "TEXT"},
 	{Name: "lyrics", Type: "TEXT"},
 	{Name: "language", Type: "TEXT"},
 }

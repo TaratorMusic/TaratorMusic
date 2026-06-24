@@ -370,10 +370,9 @@ async function initialiseDatabases() {
 	});
 
 	for (const row of lyricsRows) {
-		songLyricsCache.set(row.song_id, {
-			lyrics: row.lyrics,
-			language: row.language,
-		});
+		const existing = songLyricsCache.get(row.song_id) || [];
+		existing.push({ lyrics: row.lyrics, language: row.language ?? null });
+		songLyricsCache.set(row.song_id, existing);
 	}
 
 	const streamsRows = await callSqlite({
@@ -1109,8 +1108,10 @@ function playMusic(songId, playlistId) {
 			addToFavoritesButtonBottomRight.style.color = "red";
 		}
 
-		if (songLyricsCache.has(songId) && !!songLyricsCache.get(songId).lyrics) {
-			document.getElementById("customiseButtonBottomRight").style.color = "lime";
+		if (songLyricsCache.has(songId)) {
+			const rows = songLyricsCache.get(songId);
+			const original = rows.find(r => !r.language);
+			if (original && !!original.lyrics) document.getElementById("customiseButtonBottomRight").style.color = "lime";
 		}
 
 		const songPath = offlineMode ? path.join(musicFolder, `${songId}.${songData.song_extension || "mp3"}`) : `https://www.youtube.com/watch?v=${songId}`;
@@ -1571,8 +1572,23 @@ async function opencustomiseModal(songsId) {
 	document.getElementById("lyricsSongName").innerText = "";
 	document.getElementById("lyricsSongId").innerText = "";
 
-	const cached = songLyricsCache.get(songsId);
-	if (cached) document.getElementById("lyricsArea").value = cached.lyrics;
+	const cachedRows = songLyricsCache.get(songsId) || [];
+	const originalRow = cachedRows.find(r => !r.language);
+	if (originalRow) document.getElementById("lyricsArea").value = originalRow.lyrics || "";
+
+	const picker = document.getElementById("translatedLyricInput");
+	const currentLang = picker.value;
+	picker.innerHTML = '<option value="none">None</option><option value="new">New</option>';
+	for (const row of cachedRows) {
+		if (row.language) {
+			const opt = document.createElement("option");
+			opt.value = row.language;
+			opt.textContent = row.language;
+			picker.appendChild(opt);
+		}
+	}
+	picker.value = cachedRows.some(r => r.language == currentLang) ? currentLang : "none";
+	document.getElementById("lyricsTranslationArea").value = picker.value != "none" && picker.value != "new" ? cachedRows.find(r => r.language == picker.value)?.lyrics || "" : "";
 
 	document.getElementById("lyricsThumbnail").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 	document.getElementById("lyricsSongName").innerText = song_name;
@@ -1589,6 +1605,8 @@ async function opencustomiseModal(songsId) {
 	customiseDiv.dataset.origArtist = artist || "";
 	customiseDiv.dataset.origLanguage = language || "";
 	customiseDiv.dataset.origLyrics = document.getElementById("lyricsArea").value;
+	customiseDiv.dataset.origTranslation = document.getElementById("lyricsTranslationArea").value;
+	customiseDiv.dataset.origTranslationLang = document.getElementById("translatedLyricInput").value;
 	customiseDiv.style.display = "block";
 }
 
@@ -1602,6 +1620,7 @@ function isCustomiseModalDirty() {
 		document.getElementById("customiseSongArtist").value != div.dataset.origArtist ||
 		document.getElementById("customiseSongLanguage").value != div.dataset.origLanguage ||
 		document.getElementById("lyricsArea").value != div.dataset.origLyrics ||
+		document.getElementById("lyricsTranslationArea").value != div.dataset.origTranslation ||
 		document.getElementById("customiseThumbnail").files.length > 0
 	);
 }
@@ -1618,7 +1637,7 @@ async function closeCustomiseModal() {
 	document.getElementById("lyricsExpandToggle").textContent = "Expand Lyrics";
 }
 
-async function saveEditedSong() {
+async function saveEditedSong(translationOnly = false) {
 	let customiseDiv = document.getElementById("customiseModal");
 	let element, thumbnailPath;
 
@@ -1690,16 +1709,65 @@ async function saveEditedSong() {
 		}
 	}
 
-	const lyricsValue = document.getElementById("lyricsArea").value;
 	const savedSongId = customiseDiv.dataset.songID;
-	songLyricsCache.set(savedSongId, { lyrics: lyricsValue });
-	await callSqlite({
-		db: "musics",
-		query: `INSERT INTO lyrics (song_id, lyrics) VALUES (?, ?) ON CONFLICT(song_id) DO UPDATE SET lyrics = excluded.lyrics`,
-		args: [savedSongId, lyricsValue],
-		fetch: false,
-	});
-	document.getElementById("customiseButtonBottomRight").style.color = lyricsValue.trim() ? "lime" : "white";
+
+	if (!translationOnly) {
+		const lyricsValue = document.getElementById("lyricsArea").value;
+		const cachedRows = songLyricsCache.get(savedSongId) || [];
+		const existingOriginal = cachedRows.find(r => !r.language);
+		if (existingOriginal) {
+			existingOriginal.lyrics = lyricsValue;
+			await callSqlite({
+				db: "musics",
+				query: "UPDATE lyrics SET lyrics = ? WHERE song_id = ? AND (language IS NULL OR language = '')",
+				args: [lyricsValue, savedSongId],
+				fetch: false,
+			});
+		} else {
+			cachedRows.push({ lyrics: lyricsValue, language: null });
+			await callSqlite({
+				db: "musics",
+				query: "INSERT INTO lyrics (song_id, lyrics, language) VALUES (?, ?, NULL)",
+				args: [savedSongId, lyricsValue],
+				fetch: false,
+			});
+		}
+		songLyricsCache.set(savedSongId, cachedRows);
+
+		const hasLyrics = !!lyricsValue.trim();
+		document.getElementById("customiseButtonBottomRight").style.color = hasLyrics ? "lime" : "white";
+		customiseDiv.dataset.origLyrics = lyricsValue;
+	}
+
+	const picker = document.getElementById("translatedLyricInput");
+	const selectedLang = picker.value;
+	if (selectedLang != "none" && selectedLang != "new") {
+		const translationValue = document.getElementById("lyricsTranslationArea").value;
+		const cachedRows = songLyricsCache.get(savedSongId) || [];
+		const existingTranslation = cachedRows.find(r => r.language == selectedLang);
+		if (existingTranslation) {
+			existingTranslation.lyrics = translationValue;
+			await callSqlite({
+				db: "musics",
+				query: "UPDATE lyrics SET lyrics = ? WHERE song_id = ? AND language = ?",
+				args: [translationValue, savedSongId, selectedLang],
+				fetch: false,
+			});
+		} else {
+			cachedRows.push({ lyrics: translationValue, language: selectedLang });
+			await callSqlite({
+				db: "musics",
+				query: "INSERT INTO lyrics (song_id, lyrics, language) VALUES (?, ?, ?)",
+				args: [savedSongId, translationValue, selectedLang],
+				fetch: false,
+			});
+		}
+		songLyricsCache.set(savedSongId, cachedRows);
+		customiseDiv.dataset.origTranslation = translationValue;
+		customiseDiv.dataset.origTranslationLang = selectedLang;
+	}
+
+	if (translationOnly) return;
 
 	customiseDiv.style.display = "none";
 	document.querySelector(".customise-modal-body")?.classList.remove("lyrics-expanded");
@@ -2044,6 +2112,217 @@ function toggleLyricsExpand() {
 	const btn = document.getElementById("lyricsExpandToggle");
 	const expanded = modalBody.classList.toggle("lyrics-expanded");
 	btn.textContent = expanded ? "Collapse Lyrics" : "Expand Lyrics";
+}
+
+async function onTranslationPickerChange() {
+	const picker = document.getElementById("translatedLyricInput");
+	const selected = picker.value;
+	const div = document.getElementById("customiseModal");
+
+	if (document.getElementById("lyricsTranslationArea").value != div.dataset.origTranslation) {
+		const save = await confirmModal("You have unsaved changes in the current translation. Save before switching?", "Save", "Discard");
+		if (save) await saveEditedSong(true);
+	}
+
+	if (selected == "new") {
+		const newLang = await promptLanguageModal();
+		if (!newLang) {
+			picker.value = div.dataset.origTranslationLang || "none";
+			return;
+		}
+		const songLang = div.dataset.origLanguage;
+		if (newLang.trim().toLowerCase() == songLang.trim().toLowerCase()) {
+			await alertModal(`"${newLang}" is the original language of this song. Please choose a different language.`);
+			picker.value = div.dataset.origTranslationLang || "none";
+			return;
+		}
+		const cachedRows = songLyricsCache.get(div.dataset.songID) || [];
+		if (cachedRows.some(r => r.language?.toLowerCase() == newLang.trim().toLowerCase())) {
+			await alertModal(`A translation for "${newLang}" already exists.`);
+			picker.value = div.dataset.origTranslationLang || "none";
+			return;
+		}
+		const opt = document.createElement("option");
+		opt.value = newLang.trim();
+		opt.textContent = newLang.trim();
+		picker.insertBefore(opt, null);
+		picker.value = newLang.trim();
+		document.getElementById("lyricsTranslationArea").value = "";
+		div.dataset.origTranslation = "";
+		div.dataset.origTranslationLang = newLang.trim();
+		return;
+	}
+
+	if (selected == "none") {
+		document.getElementById("lyricsTranslationArea").value = "";
+		div.dataset.origTranslation = "";
+		div.dataset.origTranslationLang = "none";
+		return;
+	}
+
+	const cachedRows = songLyricsCache.get(div.dataset.songID) || [];
+	const row = cachedRows.find(r => r.language == selected);
+	document.getElementById("lyricsTranslationArea").value = row?.lyrics || "";
+	div.dataset.origTranslation = document.getElementById("lyricsTranslationArea").value;
+	div.dataset.origTranslationLang = selected;
+}
+
+function promptLanguageModal() {
+	return new Promise(resolve => {
+		const overlay = document.createElement("div");
+		overlay.className = "lang-prompt-overlay";
+		overlay.innerHTML = `
+			<div class="lang-prompt-box">
+				<div class="lang-prompt-title">New Translation Language</div>
+				<input class="lang-prompt-input" type="text" placeholder="e.g. Spanish" autofocus />
+				<div class="lang-prompt-actions">
+					<button class="lang-prompt-confirm">Add</button>
+					<button class="lang-prompt-cancel">Cancel</button>
+				</div>
+			</div>`;
+		document.body.appendChild(overlay);
+
+		const input = overlay.querySelector(".lang-prompt-input");
+		const confirm = overlay.querySelector(".lang-prompt-confirm");
+		const cancel = overlay.querySelector(".lang-prompt-cancel");
+
+		const finish = val => {
+			overlay.remove();
+			resolve(val);
+		};
+
+		confirm.onclick = () => {
+			const v = input.value.trim();
+			if (v) finish(v);
+		};
+		cancel.onclick = () => finish(null);
+		input.focus();
+		input.addEventListener("keydown", e => {
+			if (e.key == "Enter") {
+				const v = input.value.trim();
+				if (v) finish(v);
+			}
+			if (e.key == "Escape") finish(null);
+		});
+	});
+}
+
+async function deleteCurrentTranslation() {
+	const picker = document.getElementById("translatedLyricInput");
+	const selected = picker.value;
+	if (selected == "none" || selected == "new") return;
+
+	const confirmed = await confirmModal(`Delete the "${selected}" translation?`, "Delete", "Cancel");
+	if (!confirmed) return;
+
+	const div = document.getElementById("customiseModal");
+	const songId = div.dataset.songID;
+
+	await callSqlite({
+		db: "musics",
+		query: "DELETE FROM lyrics WHERE song_id = ? AND language = ?",
+		args: [songId, selected],
+		fetch: false,
+	});
+
+	const cachedRows = songLyricsCache.get(songId) || [];
+	songLyricsCache.set(
+		songId,
+		cachedRows.filter(r => r.language != selected),
+	);
+
+	const opt = picker.querySelector(`option[value="${selected}"]`);
+	if (opt) opt.remove();
+	picker.value = "none";
+	document.getElementById("lyricsTranslationArea").value = "";
+	div.dataset.origTranslation = "";
+	div.dataset.origTranslationLang = "none";
+}
+
+async function translateLyrics(lyrics, sourceLang, targetLang, limit = 450) {
+	function split(text) {
+		if (text.length <= limit) {
+			return [text];
+		}
+
+		if (text.includes("\n")) {
+			const lines = text.split("\n");
+			const chunks = [];
+			let current = "";
+
+			for (const line of lines) {
+				if ((current + (current ? "\n" : "") + line).length <= limit) {
+					current += (current ? "\n" : "") + line;
+				} else {
+					if (current) {
+						chunks.push(current);
+					}
+
+					if (line.length > limit) {
+						chunks.push(...split(line));
+						current = "";
+					} else {
+						current = line;
+					}
+				}
+			}
+
+			if (current) {
+				chunks.push(current);
+			}
+
+			return chunks;
+		}
+
+		let index = -1;
+
+		for (let i = limit; i > Math.max(0, limit - 100); i--) {
+			if (/[A-Z]/.test(text[i])) {
+				index = i;
+				break;
+			}
+		}
+
+		if (index === -1) {
+			index = limit;
+		}
+
+		return [...split(text.slice(0, index)), ...split(text.slice(index))];
+	}
+
+	const paragraphs = lyrics.split("\n\n");
+	const chunks = [];
+	const counts = [];
+
+	for (const paragraph of paragraphs) {
+		const parts = split(paragraph);
+		chunks.push(...parts);
+		counts.push(parts.length);
+	}
+
+	const translatedChunks = await Promise.all(
+		chunks.map(async chunk => {
+			const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${sourceLang}|${targetLang}`);
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`);
+			}
+
+			const data = await response.json();
+
+			return data.responseData.translatedText;
+		}),
+	);
+
+	let i = 0;
+
+	return counts
+		.map(count => {
+			const result = translatedChunks.slice(i, i + count).join("\n");
+			i += count;
+			return result;
+		})
+		.join("\n\n");
 }
 
 async function saveUserProgress() {
