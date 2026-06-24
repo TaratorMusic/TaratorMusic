@@ -572,8 +572,8 @@ audio {
 	width: 82vw;
 }
 
-.content {
-	margin-left: calc(13.5vw + 3vh);
+#content {
+	margin-left: calc(12vw + 3vh);
 }
 
 .tab-content {
@@ -581,7 +581,7 @@ audio {
 	flex-direction: column;
 	width: 100% !important;
 	align-items: unset;
-	padding: 15px;
+	padding: 15px 0 0 15px;
 }
 
 .tab-content.hidden {
@@ -596,14 +596,17 @@ audio {
 
 #playlists-content {
 	display: none;
+    width: calc(88vw - 3vh) !important;
 	grid-template-rows: 50px;
 	grid-auto-rows: 200px;
+    padding: 15px 0 15px 60px !important;
 }
 
 #settings-content {
 	display: none;
 	text-align: left;
 	align-items: flex-start;
+    padding: 0 0 15px 60px !important;
 }
 
 #settings-content div {
@@ -619,8 +622,10 @@ audio {
 }
 
 #settings-content,
-#statistics-content {
-	width: 85vw !important;
+#statistics-content,
+#my-music-content,
+#playlists-content {
+	width: calc(88vw - 3vh) !important;
 	height: 92vh;
 }
 
@@ -678,7 +683,7 @@ audio {
 }
 
 #playlistsArea {
-	height: calc(89vh - 30px);
+	height: calc(89vh - 45px);
 	padding: 2vh 0 !important;
 }
 

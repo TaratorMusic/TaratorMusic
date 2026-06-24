@@ -116,7 +116,7 @@ var notInterestedColumns = []Column{
 }
 
 var lyricsColumns = []Column{
-	{Name: "song_id", Type: "TEXT PRIMARY KEY"},
+	{Name: "song_id", Type: "TEXT"}, // A script to remove the PRIMARY KEY in main.go
 	{Name: "lyrics", Type: "TEXT"},
 	{Name: "language", Type: "TEXT"},
 }
