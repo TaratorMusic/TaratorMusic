@@ -372,7 +372,7 @@ async function initialiseDatabases() {
 	for (const row of lyricsRows) {
 		songLyricsCache.set(row.song_id, {
 			lyrics: row.lyrics,
-            language: row.language,
+			language: row.language,
 		});
 	}
 
@@ -1103,7 +1103,6 @@ function playMusic(songId, playlistId) {
 		document.getElementById("addToFavoritesButtonBottomRight").style.color = "white";
 		document.getElementById("addToPlaylistButtonBottomRight").style.color = "white";
 		document.getElementById("customiseButtonBottomRight").style.color = "white";
-		document.getElementById("lyricsButtonBottomRight").style.color = "white";
 
 		const favPlaylist = playlistsMap.get("Favorites");
 		if (favPlaylist && favPlaylist.songs.includes(songId)) {
@@ -1111,7 +1110,7 @@ function playMusic(songId, playlistId) {
 		}
 
 		if (songLyricsCache.has(songId) && !!songLyricsCache.get(songId).lyrics) {
-			document.getElementById("lyricsButtonBottomRight").style.color = "lime";
+			document.getElementById("customiseButtonBottomRight").style.color = "lime";
 		}
 
 		const songPath = offlineMode ? path.join(musicFolder, `${songId}.${songData.song_extension || "mp3"}`) : `https://www.youtube.com/watch?v=${songId}`;
@@ -1493,26 +1492,7 @@ function skipBackward() {
 }
 
 function openLyricsModal() {
-	document.getElementById("lyricsModal").style.display = "block";
-
-	document.getElementById("lyricsArea").value = "";
-	document.getElementById("lyricsThumbnail").style.background = "";
-	document.getElementById("lyricsSongName").innerText = "";
-	document.getElementById("lyricsSongId").innerText = "";
-
-	const cached = songLyricsCache.get(playingSongsID);
-	if (cached) document.getElementById("lyricsArea").value = cached.lyrics;
-
-	const songData = songNameCache.get(playingSongsID);
-	if (!songData) logChange("error", "No song data found for this song.");
-
-	thumbnailPath = path.join(thumbnailFolder, `${playingSongsID}.${songData.thumbnail_extension}`);
-	document.getElementById("lyricsThumbnail").style.background = `url("${thumbnailPath}?t=${Date.now()}")`;
-
-	document.getElementById("lyricsSongName").innerText = songData.song_name;
-	if (songData.artist && songData.artist != "unknown") document.getElementById("lyricsSongName").innerText += ` by ${songData.artist}`;
-	document.getElementById("lyricsSongId").innerText = playingSongsID;
-	document.getElementById("originalLyricName").innerText = `Original Language: ${songData.language}`;
+	opencustomiseModal(playingSongsID);
 }
 
 async function saveLyrics() {
@@ -1534,7 +1514,7 @@ async function saveLyrics() {
 		fetch: false,
 	});
 
-	document.getElementById("lyricsButtonBottomRight").style.color = !!document.getElementById("lyricsArea").value.trim() ? "lime" : "white";
+	document.getElementById("customiseButtonBottomRight").style.color = !!document.getElementById("lyricsArea").value.trim() ? "lime" : "white";
 }
 
 async function opencustomiseModal(songsId) {
@@ -1594,6 +1574,37 @@ async function opencustomiseModal(songsId) {
 	document.getElementById("stabiliseSongButton").dataset.songId = songsId;
 	document.getElementById("notInterestedToggle").dataset.songId = songsId;
 	document.getElementById("downloadThisSong").dataset.songId = songsId;
+
+	const bareId = songsId.replace("tarator-", "");
+	const listenStats = await callSqlite({
+		db: "musics",
+		query: "SELECT COUNT(*) as listen_count, COALESCE(SUM(end_time - start_time), 0) as total_seconds FROM timers WHERE song_id = ?",
+		args: [bareId],
+		fetch: true,
+	});
+	if (listenStats && listenStats.length > 0) {
+		const { listen_count, total_seconds } = listenStats[0];
+		document.getElementById("modalTimePlayed").innerText = `Times Listened: ${listen_count}`;
+		document.getElementById("modalSecondsPlayed").innerText = `Total Listen Time: ${formatTime(total_seconds)}`;
+	} else {
+		document.getElementById("modalTimePlayed").innerText = "Times Listened: 0";
+		document.getElementById("modalSecondsPlayed").innerText = "Total Listen Time: 0:00";
+	}
+
+	document.getElementById("lyricsArea").value = "";
+	document.getElementById("lyricsTranslationArea").value = "";
+	document.getElementById("lyricsThumbnail").style.background = "";
+	document.getElementById("lyricsSongName").innerText = "";
+	document.getElementById("lyricsSongId").innerText = "";
+
+	const cached = songLyricsCache.get(songsId);
+	if (cached) document.getElementById("lyricsArea").value = cached.lyrics;
+
+	document.getElementById("lyricsThumbnail").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
+	document.getElementById("lyricsSongName").innerText = song_name;
+	if (artist && artist != "unknown") document.getElementById("lyricsSongName").innerText += ` by ${artist}`;
+	document.getElementById("lyricsSongId").innerText = songsId;
+	document.getElementById("originalLyricName").innerText = language ? `Original Language: ${language}` : "";
 
 	const customiseDiv = document.getElementById("customiseModal");
 	customiseDiv.dataset.oldThumbnailPath = thumbnailPath;
@@ -2006,9 +2017,14 @@ function bottomRightFunctions(input) {
 		}
 	} else if (input == "customise") {
 		opencustomiseModal(playingSongsID);
-	} else if (input == "lyrics") {
-		openLyricsModal(playingSongsID);
 	}
+}
+
+function toggleLyricsExpand() {
+	const modalBody = document.querySelector(".customise-modal-body");
+	const btn = document.getElementById("lyricsExpandToggle");
+	const expanded = modalBody.classList.toggle("lyrics-expanded");
+	btn.textContent = expanded ? "Collapse Lyrics" : "Expand Lyrics";
 }
 
 async function saveUserProgress() {

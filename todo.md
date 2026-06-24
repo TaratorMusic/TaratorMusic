@@ -1,11 +1,8 @@
 ### Version 1.8.8 Planned Features
 
 -   In lyrics modal, wish to save? on close button.
--   Lyrics modal should open for a specific song id instead of playing songs ID
 -   Auto translate feature will be inside the create new translation modal
 -   translate lyrics automatic function (check gpt star)
--   Lyrics should support multiple languages (next to each other, two boxes, different font color maybe, pick the language at the top)
--   MERGE Customisation modal and lyrics modal???? && ability to make the lyrics part bigger in height.
 -   Auto pick if a translation exists upon opening the customisation modal
 
 -   What happens when you close the download modal by the X button while downloading?

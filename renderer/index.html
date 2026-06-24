@@ -65,64 +65,7 @@
 					<div id="speedOptions" class="speed-options"></div>
 				</div>
 			</div>
-			<div id="customiseModal" class="modal">
-				<div class="modal-content">
-					<div class="flexrow">
-						<div class="modalTitle">Customise Song</div>
-						<span class="close" onclick="closeModal()">&times;</span>
-					</div>
-					<div id="customiseModal">
-						<div>
-							<label for="customiseSongName">Song Name:</label>
-							<input type="text" id="customiseSongName" required />
-						</div>
-						<div>
-							<label for="customiseThumbnail">Thumbnail:</label>
-							<input id="customiseThumbnail" type="file" onchange="updateThumbnailImage(event, 1)" accept="image/*" />
-							<img id="customiseImage" />
-						</div>
-						<div style="display: flex; flex-direction: row">
-							<label for="customiseSongId">Song Id:</label>
-							<div id="customiseSongIdArea"></div>
-						</div>
-						<div>
-							<label for="customiseSongLink">Song Link:</label>
-							<input type="text" id="customiseSongLink" />
-						</div>
-						<div>
-							<label for="customiseSongGenre">Song Genre:</label>
-							<input type="text" id="customiseSongGenre" />
-						</div>
-						<div>
-							<label for="customiseSongArtist">Song Artist:</label>
-							<input type="text" id="customiseSongArtist" />
-						</div>
-						<div>
-							<label for="customiseSongLanguage">Song Language:</label>
-							<input type="text" id="customiseSongLanguage" />
-						</div>
-						<div>
-							<div id="modalTimePlayed"></div>
-							<div id="modalSecondsPlayed"></div>
-							<div id="modalStabilised"></div>
-							<div id="modalFileSize"></div>
-							<div id="modalPlaySpeed"></div>
-							<div id="modalBass"></div>
-							<div id="modalTreble"></div>
-							<div id="modalMidrange"></div>
-							<div id="modalVolume"></div>
-						</div>
-						<div>
-							<button id="notInterestedToggle">Interested</button>
-							<button id="downloadThisSong">Download This Song</button>
-							<button id="stabiliseSongButton">Stabilise Song</button>
-							<button id="fetchSongInfoButton" onclick="grabAndStoreSongInfo('html')">Fetch Song Information</button>
-							<button id="removeSongButton">Remove Song</button>
-							<button onclick="saveEditedSong()">Save</button>
-						</div>
-					</div>
-				</div>
-			</div>
+
 			<div id="downloadModal" class="modal">
 				<div id="downloadModalContent" class="modal-content">
 					<div class="flexrow">
@@ -158,37 +101,94 @@
 				<input id="searchModalInput" placeholder="Type a song name, and press Enter" />
 				<div id="searchModalFound">Found: Nothing</div>
 			</div>
-			<div id="lyricsModal" class="modal">
-				<div class="modal-content">
-					<div class="flexrow">
-						<div class="modalTitle">Lyrics</div>
+			<div id="customiseModal" class="modal">
+				<div class="modal-content customise-modal-content">
+					<div class="flexrow customise-modal-header">
+						<div class="modalTitle">Customise Song</div>
 						<span class="close" onclick="closeModal()">&times;</span>
 					</div>
-					<div style="display: flex; flex-direction: row; height: 25vh; padding: 1vh">
-						<div id="lyricsThumbnail"></div>
-						<div style="display: flex; flex-direction: column; padding: 1vh">
-							<h3>Song Name:</h3>
-							<div id="lyricsSongName"></div>
-							<h5>Song ID:</h5>
-							<div id="lyricsSongId"></div>
-						</div>
-						<button id="lyricsConfirm" onclick="saveLyrics()">Confirm</button>
-					</div>
-					<div style="display: flex; flex-direction: row; height: 55vh">
-						<div style="display: flex; flex-direction: column; align-items: center; justify-content: start; text-align: center">
-							<div id="originalLyricName"></div>
-							<textarea name="lyricsArea" id="lyricsArea"></textarea>
-						</div>
-						<div id="lyricsProgressBar"></div>
-						<div style="display: flex; flex-direction: column">
-							<div style="display: flex; flex-direction: row; align-items: center; justify-content: start; text-align: center; gap: 10%">
-								<div id="translatedLyricName">Translated Language:</div>
-								<select name="translatedLyricName" id="translatedLyricInput">
-									<option value="none">None</option>
-									<option value="new">New</option>
-								</select>
+					<div class="customise-modal-body">
+						<div class="customise-left-panel">
+							<div class="customise-song-info">
+								<div id="lyricsThumbnail"></div>
+								<div class="customise-song-meta">
+									<div class="meta-song-name" id="lyricsSongName"></div>
+									<div class="meta-song-id-label">Song ID</div>
+									<div class="meta-song-id" id="lyricsSongId"></div>
+								</div>
 							</div>
-							<textarea name="lyricsTranslationArea" id="lyricsTranslationArea"></textarea>
+							<div class="customise-fields">
+								<div class="customise-field-row">
+									<label for="customiseSongName">Name:</label>
+									<input type="text" id="customiseSongName" required />
+								</div>
+								<div class="customise-field-row">
+									<label for="customiseSongArtist">Artist:</label>
+									<input type="text" id="customiseSongArtist" />
+								</div>
+								<div class="customise-field-row">
+									<label for="customiseSongGenre">Genre:</label>
+									<input type="text" id="customiseSongGenre" />
+								</div>
+								<div class="customise-field-row">
+									<label for="customiseSongLanguage">Language:</label>
+									<input type="text" id="customiseSongLanguage" />
+								</div>
+								<div class="customise-field-row">
+									<label for="customiseSongLink">Link:</label>
+									<input type="text" id="customiseSongLink" />
+								</div>
+								<div class="customise-field-row">
+									<label>Song ID:</label>
+									<div id="customiseSongIdArea"></div>
+								</div>
+								<div class="customise-field-row">
+									<label for="customiseThumbnail">Thumbnail:</label>
+									<input id="customiseThumbnail" type="file" onchange="updateThumbnailImage(event, 1)" accept="image/*" />
+									<img id="customiseImage" />
+								</div>
+							</div>
+							<div class="customise-stats-panel">
+								<div class="customise-stat-item" id="modalTimePlayed"></div>
+								<div class="customise-stat-item" id="modalSecondsPlayed"></div>
+								<div class="customise-stat-item" id="modalStabilised"></div>
+								<div class="customise-stat-item" id="modalFileSize"></div>
+								<div class="customise-stat-item" id="modalPlaySpeed"></div>
+								<div class="customise-stat-item" id="modalBass"></div>
+								<div class="customise-stat-item" id="modalTreble"></div>
+								<div class="customise-stat-item" id="modalMidrange"></div>
+								<div class="customise-stat-item" id="modalVolume"></div>
+							</div>
+							<div class="customise-actions">
+								<button id="notInterestedToggle">Interested</button>
+								<button id="downloadThisSong">Download This Song</button>
+								<button id="stabiliseSongButton">Stabilise Song</button>
+								<button id="fetchSongInfoButton" onclick="grabAndStoreSongInfo('html')">Fetch Song Info</button>
+								<button id="removeSongButton">Remove Song</button>
+								<button onclick="saveEditedSong()">Save</button>
+							</div>
+						</div>
+						<div class="customise-divider"></div>
+						<div class="customise-right-panel">
+							<div class="lyrics-header-row">
+								<div id="originalLyricName"></div>
+								<button id="lyricsConfirm" onclick="saveLyrics()">Confirm</button>
+								<button id="lyricsExpandToggle" onclick="toggleLyricsExpand()">Expand Lyrics</button>
+							</div>
+							<div class="lyrics-areas-row">
+								<textarea name="lyricsArea" id="lyricsArea"></textarea>
+								<div id="lyricsProgressBar"></div>
+								<div class="lyrics-translation-col">
+									<div class="lyrics-translation-header">
+										<div id="translatedLyricName">Translated Language:</div>
+										<select name="translatedLyricName" id="translatedLyricInput">
+											<option value="none">None</option>
+											<option value="new">New</option>
+										</select>
+									</div>
+									<textarea name="lyricsTranslationArea" id="lyricsTranslationArea"></textarea>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -431,7 +431,6 @@
 			<div id="addToPlaylistButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('addToPlaylist')">Add to Playlist</div>
 			<div id="addToFavoritesButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('addToFavorites')">Add to Favorites</div>
 			<div id="customiseButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('customise')">Customise Song</div>
-			<div id="lyricsButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('lyrics')">Song Lyrics</div>
 		</div>
 		<script src="helpers.js"></script>
 		<script src="playlists.js"></script>
