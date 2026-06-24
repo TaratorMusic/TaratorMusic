@@ -19,7 +19,6 @@
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
 -   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)
 -   page mode yön tuşları disabled olsun çalışmayacaksa
--   found text doesnt reset in search song modal after the song starts playing
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
 -   Editing streamed songs does not refresh anything
 -   Song link comparation takes playlist additions of the link to account ??

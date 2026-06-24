@@ -1920,7 +1920,7 @@ document.addEventListener("keydown", event => {
 		searchModalInput.classList.remove("red-placeholder");
 		searchModalInput.placeholder = "Type a song name, and press Enter";
 		document.getElementById("searchModalTitle").innerText = "Quick Song Search";
-		document.getElementById("searchModalFound").style.display = "";
+		document.getElementById("searchModalFound").innerText = "Found: Nothing";
 		document.getElementById("searchModal").dataset.mode = "song";
 		document.getElementById("searchModal").style.display = "flex";
 		searchModalInput.focus();
