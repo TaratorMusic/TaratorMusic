@@ -1474,29 +1474,41 @@ th {
 	display: flex;
 	flex-direction: column;
 	flex: 0 0 auto;
+	gap: 0.6vh;
+	overflow: hidden;
+	transition: max-height 0.3s ease;
 	max-height: 55%;
+}
+
+.customise-modal-body.lyrics-expanded .customise-left-panel {
+	max-height: 6vw;
+	overflow: hidden;
+}
+
+.customise-collapsible {
+	display: flex;
+	flex-direction: column;
 	gap: 0.6vh;
 	overflow-y: auto;
-	padding-right: 0.5vw;
 	transition:
 		max-height 0.3s ease,
 		opacity 0.3s ease;
 }
 
-.customise-modal-body.lyrics-expanded .customise-left-panel {
+.customise-collapsible::-webkit-scrollbar {
+	width: 6px;
+}
+
+.customise-collapsible::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 4px;
+}
+
+.customise-modal-body.lyrics-expanded .customise-collapsible {
 	max-height: 0;
 	opacity: 0;
 	overflow: hidden;
 	gap: 0;
-}
-
-.customise-left-panel::-webkit-scrollbar {
-	width: 6px;
-}
-
-.customise-left-panel::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.2);
-	border-radius: 4px;
 }
 
 .customise-song-info {

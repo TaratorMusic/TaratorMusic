@@ -1491,32 +1491,6 @@ function skipBackward() {
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 }
 
-function openLyricsModal() {
-	opencustomiseModal(playingSongsID);
-}
-
-async function saveLyrics() {
-	const savedSongId = playingSongsID; // Saving the ID just in case the song ends before the modal is confirmed / function is finished
-	if (!(await confirmModal(`Would you like to set these lyrics for ${getSongNameById(savedSongId)}`, "Yes", "No"))) return;
-
-	songLyricsCache.set(savedSongId, {
-		lyrics: document.getElementById("lyricsArea").value,
-	});
-
-	await callSqlite({
-		db: "musics",
-		query: `
-            INSERT INTO lyrics (song_id, lyrics)
-            VALUES (?, ?)
-            ON CONFLICT(song_id) DO UPDATE SET lyrics = excluded.lyrics
-        `,
-		args: [savedSongId, document.getElementById("lyricsArea").value],
-		fetch: false,
-	});
-
-	document.getElementById("customiseButtonBottomRight").style.color = !!document.getElementById("lyricsArea").value.trim() ? "lime" : "white";
-}
-
 async function opencustomiseModal(songsId) {
 	let song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url, thumbnailPath;
 
@@ -1609,7 +1583,39 @@ async function opencustomiseModal(songsId) {
 	const customiseDiv = document.getElementById("customiseModal");
 	customiseDiv.dataset.oldThumbnailPath = thumbnailPath;
 	customiseDiv.dataset.songID = songsId;
+	customiseDiv.dataset.origName = song_name;
+	customiseDiv.dataset.origLink = song_url || "";
+	customiseDiv.dataset.origGenre = genre || "";
+	customiseDiv.dataset.origArtist = artist || "";
+	customiseDiv.dataset.origLanguage = language || "";
+	customiseDiv.dataset.origLyrics = document.getElementById("lyricsArea").value;
 	customiseDiv.style.display = "block";
+}
+
+function isCustomiseModalDirty() {
+	const div = document.getElementById("customiseModal");
+	if (!div.dataset.songID) return false;
+	return (
+		document.getElementById("customiseSongName").value.trim() != div.dataset.origName ||
+		document.getElementById("customiseSongLink").value != div.dataset.origLink ||
+		document.getElementById("customiseSongGenre").value != div.dataset.origGenre ||
+		document.getElementById("customiseSongArtist").value != div.dataset.origArtist ||
+		document.getElementById("customiseSongLanguage").value != div.dataset.origLanguage ||
+		document.getElementById("lyricsArea").value != div.dataset.origLyrics ||
+		document.getElementById("customiseThumbnail").files.length > 0
+	);
+}
+
+async function closeCustomiseModal() {
+	if (isCustomiseModalDirty()) {
+		const save = await confirmModal("You have unsaved changes. Would you like to save before closing?", "Save & Close", "Discard");
+		if (save) await saveEditedSong();
+		else document.getElementById("customiseModal").style.display = "none";
+	} else {
+		document.getElementById("customiseModal").style.display = "none";
+	}
+	document.querySelector(".customise-modal-body")?.classList.remove("lyrics-expanded");
+	document.getElementById("lyricsExpandToggle").textContent = "Expand Lyrics";
 }
 
 async function saveEditedSong() {
@@ -1684,7 +1690,20 @@ async function saveEditedSong() {
 		}
 	}
 
+	const lyricsValue = document.getElementById("lyricsArea").value;
+	const savedSongId = customiseDiv.dataset.songID;
+	songLyricsCache.set(savedSongId, { lyrics: lyricsValue });
+	await callSqlite({
+		db: "musics",
+		query: `INSERT INTO lyrics (song_id, lyrics) VALUES (?, ?) ON CONFLICT(song_id) DO UPDATE SET lyrics = excluded.lyrics`,
+		args: [savedSongId, lyricsValue],
+		fetch: false,
+	});
+	document.getElementById("customiseButtonBottomRight").style.color = lyricsValue.trim() ? "lime" : "white";
+
 	customiseDiv.style.display = "none";
+	document.querySelector(".customise-modal-body")?.classList.remove("lyrics-expanded");
+	document.getElementById("lyricsExpandToggle").textContent = "Expand Lyrics";
 
 	if (playingSongsID == customiseDiv.dataset.songID) {
 		document.getElementById("song-name").innerText = newNameInput;
@@ -1861,7 +1880,7 @@ document.querySelectorAll('input[type="range"]').forEach(range => {
 });
 
 document.addEventListener("keydown", event => {
-	if (event.key == "Escape") closeModal();
+	if (event.key == "Escape") isCustomiseModalDirty() ? closeCustomiseModal() : closeModal();
 	if (event.key == "Tab") event.preventDefault();
 	if (event.key == "Enter" && document.getElementById("downloadModal").style.display == "block") return loadNewPage("download");
 	if (event.key == "Enter" && document.activeElement == document.getElementById("music-search") && musicMode == "stream") searchYoutubeInMusics();
@@ -1930,7 +1949,7 @@ document.addEventListener("keydown", event => {
 	} else if (event.key == key_lastPlaylist) {
 		playLastPlaylist();
 	} else if (event.key == key_lyrics) {
-		openLyricsModal(playingSongsID);
+		opencustomiseModal(playingSongsID);
 	}
 });
 

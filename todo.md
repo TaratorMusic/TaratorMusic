@@ -1,6 +1,5 @@
 ### Version 1.8.8 Planned Features
 
--   In lyrics modal, wish to save? on close button.
 -   Auto translate feature will be inside the create new translation modal
 -   translate lyrics automatic function (check gpt star)
 -   Auto pick if a translation exists upon opening the customisation modal

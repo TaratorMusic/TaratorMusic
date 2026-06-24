@@ -105,7 +105,7 @@
 				<div class="modal-content customise-modal-content">
 					<div class="flexrow customise-modal-header">
 						<div class="modalTitle">Customise Song</div>
-						<span class="close" onclick="closeModal()">&times;</span>
+						<span class="close" onclick="closeCustomiseModal()">&times;</span>
 					</div>
 					<div class="customise-modal-body">
 						<div class="customise-left-panel">
@@ -117,62 +117,63 @@
 									<div class="meta-song-id" id="lyricsSongId"></div>
 								</div>
 							</div>
-							<div class="customise-fields">
-								<div class="customise-field-row">
-									<label for="customiseSongName">Name:</label>
-									<input type="text" id="customiseSongName" required />
+							<div class="customise-collapsible">
+								<div class="customise-fields">
+									<div class="customise-field-row">
+										<label for="customiseSongName">Name:</label>
+										<input type="text" id="customiseSongName" required />
+									</div>
+									<div class="customise-field-row">
+										<label for="customiseSongArtist">Artist:</label>
+										<input type="text" id="customiseSongArtist" />
+									</div>
+									<div class="customise-field-row">
+										<label for="customiseSongGenre">Genre:</label>
+										<input type="text" id="customiseSongGenre" />
+									</div>
+									<div class="customise-field-row">
+										<label for="customiseSongLanguage">Language:</label>
+										<input type="text" id="customiseSongLanguage" />
+									</div>
+									<div class="customise-field-row">
+										<label for="customiseSongLink">Link:</label>
+										<input type="text" id="customiseSongLink" />
+									</div>
+									<div class="customise-field-row">
+										<label>Song ID:</label>
+										<div id="customiseSongIdArea"></div>
+									</div>
+									<div class="customise-field-row">
+										<label for="customiseThumbnail">Thumbnail:</label>
+										<input id="customiseThumbnail" type="file" onchange="updateThumbnailImage(event, 1)" accept="image/*" />
+										<img id="customiseImage" />
+									</div>
 								</div>
-								<div class="customise-field-row">
-									<label for="customiseSongArtist">Artist:</label>
-									<input type="text" id="customiseSongArtist" />
+								<div class="customise-stats-panel">
+									<div class="customise-stat-item" id="modalTimePlayed"></div>
+									<div class="customise-stat-item" id="modalSecondsPlayed"></div>
+									<div class="customise-stat-item" id="modalStabilised"></div>
+									<div class="customise-stat-item" id="modalFileSize"></div>
+									<div class="customise-stat-item" id="modalPlaySpeed"></div>
+									<div class="customise-stat-item" id="modalBass"></div>
+									<div class="customise-stat-item" id="modalTreble"></div>
+									<div class="customise-stat-item" id="modalMidrange"></div>
+									<div class="customise-stat-item" id="modalVolume"></div>
 								</div>
-								<div class="customise-field-row">
-									<label for="customiseSongGenre">Genre:</label>
-									<input type="text" id="customiseSongGenre" />
+								<div class="customise-actions">
+									<button id="notInterestedToggle">Interested</button>
+									<button id="downloadThisSong">Download This Song</button>
+									<button id="stabiliseSongButton">Stabilise Song</button>
+									<button id="fetchSongInfoButton" onclick="grabAndStoreSongInfo('html')">Fetch Song Info</button>
+									<button id="removeSongButton">Remove Song</button>
+									<button onclick="saveEditedSong()">Save</button>
 								</div>
-								<div class="customise-field-row">
-									<label for="customiseSongLanguage">Language:</label>
-									<input type="text" id="customiseSongLanguage" />
-								</div>
-								<div class="customise-field-row">
-									<label for="customiseSongLink">Link:</label>
-									<input type="text" id="customiseSongLink" />
-								</div>
-								<div class="customise-field-row">
-									<label>Song ID:</label>
-									<div id="customiseSongIdArea"></div>
-								</div>
-								<div class="customise-field-row">
-									<label for="customiseThumbnail">Thumbnail:</label>
-									<input id="customiseThumbnail" type="file" onchange="updateThumbnailImage(event, 1)" accept="image/*" />
-									<img id="customiseImage" />
-								</div>
-							</div>
-							<div class="customise-stats-panel">
-								<div class="customise-stat-item" id="modalTimePlayed"></div>
-								<div class="customise-stat-item" id="modalSecondsPlayed"></div>
-								<div class="customise-stat-item" id="modalStabilised"></div>
-								<div class="customise-stat-item" id="modalFileSize"></div>
-								<div class="customise-stat-item" id="modalPlaySpeed"></div>
-								<div class="customise-stat-item" id="modalBass"></div>
-								<div class="customise-stat-item" id="modalTreble"></div>
-								<div class="customise-stat-item" id="modalMidrange"></div>
-								<div class="customise-stat-item" id="modalVolume"></div>
-							</div>
-							<div class="customise-actions">
-								<button id="notInterestedToggle">Interested</button>
-								<button id="downloadThisSong">Download This Song</button>
-								<button id="stabiliseSongButton">Stabilise Song</button>
-								<button id="fetchSongInfoButton" onclick="grabAndStoreSongInfo('html')">Fetch Song Info</button>
-								<button id="removeSongButton">Remove Song</button>
-								<button onclick="saveEditedSong()">Save</button>
 							</div>
 						</div>
 						<div class="customise-divider"></div>
 						<div class="customise-right-panel">
 							<div class="lyrics-header-row">
 								<div id="originalLyricName"></div>
-								<button id="lyricsConfirm" onclick="saveLyrics()">Confirm</button>
 								<button id="lyricsExpandToggle" onclick="toggleLyricsExpand()">Expand Lyrics</button>
 							</div>
 							<div class="lyrics-areas-row">
