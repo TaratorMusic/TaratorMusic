@@ -1760,22 +1760,29 @@ th {
 	flex-direction: column;
 	flex: 1;
 	overflow: hidden;
-	gap: 0.4vh;
 	min-height: 0;
 }
 
-.lyrics-translation-header {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	gap: 0.5vw;
-	flex-shrink: 0;
+#autoTranslateBtn {
+	padding: 3px 8px;
 	height: auto !important;
+	background: rgba(20, 80, 180, 0.6);
+	border: 1px solid rgba(100, 160, 255, 0.4);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.75vw;
+	color: white !important;
+	flex-shrink: 0;
+	transition: background 0.2s ease;
 }
 
-.lyrics-translation-header div {
-	height: auto !important;
-	font-size: 0.8vw;
+#autoTranslateBtn:hover:not(:disabled) {
+	background: rgba(30, 100, 220, 0.8);
+}
+
+#autoTranslateBtn:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
 }
 
 #translatedLyricInput,
@@ -1837,7 +1844,7 @@ th {
 	background: rgba(0, 0, 0, 0.5);
 	border: 1px solid rgba(255, 255, 255, 0.25);
 	border-radius: 4px;
-	color: white !important;
+	color: white;
 	font-size: 0.9vw;
 	outline: none;
 }

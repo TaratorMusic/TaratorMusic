@@ -1583,14 +1583,12 @@ async function opencustomiseModal(songsId) {
 		.filter(r => r.language)
 		.map(r => r.language)
 		.sort((a, b) => a.localeCompare(b));
-        
 	for (const lang of translationLangs) {
 		const opt = document.createElement("option");
 		opt.value = lang;
 		opt.textContent = lang;
 		picker.appendChild(opt);
 	}
-
 	if (cachedRows.some(r => r.language == currentLang)) {
 		picker.value = currentLang;
 	} else if (translationLangs.length > 0) {
@@ -2517,6 +2515,26 @@ document.addEventListener("DOMContentLoaded", function () {
 		const mode = document.getElementById("searchModal").dataset.mode;
 		if (mode == "playlist") searchPlaylist(true);
 		else if (mode != "shuffle") searchSong(true);
+	});
+
+	const lyricsArea = document.getElementById("lyricsArea");
+	const lyricsTranslationArea = document.getElementById("lyricsTranslationArea");
+	let syncingScroll = false;
+
+	lyricsArea.addEventListener("scroll", () => {
+		if (syncingScroll) return;
+		syncingScroll = true;
+		const ratio = lyricsArea.scrollTop / (lyricsArea.scrollHeight - lyricsArea.clientHeight);
+		lyricsTranslationArea.scrollTop = ratio * (lyricsTranslationArea.scrollHeight - lyricsTranslationArea.clientHeight);
+		syncingScroll = false;
+	});
+
+	lyricsTranslationArea.addEventListener("scroll", () => {
+		if (syncingScroll) return;
+		syncingScroll = true;
+		const ratio = lyricsTranslationArea.scrollTop / (lyricsTranslationArea.scrollHeight - lyricsTranslationArea.clientHeight);
+		lyricsArea.scrollTop = ratio * (lyricsArea.scrollHeight - lyricsArea.clientHeight);
+		syncingScroll = false;
 	});
 
 	document.getElementById("debugButton").addEventListener("click", () => {

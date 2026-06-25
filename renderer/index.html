@@ -175,20 +175,18 @@
 							<div class="lyrics-header-row">
 								<div id="originalLyricName"></div>
 								<button id="lyricsExpandToggle" onclick="toggleLyricsExpand()">Expand Lyrics</button>
+								<div id="translatedLyricName">Translated Language:</div>
+								<select name="translatedLyricName" id="translatedLyricInput" onchange="onTranslationPickerChange()">
+									<option value="none">None</option>
+									<option value="new">New</option>
+								</select>
+								<button id="deleteTranslationBtn" onclick="deleteCurrentTranslation()">Delete</button>
+								<button id="autoTranslateBtn" disabled onclick="autoTranslateLyrics()">Auto-Translate</button>
 							</div>
 							<div class="lyrics-areas-row">
 								<textarea name="lyricsArea" id="lyricsArea"></textarea>
 								<div id="lyricsProgressBar"></div>
 								<div class="lyrics-translation-col">
-									<div class="lyrics-translation-header">
-										<div id="translatedLyricName">Translated Language:</div>
-										<select name="translatedLyricName" id="translatedLyricInput" onchange="onTranslationPickerChange()">
-											<option value="none">None</option>
-											<option value="new">New</option>
-										</select>
-										<button id="deleteTranslationBtn" onclick="deleteCurrentTranslation()">Delete</button>
-										<button id="autoTranslateBtn" disabled onclick="autoTranslateLyrics()">Auto-Translate</button>
-									</div>
 									<textarea name="lyricsTranslationArea" id="lyricsTranslationArea"></textarea>
 								</div>
 							</div>

@@ -23,6 +23,7 @@
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
 -   recommendations just for a song or playlist
+-   Auto scrape translations from the web.
 -   Fix streaming in windows
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
