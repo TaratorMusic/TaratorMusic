@@ -1579,16 +1579,27 @@ async function opencustomiseModal(songsId) {
 	const picker = document.getElementById("translatedLyricInput");
 	const currentLang = picker.value;
 	picker.innerHTML = '<option value="none">None</option><option value="new">New</option>';
-	for (const row of cachedRows) {
-		if (row.language) {
-			const opt = document.createElement("option");
-			opt.value = row.language;
-			opt.textContent = row.language;
-			picker.appendChild(opt);
-		}
+	const translationLangs = cachedRows
+		.filter(r => r.language)
+		.map(r => r.language)
+		.sort((a, b) => a.localeCompare(b));
+        
+	for (const lang of translationLangs) {
+		const opt = document.createElement("option");
+		opt.value = lang;
+		opt.textContent = lang;
+		picker.appendChild(opt);
 	}
-	picker.value = cachedRows.some(r => r.language == currentLang) ? currentLang : "none";
+
+	if (cachedRows.some(r => r.language == currentLang)) {
+		picker.value = currentLang;
+	} else if (translationLangs.length > 0) {
+		picker.value = translationLangs[0];
+	} else {
+		picker.value = "none";
+	}
 	document.getElementById("lyricsTranslationArea").value = picker.value != "none" && picker.value != "new" ? cachedRows.find(r => r.language == picker.value)?.lyrics || "" : "";
+	updateAutoTranslateBtn();
 
 	document.getElementById("lyricsThumbnail").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 	document.getElementById("lyricsSongName").innerText = song_name;
@@ -2150,6 +2161,7 @@ async function onTranslationPickerChange() {
 		document.getElementById("lyricsTranslationArea").value = "";
 		div.dataset.origTranslation = "";
 		div.dataset.origTranslationLang = newLang.trim();
+		updateAutoTranslateBtn();
 		return;
 	}
 
@@ -2157,6 +2169,7 @@ async function onTranslationPickerChange() {
 		document.getElementById("lyricsTranslationArea").value = "";
 		div.dataset.origTranslation = "";
 		div.dataset.origTranslationLang = "none";
+		updateAutoTranslateBtn();
 		return;
 	}
 
@@ -2165,6 +2178,7 @@ async function onTranslationPickerChange() {
 	document.getElementById("lyricsTranslationArea").value = row?.lyrics || "";
 	div.dataset.origTranslation = document.getElementById("lyricsTranslationArea").value;
 	div.dataset.origTranslationLang = selected;
+	updateAutoTranslateBtn();
 }
 
 function promptLanguageModal() {
@@ -2240,6 +2254,11 @@ async function deleteCurrentTranslation() {
 }
 
 async function translateLyrics(lyrics, sourceLang, targetLang, limit = 450) {
+	if (!window.LANG_MAP) await loadJSFile("lang_map");
+	const srcCode = window.LANG_MAP[sourceLang.toLowerCase().trim()] ?? sourceLang.toLowerCase().trim();
+	const tgtCode = window.LANG_MAP[targetLang.toLowerCase().trim()] ?? targetLang.toLowerCase().trim();
+	sourceLang = srcCode;
+	targetLang = tgtCode;
 	function split(text) {
 		if (text.length <= limit) {
 			return [text];
@@ -2302,7 +2321,7 @@ async function translateLyrics(lyrics, sourceLang, targetLang, limit = 450) {
 
 	const translatedChunks = await Promise.all(
 		chunks.map(async chunk => {
-			const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${sourceLang}|${targetLang}`);
+			const response = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(chunk)}`);
 
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}`);
@@ -2310,7 +2329,7 @@ async function translateLyrics(lyrics, sourceLang, targetLang, limit = 450) {
 
 			const data = await response.json();
 
-			return data.responseData.translatedText;
+			return data[0].map(c => c[0]).join("");
 		}),
 	);
 
@@ -2323,6 +2342,36 @@ async function translateLyrics(lyrics, sourceLang, targetLang, limit = 450) {
 			return result;
 		})
 		.join("\n\n");
+}
+
+function updateAutoTranslateBtn() {
+	const picker = document.getElementById("translatedLyricInput");
+	const selected = picker.value;
+	const sourceLang = document.getElementById("customiseSongLanguage").value.trim();
+	const lyricsValue = document.getElementById("lyricsArea").value.trim();
+	const btn = document.getElementById("autoTranslateBtn");
+	btn.disabled = !sourceLang || !lyricsValue || selected == "none" || selected == "new";
+}
+
+async function autoTranslateLyrics() {
+	const picker = document.getElementById("translatedLyricInput");
+	const targetLang = picker.value;
+	const sourceLang = document.getElementById("customiseSongLanguage").value.trim();
+	const lyrics = document.getElementById("lyricsArea").value;
+	const btn = document.getElementById("autoTranslateBtn");
+
+	btn.disabled = true;
+	btn.textContent = "Translating...";
+
+	try {
+		const translated = await translateLyrics(lyrics, sourceLang, targetLang);
+		document.getElementById("lyricsTranslationArea").value = translated;
+	} catch (error) {
+		await alertModal("Translation failed: " + (error.message ?? String(error)));
+	} finally {
+		btn.textContent = "Auto-Translate";
+		updateAutoTranslateBtn();
+	}
 }
 
 async function saveUserProgress() {

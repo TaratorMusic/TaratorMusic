@@ -1,8 +1,5 @@
 ### Version 1.8.8 Planned Features
 
--   Auto translate feature will be inside the create new translation modal (use translateLyrics())
--   Auto pick if a translation exists upon opening the customisation modal
-
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
 -   - Remove the x button.
@@ -11,8 +8,6 @@
 -   search at the same time while downloading, uses same text bar
 -   New option while downloading: Start playing the song after the download is finished
 
--   recommendations just for a song or playlist
--   song listen data in the customisation modal
 -   Statistics page is loading too slowly. Add pages inside
 -   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
@@ -21,11 +16,13 @@
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
 -   Editing streamed songs does not refresh anything
 -   Song link comparation takes playlist additions of the link to account ??
+-   Remodel customisation modal to fit better
 
 ### Version 1.9.0 Planned Features
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
+-   recommendations just for a song or playlist
 -   Fix streaming in windows
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
 -   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
