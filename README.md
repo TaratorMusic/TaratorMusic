@@ -64,7 +64,7 @@ The launch of this app just takes 2.2 seconds! This number was taken from a comp
 
 ### Actual Random
 
-The randomness of the next song in TaratorMusic has been statistically proven by Chi Square Test. In the test, 10.000 random songs have played after each other, and the test was successful even at 0.01 significance level.
+Validated the shuffle algorithm using a chi-square goodness-of-fit test (10,000 simulated song selections) to evaluate whether song selection approximated a uniform distribution.
 
 ### Download Your Own
 
@@ -92,7 +92,7 @@ If you have your old databases intact, you can redownload all your songs back us
 
 ### Instant Song Search
 
-Thought of a song, but too bothered to go to the musics tab, search and play it? With this feature, you can use a keyboard shortcut of your choice to search for your song, and it will play the song whose name is closest to your query! (Current shortcut is: CTRL+F)
+Thought of a song, but too bothered to go to the musics tab, search and play it? With this feature, you can use a keyboard shortcut of your choice to search for your song, and it will play the song whose name is closest to your query! Works for playlists and shuffling too!
 
 ### Statistics
 
@@ -100,7 +100,7 @@ Interested in your listen data? The statistics tab lets you see your favorite so
 
 ### Personalised Song Recommendations
 
-You will be able to get special song recommendations based on what songs you have listened to, and for how long.
+You are able to get special song recommendations based on what songs you have listened to, and for how long.
 
 ### Stream Songs
 
@@ -112,7 +112,7 @@ You can create a small window that will always be on top of your apps to keep tr
 
 ### Lyrics Storage
 
-Store the lyrics of your favorite songs in the database and read them in one key press.
+Store the lyrics of your favorite songs in your database and read them in one key press.
 
 ## Upcoming Features:
 
