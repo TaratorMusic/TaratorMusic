@@ -1541,7 +1541,7 @@ th {
 }
 
 .customise-song-meta .meta-song-name {
-	font-size: 1.1vw;
+	font-size: 2vw;
 	font-weight: 700;
 	color: #ffffff;
 	margin: 0;
@@ -1638,12 +1638,16 @@ th {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
-	gap: 0.4vw;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	gap: 0.5vw;
 	padding-top: 0.5vh;
 	border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.customise-actions button {
+.customise-actions button,
+.customise-actions label {
 	font-size: 0.75vw;
 	padding: 4px 8px;
 	height: auto !important;
@@ -1655,11 +1659,13 @@ th {
 	transition: background 0.2s ease;
 }
 
-.customise-actions button:hover:not(:disabled) {
+.customise-actions button:hover:not(:disabled),
+.customise-actions label:hover:not(:disabled) {
 	background: rgba(255, 255, 255, 0.15);
 }
 
-.customise-actions button:disabled {
+.customise-actions button:disabled,
+.customise-actions label:disabled {
 	opacity: 0.35;
 	cursor: not-allowed;
 }
@@ -1724,6 +1730,8 @@ th {
 	color: white !important;
 	flex-shrink: 0;
 	transition: background 0.2s ease;
+    margin-left: 7vw;
+    margin-right: 4vw;
 }
 
 #lyricsExpandToggle:hover {
@@ -1847,6 +1855,7 @@ th {
 	color: white;
 	font-size: 0.9vw;
 	outline: none;
+    color: white;
 }
 
 .lang-prompt-input:focus {

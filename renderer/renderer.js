@@ -1533,9 +1533,7 @@ async function opencustomiseModal(songsId) {
 		document.getElementById("customiseThumbnail").disabled = true;
 	}
 
-	document.getElementById("customiseSongIdArea").innerHTML = "&nbsp" + songsId;
 	document.getElementById("customiseSongName").value = song_name;
-	document.getElementById("customiseImage").src = thumbnailPath;
 	document.getElementById("customiseSongLink").value = song_url;
 
 	document.getElementById("customiseSongGenre").value = genre;
@@ -1856,7 +1854,7 @@ async function updateThumbnailImage(event, mode) {
 		const reader = new FileReader();
 		reader.onload = e => {
 			if (typeof mode == "number") {
-				const id = mode == 1 ? "customiseImage" : mode == 2 ? "editPlaylistThumbnail" : mode == 3 ? "thumbnailImage" : null;
+				const id = mode == 1 ? "lyricsThumbnail" : mode == 2 ? "editPlaylistThumbnail" : mode == 3 ? "thumbnailImage" : null;
 				if (id) document.getElementById(id).src = e.target.result;
 			} else if (mode instanceof HTMLElement) {
 				mode.style.backgroundImage = `url(${e.target.result})`;

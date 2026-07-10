@@ -113,8 +113,10 @@
 								<div id="lyricsThumbnail"></div>
 								<div class="customise-song-meta">
 									<div class="meta-song-name" id="lyricsSongName"></div>
-									<div class="meta-song-id-label">Song ID</div>
-									<div class="meta-song-id" id="lyricsSongId"></div>
+									<div style="display: flex; flex-direction: row; align-items: center; text-align: center; gap: 1vw;">
+										<div class="meta-song-id-label">Song ID</div>
+										<div class="meta-song-id" id="lyricsSongId"></div>
+									</div>
 								</div>
 							</div>
 							<div class="customise-collapsible">
@@ -139,27 +141,18 @@
 										<label for="customiseSongLink">Link:</label>
 										<input type="text" id="customiseSongLink" />
 									</div>
-									<div class="customise-field-row">
-										<label>Song ID:</label>
-										<div id="customiseSongIdArea"></div>
-									</div>
-									<div class="customise-field-row">
-										<label for="customiseThumbnail">Thumbnail:</label>
-										<input id="customiseThumbnail" type="file" onchange="updateThumbnailImage(event, 1)" accept="image/*" />
-										<img id="customiseImage" />
+									<div class="customise-field-row" style="justify-content: space-around; text-align: center;">
+										<div id="modalTimePlayed" style="color: darkgrey"></div>
+										<div id="modalSecondsPlayed" style="color: darkgrey"></div>
+										<div id="modalStabilised" style="color: darkgrey"></div>
+										<div id="modalFileSize" style="color: darkgrey"></div>
 									</div>
 								</div>
-								<div class="customise-stats-panel">
-									<div class="customise-stat-item" id="modalTimePlayed"></div>
-									<div class="customise-stat-item" id="modalSecondsPlayed"></div>
-									<div class="customise-stat-item" id="modalStabilised"></div>
-									<div class="customise-stat-item" id="modalFileSize"></div>
-									<div class="customise-stat-item" id="modalPlaySpeed"></div>
-									<div class="customise-stat-item" id="modalBass"></div>
-									<div class="customise-stat-item" id="modalTreble"></div>
-									<div class="customise-stat-item" id="modalMidrange"></div>
-									<div class="customise-stat-item" id="modalVolume"></div>
-								</div>
+								<!--<div id="modalPlaySpeed"></div>
+									<div id="modalBass"></div>
+									<div id="modalTreble"></div>
+									<div id="modalMidrange"></div>
+									<div id="modalVolume"></div> -->
 								<div class="customise-actions">
 									<button id="notInterestedToggle">Interested</button>
 									<button id="downloadThisSong">Download This Song</button>
@@ -167,6 +160,8 @@
 									<button id="fetchSongInfoButton" onclick="grabAndStoreSongInfo('html')">Fetch Song Info</button>
 									<button id="removeSongButton">Remove Song</button>
 									<button onclick="saveEditedSong()">Save</button>
+									<label for="customiseThumbnail">Change Thumbnail</label>
+									<input id="customiseThumbnail" type="file" onchange="updateThumbnailImage(event, 1)" accept="image/*" hidden />
 								</div>
 							</div>
 						</div>

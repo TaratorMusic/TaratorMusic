@@ -15,6 +15,7 @@
 -   page mode yön tuşları disabled olsun çalışmayacaksa
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
 -   Editing streamed songs does not refresh anything
+-   Customisation modal thumbnail is not changing - buggy
 -   Song link comparation takes playlist additions of the link to account ??
 -   Remodel customisation modal to fit better
 
