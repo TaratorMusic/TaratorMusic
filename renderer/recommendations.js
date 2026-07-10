@@ -1,26 +1,39 @@
-async function getRecommendations() {
-	const artistPreferenceScore = await calculateArtistPreference();
-	if (artistPreferenceScore == 999) return alertModal("No songs listened yet to give recommendations of.");
-	const songMap = new Map();
-	const pointsMap = new Map();
+async function getRecommendations(songIds) {
+	const uniqueSongIds = songIds?.length ? songIds : [...songNameCache.keys()].map(id => String(id));
+	const artistListenTimes = {};
+	const inputArtists = new Set();
+
+	const songTimes =
+		(await callSqlite({
+			db: "musics",
+			query: "SELECT song_id, SUM(end_time - start_time) AS total_seconds FROM timers GROUP BY song_id",
+			args: [],
+			fetch: true,
+		})) || [];
+
+	const songTimesMap = new Map(songTimes.map(row => [`tarator-${row.song_id}`, row.total_seconds]));
+
+	for (const songId of uniqueSongIds) {
+		const song = songNameCache.get(songId);
+		if (!song) continue;
+
+		const listenTime = songTimesMap.get(songId) || 0;
+
+		artistListenTimes[song.artist] = (artistListenTimes[song.artist] || 0) + listenTime;
+		inputArtists.add(song.artist);
+	}
+
+	const artistPreferenceScore = calculateArtistPreferenceFromMap(artistListenTimes);
+
+	if (artistPreferenceScore == 999) {
+		return alertModal("No songs listened yet to give recommendations of.");
+	}
 
 	const existingSongsSet = new Set(Array.from(songNameCache.values()).map(song => song.song_name));
 	const notInterestedSet = new Set(notInterestedSongs.map(song => song.song_name));
-	const existingArtistSet = new Set(Array.from(songNameCache.values()).map(song => song.artist));
+	const existingArtistSet = new Set(Object.keys(artistListenTimes));
 
-	const listenTimesMap = (
-		await callSqlite({
-			db: "musics",
-			query: "SELECT songs.artist, SUM(end_time - start_time) AS totalListenTime FROM timers JOIN songs ON timers.song_id = songs.song_id GROUP BY songs.artist",
-			args: [],
-			fetch: true,
-		})
-	).reduce((acc, row) => {
-		acc[row.artist] = row.totalListenTime || 0;
-		return acc;
-	}, {});
-
-	const maxListenTime = Math.max(...Object.values(listenTimesMap), 1);
+	const maxListenTime = Math.max(...Object.values(artistListenTimes), 1);
 
 	const artists = await callSqlite({
 		db: "musics",
@@ -29,54 +42,72 @@ async function getRecommendations() {
 		fetch: true,
 	});
 
-	artists.forEach(artist => {
+	const songMap = new Map();
+
+	for (const artist of artists) {
 		const songs = JSON.parse(artist.deezer_songs_array || "[]");
 		const similarArtists = JSON.parse(artist.similar_artists_array || "[]");
-		if (!songs || songs.length == 0) return;
+
+		if (!songs.length) continue;
+
+		let matchedListenTime = 0;
+
+		for (const similarArtist of similarArtists) {
+			matchedListenTime += artistListenTimes[similarArtist] || 0;
+		}
+
+		if (matchedListenTime == 0) continue;
+
 		const totalSongs = songs.length;
+
 		songs.forEach((song, index) => {
 			if (existingSongsSet.has(song) || notInterestedSet.has(song)) return;
+
 			const positionFraction = 1 - index / totalSongs;
-			songMap.set(song, [positionFraction, artist.artist_name, artist.artist_fan_amount, similarArtists]);
+
+			songMap.set(song, [positionFraction, artist.artist_name, artist.artist_fan_amount, similarArtists, matchedListenTime]);
 		});
-	});
+	}
+
+	const pointsMap = new Map();
 
 	songMap.forEach((value, song) => {
-		const [positionFraction, artistName, artistFanAmount, similarArtists] = value;
+		const [positionFraction, artistName, artistFanAmount, similarArtists, matchedListenTime] = value;
 
 		const popularityPoints = positionFraction * popularityFactor;
 
 		const artistStrengthPoints = (Math.log(artistFanAmount + 1) / 10) * artistStrengthFactor;
 
 		let similarArtistsPoints = 0;
+
 		if (similarArtists.length > 0) {
-			const listenedSimilarArtists = similarArtists.filter(simArtist => listenTimesMap[simArtist] && listenTimesMap[simArtist] > 0);
+			const listenedSimilarArtists = similarArtists.filter(artist => artistListenTimes[artist] > 0);
 
 			if (listenedSimilarArtists.length > 0) {
-				const totalSimilarScore = listenedSimilarArtists.reduce((acc, simArtist) => {
-					return acc + Math.log(1 + listenTimesMap[simArtist]);
-				}, 0);
+				const totalSimilarScore = listenedSimilarArtists.reduce((acc, artist) => acc + Math.log(1 + artistListenTimes[artist]), 0);
+
 				similarArtistsPoints = (totalSimilarScore / listenedSimilarArtists.length) * similarArtistsFactor;
 			}
 		}
 
-		const artistListenTime = listenTimesMap[artistName] || 0;
-		const artistListenTimePoints = artistListenTime > 0 ? (Math.log(1 + artistListenTime) / Math.log(1 + maxListenTime)) * artistListenTimeFactor : 0;
+		const artistListenTimePoints = (Math.log(1 + matchedListenTime) / Math.log(1 + maxListenTime)) * artistListenTimeFactor;
+
 		const userPreferencePoints = existingArtistSet.has(artistName) ? artistPreferenceScore * userPreferenceFactor : (1 - artistPreferenceScore) * userPreferenceFactor;
+
 		const randomPoints = Math.random() * randomFactor;
-		const totalPoints = popularityPoints + artistStrengthPoints + similarArtistsPoints + userPreferencePoints + artistListenTimePoints + randomPoints;
+
+		const totalPoints = popularityPoints + artistStrengthPoints + similarArtistsPoints + artistListenTimePoints + userPreferencePoints + randomPoints;
 
 		pointsMap.set(song, [artistName, totalPoints]);
 	});
 
-	const sortedPointsArray = [...pointsMap.entries()].sort((a, b) => b[1][1] - a[1][1]);
-	const sortedPointsMap = new Map(sortedPointsArray);
-
-	return sortedPointsMap;
+	const output = new Map([...pointsMap.entries()].sort((a, b) => b[1][1] - a[1][1]));
+	console.log(output);
+	return output;
 }
 
 async function calculateArtistPreference() {
-	let songTimes =
+	const songTimes =
 		(await callSqlite({
 			db: "musics",
 			query: "SELECT song_id, SUM(end_time - start_time) AS total_seconds FROM timers GROUP BY song_id",
@@ -89,10 +120,16 @@ async function calculateArtistPreference() {
 	for (const row of songTimes) {
 		const song = songNameCache.get(`tarator-${row.song_id}`);
 		if (!song) continue;
+
 		artistTimes[song.artist] = (artistTimes[song.artist] || 0) + row.total_seconds;
 	}
 
+	return calculateArtistPreferenceFromMap(artistTimes);
+}
+
+function calculateArtistPreferenceFromMap(artistTimes) {
 	const artistDurations = Object.values(artistTimes);
+
 	if (artistDurations.length == 0) return 999;
 
 	const sortedDurations = artistDurations.slice().sort((a, b) => a - b);
@@ -104,6 +141,7 @@ async function calculateArtistPreference() {
 	const giniCoefficient = (2 * cumulativeWeightedSum) / (numArtists * totalDuration) - (numArtists + 1) / numArtists;
 
 	logChange("log", `Gini Coefficient (0 = equal, 1 = concentrated): ${giniCoefficient}`);
+
 	return Number.isNaN(giniCoefficient) ? 999 : giniCoefficient;
 }
 
