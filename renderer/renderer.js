@@ -1886,12 +1886,11 @@ async function searchSong(typed) {
 			fetch: true,
 		});
 
-		document.getElementById("searchModalFound").innerText = `${"Found: " + (row[0]?.song_name || "Nothing")}`;
+		if (!row[0]) return (document.getElementById("searchModalFound").innerText = "Found: Nothing");
+		document.getElementById("searchModalFound").innerText = `Found: ${row[0].song_name}`;
 		if (typed) return;
 
 		searchModalInput.value = "";
-		searchModalInput.classList.add("red-placeholder");
-		searchModalInput.placeholder = "Song not found.";
 		playMusic(row[0].song_id, null);
 		document.getElementById("searchModal").style.display = "none";
 	} catch {
@@ -1922,11 +1921,21 @@ function searchPlaylist(typed) {
 function searchShuffle() {
 	try {
 		const query = searchModalInput.value.trim().toLowerCase();
-		if (!query) return;
+		const foundDiv = document.getElementById("searchModalFound");
+		if (!query) {
+			foundDiv.innerText = "Found: Nothing";
+			return;
+		}
 
 		const results = filterSongs(query);
-		if (!results.length) return;
+		if (!results.length) {
+			foundDiv.innerText = "Found: Nothing";
+			searchModalInput.classList.add("red-placeholder");
+			searchModalInput.placeholder = "Song not found.";
+			return;
+		}
 
+		foundDiv.innerText = `Found ${results.length} songs`;
 		searchModalInput.value = "";
 		document.getElementById("searchModal").style.display = "none";
 
@@ -2005,28 +2014,36 @@ document.addEventListener("keydown", event => {
 		searchModalInput.classList.remove("red-placeholder");
 		searchModalInput.placeholder = "Type a song name, and press Enter";
 		document.getElementById("searchModalTitle").innerText = "Quick Song Search";
-		document.getElementById("searchModalFound").innerText = "Found: Nothing";
 		document.getElementById("searchModal").dataset.mode = "song";
 		document.getElementById("searchModal").style.display = "flex";
+        document.getElementById("searchModalFound").style.display = "flex";
 		searchModalInput.focus();
+		searchSong(true);
 	} else if (event.key == key_searchPlaylist) {
 		event.preventDefault();
 		searchModalInput.classList.remove("red-placeholder");
 		searchModalInput.placeholder = "Type a playlist name, and press Enter";
 		document.getElementById("searchModalTitle").innerText = "Quick Playlist Search";
-		document.getElementById("searchModalFound").style.display = "";
+		document.getElementById("searchModalFound").style.display = "flex";
 		document.getElementById("searchModal").dataset.mode = "playlist";
 		document.getElementById("searchModal").style.display = "flex";
 		searchModalInput.focus();
+		searchPlaylist(true);
 	} else if (event.key == key_searchShuffle) {
 		event.preventDefault();
 		searchModalInput.classList.remove("red-placeholder");
 		searchModalInput.placeholder = "Type a search query, and press Enter";
 		document.getElementById("searchModalTitle").innerText = "Search Shuffle";
-		document.getElementById("searchModalFound").style.display = "none";
+		document.getElementById("searchModalFound").style.display = "flex";
 		document.getElementById("searchModal").dataset.mode = "shuffle";
 		document.getElementById("searchModal").style.display = "flex";
 		searchModalInput.focus();
+		const shuffleQuery = searchModalInput.value.trim().toLowerCase();
+		if (!shuffleQuery) document.getElementById("searchModalFound").innerText = "Found: Nothing";
+		else {
+			const results = filterSongs(shuffleQuery);
+			document.getElementById("searchModalFound").innerText = `Found ${results.length} songs`;
+		}
 	} else if (event.key == key_randomSong) {
 		randomSongFunctionMainMenu();
 	} else if (event.key == key_randomPlaylist) {
@@ -2521,8 +2538,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	document.getElementById("searchModalInput").addEventListener("input", () => {
 		const mode = document.getElementById("searchModal").dataset.mode;
+		const foundDiv = document.getElementById("searchModalFound");
 		if (mode == "playlist") searchPlaylist(true);
-		else if (mode != "shuffle") searchSong(true);
+		else if (mode == "shuffle") {
+			const query = searchModalInput.value.trim().toLowerCase();
+			if (!query) {
+				foundDiv.innerText = "Found: Nothing";
+				searchModalInput.classList.remove("red-placeholder");
+				searchModalInput.placeholder = "Type a search query, and press Enter";
+				return;
+			}
+			const results = filterSongs(query);
+			foundDiv.innerText = `Found ${results.length} songs`;
+		}
+		else searchSong(true);
 	});
 
 	const lyricsArea = document.getElementById("lyricsArea");
