@@ -727,8 +727,11 @@ async function searchYoutubeInMusics() {
 			}
 		})();
 	}
+	const totalPages = musicMode == "offline" ? Math.ceil(filteredSongs.length / (3 * previousItemsPerRow)) : Math.ceil(streamedSongsHtmlMap.size / (3 * previousItemsPerRow));
 	document.querySelectorAll(".pageScrollButtons").forEach(button => {
-		button.disabled = displayPage == "scroll";
+		const isFirstPage = currentPage <= 1;
+		const isLastPage = currentPage >= totalPages;
+		button.disabled = displayPage == "scroll" || (button.id == "leftPageButton" && isFirstPage) || (button.id == "rightPageButton" && isLastPage);
 	});
 
 	setupLazyBackgrounds();
@@ -918,8 +921,11 @@ function renderMusics(skipScrollSave = false) {
 		}
 	}
 
+	const totalPages2 = musicMode == "offline" ? Math.ceil(filteredSongs.length / (3 * previousItemsPerRow)) : Math.ceil(streamedSongsHtmlMap.size / (3 * previousItemsPerRow));
 	document.querySelectorAll(".pageScrollButtons").forEach(button => {
-		button.disabled = displayPage == "scroll";
+		const isFirstPage = currentPage <= 1;
+		const isLastPage = currentPage >= totalPages2;
+		button.disabled = displayPage == "scroll" || (button.id == "leftPageButton" && isFirstPage) || (button.id == "rightPageButton" && isLastPage);
 	});
 	setupLazyBackgrounds();
 
