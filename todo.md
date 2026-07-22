@@ -6,7 +6,6 @@
 -   - That will cancel the current downloads and clean the modal.
 -   - Download modal should have a search section and a download section, download section should have the thumbnail & song name/info
 -   search at the same time while downloading, uses same text bar
--   New option (checkbox) while downloading: Start playing the song after the download is finished
 
 -   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence

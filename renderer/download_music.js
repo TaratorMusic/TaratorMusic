@@ -264,6 +264,20 @@ async function processVideoLink(videoUrl, songId = null) {
 		songInfoInputsDiv.appendChild(languageInput);
 		songInfoInputsDiv.appendChild(genreInput);
 
+		const playAfterDownloadRow = document.createElement("div");
+		playAfterDownloadRow.style = "display:flex;align-items:center;gap:6px;margin-top:6px;";
+		const playAfterCheckbox = document.createElement("input");
+		playAfterCheckbox.type = "checkbox";
+		playAfterCheckbox.id = "playAfterDownloadCheckbox";
+		playAfterCheckbox.style = "width:16px;height:16px;cursor:pointer;";
+		const playAfterLabel = document.createElement("label");
+		playAfterLabel.htmlFor = "playAfterDownloadCheckbox";
+		playAfterLabel.textContent = "Play after download";
+		playAfterLabel.style = "color:white;font-size:2vh;cursor:pointer;";
+		playAfterDownloadRow.appendChild(playAfterCheckbox);
+		playAfterDownloadRow.appendChild(playAfterLabel);
+		exampleDownloadColumn.appendChild(playAfterDownloadRow);
+
 		document.getElementById("downloadModalText").innerHTML = "";
 
 		const finalDownloadButton = document.createElement("button");
@@ -439,6 +453,20 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 	}
 
 	document.getElementById("downloadModalText").innerHTML = "";
+
+	const playAfterDownloadRow = document.createElement("div");
+	playAfterDownloadRow.style = "display:flex;align-items:center;gap:6px;margin:6px 0;";
+	const playAfterCheckbox = document.createElement("input");
+	playAfterCheckbox.type = "checkbox";
+	playAfterCheckbox.id = "playAfterDownloadCheckbox";
+	playAfterCheckbox.style = "width:16px;height:16px;cursor:pointer;";
+	const playAfterLabel = document.createElement("label");
+	playAfterLabel.htmlFor = "playAfterDownloadCheckbox";
+	playAfterLabel.textContent = "Play after download";
+	playAfterLabel.style = "color:white;font-size:2vh;cursor:pointer;";
+	playAfterDownloadRow.appendChild(playAfterCheckbox);
+	playAfterDownloadRow.appendChild(playAfterLabel);
+	document.getElementById("downloadModalBottomRow").appendChild(playAfterDownloadRow);
 
 	const finalDownloadButton = document.createElement("button");
 	finalDownloadButton.id = "finalDownloadButton";
@@ -694,6 +722,8 @@ async function actuallyDownloadTheSong() {
 			document.getElementById("downloadModalText").innerText = "Download complete!";
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
+			const playAfterCheckbox = document.getElementById("playAfterDownloadCheckbox");
+			if (playAfterCheckbox && playAfterCheckbox.checked) playMusic(songID, null);
 			if (!genre || !artist || !language) grabAndStoreSongInfo(songID);
 			if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
 		} catch (error) {
@@ -947,6 +977,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 		if (idsNeedingInfo.length > 0) grabAndStoreSongInfo(idsNeedingInfo);
 		if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
+
+		const playAfterCheckbox = document.getElementById("playAfterDownloadCheckbox");
+		if (playAfterCheckbox && playAfterCheckbox.checked && songIds.length > 0) playMusic(songIds[0], null);
 	} catch (error) {
 		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
 	}
