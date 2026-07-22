@@ -1861,7 +1861,11 @@ async function updateThumbnailImage(event, mode) {
 		reader.onload = e => {
 			if (typeof mode == "number") {
 				const id = mode == 1 ? "lyricsThumbnail" : mode == 2 ? "editPlaylistThumbnail" : mode == 3 ? "thumbnailImage" : null;
-				if (id) document.getElementById(id).src = e.target.result;
+				const el = document.getElementById(id);
+				if (el) {
+					if (mode == 1) el.style.backgroundImage = `url(${e.target.result})`;
+					else el.src = e.target.result;
+				}
 			} else if (mode instanceof HTMLElement) {
 				mode.style.backgroundImage = `url(${e.target.result})`;
 			}

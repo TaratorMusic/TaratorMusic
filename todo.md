@@ -12,9 +12,7 @@
 -   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
 -   Editing streamed songs does not refresh anything
--   Customisation modal thumbnail is not changing - buggy
 -   Search song modal song value bugs out sometimes
--   Song link comparation takes playlist additions of the link to account ??
 -   Remodel customisation modal to fit better
 
 ### Version 1.9.0 Planned Features
