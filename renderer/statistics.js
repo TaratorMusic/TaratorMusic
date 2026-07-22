@@ -400,6 +400,10 @@ async function generalStatistics() {
 	theBigText.innerHTML += `Amount of songs downloaded from Spotify: ${statisticsRow.songs_downloaded_spotify || 0}<br>`;
 }
 
+let statsPage = 1;
+let statsPageSize = 50;
+let statsDisplayMode = "page";
+
 async function htmlTableStats(sortedData = null) {
 	const rows = sortedData || songsTable;
 
@@ -420,6 +424,43 @@ async function htmlTableStats(sortedData = null) {
 
 	const container = document.createElement("div");
 	container.id = "htmlTable";
+
+	const controlsRow = document.createElement("div");
+	controlsRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;";
+
+	const pageModeSelect = document.createElement("select");
+	pageModeSelect.id = "statsPageModeSelect";
+	pageModeSelect.style.cssText = "width:11vw;height:3.5vh;font-size:2.2vh;border:none;text-align:center;background-color:rgba(0,0,0,0.8);color:white;cursor:pointer;";
+	["page", "scroll"].forEach(mode => {
+		const opt = document.createElement("option");
+		opt.value = mode;
+		opt.textContent = mode == "page" ? "Page Mode" : "Scroll Mode";
+		if (mode == statsDisplayMode) opt.selected = true;
+		pageModeSelect.appendChild(opt);
+	});
+	pageModeSelect.onchange = () => { statsDisplayMode = pageModeSelect.value; statsPage = 1; htmlTableStats(sortedData); };
+
+	const pageLabel = document.createElement("span");
+	pageLabel.id = "statsPageLabel";
+	pageLabel.style.cssText = "color:white;font-size:2.2vh;";
+
+	const leftBtn = document.createElement("button");
+	leftBtn.className = "pageScrollButtons";
+	leftBtn.textContent = "<";
+	leftBtn.id = "statsLeftPageButton";
+	leftBtn.style.cssText = "border-top-left-radius:5px;border-bottom-left-radius:5px;";
+
+	const rightBtn = document.createElement("button");
+	rightBtn.className = "pageScrollButtons";
+	rightBtn.textContent = ">";
+	rightBtn.id = "statsRightPageButton";
+	rightBtn.style.cssText = "border-top-right-radius:5px;border-bottom-right-radius:5px;";
+
+	controlsRow.appendChild(pageModeSelect);
+	controlsRow.appendChild(leftBtn);
+	controlsRow.appendChild(pageLabel);
+	controlsRow.appendChild(rightBtn);
+	container.appendChild(controlsRow);
 
 	const table = document.createElement("table");
 	const thead = document.createElement("thead");
@@ -482,7 +523,15 @@ async function htmlTableStats(sortedData = null) {
 	table.appendChild(thead);
 
 	const tbody = document.createElement("tbody");
-	rows.forEach(row => {
+	const totalPages = Math.ceil(rows.length / statsPageSize);
+	if (statsPage > totalPages) statsPage = totalPages || 1;
+	if (statsPage < 1) statsPage = 1;
+
+	const startIdx = statsDisplayMode == "scroll" ? 0 : (statsPage - 1) * statsPageSize;
+	const endIdx = statsDisplayMode == "scroll" ? rows.length : Math.min(startIdx + statsPageSize, rows.length);
+	const pageRows = rows.slice(startIdx, endIdx);
+
+	pageRows.forEach(row => {
 		const tr = document.createElement("tr");
 		Object.keys(headerNames).forEach(key => {
 			const td = document.createElement("td");
@@ -495,6 +544,17 @@ async function htmlTableStats(sortedData = null) {
 	table.appendChild(tbody);
 	container.appendChild(table);
 	statisticsContent.appendChild(container);
+
+	pageLabel.textContent = `Page ${statsPage}/${totalPages}`;
+	leftBtn.disabled = statsPage <= 1 || statsDisplayMode == "scroll";
+	rightBtn.disabled = statsPage >= totalPages || statsDisplayMode == "scroll";
+
+	leftBtn.onclick = () => {
+		if (statsPage > 1) { statsPage--; htmlTableStats(sortedData); }
+	};
+	rightBtn.onclick = () => {
+		if (statsPage < totalPages) { statsPage++; htmlTableStats(sortedData); }
+	};
 }
 
 function findListenPercentage(songId) {

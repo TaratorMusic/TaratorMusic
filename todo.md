@@ -6,9 +6,8 @@
 -   - That will cancel the current downloads and clean the modal.
 -   - Download modal should have a search section and a download section, download section should have the thumbnail & song name/info
 -   search at the same time while downloading, uses same text bar
--   New option while downloading: Start playing the song after the download is finished
+-   New option (checkbox) while downloading: Start playing the song after the download is finished
 
--   Statistics page is loading too slowly. Add pages inside
 -   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
 -   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)
@@ -16,6 +15,7 @@
 -   If there is a search thing prevent recommendations taking its place upon rendermusics
 -   Editing streamed songs does not refresh anything
 -   Customisation modal thumbnail is not changing - buggy
+-   Search song modal song value bugs out sometimes
 -   Song link comparation takes playlist additions of the link to account ??
 -   Remodel customisation modal to fit better
 
