@@ -463,6 +463,7 @@ async function myMusicOnClick() {
 
 	musicSearchInput.addEventListener("input", () => {
 		musicSearchValue = musicSearchInput.value;
+		currentPage = 1;
 		musicMode == "offline" && renderMusics();
 	});
 
@@ -760,31 +761,30 @@ function filterSongs(searchValue) {
 		const tokens = [];
 		let i = 0;
 		while (i < input.length) {
-			if (input[i] == " ") {
-				i++;
-				continue;
-			}
 			if (input[i] == '"') {
 				let j = i + 1;
 				while (j < input.length && input[j] != '"') j++;
 				tokens.push({ type: "term", value: input.slice(i + 1, j), exact: true });
 				i = j + 1;
-			} else if (input.slice(i, i + 2) == "&&" || input.slice(i, i + 2) == "||") {
-				tokens.push({ type: "op", value: input.slice(i, i + 2) });
+			} else if (input.slice(i, i + 2) == "||") {
+				tokens.push({ type: "op", value: "||" });
+				i += 2;
+			} else if (input.slice(i, i + 2) == "&&") {
+				tokens.push({ type: "op", value: "&&" });
 				i += 2;
 			} else if (input[i] == "!") {
 				tokens.push({ type: "op", value: "!" });
 				i++;
-			} else if (input[i] == "+") {
-				tokens.push({ type: "op", value: "&&" });
-				i++;
 			} else if (input[i] == ",") {
 				tokens.push({ type: "op", value: "||" });
 				i++;
+			} else if (input[i] == "+") {
+				tokens.push({ type: "op", value: "&&" });
+				i++;
 			} else {
 				let j = i;
-				while (j < input.length && !' "!+,&|'.includes(input[j])) j++;
-				if (j > i) tokens.push({ type: "term", value: input.slice(i, j), exact: false });
+				while (j < input.length && !'"!+,&|'.includes(input[j])) j++;
+				if (j > i) tokens.push({ type: "term", value: input.slice(i, j).trim(), exact: false });
 				i = j > i ? j : i + 1;
 			}
 		}
