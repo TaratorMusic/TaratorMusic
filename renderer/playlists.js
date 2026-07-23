@@ -102,8 +102,12 @@ function displayPlaylists(playlists) {
 
 		const playlistName = document.createElement("div");
 		playlistName.className = "playlistName";
-		playlistName.innerHTML = `<h2>${playlist.name} -&nbsp;</h2>`;
-		playlistName.innerHTML += `<h3>${playlist.songs.length == 1 ? `${playlist.songs.length} song` : `${playlist.songs.length} songs`}</h3>`;
+		const nameH2 = document.createElement("h2");
+		nameH2.textContent = playlist.name + " - ";
+		playlistName.appendChild(nameH2);
+		const countH3 = document.createElement("h3");
+		countH3.textContent = playlist.songs.length == 1 ? `${playlist.songs.length} song` : `${playlist.songs.length} songs`;
+		playlistName.appendChild(countH3);
 		playlistInfo.appendChild(playlistName);
 
 		const playlistSongs = document.createElement("div");
@@ -241,7 +245,7 @@ async function saveEditedPlaylist() {
 	const playlistID = document.getElementById("editInvisibleId").value;
 	const newThumbnail = document.getElementById("editPlaylistThumbnail").src;
 
-	const playlistElement = document.querySelector(`.playlist[data-playlist-id="${playlistID}"]`);
+	const playlistElement = document.querySelector('[data-playlist-id="' + CSS.escape(playlistID) + '"]');
 	if (!playlistElement) {
 		logChange("error", `Playlist element not found for ID: ${playlistID}`);
 		return;
@@ -282,7 +286,7 @@ async function saveEditedPlaylist() {
 		imgElement.src = `${thumbnailPath}?timestamp=${Date.now()}`;
 	}
 
-	playlistElement.querySelector(".playlistName h2").innerHTML = `${newName} -&nbsp;`;
+	playlistElement.querySelector(".playlistName h2").textContent = newName + " - ";
 
 	await callSqlite({
 		db: "playlists",
