@@ -72,6 +72,7 @@ let lastSyncTimestamp = 0; // Current predicted timestamp in JS
 let isInterpolating = false; // If song is playing at the moment
 let playlistIdsForStartup = []; // At app launch, makes all playlist ID's an array to send to startup_check
 let isLoadingRecommendations = false; // If the app is currently loading recommendations (prevents duplication)
+let tickTimer = null;
 
 let songNameCache = new Map(); // Song cache
 let playlistsMap = new Map(); // Playlist cache
@@ -1158,6 +1159,7 @@ function playMusic(songId, playlistId) {
 		}
 
 		playing = true;
+		scheduleTick();
 		updateDiscordPresence();
 
 		if (playlistId) {
@@ -1355,6 +1357,7 @@ function playPause() {
 		if (playingSongsID) totalPausedTime += Math.floor(Date.now() / 1000) - songPauseStartTime;
 		if (player) player.playbackStatus = "Playing";
 		playing = true;
+		scheduleTick();
 		updateMiniPlayer({
 			isPlaying: true,
 		});
@@ -2016,7 +2019,7 @@ document.addEventListener("keydown", event => {
 		document.getElementById("searchModalTitle").innerText = "Quick Song Search";
 		document.getElementById("searchModal").dataset.mode = "song";
 		document.getElementById("searchModal").style.display = "flex";
-        document.getElementById("searchModalFound").style.display = "flex";
+		document.getElementById("searchModalFound").style.display = "flex";
 		searchModalInput.focus();
 		searchSong(true);
 	} else if (event.key == key_searchPlaylist) {
@@ -2448,6 +2451,11 @@ function getInterpolatedPosition() {
 	return lastAuthoritativePosition + elapsed;
 }
 
+function scheduleTick() {
+	if (tickTimer) clearTimeout(tickTimer);
+	tickTimer = setTimeout(tick, playing ? 200 : 1000);
+}
+
 function tick() {
 	try {
 		if (!isUserSeeking && songDuration > 0) {
@@ -2481,7 +2489,7 @@ function tick() {
 			if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
 		}
 
-		requestAnimationFrame(tick);
+		scheduleTick();
 	} catch (error) {
 		logChange("error", error?.message ?? String(error));
 	}
@@ -2550,8 +2558,7 @@ document.addEventListener("DOMContentLoaded", function () {
 			}
 			const results = filterSongs(query);
 			foundDiv.innerText = `Found ${results.length} songs`;
-		}
-		else searchSong(true);
+		} else searchSong(true);
 	});
 
 	const lyricsArea = document.getElementById("lyricsArea");
@@ -2639,11 +2646,12 @@ document.addEventListener("DOMContentLoaded", function () {
 				playButton.style.display = "none";
 				pauseButton.style.display = "inline-block";
 				playing = true;
+				scheduleTick();
 			}
 		}
 	});
 
-	requestAnimationFrame(tick);
+	scheduleTick();
 
 	volumeControl.addEventListener("input", () => {
 		volume = volumeControl.value / 100 / dividevolume;
