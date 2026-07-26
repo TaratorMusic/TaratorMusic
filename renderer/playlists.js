@@ -111,10 +111,102 @@ function displayPlaylists(playlists) {
 		playlistSongs.className = "scrollArea playlist-songs";
 
 		if (playlist.id != "Favorites") {
+			const playlistRecommendButton = document.createElement("div");
+			playlistInfo.appendChild(playlistRecommendButton);
+			playlistRecommendButton.className = "playlist-button";
+			playlistRecommendButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "recommendation.svg")}" alt="Get Recommendations">`;
+			playlistRecommendButton.dataset.tooltip = "Get Recommendations";
+
+			playlistRecommendButton.addEventListener("click", async () => {
+				await loadJSFile("download_music");
+				const taratorSongIds = playlist.songs.filter(id => id.includes("tarator"));
+				if (taratorSongIds.length == 0) {
+					return alertModal("No local songs found in this playlist to base recommendations on.");
+				}
+
+				const recMap = await getRecommendations(taratorSongIds);
+				if (!recMap || recMap.size == 0) {
+					return alertModal("No recommendations could be generated for this playlist's songs.");
+				}
+
+				isLoadingRecommendations = true;
+				streamedSongsHtmlMap = new Map();
+				musicMode = "stream";
+				localStorage.setItem("recommendationsCache", null);
+
+				document.getElementById("my-music").click();
+
+				const goalInput = document.getElementById("musicSearchInputAmount");
+				const goal = goalInput ? Number(goalInput.value) : 4;
+				let count = 0;
+
+				for (const [key, value] of recMap) {
+					if (!isLoadingRecommendations) return;
+					const ytQuery = `${key} by ${value[0]}`;
+					try {
+						const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
+						const info = result.entries ? result.entries[0] : result;
+						if (!info) continue;
+						const videoTitle = info.title;
+						const songID = info.id;
+						const songLength = info.duration;
+						const bestThumbnail = info.thumbnail?.url ?? info.thumbnail ?? null;
+
+						await callSqlite({
+							db: "musics",
+							query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
+							args: [songID, videoTitle, bestThumbnail, songLength, null, null, null],
+							fetch: false,
+						});
+
+						if (!streamedSongsCache.has(songID)) {
+							streamedSongsCache.set(songID, {
+								song_name: videoTitle,
+								thumbnail_url: bestThumbnail,
+								length: songLength,
+								artist: null,
+								genre: null,
+								language: null,
+							});
+						}
+
+						if (Array.from(songNameCache.values()).some(song => song.song_url?.includes(songID))) {
+							await callSqlite({
+								db: "musics",
+								query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
+								args: [songID, key],
+								fetch: false,
+							});
+							notInterestedSongs.push({ song_id: songID });
+							continue;
+						}
+
+						if (notInterestedSongs.some(row => row.song_id.toLowerCase().trim() == key.toLowerCase().trim())) continue;
+
+						const fullSong = {
+							id: songID,
+							name: videoTitle,
+							thumbnail: bestThumbnail,
+							length: songLength,
+						};
+						streamedSongsHtmlMap.set(songID, fullSong);
+						localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
+						if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
+						count++;
+						if (count >= goal) break;
+					} catch (error) {
+						logChange("error", error?.message ?? String(error));
+						await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
+					}
+				}
+				isLoadingRecommendations = false;
+			});
+
 			const playlistCustomiseButton = document.createElement("div");
 			playlistInfo.appendChild(playlistCustomiseButton);
 			playlistCustomiseButton.className = "playlist-button";
 			playlistCustomiseButton.innerHTML = `<img style="width: 70%; height: 70%;" src="${path.join(appThumbnailFolder, "customise.svg")}" alt="Customise">`;
+			playlistCustomiseButton.dataset.tooltip = "Edit Playlist";
 
 			playlistCustomiseButton.addEventListener("click", () => {
 				document.getElementById("editPlaylistModal").style.display = "block";
@@ -123,6 +215,32 @@ function displayPlaylists(playlists) {
 				document.getElementById("editPlaylistThumbnail").src = thumbnailSrc;
 				document.getElementById("editInvisiblePhoto").src = thumbnailSrc;
 				document.getElementById("editInvisibleExtension").src = playlist.thumbnail_extension;
+			});
+
+			const playlistButtons = [playlistCustomiseButton, playlistRecommendButton];
+
+			playlistButtons.forEach(el => {
+				let timeoutId;
+
+				el.addEventListener("mouseenter", e => {
+					timeoutId = setTimeout(() => {
+						if (!el.dataset.tooltip) return;
+						tooltip.textContent = el.dataset.tooltip;
+						tooltip.style.display = "block";
+						tooltip.style.left = e.pageX + 5 + "px";
+						tooltip.style.top = e.pageY + 5 + "px";
+					}, 1000);
+				});
+
+				el.addEventListener("mousemove", e => {
+					tooltip.style.left = e.pageX + 5 + "px";
+					tooltip.style.top = e.pageY + 5 + "px";
+				});
+
+				el.addEventListener("mouseleave", () => {
+					clearTimeout(timeoutId);
+					tooltip.style.display = "none";
+				});
 			});
 		}
 

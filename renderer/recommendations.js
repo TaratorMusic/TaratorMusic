@@ -1,7 +1,6 @@
 async function getRecommendations(songIds) {
 	const uniqueSongIds = songIds?.length ? songIds : [...songNameCache.keys()].map(id => String(id));
 	const artistListenTimes = {};
-	const inputArtists = new Set();
 
 	const songTimes =
 		(await callSqlite({
@@ -16,11 +15,10 @@ async function getRecommendations(songIds) {
 	for (const songId of uniqueSongIds) {
 		const song = songNameCache.get(songId);
 		if (!song) continue;
+		if (!song.artist) continue;
 
 		const listenTime = songTimesMap.get(songId) || 0;
-
 		artistListenTimes[song.artist] = (artistListenTimes[song.artist] || 0) + listenTime;
-		inputArtists.add(song.artist);
 	}
 
 	const artistPreferenceScore = calculateArtistPreferenceFromMap(artistListenTimes);
@@ -31,7 +29,9 @@ async function getRecommendations(songIds) {
 
 	const existingSongsSet = new Set(Array.from(songNameCache.values()).map(song => song.song_name));
 	const notInterestedSet = new Set(notInterestedSongs.map(song => song.song_name));
-	const existingArtistSet = new Set(Object.keys(artistListenTimes));
+
+	const existingArtists = Object.keys(artistListenTimes);
+	const existingArtistSet = new Set(existingArtists);
 
 	const maxListenTime = Math.max(...Object.values(artistListenTimes), 1);
 
@@ -41,6 +41,53 @@ async function getRecommendations(songIds) {
 		args: [],
 		fetch: true,
 	});
+
+	function normalizeName(name) {
+		if (!name) return "";
+		return name
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g, "")
+			.toLowerCase()
+			.trim();
+	}
+
+	const normalizedArtistMap = new Map(existingArtists.map(a => [normalizeName(a), a]));
+
+	function matchArtist(deezerName) {
+		const dn = normalizeName(deezerName);
+		if (normalizedArtistMap.has(dn)) return normalizedArtistMap.get(dn);
+
+		const wordsDN = dn.split(/\s+/).filter(w => w.length > 2);
+
+		for (const [la, localArtist] of normalizedArtistMap) {
+			const wordsLA = la.split(/\s+/).filter(w => w.length > 2);
+			const shorter = wordsDN.length <= wordsLA.length ? wordsDN : wordsLA;
+			const longer = wordsDN.length <= wordsLA.length ? wordsLA : wordsDN;
+			if (shorter.length == 0) continue;
+			if (shorter.every(w => longer.includes(w))) return localArtist;
+		}
+		return null;
+	}
+
+	function getListenTime(deezerName) {
+		const matched = matchArtist(deezerName);
+		return matched ? artistListenTimes[matched] : 0;
+	}
+
+	const reverseSignal = {};
+
+	for (const artist of artists) {
+		const localMatch = matchArtist(artist.artist_name);
+		if (!localMatch || !artistListenTimes[localMatch]) continue;
+
+		const listenTime = artistListenTimes[localMatch];
+		const similarArtists = JSON.parse(artist.similar_artists_array || "[]");
+
+		for (const similarArtist of similarArtists) {
+			const normalized = normalizeName(similarArtist);
+			reverseSignal[normalized] = (reverseSignal[normalized] || 0) + listenTime;
+		}
+	}
 
 	const songMap = new Map();
 
@@ -52,8 +99,17 @@ async function getRecommendations(songIds) {
 
 		let matchedListenTime = 0;
 
-		for (const similarArtist of similarArtists) {
-			matchedListenTime += artistListenTimes[similarArtist] || 0;
+		const selfMatch = matchArtist(artist.artist_name);
+		if (selfMatch) {
+			matchedListenTime = artistListenTimes[selfMatch];
+		} else {
+			for (const similarArtist of similarArtists) {
+				matchedListenTime += getListenTime(similarArtist);
+			}
+
+			if (matchedListenTime == 0) {
+				matchedListenTime = reverseSignal[normalizeName(artist.artist_name)] || 0;
+			}
 		}
 
 		if (matchedListenTime == 0) continue;
@@ -81,10 +137,10 @@ async function getRecommendations(songIds) {
 		let similarArtistsPoints = 0;
 
 		if (similarArtists.length > 0) {
-			const listenedSimilarArtists = similarArtists.filter(artist => artistListenTimes[artist] > 0);
+			const listenedSimilarArtists = similarArtists.filter(artist => getListenTime(artist) > 0);
 
 			if (listenedSimilarArtists.length > 0) {
-				const totalSimilarScore = listenedSimilarArtists.reduce((acc, artist) => acc + Math.log(1 + artistListenTimes[artist]), 0);
+				const totalSimilarScore = listenedSimilarArtists.reduce((acc, artist) => acc + Math.log(1 + getListenTime(artist)), 0);
 
 				similarArtistsPoints = (totalSimilarScore / listenedSimilarArtists.length) * similarArtistsFactor;
 			}
@@ -92,7 +148,7 @@ async function getRecommendations(songIds) {
 
 		const artistListenTimePoints = (Math.log(1 + matchedListenTime) / Math.log(1 + maxListenTime)) * artistListenTimeFactor;
 
-		const userPreferencePoints = existingArtistSet.has(artistName) ? artistPreferenceScore * userPreferenceFactor : (1 - artistPreferenceScore) * userPreferenceFactor;
+		const userPreferencePoints = matchArtist(artistName) ? artistPreferenceScore * userPreferenceFactor : (1 - artistPreferenceScore) * userPreferenceFactor;
 
 		const randomPoints = Math.random() * randomFactor;
 
@@ -102,7 +158,6 @@ async function getRecommendations(songIds) {
 	});
 
 	const output = new Map([...pointsMap.entries()].sort((a, b) => b[1][1] - a[1][1]));
-	console.log(output);
 	return output;
 }
 
@@ -131,6 +186,7 @@ function calculateArtistPreferenceFromMap(artistTimes) {
 	const artistDurations = Object.values(artistTimes);
 
 	if (artistDurations.length == 0) return 999;
+	if (artistDurations.length == 1) return 1;
 
 	const sortedDurations = artistDurations.slice().sort((a, b) => a - b);
 
