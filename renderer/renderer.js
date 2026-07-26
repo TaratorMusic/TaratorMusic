@@ -532,6 +532,14 @@ async function myMusicOnClick() {
 	buttonRight.id = "rightPageButton";
 	const buttonContainer = document.createElement("div");
 
+	const pagePicker = document.createElement("select");
+	pagePicker.id = "pagePicker";
+	pagePicker.style.cssText = "width:7vw;height:3.5vh;font-size:2.2vh;border:none;text-align:center;background-color:rgba(0,0,0,0.8);color:white;cursor:pointer;";
+	pagePicker.onchange = () => {
+		currentPage = parseInt(pagePicker.value);
+		renderMusics();
+	};
+
 	buttonLeft.addEventListener("click", () => {
 		if (currentPage != 1) currentPage--;
 		renderMusics();
@@ -598,6 +606,7 @@ async function myMusicOnClick() {
 	controlsBar.appendChild(buttonContainer);
 	buttonContainer.appendChild(buttonLeft);
 	buttonContainer.appendChild(displayPageSelect);
+	buttonContainer.appendChild(pagePicker);
 	buttonContainer.appendChild(buttonRight);
 	myMusicContent.appendChild(controlsBar);
 
@@ -928,6 +937,20 @@ function renderMusics(skipScrollSave = false) {
 		const isLastPage = currentPage >= totalPages2;
 		button.disabled = displayPage == "scroll" || (button.id == "leftPageButton" && isFirstPage) || (button.id == "rightPageButton" && isLastPage);
 	});
+
+	const pagePickerEl = document.getElementById("pagePicker");
+	if (pagePickerEl) {
+		pagePickerEl.innerHTML = "";
+		for (let i = 1; i <= Math.max(totalPages2, 1); i++) {
+			const opt = document.createElement("option");
+			opt.value = i;
+			opt.textContent = `Page ${i}`;
+			if (i == currentPage) opt.selected = true;
+			pagePickerEl.appendChild(opt);
+		}
+		pagePickerEl.style.display = displayPage == "scroll" || totalPages2 <= 1 ? "none" : "";
+	}
+    
 	setupLazyBackgrounds();
 
 	requestAnimationFrame(() => {

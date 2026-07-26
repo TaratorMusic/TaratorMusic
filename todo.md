@@ -1,4 +1,10 @@
-### Version 1.8.8 Planned Features
+### Version 1.9.0 Planned Features
+
+-   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
+-   If there is a search thing prevent recommendations taking its place upon rendermusics
+-   Editing streamed songs does not refresh anything
+
+### Version 1.9.x Planned Features
 
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
@@ -7,14 +13,9 @@
 -   - Download modal should have a search section and a download section, download section should have the thumbnail & song name/info
 -   search at the same time while downloading, uses same text bar
 
--   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
--   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
--   go to x. page, also when something is searched you cant see if you are ahead (show page count, ability to pick page count directly.)
--   If there is a search thing prevent recommendations taking its place upon rendermusics
--   Editing streamed songs does not refresh anything
 -   Remodel customisation modal to fit better
-
-### Version 1.9.0 Planned Features
+-   Get recommendations for a single song.
+-   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working

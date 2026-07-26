@@ -440,15 +440,19 @@ async function htmlTableStats(sortedData = null) {
 	});
 	pageModeSelect.onchange = () => { statsDisplayMode = pageModeSelect.value; statsPage = 1; htmlTableStats(sortedData); };
 
-	const pageLabel = document.createElement("span");
-	pageLabel.id = "statsPageLabel";
-	pageLabel.style.cssText = "color:white;font-size:2.2vh;";
-
 	const leftBtn = document.createElement("button");
 	leftBtn.className = "pageScrollButtons";
 	leftBtn.textContent = "<";
 	leftBtn.id = "statsLeftPageButton";
 	leftBtn.style.cssText = "border-top-left-radius:5px;border-bottom-left-radius:5px;";
+
+	const pagePicker = document.createElement("select");
+	pagePicker.id = "statsPagePicker";
+	pagePicker.style.cssText = "width:7vw;height:3.5vh;font-size:2.2vh;border:none;text-align:center;background-color:rgba(0,0,0,0.8);color:white;cursor:pointer;";
+	pagePicker.onchange = () => {
+		statsPage = parseInt(pagePicker.value);
+		htmlTableStats(sortedData);
+	};
 
 	const rightBtn = document.createElement("button");
 	rightBtn.className = "pageScrollButtons";
@@ -458,7 +462,7 @@ async function htmlTableStats(sortedData = null) {
 
 	controlsRow.appendChild(pageModeSelect);
 	controlsRow.appendChild(leftBtn);
-	controlsRow.appendChild(pageLabel);
+	controlsRow.appendChild(pagePicker);
 	controlsRow.appendChild(rightBtn);
 	container.appendChild(controlsRow);
 
@@ -545,7 +549,15 @@ async function htmlTableStats(sortedData = null) {
 	container.appendChild(table);
 	statisticsContent.appendChild(container);
 
-	pageLabel.textContent = `Page ${statsPage}/${totalPages}`;
+	pagePicker.innerHTML = "";
+	for (let i = 1; i <= Math.max(totalPages, 1); i++) {
+		const opt = document.createElement("option");
+		opt.value = i;
+		opt.textContent = `Page ${i}`;
+		if (i == statsPage) opt.selected = true;
+		pagePicker.appendChild(opt);
+	}
+	pagePicker.style.display = statsDisplayMode == "scroll" || totalPages <= 1 ? "none" : "";
 	leftBtn.disabled = statsPage <= 1 || statsDisplayMode == "scroll";
 	rightBtn.disabled = statsPage >= totalPages || statsDisplayMode == "scroll";
 
