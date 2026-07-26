@@ -1,9 +1,3 @@
-### Version 1.9.0 Planned Features
-
--   Opening a streamed song infinitely changes songs (Find out / fix the reason songs infinitely change. Happens very rarely)
--   If there is a search thing prevent recommendations taking its place upon rendermusics
--   Editing streamed songs does not refresh anything
-
 ### Version 1.9.x Planned Features
 
 -   What happens when you close the download modal by the X button while downloading?

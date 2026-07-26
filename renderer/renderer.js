@@ -721,6 +721,7 @@ async function searchYoutubeInMusics() {
 					};
 
 					streamedSongsHtmlMap.set(songID, fullSong);
+					localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
 
 					const musicElement = createMusicElement(fullSong);
 					if (fullSong.id == removeExtensions(playingSongsID)) musicElement.classList.add("playing");
@@ -950,7 +951,7 @@ function renderMusics(skipScrollSave = false) {
 		}
 		pagePickerEl.style.display = displayPage == "scroll" || totalPages2 <= 1 ? "none" : "";
 	}
-    
+
 	setupLazyBackgrounds();
 
 	requestAnimationFrame(() => {
@@ -1739,6 +1740,12 @@ async function saveEditedSong(translationOnly = false) {
 			cachedStream.language = songsLanguage;
 		}
 
+		const cachedHtmlEntry = streamedSongsHtmlMap.get(songID);
+		if (cachedHtmlEntry) {
+			cachedHtmlEntry.name = newNameInput;
+			localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
+		}
+
 		if (document.getElementById("my-music-content").style.display == "flex") {
 			element = document.querySelector(`div[data-file-name="${songID}"]`);
 			if (element) {
@@ -2490,6 +2497,7 @@ function tick() {
 			if (playingSongsID.length != 11) {
 				// Local song. Youtube link ID's consist of 11 digits.
 				const row = songNameCache.get(playingSongsID);
+				if (!row) return playNextSong();
 
 				updateMiniPlayer({
 					progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
@@ -2500,6 +2508,7 @@ function tick() {
 			} else {
 				// Youtube song
 				const row = streamedSongsCache.get(playingSongsID);
+				if (!row) return playNextSong();
 
 				updateMiniPlayer({
 					progress: `${formatTime(clamped)} / ${formatTime(songDuration)}`,
@@ -2515,6 +2524,7 @@ function tick() {
 		scheduleTick();
 	} catch (error) {
 		logChange("error", error?.message ?? String(error));
+		scheduleTick();
 	}
 }
 
