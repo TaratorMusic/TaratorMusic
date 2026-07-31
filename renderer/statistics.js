@@ -403,25 +403,72 @@ async function generalStatistics() {
 let statsPage = 1;
 let statsPageSize = 50;
 let statsDisplayMode = "page";
+let statsTotalPages = 1;
 
-async function htmlTableStats(sortedData = null) {
-	const rows = sortedData || songsTable;
+const statsTableColumns = {
+	song_id: "ID",
+	song_name: "Song Name",
+	song_length: "Length",
+	listenAmount: "Times Listened",
+	listenLength: "Total Time",
+	listenPercentage: "Listen %",
+};
 
-	for (let row of rows) {
-		const songId = row.song_id;
-		const clippedId = songId.replace("tarator-", "");
-		const songTimers = timersTable.filter(t => t.song_id == clippedId);
-		const listenAmount = songTimers.length;
-		const listenLength = songTimers.reduce((sum, t) => sum + (t.end_time - t.start_time), 0);
-		const listenPercentage = findListenPercentage(clippedId) + "%";
-		row.listenAmount = listenAmount;
-		row.listenLength = listenLength;
-		row.listenPercentage = listenPercentage;
+const statsSortColumns = {
+	song_id: "s.song_id",
+	song_name: "s.song_name",
+	song_length: "s.song_length",
+	listenAmount: "listen_amount",
+	listenLength: "listen_length",
+	listenPercentage: "listen_percentage",
+};
+
+const statsTableSelect = `
+	SELECT
+		s.song_id,
+		s.song_name,
+		s.song_length,
+		COUNT(t.song_id) AS listen_amount,
+		COALESCE(SUM(t.end_time - t.start_time), 0) AS listen_length,
+		CASE
+			WHEN COUNT(t.song_id) = 0 OR s.song_length IS NULL OR s.song_length = 0 THEN 0
+			ELSE CAST(ROUND((COALESCE(SUM(t.end_time - t.start_time), 0) * 100.0) / (COUNT(t.song_id) * s.song_length)) AS INTEGER)
+		END AS listen_percentage
+	FROM songs s
+	LEFT JOIN timers t ON t.song_id = REPLACE(s.song_id, 'tarator-', '')
+	GROUP BY s.song_id
+`;
+
+function mapStatsTableRows(rows) {
+	return rows.map(row => ({
+		song_id: row.song_id,
+		song_name: row.song_name,
+		song_length: row.song_length,
+		listenAmount: row.listen_amount,
+		listenLength: row.listen_length,
+		listenPercentage: row.listen_percentage,
+	}));
+}
+
+async function fetchStatsTableRows(sortKey, sortDir) {
+	const orderBy = sortKey ? `ORDER BY ${statsSortColumns[sortKey]} ${sortDir == "asc" ? "ASC" : "DESC"}` : "ORDER BY s.song_id ASC";
+
+	if (statsDisplayMode == "scroll") {
+		const rows = await callSqlite({ db: "musics", query: `${statsTableSelect} ${orderBy}`, fetch: true });
+		return mapStatsTableRows(rows);
 	}
 
-	const oldContainer = document.getElementById("htmlTable");
-	if (oldContainer) oldContainer.remove();
+	const offset = (statsPage - 1) * statsPageSize;
+	const rows = await callSqlite({
+		db: "musics",
+		query: `${statsTableSelect} ${orderBy} LIMIT ? OFFSET ?`,
+		args: [statsPageSize, offset],
+		fetch: true,
+	});
+	return mapStatsTableRows(rows);
+}
 
+function buildStatsTableShell() {
 	const container = document.createElement("div");
 	container.id = "htmlTable";
 
@@ -438,20 +485,30 @@ async function htmlTableStats(sortedData = null) {
 		if (mode == statsDisplayMode) opt.selected = true;
 		pageModeSelect.appendChild(opt);
 	});
-	pageModeSelect.onchange = () => { statsDisplayMode = pageModeSelect.value; statsPage = 1; htmlTableStats(sortedData); };
+	pageModeSelect.onchange = () => {
+		statsDisplayMode = pageModeSelect.value;
+		statsPage = 1;
+		htmlTableStats();
+	};
 
 	const leftBtn = document.createElement("button");
 	leftBtn.className = "pageScrollButtons";
 	leftBtn.textContent = "<";
 	leftBtn.id = "statsLeftPageButton";
 	leftBtn.style.cssText = "border-top-left-radius:5px;border-bottom-left-radius:5px;";
+	leftBtn.onclick = () => {
+		if (statsPage > 1) {
+			statsPage--;
+			htmlTableStats();
+		}
+	};
 
 	const pagePicker = document.createElement("select");
 	pagePicker.id = "statsPagePicker";
 	pagePicker.style.cssText = "width:7vw;height:3.5vh;font-size:2.2vh;border:none;text-align:center;background-color:rgba(0,0,0,0.8);color:white;cursor:pointer;";
 	pagePicker.onchange = () => {
 		statsPage = parseInt(pagePicker.value);
-		htmlTableStats(sortedData);
+		htmlTableStats();
 	};
 
 	const rightBtn = document.createElement("button");
@@ -459,6 +516,12 @@ async function htmlTableStats(sortedData = null) {
 	rightBtn.textContent = ">";
 	rightBtn.id = "statsRightPageButton";
 	rightBtn.style.cssText = "border-top-right-radius:5px;border-bottom-right-radius:5px;";
+	rightBtn.onclick = () => {
+		if (statsPage < statsTotalPages) {
+			statsPage++;
+			htmlTableStats();
+		}
+	};
 
 	controlsRow.appendChild(pageModeSelect);
 	controlsRow.appendChild(leftBtn);
@@ -470,30 +533,21 @@ async function htmlTableStats(sortedData = null) {
 	const thead = document.createElement("thead");
 	const headerRow = document.createElement("tr");
 
-	const headerNames = {
-		song_id: "ID",
-		song_name: "Song Name",
-		song_length: "Length",
-		listenAmount: "Times Listened",
-		listenLength: "Total Time",
-		listenPercentage: "Listen %",
-	};
-
-	Object.keys(headerNames).forEach(key => {
+	Object.keys(statsTableColumns).forEach(key => {
 		const th = document.createElement("th");
 		th.style.cursor = "pointer";
 		th.style.userSelect = "none";
 		th.style.position = "relative";
 
 		const textSpan = document.createElement("span");
-		textSpan.textContent = headerNames[key];
+		textSpan.textContent = statsTableColumns[key];
 
 		const arrowSpan = document.createElement("span");
+		arrowSpan.className = "statsSortArrow";
+		arrowSpan.dataset.key = key;
 		arrowSpan.style.position = "absolute";
 		arrowSpan.style.right = "5px";
 		arrowSpan.style.fontSize = "0.8em";
-
-		if (sortOrder[key]) arrowSpan.textContent = sortOrder[key] == "asc" ? "▲" : "▼";
 
 		th.appendChild(textSpan);
 		th.appendChild(arrowSpan);
@@ -504,20 +558,7 @@ async function htmlTableStats(sortedData = null) {
 			});
 			const order = sortOrder[key] == "asc" ? "desc" : sortOrder[key] == "desc" ? "asc" : "desc";
 			sortOrder[key] = order;
-			const sorted = [...rows].sort((a, b) => {
-				let aVal = a[key];
-				let bVal = b[key];
-				if (typeof aVal == "string" && aVal.endsWith("%")) aVal = parseFloat(aVal);
-				if (typeof bVal == "string" && bVal.endsWith("%")) bVal = parseFloat(bVal);
-				if (!isNaN(aVal) && !isNaN(bVal)) {
-					aVal = parseFloat(aVal);
-					bVal = parseFloat(bVal);
-				}
-				if (aVal < bVal) return order == "asc" ? -1 : 1;
-				if (aVal > bVal) return order == "asc" ? 1 : -1;
-				return 0;
-			});
-			htmlTableStats(sorted);
+			htmlTableStats();
 		};
 
 		headerRow.appendChild(th);
@@ -525,32 +566,56 @@ async function htmlTableStats(sortedData = null) {
 
 	thead.appendChild(headerRow);
 	table.appendChild(thead);
+	table.appendChild(document.createElement("tbody"));
+	container.appendChild(table);
+	statisticsContent.appendChild(container);
+}
 
-	const tbody = document.createElement("tbody");
-	const totalPages = Math.ceil(rows.length / statsPageSize);
-	if (statsPage > totalPages) statsPage = totalPages || 1;
+async function htmlTableStats() {
+	let container = document.getElementById("htmlTable");
+	if (!container) buildStatsTableShell();
+	container = document.getElementById("htmlTable");
+
+	const thead = container.querySelector("thead");
+	const tbody = container.querySelector("tbody");
+	const pagePicker = document.getElementById("statsPagePicker");
+	const leftBtn = document.getElementById("statsLeftPageButton");
+	const rightBtn = document.getElementById("statsRightPageButton");
+
+	const countRes = await callSqlite({
+		db: "musics",
+		query: "SELECT COUNT(*) AS total FROM songs",
+		fetch: true,
+	});
+	const totalPages = Math.max(Math.ceil((countRes[0]?.total || 0) / statsPageSize), 1);
+	statsTotalPages = totalPages;
+	if (statsPage > totalPages) statsPage = totalPages;
 	if (statsPage < 1) statsPage = 1;
 
-	const startIdx = statsDisplayMode == "scroll" ? 0 : (statsPage - 1) * statsPageSize;
-	const endIdx = statsDisplayMode == "scroll" ? rows.length : Math.min(startIdx + statsPageSize, rows.length);
-	const pageRows = rows.slice(startIdx, endIdx);
+	const sortEntries = Object.entries(sortOrder);
+	const sortKey = sortEntries[0]?.[0] || null;
+	const sortDir = sortEntries[0]?.[1] || null;
 
-	pageRows.forEach(row => {
+	const rows = await fetchStatsTableRows(sortKey, sortDir);
+
+	thead.querySelectorAll(".statsSortArrow").forEach(arrowSpan => {
+		const key = arrowSpan.dataset.key;
+		arrowSpan.textContent = sortOrder[key] == "asc" ? "▲" : sortOrder[key] == "desc" ? "▼" : "";
+	});
+
+	tbody.innerHTML = "";
+	rows.forEach(row => {
 		const tr = document.createElement("tr");
-		Object.keys(headerNames).forEach(key => {
+		Object.keys(statsTableColumns).forEach(key => {
 			const td = document.createElement("td");
-			td.textContent = row[key] ?? "";
+			td.textContent = key == "listenPercentage" ? `${row.listenPercentage}%` : (row[key] ?? "");
 			tr.appendChild(td);
 		});
 		tbody.appendChild(tr);
 	});
 
-	table.appendChild(tbody);
-	container.appendChild(table);
-	statisticsContent.appendChild(container);
-
 	pagePicker.innerHTML = "";
-	for (let i = 1; i <= Math.max(totalPages, 1); i++) {
+	for (let i = 1; i <= totalPages; i++) {
 		const opt = document.createElement("option");
 		opt.value = i;
 		opt.textContent = `Page ${i}`;
@@ -560,13 +625,6 @@ async function htmlTableStats(sortedData = null) {
 	pagePicker.style.display = statsDisplayMode == "scroll" || totalPages <= 1 ? "none" : "";
 	leftBtn.disabled = statsPage <= 1 || statsDisplayMode == "scroll";
 	rightBtn.disabled = statsPage >= totalPages || statsDisplayMode == "scroll";
-
-	leftBtn.onclick = () => {
-		if (statsPage > 1) { statsPage--; htmlTableStats(sortedData); }
-	};
-	rightBtn.onclick = () => {
-		if (statsPage < totalPages) { statsPage++; htmlTableStats(sortedData); }
-	};
 }
 
 function findListenPercentage(songId) {
