@@ -50,6 +50,7 @@ var settingsColumns = []Column{
 	{Name: "key_searchPlaylist", Type: "TEXT", Default: "x"},
 	{Name: "key_searchShuffle", Type: "TEXT", Default: "c"},
 	{Name: "key_lyrics", Type: "TEXT", Default: "v"},
+	{Name: "statsTableColumns", Type: "TEXT", Default: "NULL"},
 }
 
 var statsColumns = []Column{

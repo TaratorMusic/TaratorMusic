@@ -1454,6 +1454,32 @@ th {
 	font-size: 1vw;
 }
 
+.stats-table-wrapper {
+	max-width: 80vw;
+	overflow-x: auto;
+}
+
+.stats-hidden {
+	display: none;
+}
+
+.statsColumnsButton {
+	height: 3.5vh;
+	font-size: 2.2vh;
+	background-color: black;
+	cursor: pointer;
+	outline: none;
+	box-shadow: none;
+	border: none;
+	border-radius: 5px;
+	padding: 0 10px;
+	color: white;
+}
+
+.stats-columns-modal {
+	text-align: left;
+}
+
 #musicSearchInputAmount {
 	color: white !important;
 }

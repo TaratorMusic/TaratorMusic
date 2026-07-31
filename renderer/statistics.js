@@ -31,6 +31,7 @@ async function renderStatistics() {
 		statisticsContent.innerHTML = "";
 		statisticsContent.style.display = "flex";
 
+		await loadStatsColumnPrefs();
 		await createMostListenedSongBox();
 		await createPieCharts();
 		await daysHeatMap();
@@ -401,9 +402,11 @@ async function generalStatistics() {
 }
 
 let statsPage = 1;
-let statsPageSize = 50;
+let statsPageSize = 10;
 let statsDisplayMode = "page";
 let statsTotalPages = 1;
+let statsVisibleColumns = new Set();
+const statsDefaultVisibleColumns = ["song_id", "song_name", "song_length", "listenAmount", "listenLength", "listenPercentage"];
 
 const statsTableColumns = {
 	song_id: "ID",
@@ -412,6 +415,9 @@ const statsTableColumns = {
 	listenAmount: "Times Listened",
 	listenLength: "Total Time",
 	listenPercentage: "Listen %",
+	artist: "Artist",
+	genre: "Genre",
+	language: "Language",
 };
 
 const statsSortColumns = {
@@ -421,6 +427,9 @@ const statsSortColumns = {
 	listenAmount: "listen_amount",
 	listenLength: "listen_length",
 	listenPercentage: "listen_percentage",
+	artist: "s.artist",
+	genre: "s.genre",
+	language: "s.language",
 };
 
 const statsTableSelect = `
@@ -428,6 +437,9 @@ const statsTableSelect = `
 		s.song_id,
 		s.song_name,
 		s.song_length,
+		s.artist,
+		s.genre,
+		s.language,
 		COUNT(t.song_id) AS listen_amount,
 		COALESCE(SUM(t.end_time - t.start_time), 0) AS listen_length,
 		CASE
@@ -447,6 +459,9 @@ function mapStatsTableRows(rows) {
 		listenAmount: row.listen_amount,
 		listenLength: row.listen_length,
 		listenPercentage: row.listen_percentage,
+		artist: row.artist,
+		genre: row.genre,
+		language: row.language,
 	}));
 }
 
@@ -466,6 +481,91 @@ async function fetchStatsTableRows(sortKey, sortDir) {
 		fetch: true,
 	});
 	return mapStatsTableRows(rows);
+}
+
+async function loadStatsColumnPrefs() {
+	try {
+		const settingsRows = await callSqlite({
+			db: "settings",
+			query: "SELECT * FROM settings LIMIT 1",
+			fetch: true,
+		});
+		const saved = settingsRows[0]?.statsTableColumns;
+		if (saved) {
+			const parsed = JSON.parse(saved);
+			if (Array.isArray(parsed)) {
+				const valid = parsed.filter(key => key in statsTableColumns);
+				if (valid.length) {
+					statsVisibleColumns = new Set(valid);
+					return;
+				}
+			}
+		}
+	} catch {}
+	statsVisibleColumns = new Set(statsDefaultVisibleColumns);
+}
+
+function saveStatsColumnPrefs() {
+	callSqlite({
+		db: "settings",
+		query: "UPDATE settings SET statsTableColumns = ?",
+		args: [JSON.stringify(Array.from(statsVisibleColumns))],
+		fetch: false,
+	});
+}
+
+function applyStatsColumnVisibility() {
+	document.querySelectorAll("#htmlTable [data-column]").forEach(el => {
+		el.classList.toggle("stats-hidden", !statsVisibleColumns.has(el.dataset.column));
+	});
+}
+
+function openStatsColumnsModal() {
+	const overlay = document.createElement("div");
+	overlay.className = "confirm-modal-overlay";
+	overlay.id = "statsColumnsModal";
+
+	const modal = document.createElement("div");
+	modal.className = "confirm-modal stats-columns-modal";
+
+	const title = document.createElement("h3");
+	title.style.margin = "0 0 12px 0";
+	title.textContent = "Visible Columns";
+	modal.appendChild(title);
+
+	Object.keys(statsTableColumns).forEach(key => {
+		const label = document.createElement("label");
+		label.style.cssText = "display:flex;align-items:center;gap:8px;justify-content:flex-start;cursor:pointer;margin:6px 0;";
+
+		const checkbox = document.createElement("input");
+		checkbox.type = "checkbox";
+		checkbox.checked = statsVisibleColumns.has(key);
+		checkbox.addEventListener("change", () => {
+			if (checkbox.checked) statsVisibleColumns.add(key);
+			else statsVisibleColumns.delete(key);
+			saveStatsColumnPrefs();
+			applyStatsColumnVisibility();
+		});
+
+		const text = document.createElement("span");
+		text.textContent = statsTableColumns[key];
+
+		label.appendChild(checkbox);
+		label.appendChild(text);
+		modal.appendChild(label);
+	});
+
+	const closeBtn = document.createElement("button");
+	closeBtn.textContent = "Close";
+	closeBtn.style.cssText = "margin-top:16px;width:100%;padding:10px 0;border:none;border-radius:6px;background:#424242;color:#fff;cursor:pointer;";
+	closeBtn.onclick = () => overlay.remove();
+	modal.appendChild(closeBtn);
+
+	overlay.appendChild(modal);
+	overlay.addEventListener("click", event => {
+		if (event.target == overlay) overlay.remove();
+	});
+	document.body.appendChild(overlay);
 }
 
 function buildStatsTableShell() {
@@ -523,11 +623,21 @@ function buildStatsTableShell() {
 		}
 	};
 
+	const columnsBtn = document.createElement("button");
+	columnsBtn.id = "statsColumnsButton";
+	columnsBtn.className = "statsColumnsButton";
+	columnsBtn.textContent = "Columns";
+	columnsBtn.onclick = () => openStatsColumnsModal();
+
 	controlsRow.appendChild(pageModeSelect);
+	controlsRow.appendChild(columnsBtn);
 	controlsRow.appendChild(leftBtn);
 	controlsRow.appendChild(pagePicker);
 	controlsRow.appendChild(rightBtn);
 	container.appendChild(controlsRow);
+
+	const tableWrapper = document.createElement("div");
+	tableWrapper.className = "stats-table-wrapper";
 
 	const table = document.createElement("table");
 	const thead = document.createElement("thead");
@@ -535,6 +645,7 @@ function buildStatsTableShell() {
 
 	Object.keys(statsTableColumns).forEach(key => {
 		const th = document.createElement("th");
+		th.dataset.column = key;
 		th.style.cursor = "pointer";
 		th.style.userSelect = "none";
 		th.style.position = "relative";
@@ -567,7 +678,8 @@ function buildStatsTableShell() {
 	thead.appendChild(headerRow);
 	table.appendChild(thead);
 	table.appendChild(document.createElement("tbody"));
-	container.appendChild(table);
+	tableWrapper.appendChild(table);
+	container.appendChild(tableWrapper);
 	statisticsContent.appendChild(container);
 }
 
@@ -608,11 +720,13 @@ async function htmlTableStats() {
 		const tr = document.createElement("tr");
 		Object.keys(statsTableColumns).forEach(key => {
 			const td = document.createElement("td");
+			td.dataset.column = key;
 			td.textContent = key == "listenPercentage" ? `${row.listenPercentage}%` : (row[key] ?? "");
 			tr.appendChild(td);
 		});
 		tbody.appendChild(tr);
 	});
+	applyStatsColumnVisibility();
 
 	pagePicker.innerHTML = "";
 	for (let i = 1; i <= totalPages; i++) {
