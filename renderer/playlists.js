@@ -422,7 +422,7 @@ function openAddToPlaylistModal(songName) {
 	playlistsContainer.innerHTML = "";
 
 	try {
-		const playlists = Array.from(playlistsMap.values());
+		const playlists = Array.from(playlistsMap.values()).filter(playlist => playlist.id != "SEARCH_SHUFFLE");
 
 		if (!playlists || playlists.length == 0) {
 			displayPlaylists([]);

@@ -1040,10 +1040,12 @@ function openAddToPlaylistModalStaging(songId) {
 	checkboxContainer.innerHTML = "";
 
 	const allPlaylists =
-		Array.from(playlistsMap.entries()).map(([id, data]) => ({
-			id,
-			...data,
-		})) || [];
+		Array.from(playlistsMap.entries())
+			.map(([id, data]) => ({
+				id,
+				...data,
+			}))
+			.filter(playlist => playlist.id != "SEARCH_SHUFFLE") || [];
 	allPlaylists.forEach(playlist => {
 		const checkbox = document.createElement("input");
 		checkbox.type = "checkbox";
@@ -1130,7 +1132,7 @@ function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 				}
 
 				const entry = parsed._type === "video" ? parsed : null;
-                
+
 				if (!entry) {
 					if (retryCount >= 5) return reject(new Error("No valid entries found after retries"));
 					logChange("warn", `No results found, trying next result (attempt ${retryCount + 1})...`);
