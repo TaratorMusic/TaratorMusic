@@ -52,6 +52,7 @@ var settingsColumns = []Column{
 	{Name: "key_lyrics", Type: "TEXT", Default: "v"},
 	{Name: "statsTableColumns", Type: "TEXT", Default: "NULL"},
 	{Name: "pieChartColors", Type: "TEXT", Default: "NULL"},
+	{Name: "pieChartTopCategories", Type: "INTEGER", Default: "5"},
 }
 
 var statsColumns = []Column{

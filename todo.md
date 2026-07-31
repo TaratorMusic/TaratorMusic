@@ -1,21 +1,24 @@
+### Version 1.9.1 Planned Features
+
+-   Make version update modal scrollable
+-   Song element not found bug while editing. --> happens when you are in the my music page but the song isnt in the page
+-   There is a bug where when you open the add to playlist modal it can pop-up the save minimodal incorrectly. Edit a modal --> open an add to playlist modal --> try to close it with esc instead of regularly
+-   Saving to playlists after downloads not working
+-   Translation language picker modal has black font. same with pie chart settings
+-   recommended songs auto-skip on play
+
 ### Version 1.9.x Planned Features
 
--   Song element not found bug while editing. --> happens when you are in the my music page but the song isnt in the page
--   Statistics page is too slow to load. Add toggleable "Others" to the pie chart and colors
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
 -   Make interested/not interested button change colors.
--   Swap pages with arrow keys in my music
--   There is a bug where when you open the add to playlist modal it can pop-up the save minimodal incorrectly. Edit a modal --> open an add to playlist modal --> try to close it with esc instead of regularly
 -   Change progress bar color to red if song is paused
--   Translation language picker modal has black font.
--   recommended songs auto-skip on play
+-   Swap pages with arrow keys in my music
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
 -   - Remove the x button.
 -   - That will cancel the current downloads and clean the modal.
 -   - Download modal should have a search section and a download section, download section should have the thumbnail & song name/info
 -   search at the same time while downloading, uses same text bar
-
 -   Remodel customisation modal to fit better
 -   Get recommendations for a single song.
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence

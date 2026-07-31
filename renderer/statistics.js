@@ -12,6 +12,8 @@ let pieChartColors = {};
 let pieChartCategories = { artist: [], genre: [], language: [] };
 let pieChartDefinitions = [];
 let pieChartInstances = [];
+let pieChartTopCategories = 5;
+let pieChartColorDebounceTimer = null;
 
 function colorFromName(name) {
 	let hashValue = 0;
@@ -46,7 +48,7 @@ async function renderStatistics() {
 		statisticsContent.style.display = "flex";
 
 		await loadStatsColumnPrefs();
-		await loadPieChartColorPrefs();
+		await loadPieChartPrefs();
 		await createMostListenedSongBox();
 		await createPieCharts();
 		await daysHeatMap();
@@ -240,25 +242,33 @@ async function createPieCharts() {
 }
 
 function buildChart(canvasId, dataMap, type, topLabelsCount = 5) {
-	const labels = Object.keys(dataMap);
-	const dataValues = Object.values(dataMap);
+	const sortedItems = Object.entries(dataMap)
+		.map(([label, value]) => ({ label, value }))
+		.sort((a, b) => b.value - a.value);
 
-	const sortedItems = labels
-		.map((label, index) => ({ label, value: dataValues[index] }))
-		.sort((a, b) => b.value - a.value)
-		.slice(0, topLabelsCount);
+	let chartLabels;
+	let chartValues;
+	if (topLabelsCount <= 0 || sortedItems.length <= topLabelsCount) {
+		chartLabels = sortedItems.map(item => item.label);
+		chartValues = sortedItems.map(item => item.value);
+	} else {
+		const topItems = sortedItems.slice(0, topLabelsCount);
+		const restItems = sortedItems.slice(topLabelsCount);
+		chartLabels = [...topItems.map(item => item.label), "Others"];
+		chartValues = [...topItems.map(item => item.value), restItems.reduce((sum, item) => sum + item.value, 0)];
+	}
 
-	const topLabels = sortedItems.map(item => item.label);
-
-	const colors = labels.map(label => getCustomPieChartColor(type, label) || colorFromName(label));
+	const colors = chartLabels.map(label =>
+		label == "Others" ? "hsl(0,0%,40%)" : getCustomPieChartColor(type, label) || colorFromName(label)
+	);
 
 	return new Chart(document.getElementById(canvasId).getContext("2d"), {
 		type: "pie",
 		data: {
-			labels: labels,
+			labels: chartLabels,
 			datasets: [
 				{
-					data: dataValues,
+					data: chartValues,
 					backgroundColor: colors,
 				},
 			],
@@ -269,7 +279,6 @@ function buildChart(canvasId, dataMap, type, topLabelsCount = 5) {
 					display: true,
 					labels: {
 						color: "white",
-						filter: legendItem => topLabels.includes(legendItem.text),
 					},
 				},
 				tooltip: {
@@ -305,7 +314,7 @@ function buildAllPieCharts() {
 		chartDescription.innerHTML = chartDef.title;
 		chartDef.box.appendChild(chartDescription);
 
-		pieChartInstances.push(buildChart(chartDef.id, chartDef.dataMap, chartDef.type));
+		pieChartInstances.push(buildChart(chartDef.id, chartDef.dataMap, chartDef.type, pieChartTopCategories));
 	}
 }
 
@@ -582,14 +591,19 @@ function applyStatsColumnVisibility() {
 	});
 }
 
-async function loadPieChartColorPrefs() {
+async function loadPieChartPrefs() {
+	pieChartColors = {};
+	pieChartTopCategories = 5;
 	try {
 		const settingsRows = await callSqlite({
 			db: "settings",
 			query: "SELECT * FROM settings LIMIT 1",
 			fetch: true,
 		});
-		const saved = settingsRows[0]?.pieChartColors;
+		const row = settingsRows[0];
+		const topCategories = parseInt(row?.pieChartTopCategories);
+		if ([0, 3, 5, 10, 15, 20].includes(topCategories)) pieChartTopCategories = topCategories;
+		const saved = row?.pieChartColors;
 		if (saved) {
 			const parsed = JSON.parse(saved);
 			if (parsed && typeof parsed == "object") {
@@ -605,11 +619,9 @@ async function loadPieChartColorPrefs() {
 					}
 				}
 				pieChartColors = result;
-				return;
 			}
 		}
 	} catch {}
-	pieChartColors = {};
 }
 
 function savePieChartColorPrefs() {
@@ -617,6 +629,15 @@ function savePieChartColorPrefs() {
 		db: "settings",
 		query: "UPDATE settings SET pieChartColors = ?",
 		args: [JSON.stringify(pieChartColors)],
+		fetch: false,
+	});
+}
+
+function savePieChartTopCategories() {
+	callSqlite({
+		db: "settings",
+		query: "UPDATE settings SET pieChartTopCategories = ?",
+		args: [pieChartTopCategories],
 		fetch: false,
 	});
 }
@@ -641,25 +662,88 @@ function openPieChartSettingsModal() {
 	const modal = document.createElement("div");
 	modal.className = "confirm-modal pie-chart-settings-modal";
 
+	const headerRow = document.createElement("div");
+	headerRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;";
+
 	const title = document.createElement("h3");
-	title.style.margin = "0 0 12px 0";
+	title.style.margin = "0";
 	title.textContent = "Pie Chart Settings";
-	modal.appendChild(title);
+	headerRow.appendChild(title);
+
+	const closeBtn = document.createElement("button");
+	closeBtn.textContent = "✕";
+	closeBtn.className = "pieChartModalCloseButton";
+	closeBtn.addEventListener("click", closeModal);
+	headerRow.appendChild(closeBtn);
+
+	modal.appendChild(headerRow);
+
+	const topCountLabel = document.createElement("h4");
+	topCountLabel.textContent = "Number of categories";
+	topCountLabel.style.cssText = "margin:0 0 6px 0;font-size:14px;";
+	modal.appendChild(topCountLabel);
+
+	const topCountSelect = document.createElement("select");
+	topCountSelect.style.cssText = "width:100%;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;cursor:pointer;margin-bottom:14px;border-radius:5px;";
+	[[3, "3"], [5, "5"], [10, "10"], [15, "15"], [20, "20"], [0, "Infinite"]].forEach(([value, text]) => {
+		const opt = document.createElement("option");
+		opt.value = value;
+		opt.textContent = text;
+		if (value == pieChartTopCategories) opt.selected = true;
+		topCountSelect.appendChild(opt);
+	});
+	topCountSelect.addEventListener("change", () => {
+		pieChartTopCategories = parseInt(topCountSelect.value);
+		savePieChartTopCategories();
+		buildAllPieCharts();
+	});
+	modal.appendChild(topCountSelect);
+
+	const colorsLabel = document.createElement("h4");
+	colorsLabel.textContent = "Colors";
+	colorsLabel.style.cssText = "margin:0 0 6px 0;font-size:14px;";
+	modal.appendChild(colorsLabel);
+
+	const typeSearchRow = document.createElement("div");
+	typeSearchRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:10px;";
 
 	const typeSelect = document.createElement("select");
-	typeSelect.style.cssText = "width:100%;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;cursor:pointer;margin-bottom:10px;border-radius:5px;";
+	typeSelect.style.cssText = "flex:1;min-width:0;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;cursor:pointer;border-radius:5px;";
 	[["artist", "Artist"], ["genre", "Genre"], ["language", "Language"]].forEach(([value, text]) => {
 		const opt = document.createElement("option");
 		opt.value = value;
 		opt.textContent = text;
 		typeSelect.appendChild(opt);
 	});
-	modal.appendChild(typeSelect);
+	typeSearchRow.appendChild(typeSelect);
 
 	const searchInput = document.createElement("input");
 	searchInput.placeholder = "Search categories...";
-	searchInput.style.cssText = "width:100%;box-sizing:border-box;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;border-radius:5px;margin-bottom:10px;outline:none;";
-	modal.appendChild(searchInput);
+	searchInput.style.cssText = "flex:1;min-width:0;box-sizing:border-box;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;border-radius:5px;outline:none;";
+	typeSearchRow.appendChild(searchInput);
+
+	modal.appendChild(typeSearchRow);
+
+	const modeRow = document.createElement("div");
+	modeRow.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:10px;";
+
+	const modeSelect = document.createElement("select");
+	modeSelect.style.cssText = "flex:1;min-width:0;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;cursor:pointer;border-radius:5px;";
+	[["page", "Page Mode"], ["scroll", "Scroll Mode"]].forEach(([value, text]) => {
+		const opt = document.createElement("option");
+		opt.value = value;
+		opt.textContent = text;
+		if (value == "page") opt.selected = true;
+		modeSelect.appendChild(opt);
+	});
+	modeRow.appendChild(modeSelect);
+
+	const resultsControls = document.createElement("div");
+	resultsControls.className = "pieChartPageControls";
+	resultsControls.style.marginTop = "0";
+	modeRow.appendChild(resultsControls);
+
+	modal.appendChild(modeRow);
 
 	const resultsList = document.createElement("div");
 	resultsList.className = "pieChartColorResults";
@@ -673,6 +757,28 @@ function openPieChartSettingsModal() {
 	const savedList = document.createElement("div");
 	savedList.className = "pieChartColorResults";
 	modal.appendChild(savedList);
+
+	const savedControls = document.createElement("div");
+	savedControls.className = "pieChartPageControls";
+	modal.appendChild(savedControls);
+
+	let listMode = "page";
+	let resultsPage = 1;
+	let savedPage = 1;
+	const pageSize = 10;
+
+	function cancelColorDebounce() {
+		if (pieChartColorDebounceTimer) {
+			clearTimeout(pieChartColorDebounceTimer);
+			pieChartColorDebounceTimer = null;
+		}
+	}
+
+	function flushColorDebounce() {
+		cancelColorDebounce();
+		savePieChartColorPrefs();
+		buildAllPieCharts();
+	}
 
 	function buildColorRow(type, label) {
 		const key = normalizeText(label);
@@ -694,11 +800,16 @@ function openPieChartSettingsModal() {
 		colorInput.addEventListener("input", () => {
 			if (!pieChartColors[type]) pieChartColors[type] = {};
 			pieChartColors[type][key] = colorInput.value.toLowerCase();
-			savePieChartColorPrefs();
 			swatch.style.background = colorInput.value;
-			buildAllPieCharts();
+			cancelColorDebounce();
+			pieChartColorDebounceTimer = setTimeout(() => {
+				pieChartColorDebounceTimer = null;
+				savePieChartColorPrefs();
+				buildAllPieCharts();
+			}, 500);
 		});
 		colorInput.addEventListener("change", () => {
+			flushColorDebounce();
 			updateResults();
 			updateSavedList();
 		});
@@ -708,6 +819,7 @@ function openPieChartSettingsModal() {
 		clearBtn.className = "pieChartColorClear";
 		clearBtn.style.display = getCustomPieChartColor(type, label) ? "flex" : "none";
 		clearBtn.addEventListener("click", () => {
+			cancelColorDebounce();
 			if (pieChartColors[type]) delete pieChartColors[type][key];
 			if (pieChartColors[type] && !Object.keys(pieChartColors[type]).length) delete pieChartColors[type];
 			savePieChartColorPrefs();
@@ -732,8 +844,51 @@ function openPieChartSettingsModal() {
 		return p;
 	}
 
+	function buildPageControls(controlsEl, totalPages, page, onChange) {
+		controlsEl.innerHTML = "";
+		if (listMode != "page" || totalPages <= 1) {
+			controlsEl.style.display = "none";
+			return;
+		}
+		controlsEl.style.display = "flex";
+
+		const leftBtn = document.createElement("button");
+		leftBtn.className = "pageScrollButtons";
+		leftBtn.textContent = "<";
+		leftBtn.style.cssText = "border-top-left-radius:5px;border-bottom-left-radius:5px;";
+		leftBtn.disabled = page <= 1;
+		leftBtn.addEventListener("click", () => {
+			if (page > 1) onChange(page - 1);
+		});
+
+		const pagePicker = document.createElement("select");
+		pagePicker.style.cssText = "height:3.5vh;font-size:14px;border:none;text-align:center;background-color:rgba(0,0,0,0.8);color:white;cursor:pointer;";
+		for (let i = 1; i <= totalPages; i++) {
+			const opt = document.createElement("option");
+			opt.value = i;
+			opt.textContent = `${i} / ${totalPages}`;
+			if (i == page) opt.selected = true;
+			pagePicker.appendChild(opt);
+		}
+		pagePicker.addEventListener("change", () => onChange(parseInt(pagePicker.value)));
+
+		const rightBtn = document.createElement("button");
+		rightBtn.className = "pageScrollButtons";
+		rightBtn.textContent = ">";
+		rightBtn.style.cssText = "border-top-right-radius:5px;border-bottom-right-radius:5px;";
+		rightBtn.disabled = page >= totalPages;
+		rightBtn.addEventListener("click", () => {
+			if (page < totalPages) onChange(page + 1);
+		});
+
+		controlsEl.appendChild(leftBtn);
+		controlsEl.appendChild(pagePicker);
+		controlsEl.appendChild(rightBtn);
+	}
+
 	function updateResults() {
 		resultsList.innerHTML = "";
+		resultsControls.style.display = "none";
 		const type = typeSelect.value;
 		const query = normalizeText(searchInput.value);
 		let matches = (pieChartCategories[type] || []).filter(cat => normalizeText(cat).includes(query));
@@ -742,16 +897,27 @@ function openPieChartSettingsModal() {
 			const bHas = getCustomPieChartColor(type, b) ? 0 : 1;
 			return aHas - bHas;
 		});
-		matches = matches.slice(0, 30);
 		if (!matches.length) {
 			resultsList.appendChild(emptyMessage("No matching categories"));
 			return;
 		}
-		matches.forEach(label => resultsList.appendChild(buildColorRow(type, label)));
+		if (listMode == "page") {
+			const totalPages = Math.ceil(matches.length / pageSize);
+			if (resultsPage > totalPages) resultsPage = totalPages;
+			const start = (resultsPage - 1) * pageSize;
+			matches.slice(start, start + pageSize).forEach(label => resultsList.appendChild(buildColorRow(type, label)));
+			buildPageControls(resultsControls, totalPages, resultsPage, page => {
+				resultsPage = page;
+				updateResults();
+			});
+		} else {
+			matches.forEach(label => resultsList.appendChild(buildColorRow(type, label)));
+		}
 	}
 
 	function updateSavedList() {
 		savedList.innerHTML = "";
+		savedControls.style.display = "none";
 		const type = typeSelect.value;
 		const entries = pieChartColors[type] ? Object.entries(pieChartColors[type]) : [];
 		entries.sort((a, b) => a[0].localeCompare(b[0]));
@@ -759,30 +925,56 @@ function openPieChartSettingsModal() {
 			savedList.appendChild(emptyMessage("No custom colors saved yet"));
 			return;
 		}
-		entries.forEach(([key]) => {
-			savedList.appendChild(buildColorRow(type, displayLabelForType(type, key)));
-		});
+		if (listMode == "page") {
+			const totalPages = Math.ceil(entries.length / pageSize);
+			if (savedPage > totalPages) savedPage = totalPages;
+			const start = (savedPage - 1) * pageSize;
+			entries.slice(start, start + pageSize).forEach(([key]) => {
+				savedList.appendChild(buildColorRow(type, displayLabelForType(type, key)));
+			});
+			buildPageControls(savedControls, totalPages, savedPage, page => {
+				savedPage = page;
+				updateSavedList();
+			});
+		} else {
+			entries.forEach(([key]) => {
+				savedList.appendChild(buildColorRow(type, displayLabelForType(type, key)));
+			});
+		}
 	}
 
-	searchInput.addEventListener("input", updateResults);
+	searchInput.addEventListener("input", () => {
+		resultsPage = 1;
+		updateResults();
+	});
 	typeSelect.addEventListener("change", () => {
 		searchInput.value = "";
+		resultsPage = 1;
+		savedPage = 1;
+		updateResults();
+		updateSavedList();
+	});
+	modeSelect.addEventListener("change", () => {
+		listMode = modeSelect.value;
+		resultsPage = 1;
+		savedPage = 1;
 		updateResults();
 		updateSavedList();
 	});
 
+	function closeModal() {
+		cancelColorDebounce();
+		savePieChartColorPrefs();
+		buildAllPieCharts();
+		overlay.remove();
+	}
+
 	updateResults();
 	updateSavedList();
 
-	const closeBtn = document.createElement("button");
-	closeBtn.textContent = "Close";
-	closeBtn.style.cssText = "margin-top:16px;width:100%;padding:10px 0;border:none;border-radius:6px;background:#424242;color:#fff;cursor:pointer;";
-	closeBtn.onclick = () => overlay.remove();
-	modal.appendChild(closeBtn);
-
 	overlay.appendChild(modal);
 	overlay.addEventListener("click", event => {
-		if (event.target == overlay) overlay.remove();
+		if (event.target == overlay) closeModal();
 	});
 	document.body.appendChild(overlay);
 }

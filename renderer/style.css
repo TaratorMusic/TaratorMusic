@@ -1392,6 +1392,14 @@ th {
 	gap: 4px;
 }
 
+.pieChartPageControls {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	margin-top: 8px;
+}
+
 .pieChartColorRow {
 	display: flex;
 	align-items: center;
@@ -1429,6 +1437,19 @@ th {
 	justify-content: center;
 	flex-shrink: 0;
 	line-height: 1;
+}
+
+.pieChartModalCloseButton {
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: 4px;
+	background: #424242;
+	color: #fff;
+	cursor: pointer;
+	font-size: 14px;
+	line-height: 1;
+	flex-shrink: 0;
 }
 
 .hourChart {
