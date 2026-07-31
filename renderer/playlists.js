@@ -270,11 +270,11 @@ function displayPlaylists(playlists) {
 		});
 
 		playlistsArea.appendChild(playlistElement);
-		playlistElements.push({ element: playlistElement, name: playlist.name.toLowerCase() });
+		playlistElements.push({ element: playlistElement, name: normalizeText(playlist.name) });
 	}
 
 	searchInput.addEventListener("input", () => {
-		const query = searchInput.value.toLowerCase();
+		const query = normalizeText(searchInput.value);
 		playlistElements.forEach(p => {
 			p.element.style.display = p.name.includes(query) ? "flex" : "none";
 		});

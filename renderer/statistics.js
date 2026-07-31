@@ -148,14 +148,38 @@ async function createPieCharts() {
 		canvasBoxes.push(canvasBox);
 	}
 
+	function addGroupedEntry(map, value, amount = 1) {
+		const key = normalizeText(value);
+		const entry = map[key] || (map[key] = { counts: {}, total: 0 });
+		const rawLabel = String(value);
+		entry.counts[rawLabel] = (entry.counts[rawLabel] || 0) + 1;
+		entry.total += amount;
+	}
+
+	function finishGroupedMap(map) {
+		const result = {};
+		for (const entry of Object.values(map)) {
+			let bestLabel = "";
+			let bestCount = 0;
+			for (const [label, count] of Object.entries(entry.counts)) {
+				if (count > bestCount) {
+					bestCount = count;
+					bestLabel = label;
+				}
+			}
+			result[bestLabel] = entry.total;
+		}
+		return result;
+	}
+
 	const artistCountMap = {};
 	const genreCountMap = {};
 	const languageCountMap = {};
 
 	for (const song of songsTable) {
-		artistCountMap[song.artist] = (artistCountMap[song.artist] || 0) + 1;
-		genreCountMap[song.genre] = (genreCountMap[song.genre] || 0) + 1;
-		languageCountMap[song.language] = (languageCountMap[song.language] || 0) + 1;
+		addGroupedEntry(artistCountMap, song.artist);
+		addGroupedEntry(genreCountMap, song.genre);
+		addGroupedEntry(languageCountMap, song.language);
 	}
 
 	function buildChart(canvasId, dataMap, topLabelsCount = 5) {
@@ -213,24 +237,25 @@ async function createPieCharts() {
 	const genreTimeMap = {};
 	const languageTimeMap = {};
 
+	const songsById = new Map(songsTable.map(song => [song.song_id, song]));
+
 	for (const timer of timersTable) {
-		const fullSongId = "tarator-" + timer.song_id;
-		const matchedSong = songsTable.find(song => song.song_id == fullSongId);
+		const matchedSong = songsById.get("tarator-" + timer.song_id);
 		if (!matchedSong || !timer.start_time || !timer.end_time) continue;
 		const listenDuration = Math.max(0, timer.end_time - timer.start_time);
 
-		artistTimeMap[matchedSong.artist] = (artistTimeMap[matchedSong.artist] || 0) + listenDuration;
-		genreTimeMap[matchedSong.genre] = (genreTimeMap[matchedSong.genre] || 0) + listenDuration;
-		languageTimeMap[matchedSong.language] = (languageTimeMap[matchedSong.language] || 0) + listenDuration;
+		addGroupedEntry(artistTimeMap, matchedSong.artist, listenDuration);
+		addGroupedEntry(genreTimeMap, matchedSong.genre, listenDuration);
+		addGroupedEntry(languageTimeMap, matchedSong.language, listenDuration);
 	}
 
 	const chartDefinitions = [
-		{ id: "artistPieChart", box: canvasBoxes[0], title: "Favorite Artists (Song Amount)", dataMap: artistCountMap },
-		{ id: "genrePieChart", box: canvasBoxes[1], title: "Favorite Genres (Song Amount)", dataMap: genreCountMap },
-		{ id: "languagePieChart", box: canvasBoxes[2], title: "Favorite Languages (Song Amount)", dataMap: languageCountMap },
-		{ id: "artistTimePieChart", box: canvasBoxes[3], title: "Favorite Artists (Seconds Listened)", dataMap: artistTimeMap },
-		{ id: "genreTimePieChart", box: canvasBoxes[4], title: "Favorite Genres (Seconds Listened)", dataMap: genreTimeMap },
-		{ id: "languageTimePieChart", box: canvasBoxes[5], title: "Favorite Languages (Seconds Listened)", dataMap: languageTimeMap },
+		{ id: "artistPieChart", box: canvasBoxes[0], title: "Favorite Artists (Song Amount)", dataMap: finishGroupedMap(artistCountMap) },
+		{ id: "genrePieChart", box: canvasBoxes[1], title: "Favorite Genres (Song Amount)", dataMap: finishGroupedMap(genreCountMap) },
+		{ id: "languagePieChart", box: canvasBoxes[2], title: "Favorite Languages (Song Amount)", dataMap: finishGroupedMap(languageCountMap) },
+		{ id: "artistTimePieChart", box: canvasBoxes[3], title: "Favorite Artists (Seconds Listened)", dataMap: finishGroupedMap(artistTimeMap) },
+		{ id: "genreTimePieChart", box: canvasBoxes[4], title: "Favorite Genres (Seconds Listened)", dataMap: finishGroupedMap(genreTimeMap) },
+		{ id: "languageTimePieChart", box: canvasBoxes[5], title: "Favorite Languages (Seconds Listened)", dataMap: finishGroupedMap(languageTimeMap) },
 	];
 
 	for (const chartDef of chartDefinitions) {

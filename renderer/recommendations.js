@@ -43,12 +43,7 @@ async function getRecommendations(songIds) {
 	});
 
 	function normalizeName(name) {
-		if (!name) return "";
-		return name
-			.normalize("NFD")
-			.replace(/[\u0300-\u036f]/g, "")
-			.toLowerCase()
-			.trim();
+		return normalizeText(name);
 	}
 
 	const normalizedArtistMap = new Map(existingArtists.map(a => [normalizeName(a), a]));

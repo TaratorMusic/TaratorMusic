@@ -764,7 +764,7 @@ function filterSongs(searchValue) {
 			language: data.language,
 			thumbnail_extension: data.thumbnail_extension,
 		}))
-		.sort((a, b) => (a.song_name || "").toLowerCase().localeCompare((b.song_name || "").toLowerCase()));
+		.sort((a, b) => normalizeText(a.song_name).localeCompare(normalizeText(b.song_name)));
 
 	if (!searchValue) return songs;
 
@@ -807,10 +807,11 @@ function filterSongs(searchValue) {
 
 		const matchTerm = (term, exact) => {
 			if (term == " ") return fields.some(f => !f || String(f).trim() == "");
+			const normalizedTerm = normalizeText(term);
 			return fields.some(f => {
 				if (!f) return false;
-				const v = String(f).toLowerCase();
-				return exact ? v == term : v.includes(term);
+				const v = normalizeText(f);
+				return exact ? v == normalizedTerm : v.includes(normalizedTerm);
 			});
 		};
 
@@ -1911,20 +1912,19 @@ async function updateThumbnailImage(event, mode) {
 
 async function searchSong(typed) {
 	try {
-		if (searchModalInput.value.trim() == "") return (document.getElementById("searchModalFound").innerText = "Found: Nothing");
-		const row = await callSqlite({
-			db: "musics",
-			query: "SELECT song_id, song_name FROM songs WHERE song_name LIKE ? COLLATE NOCASE ORDER BY LENGTH(song_name) LIMIT 1",
-			args: [`%${searchModalInput.value}%`],
-			fetch: true,
-		});
+		const query = normalizeText(searchModalInput.value);
+		if (!query) return (document.getElementById("searchModalFound").innerText = "Found: Nothing");
+		const row = Array.from(songNameCache.entries())
+			.map(([song_id, data]) => ({ song_id, song_name: data.song_name }))
+			.filter(song => song.song_name && normalizeText(song.song_name).includes(query))
+			.sort((a, b) => a.song_name.length - b.song_name.length)[0];
 
-		if (!row[0]) return (document.getElementById("searchModalFound").innerText = "Found: Nothing");
-		document.getElementById("searchModalFound").innerText = `Found: ${row[0].song_name}`;
+		if (!row) return (document.getElementById("searchModalFound").innerText = "Found: Nothing");
+		document.getElementById("searchModalFound").innerText = `Found: ${row.song_name}`;
 		if (typed) return;
 
 		searchModalInput.value = "";
-		playMusic(row[0].song_id, null);
+		playMusic(row.song_id, null);
 		document.getElementById("searchModal").style.display = "none";
 	} catch {
 		// To prevent console errors
@@ -1933,10 +1933,10 @@ async function searchSong(typed) {
 
 function searchPlaylist(typed) {
 	try {
-		const query = searchModalInput.value.trim().toLowerCase();
+		const query = normalizeText(searchModalInput.value);
 		if (!query) return (document.getElementById("searchModalFound").innerText = "Found: Nothing");
 
-		const match = [...playlistsMap.values()].find(p => p.name.toLowerCase().includes(query));
+		const match = [...playlistsMap.values()].find(p => normalizeText(p.name).includes(query));
 		document.getElementById("searchModalFound").innerText = `Found: ${match?.name ?? "Nothing"}`;
 		if (typed) return;
 

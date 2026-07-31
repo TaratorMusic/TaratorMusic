@@ -1,7 +1,7 @@
 ### Version 1.9.x Planned Features
 
 -   Song element not found bug while editing. --> happens when you are in the my music page but the song isnt in the page
--   Statistics page is too slow to load. Add toggleable "Others" to the pie chart
+-   Statistics page is too slow to load. Add toggleable "Others" to the pie chart and colors
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
 -   Make interested/not interested button change colors.
 -   Swap pages with arrow keys in my music
@@ -9,8 +9,6 @@
 -   Change progress bar color to red if song is paused
 -   Translation language picker modal has black font.
 -   recommended songs auto-skip on play
--   Starting with caps breaks the search query
--   we could just load the first x songs for stats
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
 -   - Remove the x button.
