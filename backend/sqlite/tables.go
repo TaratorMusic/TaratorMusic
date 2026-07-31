@@ -51,6 +51,7 @@ var settingsColumns = []Column{
 	{Name: "key_searchShuffle", Type: "TEXT", Default: "c"},
 	{Name: "key_lyrics", Type: "TEXT", Default: "v"},
 	{Name: "statsTableColumns", Type: "TEXT", Default: "NULL"},
+	{Name: "pieChartColors", Type: "TEXT", Default: "NULL"},
 }
 
 var statsColumns = []Column{

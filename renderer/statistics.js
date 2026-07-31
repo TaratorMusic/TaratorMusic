@@ -8,6 +8,20 @@ let isRenderingStatistics = false;
 let songsTable;
 let timersTable;
 
+let pieChartColors = {};
+let pieChartCategories = { artist: [], genre: [], language: [] };
+let pieChartDefinitions = [];
+let pieChartInstances = [];
+
+function colorFromName(name) {
+	let hashValue = 0;
+	for (let charIndex = 0; charIndex < name.length; charIndex++) {
+		hashValue = name.charCodeAt(charIndex) + ((hashValue << 5) - hashValue);
+	}
+	const baseHue = Math.abs(hashValue) % 360;
+	return `hsl(${baseHue},70%,50%)`;
+}
+
 async function renderStatistics() {
 	if (isRenderingStatistics) return;
 	isRenderingStatistics = true;
@@ -32,6 +46,7 @@ async function renderStatistics() {
 		statisticsContent.style.display = "flex";
 
 		await loadStatsColumnPrefs();
+		await loadPieChartColorPrefs();
 		await createMostListenedSongBox();
 		await createPieCharts();
 		await daysHeatMap();
@@ -117,24 +132,25 @@ async function createMostListenedSongBox() {
 }
 
 async function createPieCharts() {
-	function colorFromName(name, index = 0) {
-		let hashValue = 0;
-		for (let charIndex = 0; charIndex < name.length; charIndex++) {
-			hashValue = name.charCodeAt(charIndex) + ((hashValue << 5) - hashValue);
-		}
-		const baseHue = Math.abs(hashValue) % 360;
-		const hue = (baseHue + (index % 5) * 72) % 360;
-		return `hsl(${hue},70%,50%)`;
-	}
-
 	const pieChartContainer = document.createElement("div");
 	pieChartContainer.id = "pieChartPart";
 	statisticsContent.appendChild(pieChartContainer);
 
+	const pieChartHeader = document.createElement("div");
+	pieChartHeader.id = "pieChartPartHeader";
+	pieChartContainer.appendChild(pieChartHeader);
+
 	const pieChartTitle = document.createElement("h1");
 	pieChartTitle.id = "pieChartPartTitle";
 	pieChartTitle.innerHTML = "Your Listening Breakdown";
-	pieChartContainer.appendChild(pieChartTitle);
+	pieChartHeader.appendChild(pieChartTitle);
+
+	const pieChartSettingsButton = document.createElement("button");
+	pieChartSettingsButton.id = "pieChartSettingsButton";
+	pieChartSettingsButton.className = "pieChartSettingsButton";
+	pieChartSettingsButton.textContent = "Pie Chart Settings";
+	pieChartSettingsButton.addEventListener("click", openPieChartSettingsModal);
+	pieChartHeader.appendChild(pieChartSettingsButton);
 
 	const pieChartBoxesContainer = document.createElement("div");
 	pieChartBoxesContainer.id = "pieChartPartBoxes";
@@ -182,57 +198,6 @@ async function createPieCharts() {
 		addGroupedEntry(languageCountMap, song.language);
 	}
 
-	function buildChart(canvasId, dataMap, topLabelsCount = 5) {
-		const labels = Object.keys(dataMap);
-		const dataValues = Object.values(dataMap);
-
-		const sortedItems = labels
-			.map((label, index) => ({ label, value: dataValues[index] }))
-			.sort((a, b) => b.value - a.value)
-			.slice(0, topLabelsCount);
-
-		const topLabels = sortedItems.map(item => item.label);
-
-		const colors = labels.map(label => {
-			const topIndex = topLabels.indexOf(label);
-			return topIndex >= 0 ? colorFromName(label, topIndex) : colorFromName(label);
-		});
-
-		new Chart(document.getElementById(canvasId).getContext("2d"), {
-			type: "pie",
-			data: {
-				labels: labels,
-				datasets: [
-					{
-						data: dataValues,
-						backgroundColor: colors,
-					},
-				],
-			},
-			options: {
-				plugins: {
-					legend: {
-						display: true,
-						labels: {
-							color: "white",
-							filter: legendItem => topLabels.includes(legendItem.text),
-						},
-					},
-					tooltip: {
-						callbacks: {
-							label: function (context) {
-								const value = context.raw;
-								const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
-								const percentage = ((value / total) * 100).toFixed(2);
-								return `${value} (${percentage}%)`;
-							},
-						},
-					},
-				},
-			},
-		});
-	}
-
 	const artistTimeMap = {};
 	const genreTimeMap = {};
 	const languageTimeMap = {};
@@ -249,16 +214,88 @@ async function createPieCharts() {
 		addGroupedEntry(languageTimeMap, matchedSong.language, listenDuration);
 	}
 
-	const chartDefinitions = [
-		{ id: "artistPieChart", box: canvasBoxes[0], title: "Favorite Artists (Song Amount)", dataMap: finishGroupedMap(artistCountMap) },
-		{ id: "genrePieChart", box: canvasBoxes[1], title: "Favorite Genres (Song Amount)", dataMap: finishGroupedMap(genreCountMap) },
-		{ id: "languagePieChart", box: canvasBoxes[2], title: "Favorite Languages (Song Amount)", dataMap: finishGroupedMap(languageCountMap) },
-		{ id: "artistTimePieChart", box: canvasBoxes[3], title: "Favorite Artists (Seconds Listened)", dataMap: finishGroupedMap(artistTimeMap) },
-		{ id: "genreTimePieChart", box: canvasBoxes[4], title: "Favorite Genres (Seconds Listened)", dataMap: finishGroupedMap(genreTimeMap) },
-		{ id: "languageTimePieChart", box: canvasBoxes[5], title: "Favorite Languages (Seconds Listened)", dataMap: finishGroupedMap(languageTimeMap) },
+	const finishedArtistCount = finishGroupedMap(artistCountMap);
+	const finishedGenreCount = finishGroupedMap(genreCountMap);
+	const finishedLanguageCount = finishGroupedMap(languageCountMap);
+	const finishedArtistTime = finishGroupedMap(artistTimeMap);
+	const finishedGenreTime = finishGroupedMap(genreTimeMap);
+	const finishedLanguageTime = finishGroupedMap(languageTimeMap);
+
+	pieChartCategories = {
+		artist: [...new Set([...Object.keys(finishedArtistCount), ...Object.keys(finishedArtistTime)])],
+		genre: [...new Set([...Object.keys(finishedGenreCount), ...Object.keys(finishedGenreTime)])],
+		language: [...new Set([...Object.keys(finishedLanguageCount), ...Object.keys(finishedLanguageTime)])],
+	};
+
+	pieChartDefinitions = [
+		{ id: "artistPieChart", box: canvasBoxes[0], title: "Favorite Artists (Song Amount)", dataMap: finishedArtistCount, type: "artist" },
+		{ id: "genrePieChart", box: canvasBoxes[1], title: "Favorite Genres (Song Amount)", dataMap: finishedGenreCount, type: "genre" },
+		{ id: "languagePieChart", box: canvasBoxes[2], title: "Favorite Languages (Song Amount)", dataMap: finishedLanguageCount, type: "language" },
+		{ id: "artistTimePieChart", box: canvasBoxes[3], title: "Favorite Artists (Seconds Listened)", dataMap: finishedArtistTime, type: "artist" },
+		{ id: "genreTimePieChart", box: canvasBoxes[4], title: "Favorite Genres (Seconds Listened)", dataMap: finishedGenreTime, type: "genre" },
+		{ id: "languageTimePieChart", box: canvasBoxes[5], title: "Favorite Languages (Seconds Listened)", dataMap: finishedLanguageTime, type: "language" },
 	];
 
-	for (const chartDef of chartDefinitions) {
+	buildAllPieCharts();
+}
+
+function buildChart(canvasId, dataMap, type, topLabelsCount = 5) {
+	const labels = Object.keys(dataMap);
+	const dataValues = Object.values(dataMap);
+
+	const sortedItems = labels
+		.map((label, index) => ({ label, value: dataValues[index] }))
+		.sort((a, b) => b.value - a.value)
+		.slice(0, topLabelsCount);
+
+	const topLabels = sortedItems.map(item => item.label);
+
+	const colors = labels.map(label => getCustomPieChartColor(type, label) || colorFromName(label));
+
+	return new Chart(document.getElementById(canvasId).getContext("2d"), {
+		type: "pie",
+		data: {
+			labels: labels,
+			datasets: [
+				{
+					data: dataValues,
+					backgroundColor: colors,
+				},
+			],
+		},
+		options: {
+			plugins: {
+				legend: {
+					display: true,
+					labels: {
+						color: "white",
+						filter: legendItem => topLabels.includes(legendItem.text),
+					},
+				},
+				tooltip: {
+					callbacks: {
+						label: function (context) {
+							const value = context.raw;
+							const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+							const percentage = ((value / total) * 100).toFixed(2);
+							return `${value} (${percentage}%)`;
+						},
+					},
+				},
+			},
+		},
+	});
+}
+
+function buildAllPieCharts() {
+	pieChartInstances.forEach(instance => {
+		try {
+			instance.destroy();
+		} catch {}
+	});
+	pieChartInstances = [];
+	for (const chartDef of pieChartDefinitions) {
+		chartDef.box.innerHTML = "";
 		const canvasElement = document.createElement("canvas");
 		canvasElement.id = chartDef.id;
 		canvasElement.className = "pieChart";
@@ -268,7 +305,7 @@ async function createPieCharts() {
 		chartDescription.innerHTML = chartDef.title;
 		chartDef.box.appendChild(chartDescription);
 
-		buildChart(chartDef.id, chartDef.dataMap);
+		pieChartInstances.push(buildChart(chartDef.id, chartDef.dataMap, chartDef.type));
 	}
 }
 
@@ -543,6 +580,211 @@ function applyStatsColumnVisibility() {
 	document.querySelectorAll("#htmlTable [data-column]").forEach(el => {
 		el.classList.toggle("stats-hidden", !statsVisibleColumns.has(el.dataset.column));
 	});
+}
+
+async function loadPieChartColorPrefs() {
+	try {
+		const settingsRows = await callSqlite({
+			db: "settings",
+			query: "SELECT * FROM settings LIMIT 1",
+			fetch: true,
+		});
+		const saved = settingsRows[0]?.pieChartColors;
+		if (saved) {
+			const parsed = JSON.parse(saved);
+			if (parsed && typeof parsed == "object") {
+				const result = {};
+				for (const type of ["artist", "genre", "language"]) {
+					const typeColors = parsed[type];
+					if (!typeColors || typeof typeColors != "object") continue;
+					result[type] = {};
+					for (const [key, color] of Object.entries(typeColors)) {
+						if (typeof color == "string" && /^#[0-9a-f]{6}$/i.test(color)) {
+							result[type][normalizeText(key)] = color.toLowerCase();
+						}
+					}
+				}
+				pieChartColors = result;
+				return;
+			}
+		}
+	} catch {}
+	pieChartColors = {};
+}
+
+function savePieChartColorPrefs() {
+	callSqlite({
+		db: "settings",
+		query: "UPDATE settings SET pieChartColors = ?",
+		args: [JSON.stringify(pieChartColors)],
+		fetch: false,
+	});
+}
+
+function getCustomPieChartColor(type, label) {
+	if (!type) return null;
+	const typeColors = pieChartColors[type];
+	if (!typeColors) return null;
+	return typeColors[normalizeText(label)] || null;
+}
+
+function displayLabelForType(type, normalizedKey) {
+	const found = (pieChartCategories[type] || []).find(cat => normalizeText(cat) == normalizedKey);
+	return found || normalizedKey;
+}
+
+function openPieChartSettingsModal() {
+	const overlay = document.createElement("div");
+	overlay.className = "confirm-modal-overlay";
+	overlay.id = "pieChartSettingsModal";
+
+	const modal = document.createElement("div");
+	modal.className = "confirm-modal pie-chart-settings-modal";
+
+	const title = document.createElement("h3");
+	title.style.margin = "0 0 12px 0";
+	title.textContent = "Pie Chart Settings";
+	modal.appendChild(title);
+
+	const typeSelect = document.createElement("select");
+	typeSelect.style.cssText = "width:100%;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;cursor:pointer;margin-bottom:10px;border-radius:5px;";
+	[["artist", "Artist"], ["genre", "Genre"], ["language", "Language"]].forEach(([value, text]) => {
+		const opt = document.createElement("option");
+		opt.value = value;
+		opt.textContent = text;
+		typeSelect.appendChild(opt);
+	});
+	modal.appendChild(typeSelect);
+
+	const searchInput = document.createElement("input");
+	searchInput.placeholder = "Search categories...";
+	searchInput.style.cssText = "width:100%;box-sizing:border-box;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;border-radius:5px;margin-bottom:10px;outline:none;";
+	modal.appendChild(searchInput);
+
+	const resultsList = document.createElement("div");
+	resultsList.className = "pieChartColorResults";
+	modal.appendChild(resultsList);
+
+	const savedTitle = document.createElement("h4");
+	savedTitle.textContent = "Saved colors";
+	savedTitle.style.cssText = "margin:16px 0 6px 0;font-size:14px;";
+	modal.appendChild(savedTitle);
+
+	const savedList = document.createElement("div");
+	savedList.className = "pieChartColorResults";
+	modal.appendChild(savedList);
+
+	function buildColorRow(type, label) {
+		const key = normalizeText(label);
+		const row = document.createElement("div");
+		row.className = "pieChartColorRow";
+
+		const swatch = document.createElement("div");
+		swatch.className = "pieChartColorSwatch";
+		swatch.style.background = getCustomPieChartColor(type, label) || colorFromName(label);
+
+		const text = document.createElement("span");
+		text.textContent = label;
+		text.style.cssText = "flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;";
+
+		const colorInput = document.createElement("input");
+		colorInput.type = "color";
+		colorInput.value = getCustomPieChartColor(type, label) || "#ffffff";
+		colorInput.className = "pieChartColorInput";
+		colorInput.addEventListener("input", () => {
+			if (!pieChartColors[type]) pieChartColors[type] = {};
+			pieChartColors[type][key] = colorInput.value.toLowerCase();
+			savePieChartColorPrefs();
+			swatch.style.background = colorInput.value;
+			buildAllPieCharts();
+		});
+		colorInput.addEventListener("change", () => {
+			updateResults();
+			updateSavedList();
+		});
+
+		const clearBtn = document.createElement("button");
+		clearBtn.textContent = "✕";
+		clearBtn.className = "pieChartColorClear";
+		clearBtn.style.display = getCustomPieChartColor(type, label) ? "flex" : "none";
+		clearBtn.addEventListener("click", () => {
+			if (pieChartColors[type]) delete pieChartColors[type][key];
+			if (pieChartColors[type] && !Object.keys(pieChartColors[type]).length) delete pieChartColors[type];
+			savePieChartColorPrefs();
+			swatch.style.background = colorFromName(label);
+			clearBtn.style.display = "none";
+			buildAllPieCharts();
+			updateResults();
+			updateSavedList();
+		});
+
+		row.appendChild(swatch);
+		row.appendChild(text);
+		row.appendChild(colorInput);
+		row.appendChild(clearBtn);
+		return row;
+	}
+
+	function emptyMessage(text) {
+		const p = document.createElement("p");
+		p.style.cssText = "color:#999;margin:6px 0;text-align:center;font-size:13px;";
+		p.textContent = text;
+		return p;
+	}
+
+	function updateResults() {
+		resultsList.innerHTML = "";
+		const type = typeSelect.value;
+		const query = normalizeText(searchInput.value);
+		let matches = (pieChartCategories[type] || []).filter(cat => normalizeText(cat).includes(query));
+		matches.sort((a, b) => {
+			const aHas = getCustomPieChartColor(type, a) ? 0 : 1;
+			const bHas = getCustomPieChartColor(type, b) ? 0 : 1;
+			return aHas - bHas;
+		});
+		matches = matches.slice(0, 30);
+		if (!matches.length) {
+			resultsList.appendChild(emptyMessage("No matching categories"));
+			return;
+		}
+		matches.forEach(label => resultsList.appendChild(buildColorRow(type, label)));
+	}
+
+	function updateSavedList() {
+		savedList.innerHTML = "";
+		const type = typeSelect.value;
+		const entries = pieChartColors[type] ? Object.entries(pieChartColors[type]) : [];
+		entries.sort((a, b) => a[0].localeCompare(b[0]));
+		if (!entries.length) {
+			savedList.appendChild(emptyMessage("No custom colors saved yet"));
+			return;
+		}
+		entries.forEach(([key]) => {
+			savedList.appendChild(buildColorRow(type, displayLabelForType(type, key)));
+		});
+	}
+
+	searchInput.addEventListener("input", updateResults);
+	typeSelect.addEventListener("change", () => {
+		searchInput.value = "";
+		updateResults();
+		updateSavedList();
+	});
+
+	updateResults();
+	updateSavedList();
+
+	const closeBtn = document.createElement("button");
+	closeBtn.textContent = "Close";
+	closeBtn.style.cssText = "margin-top:16px;width:100%;padding:10px 0;border:none;border-radius:6px;background:#424242;color:#fff;cursor:pointer;";
+	closeBtn.onclick = () => overlay.remove();
+	modal.appendChild(closeBtn);
+
+	overlay.appendChild(modal);
+	overlay.addEventListener("click", event => {
+		if (event.target == overlay) overlay.remove();
+	});
+	document.body.appendChild(overlay);
 }
 
 function openStatsColumnsModal() {

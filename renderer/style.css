@@ -1358,6 +1358,79 @@ th {
 	color: #e0e0e0 !important;
 }
 
+#pieChartPartHeader {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 20px;
+}
+
+.pieChartSettingsButton {
+	height: 4vh;
+	font-size: 1.4vh;
+	background-color: black;
+	cursor: pointer;
+	outline: none;
+	box-shadow: none;
+	border: none;
+	border-radius: 5px;
+	padding: 0 12px;
+	color: white;
+}
+
+.pie-chart-settings-modal {
+	text-align: left;
+	width: 44vw;
+	max-width: 520px;
+	max-height: 72vh;
+	overflow-y: auto;
+}
+
+.pieChartColorResults {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.pieChartColorRow {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 4px 0;
+}
+
+.pieChartColorSwatch {
+	width: 24px;
+	height: 24px;
+	border-radius: 4px;
+	border: 1px solid #555;
+	flex-shrink: 0;
+}
+
+.pieChartColorInput {
+	width: 40px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	background: none;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.pieChartColorClear {
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: 4px;
+	background: #424242;
+	color: #fff;
+	cursor: pointer;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	line-height: 1;
+}
+
 .hourChart {
 	margin: 0 5vw;
 }
