@@ -12,6 +12,7 @@
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
 -   Make interested/not interested button change colors.
 -   Change progress bar color to red if song is paused
+-   Fetch lyrics from an API.
 -   Swap pages with arrow keys in my music
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.

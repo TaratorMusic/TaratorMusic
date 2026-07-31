@@ -53,6 +53,7 @@ var settingsColumns = []Column{
 	{Name: "statsTableColumns", Type: "TEXT", Default: "NULL"},
 	{Name: "pieChartColors", Type: "TEXT", Default: "NULL"},
 	{Name: "pieChartTopCategories", Type: "INTEGER", Default: "5"},
+	{Name: "pieChartMergeRules", Type: "TEXT", Default: "NULL"},
 }
 
 var statsColumns = []Column{

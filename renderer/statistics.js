@@ -14,6 +14,7 @@ let pieChartDefinitions = [];
 let pieChartInstances = [];
 let pieChartTopCategories = 5;
 let pieChartColorDebounceTimer = null;
+let pieChartMergeRules = { artist: [], genre: [], language: [] };
 
 function colorFromName(name) {
 	let hashValue = 0;
@@ -230,15 +231,35 @@ async function createPieCharts() {
 	};
 
 	pieChartDefinitions = [
-		{ id: "artistPieChart", box: canvasBoxes[0], title: "Favorite Artists (Song Amount)", dataMap: finishedArtistCount, type: "artist" },
-		{ id: "genrePieChart", box: canvasBoxes[1], title: "Favorite Genres (Song Amount)", dataMap: finishedGenreCount, type: "genre" },
-		{ id: "languagePieChart", box: canvasBoxes[2], title: "Favorite Languages (Song Amount)", dataMap: finishedLanguageCount, type: "language" },
-		{ id: "artistTimePieChart", box: canvasBoxes[3], title: "Favorite Artists (Seconds Listened)", dataMap: finishedArtistTime, type: "artist" },
-		{ id: "genreTimePieChart", box: canvasBoxes[4], title: "Favorite Genres (Seconds Listened)", dataMap: finishedGenreTime, type: "genre" },
-		{ id: "languageTimePieChart", box: canvasBoxes[5], title: "Favorite Languages (Seconds Listened)", dataMap: finishedLanguageTime, type: "language" },
+		{ id: "artistPieChart", box: canvasBoxes[0], title: "Favorite Artists (Song Amount)", baseMap: finishedArtistCount, type: "artist" },
+		{ id: "genrePieChart", box: canvasBoxes[1], title: "Favorite Genres (Song Amount)", baseMap: finishedGenreCount, type: "genre" },
+		{ id: "languagePieChart", box: canvasBoxes[2], title: "Favorite Languages (Song Amount)", baseMap: finishedLanguageCount, type: "language" },
+		{ id: "artistTimePieChart", box: canvasBoxes[3], title: "Favorite Artists (Seconds Listened)", baseMap: finishedArtistTime, type: "artist" },
+		{ id: "genreTimePieChart", box: canvasBoxes[4], title: "Favorite Genres (Seconds Listened)", baseMap: finishedGenreTime, type: "genre" },
+		{ id: "languageTimePieChart", box: canvasBoxes[5], title: "Favorite Languages (Seconds Listened)", baseMap: finishedLanguageTime, type: "language" },
 	];
 
 	buildAllPieCharts();
+}
+
+function applyMergeRules(dataMap, type) {
+	const groups = pieChartMergeRules[type] || [];
+	if (!groups.length) return dataMap;
+	const entries = Object.entries(dataMap);
+	const used = new Set();
+	const result = {};
+	for (const group of groups) {
+		if (!Array.isArray(group) || group.length < 2) continue;
+		const normalizedMembers = group.map(member => normalizeText(member));
+		const matched = entries.filter(([label]) => !used.has(label) && normalizedMembers.includes(normalizeText(label)));
+		if (!matched.length) continue;
+		result[group.join(" & ")] = matched.reduce((sum, [, value]) => sum + value, 0);
+		matched.forEach(([label]) => used.add(label));
+	}
+	for (const [label, value] of entries) {
+		if (!used.has(label)) result[label] = value;
+	}
+	return result;
 }
 
 function buildChart(canvasId, dataMap, type, topLabelsCount = 5) {
@@ -314,7 +335,7 @@ function buildAllPieCharts() {
 		chartDescription.innerHTML = chartDef.title;
 		chartDef.box.appendChild(chartDescription);
 
-		pieChartInstances.push(buildChart(chartDef.id, chartDef.dataMap, chartDef.type, pieChartTopCategories));
+		pieChartInstances.push(buildChart(chartDef.id, applyMergeRules(chartDef.baseMap, chartDef.type), chartDef.type, pieChartTopCategories));
 	}
 }
 
@@ -594,6 +615,7 @@ function applyStatsColumnVisibility() {
 async function loadPieChartPrefs() {
 	pieChartColors = {};
 	pieChartTopCategories = 5;
+	pieChartMergeRules = { artist: [], genre: [], language: [] };
 	try {
 		const settingsRows = await callSqlite({
 			db: "settings",
@@ -621,6 +643,19 @@ async function loadPieChartPrefs() {
 				pieChartColors = result;
 			}
 		}
+		const mergeSaved = row?.pieChartMergeRules;
+		if (mergeSaved) {
+			const parsed = JSON.parse(mergeSaved);
+			if (parsed && typeof parsed == "object") {
+				const result = { artist: [], genre: [], language: [] };
+				for (const type of ["artist", "genre", "language"]) {
+					const typeGroups = parsed[type];
+					if (!Array.isArray(typeGroups)) continue;
+					result[type] = typeGroups.filter(group => Array.isArray(group) && group.length >= 1).map(group => group.filter(member => typeof member == "string"));
+				}
+				pieChartMergeRules = result;
+			}
+		}
 	} catch {}
 }
 
@@ -642,6 +677,15 @@ function savePieChartTopCategories() {
 	});
 }
 
+function savePieChartMergeRules() {
+	callSqlite({
+		db: "settings",
+		query: "UPDATE settings SET pieChartMergeRules = ?",
+		args: [JSON.stringify(pieChartMergeRules)],
+		fetch: false,
+	});
+}
+
 function getCustomPieChartColor(type, label) {
 	if (!type) return null;
 	const typeColors = pieChartColors[type];
@@ -651,7 +695,11 @@ function getCustomPieChartColor(type, label) {
 
 function displayLabelForType(type, normalizedKey) {
 	const found = (pieChartCategories[type] || []).find(cat => normalizeText(cat) == normalizedKey);
-	return found || normalizedKey;
+	if (found) return found;
+	const merged = (pieChartMergeRules[type] || [])
+		.map(group => group.join(" & "))
+		.find(label => normalizeText(label) == normalizedKey);
+	return merged || normalizedKey;
 }
 
 function openPieChartSettingsModal() {
@@ -761,6 +809,48 @@ function openPieChartSettingsModal() {
 	const savedControls = document.createElement("div");
 	savedControls.className = "pieChartPageControls";
 	modal.appendChild(savedControls);
+
+	const mergeLabel = document.createElement("h4");
+	mergeLabel.textContent = "Merge categories";
+	mergeLabel.style.cssText = "margin:16px 0 6px 0;font-size:14px;";
+	modal.appendChild(mergeLabel);
+
+	const mergeGroupsList = document.createElement("div");
+	mergeGroupsList.className = "pieChartMergeGroups";
+	modal.appendChild(mergeGroupsList);
+
+	const newGroupLabel = document.createElement("h4");
+	newGroupLabel.textContent = "New group";
+	newGroupLabel.style.cssText = "margin:12px 0 6px 0;font-size:14px;";
+	modal.appendChild(newGroupLabel);
+
+	const mergeBuilderRow = document.createElement("div");
+	mergeBuilderRow.className = "pieChartMergeBuilder";
+	modal.appendChild(mergeBuilderRow);
+
+	const mergeNewInput = document.createElement("input");
+	mergeNewInput.placeholder = "Type a category...";
+	mergeNewInput.setAttribute("list", "pieChartMergeDatalist");
+	mergeNewInput.className = "pieChartMergeInput";
+	mergeBuilderRow.appendChild(mergeNewInput);
+
+	const mergeAddMemberBtn = document.createElement("button");
+	mergeAddMemberBtn.textContent = "Add";
+	mergeAddMemberBtn.className = "pieChartMergeAddBtn";
+	mergeBuilderRow.appendChild(mergeAddMemberBtn);
+
+	const mergeBuilderChips = document.createElement("div");
+	mergeBuilderChips.className = "pieChartMergeBuilderChips";
+	modal.appendChild(mergeBuilderChips);
+
+	const mergeSaveGroupBtn = document.createElement("button");
+	mergeSaveGroupBtn.textContent = "Save group";
+	mergeSaveGroupBtn.className = "pieChartMergeSaveBtn";
+	modal.appendChild(mergeSaveGroupBtn);
+
+	const mergeDatalist = document.createElement("datalist");
+	mergeDatalist.id = "pieChartMergeDatalist";
+	modal.appendChild(mergeDatalist);
 
 	let listMode = "page";
 	let resultsPage = 1;
@@ -886,12 +976,156 @@ function openPieChartSettingsModal() {
 		controlsEl.appendChild(rightBtn);
 	}
 
+	let mergeNewMembers = [];
+
+	function commitMergeChange() {
+		savePieChartMergeRules();
+		buildAllPieCharts();
+		renderMergeGroups();
+		renderMergeBuilder();
+		updateResults();
+		updateSavedList();
+	}
+
+	function refreshMergeDatalist() {
+		mergeDatalist.innerHTML = "";
+		(pieChartCategories[typeSelect.value] || []).forEach(cat => {
+			const opt = document.createElement("option");
+			opt.value = cat;
+			mergeDatalist.appendChild(opt);
+		});
+	}
+
+	function buildMergeChip(member, onRemove) {
+		const chip = document.createElement("span");
+		chip.className = "pieChartMergeChip";
+		const text = document.createElement("span");
+		text.textContent = member;
+		chip.appendChild(text);
+		const removeBtn = document.createElement("button");
+		removeBtn.textContent = "✕";
+		removeBtn.className = "pieChartChipRemove";
+		removeBtn.addEventListener("click", onRemove);
+		chip.appendChild(removeBtn);
+		return chip;
+	}
+
+	function renderMergeGroups() {
+		mergeGroupsList.innerHTML = "";
+		if (!Array.isArray(pieChartMergeRules[typeSelect.value])) pieChartMergeRules[typeSelect.value] = [];
+		const groups = pieChartMergeRules[typeSelect.value];
+		if (!groups.length) {
+			const empty = document.createElement("p");
+			empty.style.cssText = "color:#999;margin:6px 0;text-align:center;font-size:13px;";
+			empty.textContent = "No merge groups yet";
+			mergeGroupsList.appendChild(empty);
+			return;
+		}
+		groups.forEach((group, groupIndex) => {
+			const row = document.createElement("div");
+			row.className = "pieChartMergeGroupRow";
+
+			const chipsWrap = document.createElement("div");
+			chipsWrap.className = "pieChartMergeChips";
+			group.forEach((member, memberIndex) => {
+				chipsWrap.appendChild(buildMergeChip(member, () => {
+					groups[groupIndex].splice(memberIndex, 1);
+					if (groups[groupIndex].length < 2) groups.splice(groupIndex, 1);
+					commitMergeChange();
+				}));
+			});
+			row.appendChild(chipsWrap);
+
+			const addBtn = document.createElement("button");
+			addBtn.textContent = "+ Add Category";
+			addBtn.className = "pieChartMergeAddBtn";
+			addBtn.addEventListener("click", () => {
+				if (row.querySelector(".pieChartMergeGroupAddInput")) return;
+				const inputRow = document.createElement("div");
+				inputRow.className = "pieChartMergeGroupAddInput";
+				const input = document.createElement("input");
+				input.setAttribute("list", "pieChartMergeDatalist");
+				input.placeholder = "Type a category...";
+				input.className = "pieChartMergeInput";
+				inputRow.appendChild(input);
+				const confirmBtn = document.createElement("button");
+				confirmBtn.textContent = "Add";
+				confirmBtn.className = "pieChartMergeAddBtn";
+				inputRow.appendChild(confirmBtn);
+				row.appendChild(inputRow);
+				const addMember = () => {
+					const value = input.value.trim();
+					if (!value) return;
+					const key = normalizeText(value);
+					if (group.some(member => normalizeText(member) == key)) return;
+					group.push(value);
+					commitMergeChange();
+				};
+				confirmBtn.addEventListener("click", addMember);
+				input.addEventListener("keydown", event => {
+					if (event.key == "Enter") {
+						event.preventDefault();
+						addMember();
+					}
+				});
+				input.focus();
+			});
+			row.appendChild(addBtn);
+
+			const deleteBtn = document.createElement("button");
+			deleteBtn.textContent = "Delete";
+			deleteBtn.className = "pieChartMergeDeleteBtn";
+			deleteBtn.addEventListener("click", () => {
+				groups.splice(groupIndex, 1);
+				commitMergeChange();
+			});
+			row.appendChild(deleteBtn);
+
+			mergeGroupsList.appendChild(row);
+		});
+	}
+
+	function addNewGroupMember() {
+		const value = mergeNewInput.value.trim();
+		if (!value) return;
+		const key = normalizeText(value);
+		if (mergeNewMembers.some(member => normalizeText(member) == key)) return;
+		mergeNewMembers.push(value);
+		mergeNewInput.value = "";
+		renderMergeBuilder();
+		mergeNewInput.focus();
+	}
+
+	function renderMergeBuilder() {
+		mergeBuilderChips.innerHTML = "";
+		mergeNewMembers.forEach((member, index) => {
+			mergeBuilderChips.appendChild(buildMergeChip(member, () => {
+				mergeNewMembers.splice(index, 1);
+				renderMergeBuilder();
+			}));
+		});
+		mergeSaveGroupBtn.style.display = mergeNewMembers.length >= 2 ? "block" : "none";
+	}
+
+	function saveNewGroup() {
+		if (mergeNewMembers.length < 2) return;
+		if (!Array.isArray(pieChartMergeRules[typeSelect.value])) pieChartMergeRules[typeSelect.value] = [];
+		pieChartMergeRules[typeSelect.value].push([...mergeNewMembers]);
+		mergeNewMembers = [];
+		mergeNewInput.value = "";
+		commitMergeChange();
+	}
+
 	function updateResults() {
 		resultsList.innerHTML = "";
 		resultsControls.style.display = "none";
 		const type = typeSelect.value;
 		const query = normalizeText(searchInput.value);
-		let matches = (pieChartCategories[type] || []).filter(cat => normalizeText(cat).includes(query));
+		const searchable = [...new Set([
+			...(pieChartCategories[type] || []),
+			...(pieChartMergeRules[type] || []).map(group => group.join(" & ")),
+		])];
+		let matches = searchable.filter(cat => normalizeText(cat).includes(query));
 		matches.sort((a, b) => {
 			const aHas = getCustomPieChartColor(type, a) ? 0 : 1;
 			const bHas = getCustomPieChartColor(type, b) ? 0 : 1;
@@ -951,6 +1185,11 @@ function openPieChartSettingsModal() {
 		searchInput.value = "";
 		resultsPage = 1;
 		savedPage = 1;
+		mergeNewMembers = [];
+		mergeNewInput.value = "";
+		refreshMergeDatalist();
+		renderMergeGroups();
+		renderMergeBuilder();
 		updateResults();
 		updateSavedList();
 	});
@@ -962,6 +1201,15 @@ function openPieChartSettingsModal() {
 		updateSavedList();
 	});
 
+	mergeAddMemberBtn.addEventListener("click", addNewGroupMember);
+	mergeNewInput.addEventListener("keydown", event => {
+		if (event.key == "Enter") {
+			event.preventDefault();
+			addNewGroupMember();
+		}
+	});
+	mergeSaveGroupBtn.addEventListener("click", saveNewGroup);
+
 	function closeModal() {
 		cancelColorDebounce();
 		savePieChartColorPrefs();
@@ -971,6 +1219,9 @@ function openPieChartSettingsModal() {
 
 	updateResults();
 	updateSavedList();
+	refreshMergeDatalist();
+	renderMergeGroups();
+	renderMergeBuilder();
 
 	overlay.appendChild(modal);
 	overlay.addEventListener("click", event => {
