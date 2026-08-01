@@ -1,6 +1,5 @@
 ### Version 1.9.1 Planned Features
 
--   Song element not found bug while editing. --> happens when you are in the my music page but the song isnt in the page
 -   There is a bug where when you open the add to playlist modal it can pop-up the save minimodal incorrectly. Edit a modal --> open an add to playlist modal --> try to close it with esc instead of regularly
 -   Saving to playlists after downloads not working
 -   recommended songs auto-skip on play

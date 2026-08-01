@@ -1697,7 +1697,6 @@ async function saveEditedSong(translationOnly = false) {
 
 		if (document.getElementById("my-music-content").style.display == "flex") {
 			element = document.querySelector(`.music-item[data-file-name="${songID}"]`);
-			if (!element) return await alertModal("Song element not found.");
 		}
 
 		thumbnailPath = path.join(thumbnailFolder, `${songID}.${row.thumbnail_extension}`);
@@ -1825,10 +1824,9 @@ async function saveEditedSong(translationOnly = false) {
 		if (songID.includes("tarator")) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 	}
 
-	if (document.getElementById("my-music-content").style.display == "flex") {
+	if (document.getElementById("my-music-content").style.display == "flex" && element) {
 		if (musicScrollPos) document.getElementById("music-list-container").scrollTop = musicScrollPos;
 		if (musicSearchValue) document.getElementById("music-search").value = musicSearchValue;
-
 		if (newNameInput == removeExtensions(playingSongsID)) element.classList.add("playing");
 
 		if (songID.includes("tarator")) {
