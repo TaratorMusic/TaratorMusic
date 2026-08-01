@@ -1078,21 +1078,10 @@ function openAddToPlaylistModalStaging(songId) {
 async function commitStagedPlaylistAdds() {
 	for (const [song, lists] of pendingPlaylistAddsWithIds.entries()) {
 		for (const listID of lists) {
-			const playlistRes = [];
+			const playlist = playlistsMap.get(listID);
+			if (!playlist) continue;
 
-			const cached = playlistsMap.get(listID);
-			if (cached) {
-				playlistRes.push({
-					id: listID,
-					name: cached.name,
-					songs: JSON.stringify(cached.songs || []),
-					thumbnail_extension: cached.thumbnail_extension,
-				});
-			}
-
-			const playlist = playlistRes[0];
-			let songs = JSON.parse(playlist.songs || "[]");
-
+			const songs = playlist.songs ? [...playlist.songs] : [];
 			if (!songs.includes(song)) {
 				songs.push(song);
 				callSqlite({
@@ -1100,10 +1089,16 @@ async function commitStagedPlaylistAdds() {
 					query: "UPDATE playlists SET songs = ? WHERE id = ?",
 					args: [JSON.stringify(songs), listID],
 				});
+				playlistsMap.set(listID, {
+					...playlist,
+					songs,
+				});
 			}
 		}
 	}
 	pendingPlaylistAddsWithIds.clear();
+
+	if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
 }
 
 function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {

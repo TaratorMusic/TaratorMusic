@@ -1,7 +1,3 @@
-### Version 1.9.1 Planned Features
-
--   Saving to playlists after downloads not working
-
 ### Version 1.9.x Planned Features
 
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
