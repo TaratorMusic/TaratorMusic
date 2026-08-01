@@ -1,7 +1,6 @@
 ### Version 1.9.1 Planned Features
 
 -   Saving to playlists after downloads not working
--   recommended songs auto-skip on play
 
 ### Version 1.9.x Planned Features
 

@@ -1106,6 +1106,32 @@ function createMusicElement(songFile) {
 	return musicElement;
 }
 
+function getStreamedSongData(songId) {
+	const cached = streamedSongsCache.get(songId);
+	if (cached) return cached;
+
+	const htmlEntry = streamedSongsHtmlMap.get(songId);
+	if (!htmlEntry) return null;
+
+	const data = {
+		song_name: htmlEntry.name,
+		thumbnail_url: htmlEntry.thumbnail?.url ?? htmlEntry.thumbnail ?? null,
+		length: htmlEntry.length ?? 0,
+		artist: null,
+		genre: null,
+		language: null,
+	};
+
+	streamedSongsCache.set(songId, data);
+	callSqlite({
+		db: "musics",
+		query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		args: [songId, data.song_name, data.thumbnail_url, data.length, null, null, null],
+		fetch: false,
+	});
+	return data;
+}
+
 function playMusic(songId, playlistId) {
 	saveUserProgress();
 
@@ -1117,7 +1143,7 @@ function playMusic(songId, playlistId) {
 
 		if (playlistId != "SEARCH_SHUFFLE") playlistsMap.delete("SEARCH_SHUFFLE");
 
-		const songData = offlineMode ? songNameCache.get(songId) : streamedSongsCache.get(songId);
+		const songData = offlineMode ? songNameCache.get(songId) : getStreamedSongData(songId);
 		if (!songData) return logChange("warn", `Song not found in cache or stream map: ${songId}`);
 
 		const songName = songData.song_name;
@@ -1545,7 +1571,8 @@ async function opencustomiseModal(songsId) {
 		document.getElementById("customiseSongLink").disabled = false;
 		document.getElementById("customiseThumbnail").disabled = false;
 	} else {
-		const row = streamedSongsCache.get(songsId);
+		const row = getStreamedSongData(songsId);
+		if (!row) return;
 		({ song_name, thumbnail_url, artist, genre, language } = row);
 
 		thumbnailPath = thumbnail_url;
@@ -2506,7 +2533,7 @@ function tick() {
 				});
 			} else {
 				// Youtube song
-				const row = streamedSongsCache.get(playingSongsID);
+				const row = getStreamedSongData(playingSongsID);
 				if (!row) return playNextSong();
 
 				updateMiniPlayer({
