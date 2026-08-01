@@ -767,7 +767,7 @@ function openPieChartSettingsModal() {
 
 	const searchInput = document.createElement("input");
 	searchInput.placeholder = "Search categories...";
-	searchInput.style.cssText = "flex:1;min-width:0;box-sizing:border-box;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white;border-radius:5px;outline:none;";
+	searchInput.style.cssText = "flex:1;min-width:0;box-sizing:border-box;height:34px;font-size:14px;border:none;text-align:center;background-color:#000;color:white !important;border-radius:5px;outline:none;";
 	typeSearchRow.appendChild(searchInput);
 
 	modal.appendChild(typeSearchRow);
