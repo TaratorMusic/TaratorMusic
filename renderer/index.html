@@ -85,12 +85,14 @@
 						<div class="modalTitle">Update TaratorMusic</div>
 						<span class="close" onclick="closeModal()">&times;</span>
 					</div>
-					<div id="patchNotes">You are using the latest version of TaratorMusic.</div>
-					<div style="color: yellow">Please don't close the app while updating, as it can break. If the update breaks, you can install the latest version from Github Releases.</div>
-					<div id="progressContainer" style="width: 100%; background: #ccc; display: none">
-						<div id="downloadProgress" style="width: 0%; background: #4caf50; color: white; text-align: center"></div>
+					<div style="display: flex; flex-direction: column; height: 77vh; overflow-y: auto">
+						<div id="patchNotes">You are using the latest version of TaratorMusic.</div>
+						<div style="color: yellow">Please don't close the app while updating, as it can break. If the update breaks, you can install the latest version from Github Releases.</div>
+						<div id="progressContainer" style="width: 100%; background: #ccc; display: none">
+							<div id="downloadProgress" style="width: 0%; background: #4caf50; color: white; text-align: center"></div>
+						</div>
+						<button disabled id="installBtn">Install Update</button>
 					</div>
-					<button disabled id="installBtn">Install Update</button>
 				</div>
 			</div>
 			<div id="searchModal" class="modal">
@@ -113,7 +115,7 @@
 								<div id="lyricsThumbnail"></div>
 								<div class="customise-song-meta">
 									<div class="meta-song-name" id="lyricsSongName"></div>
-									<div style="display: flex; flex-direction: row; align-items: center; text-align: center; gap: 1vw;">
+									<div style="display: flex; flex-direction: row; align-items: center; text-align: center; gap: 1vw">
 										<div class="meta-song-id-label">Song ID</div>
 										<div class="meta-song-id" id="lyricsSongId"></div>
 									</div>
@@ -141,7 +143,7 @@
 										<label for="customiseSongLink">Link:</label>
 										<input type="text" id="customiseSongLink" />
 									</div>
-									<div class="customise-field-row" style="justify-content: space-around; text-align: center;">
+									<div class="customise-field-row" style="justify-content: space-around; text-align: center">
 										<div id="modalTimePlayed" style="color: darkgrey"></div>
 										<div id="modalSecondsPlayed" style="color: darkgrey"></div>
 										<div id="modalStabilised" style="color: darkgrey"></div>
