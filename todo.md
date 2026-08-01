@@ -1,6 +1,5 @@
 ### Version 1.9.1 Planned Features
 
--   There is a bug where when you open the add to playlist modal it can pop-up the save minimodal incorrectly. Edit a modal --> open an add to playlist modal --> try to close it with esc instead of regularly
 -   Saving to playlists after downloads not working
 -   recommended songs auto-skip on play
 

@@ -1653,6 +1653,7 @@ async function opencustomiseModal(songsId) {
 
 function isCustomiseModalDirty() {
 	const div = document.getElementById("customiseModal");
+	if (div.style.display != "flex") return false;
 	if (!div.dataset.songID) return false;
 	return (
 		document.getElementById("customiseSongName").value.trim() != div.dataset.origName ||
