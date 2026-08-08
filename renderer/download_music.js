@@ -302,20 +302,25 @@ async function processVideoLink(videoUrl, songId = null) {
 }
 
 async function fetchPlaylistData(url) {
-	const ytpl = require("@distube/ytpl");
-
 	try {
 		const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
 		if (!match) throw new Error("Invalid playlist URL");
 		const playlistID = match[1];
-		const playlist = await ytpl(playlistID, { pages: Infinity });
-		const playlistTitle = playlist.title;
+
+		const fetchPlaylist = require(path.join(processFolder, "renderer", "ytpl"));
+		const playlist = await fetchPlaylist(playlistID, { limit: Infinity });
+
+		const playlistTitle = playlist.title || "Unknown Playlist";
 		let videoItems = playlist.items.map(video => ({
+			id: video.id,
 			title: video.title || "Unknown Title",
 			url: video.url,
 			thumbnail: video.thumbnail || "",
 		}));
-		const playlistThumbnail = videoItems.length ? videoItems[0].thumbnail : "";
+
+		if (videoItems.length == 0) throw new Error("No songs found in this playlist.");
+
+		const playlistThumbnail = videoItems[0].thumbnail;
 
 		const cachedIds = getCachedVideoIds();
 		const dupeCount = videoItems.filter(item => {

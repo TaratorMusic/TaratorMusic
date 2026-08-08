@@ -1241,7 +1241,7 @@ function playMusic(songId, playlistId) {
 
 async function playPlaylist(playlistId, startingIndex = 0) {
 	const playlist = playlistsMap.get(playlistId);
-	if (!playlist.songs || playlist.songs.length == 0) return;
+	if (!playlist || !playlist.songs || playlist.songs.length == 0) return;
 
 	currentPlaylistElement = startingIndex;
 	localStorage.setItem("lastPlaylist", playlist.id);
@@ -1288,8 +1288,9 @@ async function playPreviousSong() {
 		}
 	} else {
 		if (currentPlaylist) {
-			if (currentPlaylistElement > 0) {
-				playMusic(playlistsMap.get(currentPlaylist).songs[currentPlaylistElement - 1], currentPlaylist);
+			const playlist = playlistsMap.get(currentPlaylist);
+			if (playlist && currentPlaylistElement > 0) {
+				playMusic(playlist.songs[currentPlaylistElement - 1], currentPlaylist);
 				currentPlaylistElement--;
 			}
 		} else {
@@ -1316,10 +1317,13 @@ async function playNextSong() {
 		.sort((a, b) => (a[1].song_name || "").localeCompare(b[1].song_name || ""))
 		.map(entry => entry[0]);
 
+	const currentPlaylistData = currentPlaylist ? playlistsMap.get(currentPlaylist) : null;
+	const canUsePlaylist = currentPlaylistData && Array.isArray(currentPlaylistData.songs) && currentPlaylistData.songs.length > 0;
+
 	if (isShuffleActive) {
-		if (currentPlaylist) {
-			const validSongs = playlistsMap.get(currentPlaylist).songs.filter(id => !notInterestedIds.includes(id));
-			const currentSongId = playlistsMap.get(currentPlaylist).songs[currentPlaylistElement];
+		if (canUsePlaylist) {
+			const validSongs = currentPlaylistData.songs.filter(id => !notInterestedIds.includes(id));
+			const currentSongId = currentPlaylistData.songs[currentPlaylistElement];
 
 			if (validSongs.length == 0) return;
 			if (validSongs.length == 1) {
@@ -1330,7 +1334,7 @@ async function playNextSong() {
 					randomIndex = Math.floor(Math.random() * validSongs.length);
 				}
 				nextSongId = validSongs[randomIndex];
-				currentPlaylistElement = playlistsMap.get(currentPlaylist).songs.indexOf(nextSongId);
+				currentPlaylistElement = currentPlaylistData.songs.indexOf(nextSongId);
 			}
 		} else {
 			if (sortedSongIds.length == 0) return;
@@ -1345,12 +1349,12 @@ async function playNextSong() {
 			}
 		}
 	} else {
-		if (currentPlaylist) {
-			const validSongs = playlistsMap.get(currentPlaylist).songs.filter(id => !notInterestedIds.includes(id));
-			const currentIndex = validSongs.indexOf(playlistsMap.get(currentPlaylist).songs[currentPlaylistElement]);
+		if (canUsePlaylist) {
+			const validSongs = currentPlaylistData.songs.filter(id => !notInterestedIds.includes(id));
+			const currentIndex = validSongs.indexOf(currentPlaylistData.songs[currentPlaylistElement]);
 			if (currentIndex >= 0 && currentIndex < validSongs.length - 1) {
 				nextSongId = validSongs[currentIndex + 1];
-				currentPlaylistElement = playlistsMap.get(currentPlaylist).songs.indexOf(nextSongId);
+				currentPlaylistElement = currentPlaylistData.songs.indexOf(nextSongId);
 			}
 		} else {
 			const currentIndex = sortedSongIds.indexOf(playingSongsID);
@@ -1360,7 +1364,7 @@ async function playNextSong() {
 	}
 
 	if (nextSongId) {
-		playMusic(nextSongId, currentPlaylist);
+		playMusic(nextSongId, canUsePlaylist ? currentPlaylist : null);
 	}
 }
 
