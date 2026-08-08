@@ -1139,6 +1139,15 @@ function playMusic(songId, playlistId) {
 		const offlineMode = !!songId.includes("tarator");
 		const songNameEl = document.getElementById("song-name");
 		playingSongsID = songId;
+
+		if (!playlistId && currentPlaylist) {
+			const playlist = playlistsMap.get(currentPlaylist);
+			if (playlist && playlist.songs.includes(songId)) {
+				playlistId = currentPlaylist;
+				currentPlaylistElement = playlist.songs.indexOf(songId);
+			}
+		}
+
 		currentPlaylist = playlistId || null;
 
 		if (playlistId != "SEARCH_SHUFFLE") playlistsMap.delete("SEARCH_SHUFFLE");
