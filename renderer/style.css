@@ -508,6 +508,11 @@ audio {
 	margin-right: 2vw;
 }
 
+#music-controls #video-progress.is-paused {
+	accent-color: #b0423a;
+	color: #b0423a !important;
+}
+
 #video-length {
 	width: 10vw;
 }
@@ -1521,7 +1526,7 @@ th {
 	border: none;
 	text-align: center;
 	background-color: #000;
-	color: white;
+	color: white !important;
 	border-radius: 5px;
 	outline: none;
 }
@@ -1938,6 +1943,24 @@ th {
 .customise-actions label:disabled {
 	opacity: 0.35;
 	cursor: not-allowed;
+}
+
+.customise-actions button.not-interested {
+	background: rgba(120, 45, 45, 0.5);
+	border: 1px solid rgba(200, 80, 80, 0.4);
+}
+
+.customise-actions button.interested {
+	background: rgba(40, 90, 55, 0.5);
+	border: 1px solid rgba(90, 170, 110, 0.4);
+}
+
+.customise-actions button.not-interested:hover:not(:disabled) {
+	background: rgba(140, 55, 55, 0.6);
+}
+
+.customise-actions button.interested:hover:not(:disabled) {
+	background: rgba(50, 105, 65, 0.6);
 }
 
 .customise-divider {

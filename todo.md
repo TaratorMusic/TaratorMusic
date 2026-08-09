@@ -1,17 +1,13 @@
-### Version 1.9.2 Planned Features
+### Version 1.9.3 Planned Features
 
--   Pie chart modal has an unreadable font color at the bottom
 -   Improve logging
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
--   Make interested/not interested button change colors.
--   Change progress bar color to red if song is paused
 -   Fetch lyrics from an API.
 -   Get recommendations for a single song.
+-   If you keep skipping songs really quickly the app breaks --> Fix the logs before
 
 ### Version 1.9.x Planned Features
 
--   Add current playlist text to the screen.
--   Add a shortcut to stay in the same playlist while changing a song
 -   Swap pages with arrow keys in my music
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
@@ -24,6 +20,7 @@
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
+-   Rewinding the song while its playing is really buggy
 -   recommendations just for a song or playlist
 -   Auto scrape translations from the web.
 -   Fix streaming in windows
@@ -34,7 +31,7 @@
 -   Some streamed songs dont have thumbnails in menus
 -   tooltip spawns wrongly then gets fixed afterwards
 -   Customise Dc Rich Presence box in the settings
--   search song'da az şarkı bulursa yön tuşları ile thumbnail ve isme göre seçme olsun. ayrıca ararken benzer harfleri de alsın durdevdan
+-   If search song finds a small amount of songs, it should be pickable with the arrow keys
 -   keeping the music tab open is lagging
 -   auto form playlist from artist-genre-language
 -   Lyrics storage for picture in picture

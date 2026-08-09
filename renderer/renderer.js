@@ -282,6 +282,7 @@ async function initialiseDatabases() {
 
 	document.getElementById("main-menu").click();
 	ipcRenderer.send("renderer-domready");
+	updateProgressPaused();
 
 	document.getElementById("weight1").value = popularityFactor;
 	document.getElementById("weight2").value = artistStrengthFactor;
@@ -311,7 +312,6 @@ async function initialiseDatabases() {
 	document.getElementById("notInterestedToggle").addEventListener("click", e => {
 		if (!!notInterestedSongs.map(song => song.song_id).includes(e.currentTarget.dataset.songId)) {
 			notInterestedSongs = notInterestedSongs.filter(s => s.song_id != e.currentTarget.dataset.songId);
-			document.getElementById("notInterestedToggle").innerText = "Interested";
 		} else {
 			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
 			callSqlite({
@@ -320,8 +320,8 @@ async function initialiseDatabases() {
 				args: [e.currentTarget.dataset.songId, document.getElementById("customiseSongName").value],
 				fetch: false,
 			});
-			document.getElementById("notInterestedToggle").innerText = " Not Interested";
 		}
+		updateNotInterestedButton();
 	});
 
 	ipcRenderer.invoke("get-app-version").then(async version => {
@@ -1223,6 +1223,7 @@ function playMusic(songId, playlistId) {
 		playing = true;
 		scheduleTick();
 		updateDiscordPresence();
+		updateProgressPaused();
 
 		if (playlistId) {
 			const pid = playlistId.id || playlistId;
@@ -1424,6 +1425,20 @@ async function randomPlaylistFunctionMainMenu() {
 	playPlaylist(playlistsList[randomIndex], 0);
 }
 
+function updateProgressPaused() {
+	videoProgress.classList.toggle("is-paused", !playing);
+}
+
+function updateNotInterestedButton() {
+	const toggle = document.getElementById("notInterestedToggle");
+	if (!toggle) return;
+	const songId = toggle.dataset.songId;
+	const isNotInterested = !!songId && notInterestedSongs.some(song => song.song_id == songId);
+	toggle.innerText = isNotInterested ? "Not Interested" : "Interested";
+	toggle.classList.toggle("not-interested", isNotInterested);
+	toggle.classList.toggle("interested", !isNotInterested);
+}
+
 function playPause() {
 	if (!audioPlayer) return;
 
@@ -1450,6 +1465,7 @@ function playPause() {
 		});
 	}
 
+	updateProgressPaused();
 	updateDiscordPresence();
 }
 
@@ -1591,9 +1607,6 @@ function skipBackward() {
 async function opencustomiseModal(songsId) {
 	let song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url, thumbnailPath;
 
-	let ifSongInNotInterested = !!notInterestedSongs.map(song => song.song_id).includes(songsId);
-	document.getElementById("notInterestedToggle").innerText = ifSongInNotInterested ? "Not Interested" : "Interested";
-
 	if (songsId.includes("tarator")) {
 		const songData = songNameCache.get(songsId) || {};
 		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = songData);
@@ -1644,6 +1657,7 @@ async function opencustomiseModal(songsId) {
 	document.getElementById("stabiliseSongButton").dataset.songId = songsId;
 	document.getElementById("notInterestedToggle").dataset.songId = songsId;
 	document.getElementById("downloadThisSong").dataset.songId = songsId;
+	updateNotInterestedButton();
 
 	const bareId = songsId.replace("tarator-", "");
 	const listenStats = await callSqlite({
@@ -2730,12 +2744,14 @@ document.addEventListener("DOMContentLoaded", function () {
 					if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
 					if (player) player.playbackStatus = "Paused";
 					playing = false;
+					updateProgressPaused();
 				}
 			} else if (trimmed == "EV_PAUSED") {
 				isInterpolating = false;
 				playButton.style.display = "inline-block";
 				pauseButton.style.display = "none";
 				playing = false;
+				updateProgressPaused();
 			} else if (trimmed == "EV_RESUMED") {
 				lastSyncTimestamp = performance.now();
 				isInterpolating = true;
@@ -2743,6 +2759,7 @@ document.addEventListener("DOMContentLoaded", function () {
 				pauseButton.style.display = "inline-block";
 				playing = true;
 				scheduleTick();
+				updateProgressPaused();
 			}
 		}
 	});
