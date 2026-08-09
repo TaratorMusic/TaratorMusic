@@ -389,6 +389,28 @@ audio {
 	background-repeat: no-repeat;
 }
 
+#currentPlaylistBadge {
+	position: fixed;
+	left: 0.5vw;
+	bottom: calc(8vh + 7.1vw);
+	width: 12.75vw;
+	box-sizing: border-box;
+	padding: 0.4vh 0.5vw;
+	background-color: rgba(0, 0, 0, 0.7);
+	border: 1px solid #444;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+	color: white;
+	font-size: 1.8vh;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: none;
+	z-index: 10;
+	pointer-events: none;
+}
+
 #music-info {
 	display: flex;
 	text-align: center;

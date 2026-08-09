@@ -1152,6 +1152,8 @@ function playMusic(songId, playlistId) {
 
 		if (playlistId != "SEARCH_SHUFFLE") playlistsMap.delete("SEARCH_SHUFFLE");
 
+		updateCurrentPlaylistBadge();
+
 		const songData = offlineMode ? songNameCache.get(songId) : getStreamedSongData(songId);
 		if (!songData) return logChange("warn", `Song not found in cache or stream map: ${songId}`);
 
@@ -1237,6 +1239,27 @@ function playMusic(songId, playlistId) {
 	} catch (error) {
 		logChange("error", error?.message ?? String(error));
 	}
+}
+
+function updateCurrentPlaylistBadge() {
+	const badge = document.getElementById("currentPlaylistBadge");
+	if (!badge) return;
+
+	const playlist = currentPlaylist ? playlistsMap.get(currentPlaylist) : null;
+
+	if (!currentPlaylist || !playlist) {
+		badge.style.display = "none";
+		badge.textContent = "";
+		return;
+	}
+
+	if (currentPlaylist == "SEARCH_SHUFFLE") {
+		badge.textContent = playlist.query ? `Mix: ${playlist.query}` : "Mix";
+	} else {
+		badge.textContent = playlist.name || "";
+	}
+
+	badge.style.display = "block";
 }
 
 async function playPlaylist(playlistId, startingIndex = 0) {
@@ -2015,6 +2038,7 @@ function searchShuffle() {
 		playlistsMap.set("SEARCH_SHUFFLE", {
 			id: "SEARCH_SHUFFLE",
 			name: "SEARCH_SHUFFLE",
+			query: query,
 			songs: songIds,
 			thumbnail_extension: null,
 		});
