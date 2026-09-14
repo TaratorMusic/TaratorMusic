@@ -2121,7 +2121,7 @@ document.addEventListener("keydown", event => {
 		return searchSong();
 	}
 
-	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || disableKeyPresses == 1) {
+	if (document.activeElement.tagName == "INPUT" || document.activeElement.tagName == "TEXTAREA" || document.activeElement.tagName == "SELECT" || disableKeyPresses == 1) {
 		return;
 	}
 
@@ -2188,6 +2188,21 @@ document.addEventListener("keydown", event => {
 		playLastPlaylist();
 	} else if (event.key == key_lyrics) {
 		opencustomiseModal(playingSongsID);
+	}
+
+	if (event.key == "ArrowLeft" && document.getElementById("my-music-content").style.display == "flex" && displayPage == "page") {
+		if (currentPage > 1) {
+			currentPage--;
+			renderMusics();
+		}
+	} else if (event.key == "ArrowRight" && document.getElementById("my-music-content").style.display == "flex" && displayPage == "page") {
+		const totalPages = musicMode == "offline"
+			? Math.ceil(songNameCache.size / (3 * previousItemsPerRow))
+			: Math.ceil(streamedSongsHtmlMap.size / (3 * previousItemsPerRow));
+		if (currentPage < totalPages) {
+			currentPage++;
+			renderMusics();
+		}
 	}
 });
 

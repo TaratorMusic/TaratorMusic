@@ -4,7 +4,6 @@
 -   Lyrics PiP
 -   If you keep skipping songs really quickly the app breaks
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
--   Swap pages with arrow keys in my music
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
 -   - Remove the x button.
