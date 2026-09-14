@@ -177,6 +177,54 @@ async function promptUserOnSongs(redownload) {
 	return thePrompt;
 }
 
+async function updateYtdlp() {
+	const btn = document.getElementById("updateYtdlpButton");
+	btn.disabled = true;
+	btn.innerText = "Updating...";
+
+	try {
+		const bin = path.join(backendFolder, process.platform === "win32" ? "ytdlp_fetch.exe" : "ytdlp_fetch");
+		const result = await new Promise((resolve, reject) => {
+			const proc = spawn(bin, ["--force"], { windowsHide: true });
+			let stdout = "";
+			let stderr = "";
+			proc.stdout.on("data", d => {
+				stdout += d;
+			});
+			proc.stderr.on("data", d => {
+				stderr += d;
+			});
+			proc.on("error", reject);
+			proc.on("close", code => {
+				if (code != 0) return reject(new Error(stderr || `ytdlp_fetch exited ${code}`));
+				const match = stdout.match(/Successfully downloaded yt-dlp (.+) to/);
+				resolve({ version: match ? match[1] : "latest" });
+			});
+		});
+
+		ytdlpLastUpdateDate = Math.floor(Date.now() / 1000);
+		ytdlpVersion = result.version;
+		await callSqlite({
+			db: "settings",
+			query: "UPDATE statistics SET ytdlp_last_update_date = ?, ytdlp_version = ?",
+			args: [ytdlpLastUpdateDate, ytdlpVersion],
+			fetch: false,
+		});
+		btn.innerText = "Updated!";
+
+		document.getElementById("ytdlpCurrentVersion").innerText = `Current version: ${ytdlpVersion}`;
+		await alertModal(`yt-dlp updated to ${result.version}!`);
+	} catch (error) {
+		btn.innerText = "Failed";
+		await alertModal(`Failed to update yt-dlp: ${error.message ?? String(error)}`);
+	}
+
+	btn.disabled = false;
+	setTimeout(() => {
+		btn.innerText = "Update";
+	}, 2000);
+}
+
 async function foundNewSongs(folderSongs, databaseSongs) {
 	await alertModal("Found new songs in your folders.");
 

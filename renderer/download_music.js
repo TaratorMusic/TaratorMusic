@@ -7,6 +7,37 @@ function getYtDlpPath() {
 	return alertModal("Unsupported platform. Please create an issue in github.");
 }
 
+function formatYtdlpError(stderr) {
+	if (!stderr) return "Unknown error";
+	if (/HTTP Error 50[0-9]/.test(stderr)) {
+		const match = stderr.match(/HTTP Error \d+/);
+		return `${match ? match[0] : "Server error"}. This often happens with an outdated yt-dlp. Try updating it in Settings > Update yt-dlp.`;
+	}
+	if (/HTTP Error 403/.test(stderr)) {
+		return "HTTP Error 403: Forbidden. YouTube may be blocking the request. Try updating yt-dlp in Settings > Update yt-dlp.";
+	}
+	if (/Sign in to confirm/.test(stderr)) {
+		return "YouTube is asking to sign in to confirm you are not a bot. Try updating yt-dlp in Settings > Update yt-dlp.";
+	}
+	if (/This video is unavailable/.test(stderr)) {
+		return "This video is unavailable or has been removed.";
+	}
+	if (/Video unavailable/.test(stderr)) {
+		return "Video is unavailable.";
+	}
+	if (/Private video/.test(stderr)) {
+		return "This is a private video.";
+	}
+	if (/is_live/.test(stderr) || /live stream/.test(stderr)) {
+		return "This is a live stream and cannot be downloaded.";
+	}
+	if (/No video format/.test(stderr) || /No format/.test(stderr)) {
+		return "No downloadable format found. Try updating yt-dlp in Settings > Update yt-dlp.";
+	}
+	const cleaned = stderr.replace(/ERROR:\s*/g, "").trim();
+	return cleaned || "Unknown error";
+}
+
 function differentiateMediaLinks(url) {
 	const trimmedUrl = url.trim();
 
@@ -341,7 +372,9 @@ async function fetchPlaylistData(url) {
 		renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems);
 	} catch (error) {
 		logChange("error", `Error fetching playlist data: ${error.message ?? String(error)}`);
-		document.getElementById("downloadModalText").innerHTML = `Error: ${error.message}`;
+		const modalText = document.getElementById("downloadModalText");
+		modalText.classList.add("error-text");
+		modalText.innerHTML = `Error: ${error.message}`;
 		document.getElementById("downloadFirstButton").disabled = false;
 	}
 }
@@ -631,6 +664,7 @@ async function actuallyDownloadTheSong() {
 		}
 
 		document.getElementById("downloadModalText").innerText = "Downloading Song...";
+		document.getElementById("downloadModalText").classList.remove("error-text");
 
 		try {
 			let lastUpdate = 0;
@@ -652,6 +686,7 @@ async function actuallyDownloadTheSong() {
 					logChange("error", `Audio normalisation failed: ${error.message ?? String(error)}`);
 					stabiliseVolumeToggle = 0;
 					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
+				document.getElementById("downloadModalText").classList.remove("error-text");
 				}
 			} else {
 				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Processing thumbnail...";
@@ -725,6 +760,7 @@ async function actuallyDownloadTheSong() {
 			}
 
 			document.getElementById("downloadModalText").innerText = "Download complete!";
+			document.getElementById("downloadModalText").classList.remove("error-text");
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 			const playAfterCheckbox = document.getElementById("playAfterDownloadCheckbox");
@@ -733,7 +769,9 @@ async function actuallyDownloadTheSong() {
 			if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
 		} catch (error) {
 			logChange("error", error);
-			document.getElementById("downloadModalText").innerText = `Error downloading song: ${error}`;
+			const modalText = document.getElementById("downloadModalText");
+			modalText.classList.add("error-text");
+			modalText.innerText = `Error downloading song: ${error.message ?? String(error)}`;
 			document.getElementById("finalDownloadButton").disabled = false;
 			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 		}
@@ -782,6 +820,7 @@ async function actuallyDownloadTheSong() {
 
 		try {
 			document.getElementById("downloadModalText").innerText = totalSongs > 50 ? "Downloading... This might take some time..." : "Downloading...";
+			document.getElementById("downloadModalText").classList.remove("error-text");
 
 			const playlistThumbnailEl = document.getElementById("thumbnailImage0");
 			const bgImage = playlistThumbnailEl?.style?.backgroundImage || "";
@@ -836,40 +875,45 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 			const outputPath = path.join(musicFolder, `${songId}.mp3`);
 
-			const result = await downloadAudio(songLink, outputPath, progressMsg => {
-				document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Downloading: ${progressMsg}`;
-			});
-
-			if (result == "AGE_RESTRICTED") {
-				await alertModal("This song requires age confirmation. Skipping...");
-				continue;
-			}
-
-			if (stabiliseVolumeToggle == 1) {
-				try {
-					document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}`;
-					await normalizeAudio(outputPath);
-				} catch (error) {
-					stabiliseVolumeToggle = 0;
-					logChange("error", `Audio normalization failed for ${songTitle}: ${error.message ?? String(error)}`);
-				}
-			} else {
-				document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled.`;
-			}
-
-			let duration = 0;
-			const metadata = await new Promise((resolve, reject) => {
-				ffmpeg.ffprobe(outputPath, (err, meta) => {
-					if (err) return reject(err);
-					resolve(meta);
+			try {
+				const result = await downloadAudio(songLink, outputPath, progressMsg => {
+					document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Downloading: ${progressMsg}`;
 				});
-			});
 
-			if (metadata.format && metadata.format.duration) {
-				duration = Math.round(metadata.format.duration);
-			}
+				if (result == "AGE_RESTRICTED") {
+					await alertModal("This song requires age confirmation. Skipping...");
+					continue;
+				}
 
-			const fileSize = fs.statSync(outputPath).size;
+				if (stabiliseVolumeToggle == 1) {
+					try {
+						document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}`;
+						await normalizeAudio(outputPath);
+					} catch (error) {
+						stabiliseVolumeToggle = 0;
+						logChange("error", `Audio normalization failed for ${songTitle}: ${error.message ?? String(error)}`);
+					}
+				} else {
+					document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled.`;
+				}
+
+				let duration = 0;
+				try {
+					const metadata = await new Promise((resolve, reject) => {
+						ffmpeg.ffprobe(outputPath, (err, meta) => {
+							if (err) return reject(err);
+							resolve(meta);
+						});
+					});
+
+					if (metadata.format && metadata.format.duration) {
+						duration = Math.round(metadata.format.duration);
+					}
+				} catch (error) {
+					logChange("error", `Metadata failed for ${songTitle}: ${error.message ?? String(error)}`);
+				}
+
+				const fileSize = fs.statSync(outputPath).size;
 
 			const songElements = document.querySelectorAll(".songAndThumbnail");
 			let thumbnailUrl = null;
@@ -928,6 +972,15 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 
 			await sleep(500);
+			} catch (error) {
+				completedDownloads++;
+				logChange("error", `Failed to download "${songTitle}": ${error.message ?? String(error)}`);
+				const modalText = document.getElementById("downloadModalText");
+				modalText.classList.add("error-text");
+				modalText.innerText = `[${completedDownloads}/${totalSongs}] Failed: ${songTitle} - ${error.message ?? String(error)}`;
+				if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
+				await sleep(500);
+			}
 		}
 
 		callSqlite({
@@ -973,6 +1026,7 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 		}
 
 		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
+		document.getElementById("downloadModalText").classList.remove("error-text");
 		await commitStagedPlaylistAdds();
 		const idsNeedingInfo = [];
 
@@ -986,7 +1040,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 		const playAfterCheckbox = document.getElementById("playAfterDownloadCheckbox");
 		if (playAfterCheckbox && playAfterCheckbox.checked && songIds.length > 0) playMusic(songIds[0], null);
 	} catch (error) {
-		document.getElementById("downloadModalText").innerText = `Error downloading playlist: ${error.message}`;
+		const modalText = document.getElementById("downloadModalText");
+		modalText.classList.add("error-text");
+		modalText.innerText = `Error downloading playlist: ${error.message}`;
 	}
 
 	document.getElementById("finalDownloadButton").disabled = false;
@@ -1033,7 +1089,7 @@ async function downloadAudio(videoUrl, outputFilePath, onProgress) {
 			if (code == 0 && fs.existsSync(outputFilePath)) {
 				resolve();
 			} else {
-				reject(new Error(stderrBuffer || `yt-dlp exited with code ${code}`));
+				reject(new Error(formatYtdlpError(stderrBuffer || `yt-dlp exited with code ${code}`)));
 			}
 		});
 	});
@@ -1121,7 +1177,7 @@ function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
 					return resolve(getVideoInfo(nextUrl, retryCount + 1, seenIds));
 				}
-				return reject(new Error(err || `yt-dlp exited ${code}`));
+				return reject(new Error(formatYtdlpError(err || `yt-dlp exited ${code}`)));
 			}
 			try {
 				const parsed = JSON.parse(data);

@@ -119,6 +119,8 @@ let similarArtistsFactor;
 let userPreferenceFactor;
 let artistListenTimeFactor;
 let randomFactor;
+let ytdlpLastUpdateDate;
+let ytdlpVersion;
 
 const LOG_LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 const LOG_LEVEL = LOG_LEVELS[localStorage.getItem("logLevel") || "info"] ?? LOG_LEVELS.info;
@@ -251,6 +253,10 @@ async function initialiseDatabases() {
 	userPreferenceFactor = settingsRow.userPreferenceFactor;
 	artistListenTimeFactor = settingsRow.artistListenTimeFactor;
 	randomFactor = settingsRow.randomFactor;
+
+	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version FROM statistics LIMIT 1", fetch: true });
+	ytdlpLastUpdateDate = statsRows[0]?.ytdlp_last_update_date || 0;
+	ytdlpVersion = statsRows[0]?.ytdlp_version || "";
 
 	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
 	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
@@ -441,6 +447,7 @@ tabs.forEach(tab => {
 					document.getElementById("playlists-content").style.display = "grid";
 				} else if (content.id == "settings-content") {
 					document.getElementById("settings-content").style.display = "flex";
+					if (ytdlpVersion) document.getElementById("ytdlpCurrentVersion").innerText = `Current version: ${ytdlpVersion}`;
 				} else if (content.id == "statistics-content") {
 					loadNewPage("statistics");
 				}

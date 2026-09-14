@@ -855,6 +855,10 @@ audio {
 	padding-left: 0.5vw;
 }
 
+#downloadModalText.error-text {
+	color: #ff6b6b;
+}
+
 #finalDownloadButton {
 	width: 5vw;
 	height: 5vh;

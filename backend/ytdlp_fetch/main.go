@@ -25,6 +25,13 @@ type GitHubRelease struct {
 }
 
 func main() {
+	force := false
+	for _, arg := range os.Args[1:] {
+		if arg == "--force" {
+			force = true
+		}
+	}
+
 	var assetName, outputName string
 	switch runtime.GOOS {
 	case "windows":
@@ -42,9 +49,17 @@ func main() {
 	}
 
 	outputPath := filepath.Join(binDir, outputName)
-	if _, err := os.Stat(outputPath); err == nil {
-		fmt.Printf("yt-dlp binary already exists at %s, skipping download\n", outputPath)
-		return
+	if !force {
+		if _, err := os.Stat(outputPath); err == nil {
+			fmt.Printf("yt-dlp binary already exists at %s, skipping download\n", outputPath)
+			return
+		}
+	} else {
+		if err := os.Remove(outputPath); err != nil && !os.IsNotExist(err) {
+			fmt.Printf("Error removing old binary: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Force mode: removed existing binary, downloading latest...")
 	}
 
 	fmt.Printf("Fetching latest yt-dlp release for %s...\n", runtime.GOOS)
@@ -130,5 +145,5 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Successfully downloaded yt-dlp to %s\n", outputPath)
+	fmt.Printf("Successfully downloaded yt-dlp %s to %s\n", release.TagName, outputPath)
 }
