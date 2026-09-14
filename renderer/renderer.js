@@ -1298,12 +1298,11 @@ async function playPlaylist(playlistId, startingIndex = 0) {
 async function playPreviousSong() {
 	if (!playingSongsID) return;
 	if (getInterpolatedPosition() > 5) {
-		isUserSeeking = true;
-
 		videoProgress.value = 0;
-		videoProgress.dispatchEvent(new Event("input", { bubbles: true }));
-
-		isUserSeeking = false;
+		videoLength.textContent = `00:00 / ${formatTime(songDuration)}`;
+		if (audioPlayer) audioPlayer.stdin.write("seek 0\n");
+		lastAuthoritativePosition = 0;
+		lastSyncTimestamp = performance.now();
 		return;
 	}
 
@@ -1618,6 +1617,8 @@ function skipForward() {
 	videoProgress.value = String((newTime / songDuration) * 100);
 	videoLength.textContent = `${formatTime(newTime)} / ${formatTime(songDuration)}`;
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
+	lastAuthoritativePosition = newTime;
+	lastSyncTimestamp = performance.now();
 }
 
 function skipBackward() {
@@ -1625,6 +1626,8 @@ function skipBackward() {
 	videoProgress.value = String((newTime / songDuration) * 100);
 	videoLength.textContent = `${formatTime(newTime)} / ${formatTime(songDuration)}`;
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
+	lastAuthoritativePosition = newTime;
+	lastSyncTimestamp = performance.now();
 }
 
 async function opencustomiseModal(songsId) {
@@ -2836,6 +2839,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	videoProgress.addEventListener("mouseup", () => {
 		isUserSeeking = false;
+		const seekPercent = parseFloat(videoProgress.value);
+		if (!Number.isNaN(seekPercent) && songDuration > 0) {
+			lastAuthoritativePosition = (songDuration * seekPercent) / 100;
+			lastSyncTimestamp = performance.now();
+		}
 	});
 
 	videoProgress.addEventListener("input", () => {

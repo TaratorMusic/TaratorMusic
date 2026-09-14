@@ -341,7 +341,12 @@ void seek_time(float seconds) {
 
     ma_uint64 frame = (ma_uint64)(seconds * sampleRate);
     ma_sound_seek_to_pcm_frame(&sound, frame);
-    fprintf(stderr, "Seeked to: %.1f seconds\n", seconds);
+
+    ma_uint64 cur;
+    if (ma_sound_get_cursor_in_pcm_frames(&sound, &cur) == MA_SUCCESS) {
+        printf("EV_POSITION %.3f\n", (float)cur / (float)sampleRate);
+        fflush(stdout);
+    }
 }
 
 void set_playback_speed(float speed) {

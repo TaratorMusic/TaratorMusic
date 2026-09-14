@@ -3,8 +3,6 @@
 -   Fetch lyrics from an API.
 -   Lyrics PiP
 -   If you keep skipping songs really quickly the app breaks
--   Get recommendations for a single song.
--   Fast forwarding the song feels very glitchy.
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
 -   Swap pages with arrow keys in my music
 -   What happens when you close the download modal by the X button while downloading?
@@ -23,7 +21,6 @@
 -   Auto scrape translations from the web.
 -   Fix streaming in windows
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
--   Add auto-update to ytdlp, using the command execution, Have an option to update ytdlp internally, save last update time to the DB
 -   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   Some streamed songs dont have thumbnails in menus
