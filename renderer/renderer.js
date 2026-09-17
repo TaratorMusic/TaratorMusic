@@ -2637,7 +2637,7 @@ function tick() {
 			videoLength.textContent = `${formatTime(clamped)} / ${formatTime(songDuration)}`;
 			videoProgress.value = (clamped / songDuration) * 100;
 
-			const pipProgress = songDuration > 5 ? Math.max(0, (clamped - 5) / (songDuration - 5)) : 0;
+			const pipProgress = songDuration > 10 ? Math.min(1, Math.max(0, (clamped - 5) / (songDuration - 10))) : 0;
 
 			if (playingSongsID.length != 11) {
 				// Local song. Youtube link ID's consist of 11 digits.
