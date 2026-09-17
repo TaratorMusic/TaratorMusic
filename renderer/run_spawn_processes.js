@@ -185,14 +185,19 @@ async function updateYtdlp() {
 	try {
 		const bin = path.join(backendFolder, process.platform === "win32" ? "ytdlp_fetch.exe" : "ytdlp_fetch");
 		const result = await new Promise((resolve, reject) => {
-			const proc = spawn(bin, ["--force"], { windowsHide: true, cwd: processFolder });
+			const fetchCwd = process.platform === "linux" ? taratorFolder : processFolder;
+			const proc = spawn(bin, ["--force"], { windowsHide: true, cwd: fetchCwd });
 			let stdout = "";
 			let stderr = "";
 			proc.stdout.on("data", d => {
-				stdout += d;
+				const msg = d.toString();
+				stdout += msg;
+				console.log("[ytdlp_fetch]", msg.trim());
 			});
 			proc.stderr.on("data", d => {
-				stderr += d;
+				const msg = d.toString();
+				stderr += msg;
+				console.error("[ytdlp_fetch]", msg.trim());
 			});
 			proc.on("error", reject);
 			proc.on("close", code => {

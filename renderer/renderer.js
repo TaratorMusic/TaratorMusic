@@ -26,6 +26,7 @@ let sqliteBinary;
 	if (!fs.existsSync(musicFolder)) fs.mkdirSync(musicFolder);
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
+	if (!fs.existsSync(path.join(taratorFolder, "bin"))) fs.mkdirSync(path.join(taratorFolder, "bin"));
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");

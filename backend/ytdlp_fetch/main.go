@@ -44,7 +44,7 @@ func main() {
 		assetName = "yt-dlp_linux"
 		outputName = "yt-dlp_linux"
 	default:
-		fmt.Printf("Unsupported platform: %s\n", runtime.GOOS)
+		fmt.Fprintf(os.Stderr, "Unsupported platform: %s\n", runtime.GOOS)
 		os.Exit(1)
 	}
 
@@ -56,7 +56,7 @@ func main() {
 		}
 	} else {
 		if err := os.Remove(outputPath); err != nil && !os.IsNotExist(err) {
-			fmt.Printf("Error removing old binary: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error removing old binary: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println("Force mode: removed existing binary, downloading latest...")
@@ -66,7 +66,7 @@ func main() {
 	
 	req, err := http.NewRequest("GET", githubAPI, nil)
 	if err != nil {
-		fmt.Printf("Error creating request: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error creating request: %v\n", err)
 		os.Exit(1)
 	}
 	
@@ -78,19 +78,19 @@ func main() {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("Error fetching release info: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error fetching release info: %v\n", err)
 		os.Exit(1)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("GitHub API returned status: %s\n", resp.Status)
+		fmt.Fprintf(os.Stderr, "GitHub API returned status: %s\n", resp.Status)
 		os.Exit(1)
 	}
 
 	var release GitHubRelease
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		fmt.Printf("Error decoding release info: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error decoding release info: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -103,44 +103,44 @@ func main() {
 	}
 
 	if downloadURL == "" {
-		fmt.Printf("Could not find %s in release %s\n", assetName, release.TagName)
+		fmt.Fprintf(os.Stderr, "Could not find %s in release %s\n", assetName, release.TagName)
 		os.Exit(1)
 	}
 
 	fmt.Printf("Downloading yt-dlp %s from %s...\n", release.TagName, downloadURL)
 	dlResp, err := http.Get(downloadURL)
 	if err != nil {
-		fmt.Printf("Error downloading binary: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error downloading binary: %v\n", err)
 		os.Exit(1)
 	}
 	defer dlResp.Body.Close()
 
 	if dlResp.StatusCode != http.StatusOK {
-		fmt.Printf("Download failed with status: %s\n", dlResp.Status)
+		fmt.Fprintf(os.Stderr, "Download failed with status: %s\n", dlResp.Status)
 		os.Exit(1)
 	}
 
 	if err := os.MkdirAll(binDir, 0755); err != nil {
-		fmt.Printf("Error creating bin directory: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error creating bin directory: %v\n", err)
 		os.Exit(1)
 	}
 
 	outFile, err := os.Create(outputPath)
 	if err != nil {
-		fmt.Printf("Error creating output file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
 		os.Exit(1)
 	}
 	defer outFile.Close()
 
 	_, err = io.Copy(outFile, dlResp.Body)
 	if err != nil {
-		fmt.Printf("Error writing binary: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error writing binary: %v\n", err)
 		os.Exit(1)
 	}
 
 	if runtime.GOOS != "windows" {
 		if err := os.Chmod(outputPath, 0755); err != nil {
-			fmt.Printf("Error setting executable permission: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error setting executable permission: %v\n", err)
 			os.Exit(1)
 		}
 	}

@@ -1,6 +1,9 @@
 let pendingPlaylistAddsWithIds = new Map();
 
 function getYtDlpPath() {
+	const ytdlpName = platform === "win32" ? "yt-dlp.exe" : platform === "darwin" ? "yt-dlp_macos" : "yt-dlp_linux";
+	const updatedPath = path.join(taratorFolder, "bin", ytdlpName);
+	if (fs.existsSync(updatedPath)) return updatedPath;
 	if (platform == "win32") return path.join(backendFolder, "yt-dlp.exe");
 	if (platform == "darwin") return path.join(backendFolder, "yt-dlp_macos");
 	if (platform == "linux") return path.join(backendFolder, "yt-dlp_linux");

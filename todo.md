@@ -1,8 +1,15 @@
 ### Version 1.9.x Planned Features
 
--   Ability to add/edit timestamps to current lyrics
+-   Ability to add/edit timestamps to current lyrics both manually and with a special edit mode.
+-   Uncentered title PiP
+-   When you fetch lyrics, its automatically saved without confirmation. Need a comparation modal.
+-   Need shortcut to toggle the PiP on and off.
+-   Make the keyboard shortcuts work on pip
+-   The fetch lyrics button says "Fetched" even with errors   
 -   If the app fetches new info and there is an old one, open comparation modal
--   If you keep skipping songs really quickly the app breaks
+
+-   Sidebar revamp
+
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.
