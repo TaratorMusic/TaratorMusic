@@ -185,7 +185,7 @@ async function updateYtdlp() {
 	try {
 		const bin = path.join(backendFolder, process.platform === "win32" ? "ytdlp_fetch.exe" : "ytdlp_fetch");
 		const result = await new Promise((resolve, reject) => {
-			const proc = spawn(bin, ["--force"], { windowsHide: true });
+			const proc = spawn(bin, ["--force"], { windowsHide: true, cwd: processFolder });
 			let stdout = "";
 			let stderr = "";
 			proc.stdout.on("data", d => {
