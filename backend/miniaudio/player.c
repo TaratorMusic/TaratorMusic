@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "player.h"
 #include "miniaudio.h"
 
@@ -407,6 +408,18 @@ void stream_url(const char *url) {
         ma_sound_stop(&sound);
         ma_sound_uninit(&sound);
         is_loaded = 0;
+    }
+
+    /* Reject URLs containing shell metacharacters before embedding them in
+       the popen() command line below. Only allow a conservative whitelist
+       of characters that are valid in URLs. */
+    for (const unsigned char *p = (const unsigned char *)url; *p; p++) {
+        if (!isalnum(*p) && strchr(":/.?=&_-%~,@#+", *p) == NULL) {
+            fprintf(stderr, "Invalid character in URL\n");
+            printf("EV_ERROR Invalid character in URL\n");
+            fflush(stdout);
+            return;
+        }
     }
 
     char cmd[2048];
