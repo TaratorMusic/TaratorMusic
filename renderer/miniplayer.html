@@ -1,6 +1,6 @@
 <main>
 	<div class="drag-area" style="display: flex; flex-direction: row; height: 10vw">
-		<img id="taratorLogo" src="../assets/tarator16_icon.png" style="width: 10vw; height: 10vw" />
+		<img id="taratorLogo" style="width: 10vw; height: 10vw" />
 		<div id="song-name">TaratorMusic</div>
 		<div id="minimise-button" class="no-drag">&#x2212;</div>
 		<div id="close-button" class="no-drag">&times;</div>
@@ -27,7 +27,8 @@
 		text-align: center;
 	}
 
-	html, body {
+	html,
+	body {
 		background: transparent;
 	}
 
@@ -70,10 +71,11 @@
 
 	#thumbnail {
 		width: 100vw;
-		flex: 1;
-		background-size: cover;
+		flex: none;
+		aspect-ratio: 16 / 9;
+		background-size: contain;
 		background-position: center;
-		min-height: 0;
+		background-repeat: no-repeat;
 	}
 
 	#thumbnail.hidden {
@@ -162,7 +164,7 @@
 		try {
 			if (data.assetsFolder != undefined && data.assetsFolder != assetsFolder) {
 				assetsFolder = data.assetsFolder;
-
+				document.getElementById("taratorLogo").src = "file://" + path.join(assetsFolder, "tarator16_icon.png").replace(/\\/g, "/");
 				loadImage("previous-button", `url("file://${path.join(assetsFolder, "previous.svg").replace(/\\/g, "/")}")`);
 				loadImage("next-button", `url("file://${path.join(assetsFolder, "next.svg").replace(/\\/g, "/")}")`);
 				loadImage("pauseplay-button", `url("file://${path.join(assetsFolder, "play.svg").replace(/\\/g, "/")}")`);
