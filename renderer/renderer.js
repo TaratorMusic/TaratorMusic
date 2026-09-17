@@ -1732,6 +1732,8 @@ async function opencustomiseModal(songsId) {
 		picker.value = "none";
 	}
 	document.getElementById("lyricsTranslationArea").value = picker.value != "none" && picker.value != "new" ? cachedRows.find(r => r.language == picker.value)?.lyrics || "" : "";
+	document.getElementById("lyricsArea").scrollTop = 0;
+	document.getElementById("lyricsTranslationArea").scrollTop = 0;
 	updateAutoTranslateBtn();
 
 	document.getElementById("lyricsThumbnail").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
@@ -1741,6 +1743,7 @@ async function opencustomiseModal(songsId) {
 	document.getElementById("originalLyricName").innerText = language ? `Original Language: ${language}` : "";
 
 	const customiseDiv = document.getElementById("customiseModal");
+	customiseDiv.scrollTop = 0;
 	customiseDiv.dataset.oldThumbnailPath = thumbnailPath;
 	customiseDiv.dataset.songID = songsId;
 	customiseDiv.dataset.origName = song_name;
