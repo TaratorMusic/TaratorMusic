@@ -20,6 +20,12 @@ autoUpdater.autoInstallOnAppQuit = false;
 
 let mainWindow;
 let miniPlayer;
+let pipSettingsState = { pipShowThumbnail: 1, pipShowLyrics: 0 };
+
+function getPipHeight(showThumbnail, showLyrics) {
+	if (showLyrics) return showThumbnail ? 732 : 375;
+	return showThumbnail ? 244 : 100;
+}
 
 function createWindow() {
 	const splash = new BrowserWindow({
@@ -83,16 +89,23 @@ function createMiniPlayer(initialData) {
 		return;
 	}
 
+	if (initialData) {
+		if (initialData.pipShowThumbnail != undefined) pipSettingsState.pipShowThumbnail = initialData.pipShowThumbnail;
+		if (initialData.pipShowLyrics != undefined) pipSettingsState.pipShowLyrics = initialData.pipShowLyrics;
+	}
+
+	const pipHeight = getPipHeight(pipSettingsState.pipShowThumbnail == 1, pipSettingsState.pipShowLyrics == 1);
+
 	miniPlayer = new BrowserWindow({
 		width: 320,
-		height: 244,
+		height: pipHeight,
 		title: "TaratorMusic PiP",
 		icon: path.join(processDir, "assets/tarator16_icon.png"),
 		resizable: true,
 		frame: false,
 		alwaysOnTop: true,
 		skipTaskbar: true,
-		transparent: false,
+		transparent: true,
 		movable: true,
 		webPreferences: {
 			contextIsolation: false,
@@ -103,7 +116,17 @@ function createMiniPlayer(initialData) {
 	miniPlayer.loadFile("renderer/miniplayer.html");
 
 	miniPlayer.webContents.on("did-finish-load", () => {
-		if (initialData) miniPlayer.webContents.send("miniplayer-update", initialData);
+		try {
+			if (initialData) {
+				miniPlayer.webContents.send("miniplayer-update", initialData);
+				miniPlayer.webContents.send("pip-settings-update", {
+					pipShowThumbnail: initialData.pipShowThumbnail,
+					pipShowLyrics: initialData.pipShowLyrics,
+				});
+			}
+		} catch (err) {
+			console.error("Error sending initial data to miniplayer:", err);
+		}
 	});
 
 	miniPlayer.on("closed", () => {
@@ -383,18 +406,58 @@ app.whenReady().then(() => {
 	ipcMain.on("miniplayer-previous", () => mainWindow.webContents.send("player-previous"));
 	ipcMain.on("miniplayer-playpause", () => mainWindow.webContents.send("player-playpause"));
 	ipcMain.on("miniplayer-next", () => mainWindow.webContents.send("player-next"));
-	ipcMain.on("open-miniplayer", (_, data) => createMiniPlayer(data));
+	ipcMain.on("open-miniplayer", (_, data) => {
+		try {
+			createMiniPlayer(data);
+		} catch (err) {
+			console.error("Error opening miniplayer:", err);
+		}
+	});
 	ipcMain.on("miniplayer-close", () => {
-		if (miniPlayer) miniPlayer.close();
-		mainWindow.webContents.send("close-pip");
+		try {
+			if (miniPlayer) miniPlayer.close();
+			mainWindow.webContents.send("close-pip");
+		} catch (err) {
+			console.error("Error closing miniplayer:", err);
+		}
 	});
 	ipcMain.on("miniplayer-minimize", () => {
-		if (miniPlayer) miniPlayer.minimize();
+		try {
+			if (miniPlayer) miniPlayer.minimize();
+		} catch (err) {
+			console.error("Error minimizing miniplayer:", err);
+		}
 	});
 
 	ipcMain.on("renderer-miniplayer-update", (_, data) => {
-		if (miniPlayer && !miniPlayer.isDestroyed()) {
-			miniPlayer.webContents.send("miniplayer-update", data);
+		try {
+			if (miniPlayer && !miniPlayer.isDestroyed()) {
+				miniPlayer.webContents.send("miniplayer-update", data);
+			}
+		} catch (err) {
+			console.error("Error forwarding update to miniplayer:", err);
+		}
+	});
+
+	ipcMain.on("pip-settings-update", (_, data) => {
+		try {
+			if (miniPlayer && !miniPlayer.isDestroyed()) {
+				if (data.pipShowThumbnail != undefined) pipSettingsState.pipShowThumbnail = data.pipShowThumbnail;
+				if (data.pipShowLyrics != undefined) pipSettingsState.pipShowLyrics = data.pipShowLyrics;
+				miniPlayer.webContents.send("pip-settings-update", data);
+			}
+		} catch (err) {
+			console.error("Error handling pip-settings-update:", err);
+		}
+	});
+
+	ipcMain.on("miniplayer-resize", (_, data) => {
+		try {
+			if (miniPlayer && !miniPlayer.isDestroyed()) {
+				miniPlayer.setSize(miniPlayer.getSize()[0], data.height);
+			}
+		} catch (err) {
+			console.error("Error handling miniplayer-resize:", err);
 		}
 	});
 });

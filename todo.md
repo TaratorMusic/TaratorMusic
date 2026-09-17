@@ -1,7 +1,6 @@
 ### Version 1.9.x Planned Features
 
 -   Fetch lyrics from an API.
--   Lyrics PiP
 -   If the app fetches new info and there is an old one, open comparation modal
 -   If you keep skipping songs really quickly the app breaks
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 

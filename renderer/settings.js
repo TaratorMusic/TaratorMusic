@@ -210,10 +210,39 @@ async function recommendationsToggleTogglerFunction() {
 }
 
 async function pictureInPictureTogglerFunction() {
-	pictureInPicture = pictureInPicture == 1 ? 0 : 1;
-	await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
+	try {
+		pictureInPicture = pictureInPicture == 1 ? 0 : 1;
+		await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
+		lastPipLyricsSongId = "";
+		pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics }) : ipcRenderer.send("miniplayer-close");
+	} catch (err) {
+		console.error("Error toggling PiP:", err);
+	}
+}
 
-	pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer") : ipcRenderer.send("miniplayer-close");
+async function pipThumbnailTogglerFunction() {
+	try {
+		pipShowThumbnail = pipShowThumbnail == 1 ? 0 : 1;
+		await callSqlite({ db: "settings", query: "UPDATE settings SET pipShowThumbnail = ?", args: [pipShowThumbnail] });
+		ipcRenderer.send("pip-settings-update", { pipShowThumbnail, pipShowLyrics });
+	} catch (err) {
+		console.error("Error toggling PiP thumbnail:", err);
+	}
+}
+
+async function pipLyricsTogglerFunction() {
+	try {
+		pipShowLyrics = pipShowLyrics == 1 ? 0 : 1;
+		await callSqlite({ db: "settings", query: "UPDATE settings SET pipShowLyrics = ?", args: [pipShowLyrics] });
+		ipcRenderer.send("pip-settings-update", { pipShowThumbnail, pipShowLyrics });
+		if (pipShowLyrics == 1 && playingSongsID) {
+			const cachedRows = songLyricsCache.get(playingSongsID) || [];
+			const originalRow = cachedRows.find(r => !r.language);
+			updateMiniPlayer({ lyrics: originalRow?.lyrics || "" });
+		}
+	} catch (err) {
+		console.error("Error toggling PiP lyrics:", err);
+	}
 }
 
 function changeLogLevel(level) {

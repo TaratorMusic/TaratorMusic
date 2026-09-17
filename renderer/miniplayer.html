@@ -6,7 +6,10 @@
 		<div id="close-button" class="no-drag">&times;</div>
 	</div>
 
-	<div id="thumbnail" class="drag-area"></div>
+	<div id="content-area">
+		<div id="thumbnail" class="drag-area"></div>
+		<div id="lyrics-container"></div>
+	</div>
 
 	<div class="controls" style="display: flex; flex-direction: row; height: 10vw">
 		<div id="previous-button" class="no-drag"></div>
@@ -24,8 +27,17 @@
 		text-align: center;
 	}
 
+	html, body {
+		background: transparent;
+	}
+
 	main {
 		background-color: #333;
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		border-radius: 4px;
+		overflow: hidden;
 	}
 
 	.drag-area {
@@ -48,18 +60,31 @@
 		padding: 1vh 2vw 0 2vw;
 	}
 
+	#content-area {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		min-height: 0;
+	}
+
 	#thumbnail {
 		width: 100vw;
-		height: calc(100vh - 20vw);
+		flex: 1;
 		background-size: cover;
 		background-position: center;
+		min-height: 0;
+	}
+
+	#thumbnail.hidden {
+		display: none;
 	}
 
 	#close-button,
 	#minimise-button {
 		width: 10vw;
 		height: 10vw;
-        font-size: 10vw;
+		font-size: 10vw;
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -82,30 +107,108 @@
 		align-items: center;
 		justify-content: center;
 	}
+
+	#lyrics-container {
+		display: none;
+		flex: 1;
+		overflow-y: auto;
+		padding: 0.5vw 1vw;
+		font-size: 6vw;
+		line-height: 1.4;
+		text-align: left;
+		white-space: pre-wrap;
+		word-wrap: break-word;
+		color: #ddd;
+		min-height: 0;
+	}
+
+	#lyrics-container.visible {
+		display: block;
+	}
 </style>
 
 <script>
 	const { ipcRenderer } = require("electron");
 	const path = require("path");
 
-	let currentThumbnail; // To prevent reupdating the image every second
+	let currentThumbnail;
 	let assetsFolder;
+	let showThumbnail = true;
+	let showLyrics = false;
+	let currentLyrics = "";
+
+	function loadImage(elementId, url) {
+		try {
+			const el = document.getElementById(elementId);
+			if (el) el.style.backgroundImage = url;
+		} catch (err) {
+			console.error("Error loading image for " + elementId + ":", err);
+		}
+	}
+
+	function updateSize() {
+		const hasContent = currentLyrics.trim().length > 0;
+		const shouldExtend = showLyrics && hasContent;
+		let height;
+		if (shouldExtend) height = showThumbnail ? 732 : 375;
+		else height = showThumbnail ? 244 : 100;
+		ipcRenderer.send("miniplayer-resize", { height });
+
+		const lyricsEl = document.getElementById("lyrics-container");
+		shouldExtend ? lyricsEl.classList.add("visible") : lyricsEl.classList.remove("visible");
+	}
 
 	ipcRenderer.on("miniplayer-update", (_, data) => {
-		if (data.assetsFolder != undefined && data.assetsFolder != assetsFolder) {
-			assetsFolder = data.assetsFolder;
+		try {
+			if (data.assetsFolder != undefined && data.assetsFolder != assetsFolder) {
+				assetsFolder = data.assetsFolder;
 
-			document.getElementById("previous-button").style.backgroundImage = `url("file://${path.join(assetsFolder, "previous.svg").replace(/\\/g, "/")}")`;
-			document.getElementById("next-button").style.backgroundImage = `url("file://${path.join(assetsFolder, "next.svg").replace(/\\/g, "/")}")`;
-			document.getElementById("pauseplay-button").style.backgroundImage = `url("file://${path.join(assetsFolder, "play.svg").replace(/\\/g, "/")}")`;
+				loadImage("previous-button", `url("file://${path.join(assetsFolder, "previous.svg").replace(/\\/g, "/")}")`);
+				loadImage("next-button", `url("file://${path.join(assetsFolder, "next.svg").replace(/\\/g, "/")}")`);
+				loadImage("pauseplay-button", `url("file://${path.join(assetsFolder, "play.svg").replace(/\\/g, "/")}")`);
+			}
+
+			if (data.songName != undefined) document.getElementById("song-name").innerText = data.songName;
+			if (data.progress != undefined) document.getElementById("song-progress").innerText = data.progress;
+			if (data.isPlaying != undefined && assetsFolder) {
+				const icon = data.isPlaying ? "pause.svg" : "play.svg";
+				loadImage("pauseplay-button", `url("file://${path.join(assetsFolder, icon).replace(/\\/g, "/")}")`);
+			}
+			if (data.thumbnail != undefined && data.thumbnail != currentThumbnail) {
+				currentThumbnail = data.thumbnail;
+				const url = currentThumbnail.startsWith("http") ? `url("${currentThumbnail}")` : `url("file://${currentThumbnail.replace(/\\/g, "/")}")`;
+				loadImage("thumbnail", url);
+			}
+			if (data.lyrics != undefined) {
+				currentLyrics = data.lyrics;
+				document.getElementById("lyrics-container").innerText = currentLyrics;
+				updateSize();
+			}
+			if (data.songProgress != undefined && showLyrics && currentLyrics.trim().length > 0) {
+				const container = document.getElementById("lyrics-container");
+				const maxScroll = container.scrollHeight - container.clientHeight;
+				if (maxScroll > 0) {
+					container.scrollTop = data.songProgress * maxScroll;
+				}
+			}
+		} catch (err) {
+			console.error("Error handling miniplayer update:", err);
 		}
+	});
 
-		if (data.songName != undefined) document.getElementById("song-name").innerText = data.songName;
-		if (data.progress != undefined) document.getElementById("song-progress").innerText = data.progress;
-		if (data.isPlaying != undefined && assetsFolder) document.getElementById("pauseplay-button").style.backgroundImage = data.isPlaying ? `url("file://${path.join(assetsFolder, "pause.svg").replace(/\\/g, "/")}")` : `url("file://${path.join(assetsFolder, "play.svg").replace(/\\/g, "/")}")`;
-		if (data.thumbnail != undefined && data.thumbnail != currentThumbnail) {
-			currentThumbnail = data.thumbnail;
-			document.getElementById("thumbnail").style.backgroundImage = currentThumbnail.startsWith("http") ? `url("${currentThumbnail}")` : `url("file://${currentThumbnail.replace(/\\/g, "/")}")`;
+	ipcRenderer.on("pip-settings-update", (_, data) => {
+		try {
+			if (data.pipShowThumbnail != undefined) {
+				showThumbnail = data.pipShowThumbnail == 1;
+				const thumbEl = document.getElementById("thumbnail");
+				showThumbnail ? thumbEl.classList.remove("hidden") : thumbEl.classList.add("hidden");
+			}
+			if (data.pipShowLyrics != undefined) {
+				showLyrics = data.pipShowLyrics == 1;
+			}
+			updateSize();
+		} catch (err) {
+			console.error("Error handling pip-settings-update:", err);
 		}
 	});
 
@@ -115,8 +218,3 @@
 	document.getElementById("close-button").onclick = () => ipcRenderer.send("miniplayer-close");
 	document.getElementById("minimise-button").onclick = () => ipcRenderer.send("miniplayer-minimize");
 </script>
-
-<!--
-TODO:
-- Add volume bar to the empty space, center the song length
--->

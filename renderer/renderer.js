@@ -109,6 +109,8 @@ let stabiliseVolumeToggle;
 let current_version;
 let recommendationsAfterDownload;
 let pictureInPicture;
+let pipShowThumbnail;
+let pipShowLyrics;
 let key_searchPlaylist;
 let key_searchShuffle;
 let key_lyrics;
@@ -121,6 +123,7 @@ let artistListenTimeFactor;
 let randomFactor;
 let ytdlpLastUpdateDate;
 let ytdlpVersion;
+let lastPipLyricsSongId = "";
 
 const LOG_LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 const LOG_LEVEL = LOG_LEVELS[localStorage.getItem("logLevel") || "info"] ?? LOG_LEVELS.info;
@@ -235,11 +238,21 @@ async function initialiseDatabases() {
 	current_version = settingsRow.current_version;
 	recommendationsAfterDownload = settingsRow.recommendationsAfterDownload;
 	pictureInPicture = settingsRow.pictureInPicture;
+	pipShowThumbnail = settingsRow.pipShowThumbnail;
+	pipShowLyrics = settingsRow.pipShowLyrics;
 	key_searchPlaylist = settingsRow.key_searchPlaylist;
 	key_searchShuffle = settingsRow.key_searchShuffle;
 	key_lyrics = settingsRow.key_lyrics;
 
-	if (pictureInPicture == 1) ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder });
+	if (pictureInPicture == 1) {
+		lastPipLyricsSongId = "";
+		ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics });
+		if (pipShowLyrics == 1 && playingSongsID) {
+			const cachedRows = songLyricsCache.get(playingSongsID) || [];
+			const originalRow = cachedRows.find(r => !r.language);
+			updateMiniPlayer({ lyrics: originalRow?.lyrics || "" });
+		}
+	}
 
 	if (settingsRow.background.includes("#")) {
 		document.body.style.background = settingsRow.background;
@@ -315,6 +328,8 @@ async function initialiseDatabases() {
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
 	document.getElementById("recommendationsToggle").checked = recommendationsAfterDownload == 1 ? true : false;
 	document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1 ? true : false;
+	document.getElementById("pipThumbnailToggle").checked = pipShowThumbnail == 1 ? true : false;
+	document.getElementById("pipLyricsToggle").checked = pipShowLyrics == 1 ? true : false;
 	document.getElementById("logLevelSelect").value = localStorage.getItem("logLevel") || "info";
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
 	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
@@ -1247,6 +1262,13 @@ function playMusic(songId, playlistId) {
 		scheduleTick();
 		updateDiscordPresence();
 		updateProgressPaused();
+
+		if (pipShowLyrics == 1) {
+			const cachedRows = songLyricsCache.get(songId) || [];
+			const originalRow = cachedRows.find(r => !r.language);
+			updateMiniPlayer({ lyrics: originalRow?.lyrics || "" });
+			lastPipLyricsSongId = songId;
+		}
 
 		if (playlistId) {
 			const pid = playlistId.id || playlistId;
@@ -2615,6 +2637,8 @@ function tick() {
 			videoLength.textContent = `${formatTime(clamped)} / ${formatTime(songDuration)}`;
 			videoProgress.value = (clamped / songDuration) * 100;
 
+			const pipProgress = songDuration > 5 ? Math.max(0, (clamped - 5) / (songDuration - 5)) : 0;
+
 			if (playingSongsID.length != 11) {
 				// Local song. Youtube link ID's consist of 11 digits.
 				const row = songNameCache.get(playingSongsID);
@@ -2625,6 +2649,7 @@ function tick() {
 					thumbnail: path.join(thumbnailFolder, `${playingSongsID}.${row.thumbnail_extension}`),
 					songName: row.song_name,
 					isPlaying: playing,
+					songProgress: pipProgress,
 				});
 			} else {
 				// Youtube song
@@ -2636,10 +2661,22 @@ function tick() {
 					thumbnail: row.thumbnail_url,
 					songName: row.song_name,
 					isPlaying: playing,
+					songProgress: pipProgress,
 				});
 			}
 
 			if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
+
+			if (pipShowLyrics == 1 && playingSongsID && playingSongsID != lastPipLyricsSongId) {
+				try {
+					const cachedRows = songLyricsCache.get(playingSongsID) || [];
+					const originalRow = cachedRows.find(r => !r.language);
+					updateMiniPlayer({ lyrics: originalRow?.lyrics || "" });
+					lastPipLyricsSongId = playingSongsID;
+				} catch (err) {
+					logChange("error", "Error sending lyrics to PiP: " + (err?.message ?? String(err)));
+				}
+			}
 		}
 
 		scheduleTick();

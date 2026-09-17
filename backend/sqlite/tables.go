@@ -47,6 +47,8 @@ var settingsColumns = []Column{
 	{Name: "randomFactor", Type: "INTEGER", Default: "15"},
 	{Name: "recommendationsAfterDownload", Type: "INTEGER", Default: "1"},
 	{Name: "pictureInPicture", Type: "INTEGER", Default: "0"},
+	{Name: "pipShowThumbnail", Type: "INTEGER", Default: "1"},
+	{Name: "pipShowLyrics", Type: "INTEGER", Default: "0"},
 	{Name: "key_searchPlaylist", Type: "TEXT", Default: "x"},
 	{Name: "key_searchShuffle", Type: "TEXT", Default: "c"},
 	{Name: "key_lyrics", Type: "TEXT", Default: "v"},
