@@ -64,7 +64,8 @@
 			"target": [
 				"portable"
 			],
-			"icon": "assets/tarator_icon.ico"
+			"icon": "assets/tarator_icon.ico",
+			"asar": false
 		},
 		"mac": {
 			"target": "dmg",
@@ -78,6 +79,7 @@
 			"category": "Audio",
 			"maintainer": "Victiniiiii",
 			"synopsis": "A cross-platform desktop music player application with playlists, music downloading from youtube and spotify, volume stabilisation, statistics and much more.",
+			"asar": false,
 			"desktop": {
 				"entry": {
 					"Name": "TaratorMusic",
