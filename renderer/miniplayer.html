@@ -114,18 +114,53 @@
 		display: none;
 		flex: 1;
 		overflow-y: auto;
-		padding: 0.5vw 1vw;
+		overflow-x: hidden;
+		padding: 0.5vw 2vw 0.5vw 1vw;
 		font-size: 6vw;
 		line-height: 1.4;
 		text-align: left;
 		white-space: pre-wrap;
 		word-wrap: break-word;
-		color: #ddd;
+		color: #666;
 		min-height: 0;
+		scrollbar-width: thin;
+		scrollbar-color: #555 transparent;
+	}
+
+	#lyrics-container::-webkit-scrollbar {
+		width: 0.8vw;
+	}
+
+	#lyrics-container::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	#lyrics-container::-webkit-scrollbar-thumb {
+		background-color: #555;
+		border-radius: 0.4vw;
+	}
+
+	#lyrics-container::-webkit-scrollbar-thumb:hover {
+		background-color: #777;
 	}
 
 	#lyrics-container.visible {
 		display: block;
+	}
+
+	#lyrics-container .lyric-line {
+		transition: color 0.3s ease, transform 0.3s ease;
+		padding: 0.2vw 0;
+	}
+
+	#lyrics-container .lyric-line.current {
+		color: #e6c547;
+		transform: scale(1.05);
+		transform-origin: left center;
+	}
+
+	#lyrics-container .lyric-line.past {
+		color: #999;
 	}
 </style>
 
@@ -138,6 +173,8 @@
 	let showThumbnail = true;
 	let showLyrics = false;
 	let currentLyrics = "";
+	let currentSyncedLyrics = [];
+	let currentLyricIndex = -1;
 
 	function loadImage(elementId, url) {
 		try {
@@ -148,8 +185,77 @@
 		}
 	}
 
+	function renderLyrics(plainText, syncedLyrics) {
+		const container = document.getElementById("lyrics-container");
+		container.innerHTML = "";
+
+		if (syncedLyrics && syncedLyrics.length > 0) {
+			currentSyncedLyrics = syncedLyrics;
+			for (let i = 0; i < syncedLyrics.length; i++) {
+				const div = document.createElement("div");
+				div.className = "lyric-line";
+				div.dataset.index = i;
+				div.textContent = syncedLyrics[i].text || "\u00A0";
+				container.appendChild(div);
+			}
+		} else {
+			currentSyncedLyrics = [];
+			currentLyrics = plainText;
+			const lines = plainText.split("\n");
+			for (const line of lines) {
+				const div = document.createElement("div");
+				div.className = "lyric-line";
+				div.textContent = line || "\u00A0";
+				container.appendChild(div);
+			}
+		}
+	}
+
+	function scrollToLine(index) {
+		if (index == currentLyricIndex) return;
+		currentLyricIndex = index;
+
+		const container = document.getElementById("lyrics-container");
+		const lines = container.querySelectorAll(".lyric-line");
+
+		for (let i = 0; i < lines.length; i++) {
+			lines[i].classList.remove("current", "past");
+			if (i == index) lines[i].classList.add("current");
+			else if (i < index) lines[i].classList.add("past");
+		}
+
+		if (index >= 0 && index < lines.length) {
+			const line = lines[index];
+			const containerRect = container.getBoundingClientRect();
+			const lineRect = line.getBoundingClientRect();
+			const offset = lineRect.top - containerRect.top - containerRect.height / 2 + lineRect.height / 2;
+			container.scrollBy({ top: offset, behavior: "smooth" });
+		}
+	}
+
+	function scrollProportional(progress) {
+		const container = document.getElementById("lyrics-container");
+		const maxScroll = container.scrollHeight - container.clientHeight;
+		if (maxScroll > 0) {
+			container.scrollTop = progress * maxScroll;
+		}
+	}
+
+	function findCurrentLineIndex(time) {
+		if (!currentSyncedLyrics || currentSyncedLyrics.length == 0) return -1;
+		let index = -1;
+		for (let i = 0; i < currentSyncedLyrics.length; i++) {
+			if (currentSyncedLyrics[i].time <= time) {
+				index = i;
+			} else {
+				break;
+			}
+		}
+		return index;
+	}
+
 	function updateSize() {
-		const hasContent = currentLyrics.trim().length > 0;
+		const hasContent = currentSyncedLyrics.length > 0 || currentLyrics.trim().length > 0;
 		const shouldExtend = showLyrics && hasContent;
 		let height;
 		if (shouldExtend) height = showThumbnail ? 732 : 375;
@@ -181,16 +287,19 @@
 				const url = currentThumbnail.startsWith("http") ? `url("${currentThumbnail}")` : `url("file://${currentThumbnail.replace(/\\/g, "/")}")`;
 				loadImage("thumbnail", url);
 			}
-			if (data.lyrics != undefined) {
-				currentLyrics = data.lyrics;
-				document.getElementById("lyrics-container").innerText = currentLyrics;
+			if (data.lyrics != undefined || data.syncedLyrics != undefined) {
+				currentLyrics = data.lyrics != undefined ? data.lyrics : currentLyrics;
+				currentSyncedLyrics = data.syncedLyrics || [];
+				currentLyricIndex = -1;
+				renderLyrics(currentLyrics, currentSyncedLyrics);
 				updateSize();
 			}
-			if (data.songProgress != undefined && showLyrics && currentLyrics.trim().length > 0) {
-				const container = document.getElementById("lyrics-container");
-				const maxScroll = container.scrollHeight - container.clientHeight;
-				if (maxScroll > 0) {
-					container.scrollTop = data.songProgress * maxScroll;
+			if (data.songProgress != undefined && showLyrics && (currentSyncedLyrics.length > 0 || currentLyrics.trim().length > 0)) {
+				if (currentSyncedLyrics.length > 0 && data.songTime != undefined) {
+					const index = findCurrentLineIndex(data.songTime);
+					scrollToLine(index);
+				} else {
+					scrollProportional(data.songProgress);
 				}
 			}
 		} catch (err) {

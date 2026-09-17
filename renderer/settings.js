@@ -238,7 +238,7 @@ async function pipLyricsTogglerFunction() {
 		if (pipShowLyrics == 1 && playingSongsID) {
 			const cachedRows = songLyricsCache.get(playingSongsID) || [];
 			const originalRow = cachedRows.find(r => !r.language);
-			updateMiniPlayer({ lyrics: originalRow?.lyrics || "" });
+			updateMiniPlayer({ lyrics: originalRow?.lyrics || "", syncedLyrics: parseLrc(originalRow?.synced_lyrics || "") });
 		}
 	} catch (err) {
 		console.error("Error toggling PiP lyrics:", err);

@@ -1,6 +1,6 @@
 ### Version 1.9.x Planned Features
 
--   Fetch lyrics from an API.
+-   Ability to add/edit timestamps to current lyrics
 -   If the app fetches new info and there is an old one, open comparation modal
 -   If you keep skipping songs really quickly the app breaks
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
@@ -15,20 +15,15 @@
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
--   Rewinding the song while its playing is really buggy
 -   recommendations just for a song or playlist
--   Auto scrape translations from the web.
 -   Fix streaming in windows
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
--   In windows there is a bug where my music search bar is empty and no songs are shown, but no errors in the console
 -   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
 -   Some streamed songs dont have thumbnails in menus
 -   tooltip spawns wrongly then gets fixed afterwards
 -   Customise Dc Rich Presence box in the settings
 -   If search song finds a small amount of songs, it should be pickable with the arrow keys
--   keeping the music tab open is lagging
 -   auto form playlist from artist-genre-language
--   Lyrics storage for picture in picture
 -   Add a progress bar in the lyrics page. Maybe use soundwaves?
 -   Search code for TODO'S
 

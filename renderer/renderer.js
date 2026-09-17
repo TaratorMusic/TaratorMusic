@@ -250,7 +250,7 @@ async function initialiseDatabases() {
 		if (pipShowLyrics == 1 && playingSongsID) {
 			const cachedRows = songLyricsCache.get(playingSongsID) || [];
 			const originalRow = cachedRows.find(r => !r.language);
-			updateMiniPlayer({ lyrics: originalRow?.lyrics || "" });
+			updateMiniPlayer({ lyrics: originalRow?.lyrics || "", syncedLyrics: parseLrc(originalRow?.synced_lyrics || "") });
 		}
 	}
 
@@ -391,13 +391,13 @@ async function initialiseDatabases() {
 
 	const lyricsRows = await callSqlite({
 		db: "musics",
-		query: "SELECT song_id, lyrics, language FROM lyrics",
+		query: "SELECT song_id, lyrics, language, synced_lyrics FROM lyrics",
 		fetch: true,
 	});
 
 	for (const row of lyricsRows) {
 		const existing = songLyricsCache.get(row.song_id) || [];
-		existing.push({ lyrics: row.lyrics, language: row.language ?? null });
+		existing.push({ lyrics: row.lyrics, language: row.language ?? null, synced_lyrics: row.synced_lyrics || "" });
 		songLyricsCache.set(row.song_id, existing);
 	}
 
@@ -1266,9 +1266,11 @@ function playMusic(songId, playlistId) {
 		if (pipShowLyrics == 1) {
 			const cachedRows = songLyricsCache.get(songId) || [];
 			const originalRow = cachedRows.find(r => !r.language);
-			updateMiniPlayer({ lyrics: originalRow?.lyrics || "" });
+			updateMiniPlayer({ lyrics: originalRow?.lyrics || "", syncedLyrics: parseLrc(originalRow?.synced_lyrics || "") });
 			lastPipLyricsSongId = songId;
 		}
+
+		if (lyricsPanelVisible) renderMainLyrics();
 
 		if (playlistId) {
 			const pid = playlistId.id || playlistId;
@@ -1912,6 +1914,13 @@ async function saveEditedSong(translationOnly = false) {
 		const hasLyrics = !!lyricsValue.trim();
 		document.getElementById("customiseButtonBottomRight").style.color = hasLyrics ? "lime" : "white";
 		customiseDiv.dataset.origLyrics = lyricsValue;
+
+		if (playingSongsID == savedSongId && pipShowLyrics == 1) {
+			updateMiniPlayer({ lyrics: lyricsValue, syncedLyrics: parseLrc(existingOriginal?.synced_lyrics || "") });
+			lastPipLyricsSongId = "";
+		}
+
+		if (lyricsPanelVisible && playingSongsID == savedSongId) renderMainLyrics();
 	}
 
 	const picker = document.getElementById("translatedLyricInput");
@@ -2221,9 +2230,7 @@ document.addEventListener("keydown", event => {
 			renderMusics();
 		}
 	} else if (event.key == "ArrowRight" && document.getElementById("my-music-content").style.display == "flex" && displayPage == "page") {
-		const totalPages = musicMode == "offline"
-			? Math.ceil(songNameCache.size / (3 * previousItemsPerRow))
-			: Math.ceil(streamedSongsHtmlMap.size / (3 * previousItemsPerRow));
+		const totalPages = musicMode == "offline" ? Math.ceil(songNameCache.size / (3 * previousItemsPerRow)) : Math.ceil(streamedSongsHtmlMap.size / (3 * previousItemsPerRow));
 		if (currentPage < totalPages) {
 			currentPage++;
 			renderMusics();
@@ -2573,6 +2580,49 @@ async function autoTranslateLyrics() {
 	}
 }
 
+async function fetchLrclibForCurrentSong() {
+	const customiseDiv = document.getElementById("customiseModal");
+	const songId = customiseDiv.dataset.songID;
+	if (!songId) return;
+
+	const row = songNameCache.get(songId);
+	const hasArtist = row && row.artist && row.artist.trim() && row.artist != "unknown";
+	if (!hasArtist) {
+		const proceed = await threeWayModal("This song has no artist info. LRCLIB matching works best with an artist name. Add one first?", "Add Artist", "Continue Anyway", "Cancel");
+		if (proceed == "option1") return;
+		if (proceed == "option3") return;
+	}
+
+	const btn = document.getElementById("fetchLrclibBtn");
+	btn.disabled = true;
+	btn.textContent = "Fetching...";
+
+	try {
+		const result = await fetchSongLyrics(songId);
+		if (!result) {
+			await alertModal("No lyrics found on LRCLIB for this song.");
+			return;
+		}
+
+		const saved = await saveFetchedLyrics(songId, result);
+		document.getElementById("lyricsArea").value = saved.plainLyrics;
+		customiseDiv.dataset.origLyrics = saved.plainLyrics;
+
+		const hasLyrics = !!saved.plainLyrics.trim();
+		document.getElementById("customiseButtonBottomRight").style.color = hasLyrics ? "lime" : "white";
+
+		btn.textContent = "Fetched!";
+		if (lyricsPanelVisible) renderMainLyrics();
+	} catch (error) {
+		await alertModal("Failed to fetch lyrics: " + (error.message ?? String(error)));
+	} finally {
+		btn.disabled = false;
+		setTimeout(() => {
+			btn.textContent = "Fetch Lyrics";
+		}, 2000);
+	}
+}
+
 async function saveUserProgress() {
 	if (songPauseStartTime) totalPausedTime += Math.floor(Date.now() / 1000 - songPauseStartTime);
 
@@ -2650,6 +2700,7 @@ function tick() {
 					songName: row.song_name,
 					isPlaying: playing,
 					songProgress: pipProgress,
+					songTime: clamped,
 				});
 			} else {
 				// Youtube song
@@ -2662,6 +2713,7 @@ function tick() {
 					songName: row.song_name,
 					isPlaying: playing,
 					songProgress: pipProgress,
+					songTime: clamped,
 				});
 			}
 
@@ -2671,12 +2723,14 @@ function tick() {
 				try {
 					const cachedRows = songLyricsCache.get(playingSongsID) || [];
 					const originalRow = cachedRows.find(r => !r.language);
-					updateMiniPlayer({ lyrics: originalRow?.lyrics || "" });
+					updateMiniPlayer({ lyrics: originalRow?.lyrics || "", syncedLyrics: parseLrc(originalRow?.synced_lyrics || "") });
 					lastPipLyricsSongId = playingSongsID;
 				} catch (err) {
 					logChange("error", "Error sending lyrics to PiP: " + (err?.message ?? String(err)));
 				}
 			}
+
+			if (lyricsPanelVisible && playingSongsID) updateMainLyricsSync(clamped);
 		}
 
 		scheduleTick();
@@ -2708,6 +2762,90 @@ function logChange(level, message) {
 		args: [level, message],
 		fetch: false,
 	}).catch(() => {});
+}
+
+let lyricsPanelVisible = false;
+let mainLyricLines = [];
+let mainCurrentLyricIndex = -1;
+
+function toggleLyricsPanel() {
+	lyricsPanelVisible = !lyricsPanelVisible;
+	const panel = document.getElementById("lyricsPanel");
+
+	if (lyricsPanelVisible) {
+		panel.classList.add("visible");
+		renderMainLyrics();
+	} else {
+		panel.classList.remove("visible");
+	}
+}
+
+function renderMainLyrics() {
+	const container = document.getElementById("mainLyricsContainer");
+	container.innerHTML = "";
+	mainLyricLines = [];
+	mainCurrentLyricIndex = -1;
+
+	if (!playingSongsID) return;
+
+	const cachedRows = songLyricsCache.get(playingSongsID) || [];
+	const originalRow = cachedRows.find(r => !r.language);
+	if (!originalRow) return;
+
+	const syncedLyrics = parseLrc(originalRow.synced_lyrics || "");
+	const plainLyrics = originalRow.lyrics || "";
+
+	if (syncedLyrics.length > 0) {
+		mainLyricLines = syncedLyrics;
+		for (let i = 0; i < syncedLyrics.length; i++) {
+			const div = document.createElement("div");
+			div.className = "main-lyric-line";
+			div.dataset.index = i;
+			div.textContent = syncedLyrics[i].text || "\u00A0";
+			container.appendChild(div);
+		}
+	} else if (plainLyrics) {
+		const lines = plainLyrics.split("\n");
+		for (const line of lines) {
+			const div = document.createElement("div");
+			div.className = "main-lyric-line";
+			div.textContent = line || "\u00A0";
+			container.appendChild(div);
+		}
+	}
+}
+
+function updateMainLyricsSync(currentTime) {
+	if (!lyricsPanelVisible || mainLyricLines.length == 0) return;
+
+	let index = -1;
+	for (let i = 0; i < mainLyricLines.length; i++) {
+		if (mainLyricLines[i].time <= currentTime) {
+			index = i;
+		} else {
+			break;
+		}
+	}
+
+	if (index == mainCurrentLyricIndex) return;
+	mainCurrentLyricIndex = index;
+
+	const container = document.getElementById("mainLyricsContainer");
+	const lines = container.querySelectorAll(".main-lyric-line");
+
+	for (let i = 0; i < lines.length; i++) {
+		lines[i].classList.remove("current", "past");
+		if (i == index) lines[i].classList.add("current");
+		else if (i < index) lines[i].classList.add("past");
+	}
+
+	if (index >= 0 && index < lines.length) {
+		const line = lines[index];
+		const containerRect = container.getBoundingClientRect();
+		const lineRect = line.getBoundingClientRect();
+		const offset = lineRect.top - containerRect.top - containerRect.height / 2 + lineRect.height / 2;
+		container.scrollBy({ top: offset, behavior: "smooth" });
+	}
 }
 
 document.addEventListener("DOMContentLoaded", function () {

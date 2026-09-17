@@ -126,6 +126,7 @@ var lyricsColumns = []Column{
 	{Name: "song_id", Type: "TEXT"},
 	{Name: "lyrics", Type: "TEXT"},
 	{Name: "language", Type: "TEXT"},
+	{Name: "synced_lyrics", Type: "TEXT"},
 }
 
 // playlists.db tables
