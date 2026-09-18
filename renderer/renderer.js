@@ -1760,6 +1760,7 @@ async function opencustomiseModal(songsId) {
 	document.getElementById("lyricsArea").scrollTop = 0;
 	document.getElementById("lyricsTranslationArea").scrollTop = 0;
 	updateAutoTranslateBtn();
+	updateDeleteBtn();
 
 	document.getElementById("lyricsThumbnail").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 	document.getElementById("lyricsSongName").innerText = song_name;
@@ -2369,6 +2370,7 @@ async function onTranslationPickerChange() {
 		div.dataset.origTranslation = "";
 		div.dataset.origTranslationLang = newLang.trim();
 		updateAutoTranslateBtn();
+		updateDeleteBtn();
 		return;
 	}
 
@@ -2377,6 +2379,7 @@ async function onTranslationPickerChange() {
 		div.dataset.origTranslation = "";
 		div.dataset.origTranslationLang = "none";
 		updateAutoTranslateBtn();
+		updateDeleteBtn();
 		return;
 	}
 
@@ -2386,6 +2389,7 @@ async function onTranslationPickerChange() {
 	div.dataset.origTranslation = document.getElementById("lyricsTranslationArea").value;
 	div.dataset.origTranslationLang = selected;
 	updateAutoTranslateBtn();
+	updateDeleteBtn();
 }
 
 function promptLanguageModal() {
@@ -2560,6 +2564,13 @@ function updateAutoTranslateBtn() {
 	btn.disabled = !sourceLang || !lyricsValue || selected == "none" || selected == "new";
 }
 
+function updateDeleteBtn() {
+	const picker = document.getElementById("translatedLyricInput");
+	const selected = picker.value;
+	const btn = document.getElementById("deleteTranslationBtn");
+	btn.disabled = selected == "none" || selected == "new";
+}
+
 async function autoTranslateLyrics() {
 	const picker = document.getElementById("translatedLyricInput");
 	const targetLang = picker.value;
@@ -2578,6 +2589,7 @@ async function autoTranslateLyrics() {
 	} finally {
 		btn.textContent = "Auto-Translate";
 		updateAutoTranslateBtn();
+		updateDeleteBtn();
 	}
 }
 

@@ -2317,6 +2317,11 @@ th {
 	background: rgba(220, 50, 50, 0.8);
 }
 
+#deleteTranslationBtn:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
 .lang-prompt-overlay {
 	position: fixed;
 	inset: 0;
