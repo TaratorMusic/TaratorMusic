@@ -2,6 +2,8 @@ async function grabAndStoreSongInfo(songId) {
 	let fetchedId = songId;
 	if (fetchedId == "html") fetchedId = document.getElementById("customiseModal").dataset.songID;
 
+	const isSingle = fetchedId && !Array.isArray(fetchedId);
+
 	return new Promise((resolve, reject) => {
 		let songs = [];
 
@@ -55,29 +57,58 @@ async function grabAndStoreSongInfo(songId) {
 					const meta = JSON.parse(line);
 					const songIdUsed = Array.isArray(fetchedId) ? fetchedId[count] : fetchedId;
 
-					callSqlite({
-						db: "musics",
-						query: "UPDATE songs SET artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END, genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END, language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END WHERE song_id = ?",
-						args: [meta.artist, meta.genre, meta.language, songIdUsed],
-						fetch: false,
-					});
+					if (isSingle && songIdUsed) {
+						const cached = songNameCache.get(songIdUsed);
+						const hasExisting = cached && (cached.artist || cached.genre || cached.language);
 
-					const cached = songNameCache.get(songIdUsed);
+						if (hasExisting) {
+							const currentData = {
+								artist: cached.artist || "",
+								genre: cached.genre || "",
+								language: cached.language || "",
+							};
+							const fetchedData = {
+								artist: meta.artist || "",
+								genre: meta.genre || "",
+								language: meta.language || "",
+							};
 
-					if (cached) {
-						if (cached.artist == null || cached.artist == "") cached.artist = meta.artist;
-						if (cached.genre == null || cached.genre == "") cached.genre = meta.genre;
-						if (cached.language == null || cached.language == "") cached.language = meta.language;
+							const same = normalizeText(currentData.artist) == normalizeText(fetchedData.artist)
+								&& normalizeText(currentData.genre) == normalizeText(fetchedData.genre)
+								&& normalizeText(currentData.language) == normalizeText(fetchedData.language);
 
-						logChange("debug", `New song info added for ${(cached.song_name, ":", meta.artist, meta.genre, meta.language, songIdUsed)}`);
-
-						if (document.getElementById("customiseModal").style.display == "block" && songIdUsed == document.getElementById("customiseModal").dataset.songID) {
-							document.getElementById("customiseSongGenre").value = meta.genre;
-							document.getElementById("customiseSongArtist").value = meta.artist;
-							document.getElementById("customiseSongLanguage").value = meta.language;
+							if (!same) {
+								comparisonModal({
+									title: "Compare Song Info",
+									currentLabel: "Current Info",
+									fetchedLabel: "Fetched Info",
+									current: currentData,
+									results: [fetchedData],
+									renderPreview: item => {
+										let html = "";
+										const fields = [
+											{ label: "Artist", value: item.artist },
+											{ label: "Genre", value: item.genre },
+											{ label: "Language", value: item.language },
+										];
+										for (const f of fields) {
+											html += `<div class="comparison-preview-title" style="margin-top:8px">${f.label}</div>`;
+											html += `<div style="color:${f.value ? "#ddd" : "#666"}">${f.value || "Not found"}</div>`;
+										}
+										return html;
+									},
+								}).then(chosen => {
+									if (chosen) {
+										applyMetadata(songIdUsed, chosen, true);
+									}
+								});
+								count++;
+								return;
+							}
 						}
 					}
 
+					applyMetadata(songIdUsed, meta);
 					count++;
 				} catch (error) {
 					logChange("error", error.message ?? String(error));
@@ -89,6 +120,40 @@ async function grabAndStoreSongInfo(songId) {
 		proc.on("error", reject);
 		proc.on("close", code => (code == 0 ? resolve() : reject(new Error(`Go exited ${code}`))));
 	});
+}
+
+function applyMetadata(songIdUsed, meta, unconditional = false) {
+	if (unconditional) {
+		callSqlite({
+			db: "musics",
+			query: "UPDATE songs SET artist = ?, genre = ?, language = ? WHERE song_id = ?",
+			args: [meta.artist, meta.genre, meta.language, songIdUsed],
+			fetch: false,
+		});
+	} else {
+		callSqlite({
+			db: "musics",
+			query: "UPDATE songs SET artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END, genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END, language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END WHERE song_id = ?",
+			args: [meta.artist, meta.genre, meta.language, songIdUsed],
+			fetch: false,
+		});
+	}
+
+	const cached = songNameCache.get(songIdUsed);
+
+	if (cached) {
+		if (unconditional || cached.artist == null || cached.artist == "") cached.artist = meta.artist;
+		if (unconditional || cached.genre == null || cached.genre == "") cached.genre = meta.genre;
+		if (unconditional || cached.language == null || cached.language == "") cached.language = meta.language;
+
+		logChange("debug", `New song info added for ${(cached.song_name, ":", meta.artist, meta.genre, meta.language, songIdUsed)}`);
+
+		if (document.getElementById("customiseModal").style.display == "block" && songIdUsed == document.getElementById("customiseModal").dataset.songID) {
+			document.getElementById("customiseSongGenre").value = meta.genre;
+			document.getElementById("customiseSongArtist").value = meta.artist;
+			document.getElementById("customiseSongLanguage").value = meta.language;
+		}
+	}
 }
 
 async function startupCheck() {

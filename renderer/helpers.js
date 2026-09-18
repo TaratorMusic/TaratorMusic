@@ -208,10 +208,127 @@ async function generateId() {
 	return id;
 }
 
+function comparisonModal(options) {
+	return new Promise(resolve => {
+		const { title = "Compare", currentLabel = "Current", fetchedLabel = "Fetched", current = null, results = [], renderPreview } = options;
+		let selectedIndex = 0;
+
+		const overlay = document.createElement("div");
+		overlay.className = "confirm-modal-overlay";
+
+		const modal = document.createElement("div");
+		modal.className = "confirm-modal comparison-modal";
+
+		const titleEl = document.createElement("h3");
+		titleEl.className = "comparison-title";
+		titleEl.textContent = title;
+		modal.appendChild(titleEl);
+
+		const body = document.createElement("div");
+		body.className = "comparison-body";
+
+		const leftPanel = document.createElement("div");
+		leftPanel.className = "comparison-panel comparison-left";
+
+		const leftLabel = document.createElement("div");
+		leftLabel.className = "comparison-panel-label";
+		leftLabel.textContent = currentLabel;
+		leftPanel.appendChild(leftLabel);
+
+		const leftContent = document.createElement("div");
+		leftContent.className = "comparison-panel-content";
+		if (current) {
+			leftContent.innerHTML = renderPreview(current);
+		} else {
+			leftContent.innerHTML = '<div class="comparison-empty">Nothing saved yet</div>';
+		}
+		leftPanel.appendChild(leftContent);
+
+		const rightPanel = document.createElement("div");
+		rightPanel.className = "comparison-panel comparison-right";
+
+		const rightLabel = document.createElement("div");
+		rightLabel.className = "comparison-panel-label";
+		rightPanel.appendChild(rightLabel);
+
+		const rightContent = document.createElement("div");
+		rightContent.className = "comparison-panel-content";
+		rightPanel.appendChild(rightContent);
+
+		body.appendChild(leftPanel);
+		body.appendChild(rightPanel);
+		modal.appendChild(body);
+
+		const actions = document.createElement("div");
+		actions.className = "comparison-actions";
+
+		const cancelBtn = document.createElement("button");
+		cancelBtn.className = "comparison-cancel-btn";
+		cancelBtn.textContent = "Cancel";
+		actions.appendChild(cancelBtn);
+
+		const pagination = document.createElement("div");
+		pagination.className = "comparison-pagination";
+		actions.appendChild(pagination);
+
+		const useBtn = document.createElement("button");
+		useBtn.className = "comparison-use-btn";
+		useBtn.textContent = "Use This";
+		actions.appendChild(useBtn);
+
+		modal.appendChild(actions);
+		overlay.appendChild(modal);
+		document.body.appendChild(overlay);
+
+		function renderRight() {
+			const item = results[selectedIndex];
+			rightLabel.textContent = `${fetchedLabel} (${selectedIndex + 1}/${results.length})`;
+			rightContent.innerHTML = renderPreview(item);
+
+			pagination.innerHTML = "";
+			if (results.length > 1) {
+				const prevBtn = document.createElement("button");
+				prevBtn.className = "comparison-page-btn";
+				prevBtn.textContent = "\u2039";
+				prevBtn.disabled = selectedIndex == 0;
+				prevBtn.addEventListener("click", () => { selectedIndex--; renderRight(); });
+
+				const pageInfo = document.createElement("span");
+				pageInfo.className = "comparison-page-info";
+				pageInfo.textContent = `${selectedIndex + 1} / ${results.length}`;
+
+				const nextBtn = document.createElement("button");
+				nextBtn.className = "comparison-page-btn";
+				nextBtn.textContent = "\u203A";
+				nextBtn.disabled = selectedIndex == results.length - 1;
+				nextBtn.addEventListener("click", () => { selectedIndex++; renderRight(); });
+
+				pagination.appendChild(prevBtn);
+				pagination.appendChild(pageInfo);
+				pagination.appendChild(nextBtn);
+			}
+		}
+
+		function cleanup(result) {
+			overlay.remove();
+			resolve(result);
+		}
+
+		overlay._comparisonCleanup = () => cleanup(null);
+
+		useBtn.addEventListener("click", () => cleanup(results[selectedIndex]));
+		cancelBtn.addEventListener("click", () => cleanup(null));
+		overlay.addEventListener("click", e => { if (e.target == overlay) cleanup(null); });
+
+		renderRight();
+	});
+}
+
 function closeModal() {
 	if (document.getElementById("searchModal").style.display == "flex") return (document.getElementById("searchModal").style.display = "none");
 	if (document.getElementById("addToPlaylistModal").style.display == "block") return (document.getElementById("addToPlaylistModal").style.display = "none");
 	document.querySelectorAll(".modal, .confirm-modal-overlay").forEach(el => {
-		el.style.display = "none";
+		if (el._comparisonCleanup) el._comparisonCleanup();
+		else el.style.display = "none";
 	});
 }

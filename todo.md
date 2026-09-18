@@ -7,6 +7,7 @@
 -   Make the keyboard shortcuts work on pip
 -   The fetch lyrics button says "Fetched" even with errors   
 -   If the app fetches new info and there is an old one, open comparation modal
+-   Disable the None button if there is no translated languages
 
 -   Sidebar revamp
 

@@ -82,27 +82,30 @@ async function searchLyricsOnLrclib(query) {
 
 async function fetchSongLyrics(songId) {
 	const row = songNameCache.get(songId);
-	if (!row) return null;
+	if (!row) return { bestMatch: null, allResults: [] };
 
 	const trackName = row.song_name;
-	const artistName = row.artist || "";
+	const artistName = row.artist && row.artist != "unknown" ? row.artist : "";
 	const duration = row.song_length || 0;
 
-	if (!trackName) return null;
+	if (!trackName) return { bestMatch: null, allResults: [] };
 
-	const result = await fetchLyricsFromLrclib(trackName, artistName, "");
-	if (result) return result;
+	const exactMatch = await fetchLyricsFromLrclib(trackName, artistName, "");
 
 	const searchQuery = artistName ? `${artistName} ${trackName}` : trackName;
-	const results = await searchLyricsOnLrclib(searchQuery);
-	if (results.length == 0) return null;
+	const searchResults = await searchLyricsOnLrclib(searchQuery);
+
+	const allResults = [];
+
+	if (exactMatch) {
+		allResults.push(exactMatch);
+	}
 
 	const normalizedTrack = normalizeText(trackName);
 	const normalizedArtist = normalizeText(artistName);
-	let bestMatch = null;
-	let bestScore = -1;
+	const scored = [];
 
-	for (const item of results) {
+	for (const item of searchResults) {
 		let score = 0;
 		const normalizedItemTrack = normalizeText(item.trackName);
 		const normalizedItemArtist = normalizeText(item.artistName);
@@ -123,16 +126,23 @@ async function fetchSongLyrics(songId) {
 		}
 		if (item.syncedLyrics) score += 2;
 		if (item.plainLyrics) score += 1;
-		if (score > bestScore) {
-			bestScore = score;
-			bestMatch = item;
+
+		item._score = score;
+		scored.push(item);
+	}
+
+	scored.sort((a, b) => b._score - a._score);
+
+	for (const item of scored) {
+		if (!allResults.some(r => r.id === item.id)) {
+			allResults.push(item);
 		}
 	}
 
-	if (bestMatch && bestMatch.plainLyrics) return bestMatch;
+	const withLyrics = allResults.filter(r => r.plainLyrics);
+	const bestMatch = withLyrics[0] || allResults[0] || null;
 
-	const withLyrics = results.find(r => r.plainLyrics);
-	return withLyrics || bestMatch;
+	return { bestMatch, allResults };
 }
 
 async function saveFetchedLyrics(songId, lyricsData) {

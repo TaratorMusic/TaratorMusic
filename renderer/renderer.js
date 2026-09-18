@@ -2599,18 +2599,73 @@ async function fetchLrclibForCurrentSong() {
 	btn.textContent = "Fetching...";
 
 	try {
-		const result = await fetchSongLyrics(songId);
-		if (!result) {
+		const { bestMatch, allResults } = await fetchSongLyrics(songId);
+		const withLyrics = allResults.filter(r => r.plainLyrics);
+
+		if (withLyrics.length == 0) {
 			await alertModal("No lyrics found on LRCLIB for this song.");
 			return;
 		}
 
-		const saved = await saveFetchedLyrics(songId, result);
+		const cachedRows = songLyricsCache.get(songId) || [];
+		const existingOriginal = cachedRows.find(r => !r.language);
+		const hasExisting = existingOriginal && existingOriginal.lyrics && existingOriginal.lyrics.trim();
+
+		let chosen = null;
+
+		if (hasExisting || withLyrics.length > 1) {
+			chosen = await comparisonModal({
+				title: "Compare Lyrics",
+				currentLabel: "Current Lyrics",
+				fetchedLabel: "Fetched Lyrics",
+				current: hasExisting ? { plainLyrics: existingOriginal.lyrics, syncedLyrics: existingOriginal.synced_lyrics } : null,
+				results: withLyrics,
+				renderPreview: item => {
+					let html = "";
+					if (item.trackName) html += `<div class="comparison-preview-title">${item.trackName}</div>`;
+					if (item.artistName) html += `<div class="comparison-preview-subtitle">${item.artistName}${item.albumName ? " - " + item.albumName : ""}</div>`;
+					const tags = [];
+					if (item.plainLyrics) tags.push("Lyrics");
+					if (item.syncedLyrics) tags.push("Synced");
+					if (tags.length) html += `<div class="comparison-preview-meta">${tags.map(t => `<span class="comparison-preview-tag${t === "Synced" ? " synced" : ""}">${t}</span>`).join("")}</div>`;
+					if (item.syncedLyrics) {
+						const lines = item.syncedLyrics.split("\n").slice(0, 30);
+						html += `<div class="comparison-preview-text comparison-preview-synced">`;
+						for (const line of lines) {
+							const match = line.match(/^\[(\d{2}):(\d{2})\.(\d{2,3})\]\s?(.*)/);
+							if (match) {
+								const ts = `${match[1]}:${match[2]}`;
+								const text = match[4] || "";
+								html += `<span class="synced-ts">${ts}</span> ${text}\n`;
+							} else if (line.trim()) {
+								html += `${line}\n`;
+							}
+						}
+						html += `</div>`;
+					} else if (item.plainLyrics) {
+						const preview = item.plainLyrics.split("\n").slice(0, 20).join("\n");
+						html += `<div class="comparison-preview-text">${preview}</div>`;
+					}
+					return html;
+				},
+			});
+		} else {
+			chosen = withLyrics[0];
+		}
+
+		if (!chosen) return;
+
+		const saved = await saveFetchedLyrics(songId, chosen);
 		document.getElementById("lyricsArea").value = saved.plainLyrics;
 		customiseDiv.dataset.origLyrics = saved.plainLyrics;
 
 		const hasLyrics = !!saved.plainLyrics.trim();
 		document.getElementById("customiseButtonBottomRight").style.color = hasLyrics ? "lime" : "white";
+
+		if (playingSongsID == songId && pipShowLyrics == 1) {
+			updateMiniPlayer({ lyrics: saved.plainLyrics, syncedLyrics: saved.parsedSyncedLyrics });
+			lastPipLyricsSongId = "";
+		}
 
 		btn.textContent = "Fetched!";
 		if (lyricsPanelVisible) renderMainLyrics();
