@@ -1,13 +1,9 @@
 ### Version 1.9.x Planned Features
 
 -   Ability to add/edit timestamps to current lyrics both manually and with a special edit mode.
--   Uncentered title PiP
--   When you fetch lyrics, its automatically saved without confirmation. Need a comparation modal.
 -   Need shortcut to toggle the PiP on and off.
 -   Make the keyboard shortcuts work on pip
 -   The fetch lyrics button says "Fetched" even with errors   
--   If the app fetches new info and there is an old one, open comparation modal
--   Disable the None button if there is no translated languages
 
 -   Sidebar revamp
 
