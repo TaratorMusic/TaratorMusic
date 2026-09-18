@@ -2615,6 +2615,7 @@ async function fetchLrclibForCurrentSong() {
 		const withLyrics = allResults.filter(r => r.plainLyrics);
 
 		if (withLyrics.length == 0) {
+			btn.textContent = "No Results";
 			await alertModal("No lyrics found on LRCLIB for this song.");
 			return;
 		}
@@ -2665,7 +2666,10 @@ async function fetchLrclibForCurrentSong() {
 			chosen = withLyrics[0];
 		}
 
-		if (!chosen) return;
+		if (!chosen) {
+			btn.textContent = "Fetch Lyrics";
+			return;
+		}
 
 		const saved = await saveFetchedLyrics(songId, chosen);
 		document.getElementById("lyricsArea").value = saved.plainLyrics;
@@ -2682,6 +2686,7 @@ async function fetchLrclibForCurrentSong() {
 		btn.textContent = "Fetched!";
 		if (lyricsPanelVisible) renderMainLyrics();
 	} catch (error) {
+		btn.textContent = "Failed";
 		await alertModal("Failed to fetch lyrics: " + (error.message ?? String(error)));
 	} finally {
 		btn.disabled = false;

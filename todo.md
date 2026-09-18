@@ -3,7 +3,6 @@
 -   Ability to add/edit timestamps to current lyrics both manually and with a special edit mode.
 -   Need shortcut to toggle the PiP on and off.
 -   Make the keyboard shortcuts work on pip
--   The fetch lyrics button says "Fetched" even with errors   
 
 -   Sidebar revamp
 
