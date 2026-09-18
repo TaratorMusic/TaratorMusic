@@ -251,6 +251,7 @@ async function initialiseDatabases() {
 	if (pictureInPicture == 1) {
 		lastPipLyricsSongId = "";
 		ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics });
+		sendKeybindsToPiP();
 		if (pipShowLyrics == 1 && playingSongsID) {
 			const cachedRows = songLyricsCache.get(playingSongsID) || [];
 			const originalRow = cachedRows.find(r => !r.language);
@@ -2232,6 +2233,7 @@ document.addEventListener("keydown", event => {
 		callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
 		lastPipLyricsSongId = "";
 		pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics }) : ipcRenderer.send("miniplayer-close");
+		if (pictureInPicture == 1) sendKeybindsToPiP();
 	}
 
 	if (event.key == "ArrowLeft" && document.getElementById("my-music-content").style.display == "flex" && displayPage == "page") {
@@ -2825,6 +2827,27 @@ function updateMiniPlayer(state) {
 	ipcRenderer.send("renderer-miniplayer-update", state);
 }
 
+function sendKeybindsToPiP() {
+	updateMiniPlayer({
+		keybinds: {
+			previous: key_Previous,
+			playPause: key_PlayPause,
+			next: key_Next,
+			rewind: key_Rewind,
+			skip: key_Skip,
+			autoplay: key_Autoplay,
+			shuffle: key_Shuffle,
+			mute: key_Mute,
+			speed: key_Speed,
+			loop: key_Loop,
+			randomSong: key_randomSong,
+			randomPlaylist: key_randomPlaylist,
+			lastPlaylist: key_lastPlaylist,
+			pip: key_PiP,
+		},
+	});
+}
+
 function logChange(level, message) {
 	const levelNum = LOG_LEVELS[level] ?? LOG_LEVELS.info;
 	if (levelNum > LOG_LEVEL) return;
@@ -3009,6 +3032,26 @@ document.addEventListener("DOMContentLoaded", function () {
 	ipcRenderer.on("player-previous", () => playPreviousSong());
 	ipcRenderer.on("player-playpause", () => playPause());
 	ipcRenderer.on("player-next", () => playNextSong());
+	ipcRenderer.on("pip-action", (_, action) => {
+		if (action == "previous") playPreviousSong();
+		else if (action == "playPause") playPause();
+		else if (action == "next") playNextSong();
+		else if (action == "rewind") skipBackward();
+		else if (action == "skip") skipForward();
+		else if (action == "autoplay") toggleAutoplay();
+		else if (action == "shuffle") toggleShuffle();
+		else if (action == "mute") mute();
+		else if (action == "speed") document.getElementById("speedModal").style.display == "block" ? closeModal() : speed();
+		else if (action == "loop") toggleLoop();
+		else if (action == "randomSong") randomSongFunctionMainMenu();
+		else if (action == "randomPlaylist") randomPlaylistFunctionMainMenu();
+		else if (action == "lastPlaylist") playLastPlaylist();
+		else if (action == "pip") {
+			pictureInPicture = 0;
+			callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
+			ipcRenderer.send("miniplayer-close");
+		}
+	});
 
 	document.getElementById("installBtn").addEventListener("click", () => {
 		if (platform == "win32" || platform == "darwin") {

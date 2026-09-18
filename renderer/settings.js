@@ -44,6 +44,7 @@ async function saveKeybinds() {
 	key_searchShuffle = document.getElementById("settingsSearchShuffle").innerHTML;
 	key_lyrics = document.getElementById("settingsOpenLyrics").innerHTML;
 	key_PiP = document.getElementById("settingsPiP").innerHTML;
+	sendKeybindsToPiP();
 }
 
 document.querySelectorAll(".settingsKeybinds button").forEach(button => {
@@ -217,6 +218,7 @@ async function pictureInPictureTogglerFunction() {
 		await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
 		lastPipLyricsSongId = "";
 		pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics }) : ipcRenderer.send("miniplayer-close");
+		if (pictureInPicture == 1) sendKeybindsToPiP();
 	} catch (err) {
 		console.error("Error toggling PiP:", err);
 	}

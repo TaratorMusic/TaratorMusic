@@ -1,7 +1,6 @@
 ### Version 1.9.x Planned Features
 
 -   Ability to add/edit timestamps to current lyrics both manually and with a special edit mode.
--   Need shortcut to toggle the PiP on and off.
 
 -   Sidebar revamp
 

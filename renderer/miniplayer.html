@@ -177,6 +177,7 @@
 	let currentLyrics = "";
 	let currentSyncedLyrics = [];
 	let currentLyricIndex = -1;
+	let keybinds = null;
 
 	function loadImage(elementId, url) {
 		try {
@@ -270,6 +271,9 @@
 
 	ipcRenderer.on("miniplayer-update", (_, data) => {
 		try {
+			if (data.keybinds != undefined) {
+				keybinds = data.keybinds;
+			}
 			if (data.assetsFolder != undefined && data.assetsFolder != assetsFolder) {
 				assetsFolder = data.assetsFolder;
 				document.getElementById("taratorLogo").src = "file://" + path.join(assetsFolder, "tarator16_icon.png").replace(/\\/g, "/");
@@ -322,6 +326,32 @@
 			updateSize();
 		} catch (err) {
 			console.error("Error handling pip-settings-update:", err);
+		}
+	});
+
+	document.addEventListener("keydown", event => {
+		if (!keybinds) return;
+		const key = event.key;
+		let action = null;
+
+		if (key == keybinds.previous) action = "previous";
+		else if (key == keybinds.playPause) action = "playPause";
+		else if (key == keybinds.next) action = "next";
+		else if (key == keybinds.rewind) action = "rewind";
+		else if (key == keybinds.skip) action = "skip";
+		else if (key == keybinds.autoplay) action = "autoplay";
+		else if (key == keybinds.shuffle) action = "shuffle";
+		else if (key == keybinds.mute) action = "mute";
+		else if (key == keybinds.speed) action = "speed";
+		else if (key == keybinds.loop) action = "loop";
+		else if (key == keybinds.randomSong) action = "randomSong";
+		else if (key == keybinds.randomPlaylist) action = "randomPlaylist";
+		else if (key == keybinds.lastPlaylist) action = "lastPlaylist";
+		else if (key == keybinds.pip) action = "pip";
+
+		if (action) {
+			event.preventDefault();
+			ipcRenderer.send("miniplayer-action", action);
 		}
 	});
 
