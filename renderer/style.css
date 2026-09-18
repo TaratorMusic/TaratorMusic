@@ -1961,9 +1961,20 @@ th {
 	width: 6px;
 }
 
+.customise-collapsible::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.07);
+	border-radius: 10px;
+}
+
 .customise-collapsible::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.2);
-	border-radius: 4px;
+	background: #ffcc00;
+	border-radius: 10px;
+	border: 1px solid transparent;
+	background-clip: content-box;
+}
+
+.customise-collapsible::-webkit-scrollbar-thumb:hover {
+	background: #ffd633;
 }
 
 .customise-modal-body.lyrics-expanded .customise-collapsible {
@@ -2038,6 +2049,11 @@ th {
 	flex-shrink: 0;
 	font-size: 0.8vw;
 	color: rgba(255, 255, 255, 0.6);
+}
+
+.customise-stat {
+	color: rgba(255, 255, 255, 0.75);
+	font-size: 0.8vw;
 }
 
 .customise-field-row input[type="text"] {
@@ -2222,7 +2238,7 @@ th {
 	color: #4fc3f7 !important;
 	flex-shrink: 0;
 	transition: background 0.2s ease;
-    margin-right: 5vw;
+    margin-right: 11vw;
 }
 
 #fetchLrclibBtn:hover:not(:disabled) {
@@ -2252,12 +2268,92 @@ th {
 	border-radius: 4px;
 	padding: 6px;
 	font-size: 0.85vw;
+	line-height: 1.4;
+	white-space: pre;
 	resize: none;
 }
 
 #lyricsProgressBar {
 	width: 2vw;
 	flex-shrink: 0;
+}
+
+#lyricsTimestampCol {
+	width: 5vw;
+	flex-shrink: 0;
+	height: 100%;
+	overflow-y: auto;
+	overflow-x: hidden;
+	background-color: #1e1e2e;
+	border-radius: 4px;
+	padding: 6px 3px;
+	box-sizing: border-box;
+}
+
+.lyrics-timestamp-line {
+	width: 100%;
+	height: 1.4em;
+	line-height: 1.4;
+	background: transparent;
+	border: none;
+	color: #4fc3f7 !important;
+	font-size: 0.85vw;
+	font-family: inherit;
+	text-align: center;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+#lyricsArea::-webkit-scrollbar,
+#lyricsTranslationArea::-webkit-scrollbar,
+#lyricsTimestampCol::-webkit-scrollbar {
+	width: 6px;
+}
+
+#lyricsArea::-webkit-scrollbar-track,
+#lyricsTranslationArea::-webkit-scrollbar-track,
+#lyricsTimestampCol::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.07);
+	border-radius: 10px;
+}
+
+#lyricsArea::-webkit-scrollbar-thumb,
+#lyricsTranslationArea::-webkit-scrollbar-thumb,
+#lyricsTimestampCol::-webkit-scrollbar-thumb {
+	background: #ffcc00;
+	border-radius: 10px;
+	border: 1px solid transparent;
+	background-clip: content-box;
+}
+
+#lyricsArea::-webkit-scrollbar-thumb:hover,
+#lyricsTranslationArea::-webkit-scrollbar-thumb:hover,
+#lyricsTimestampCol::-webkit-scrollbar-thumb:hover {
+	background: #ffd633;
+}
+
+.customise-fields::-webkit-scrollbar {
+	width: 6px;
+}
+
+.customise-fields::-webkit-scrollbar-track {
+	background: rgba(255, 255, 255, 0.07);
+	border-radius: 10px;
+}
+
+.customise-fields::-webkit-scrollbar-thumb {
+	background: #ffcc00;
+	border-radius: 10px;
+	border: 1px solid transparent;
+	background-clip: content-box;
+}
+
+.customise-fields::-webkit-scrollbar-thumb:hover {
+	background: #ffd633;
+}
+
+.lyrics-timestamp-line:focus {
+	outline: 1px solid rgba(79, 195, 247, 0.5);
 }
 
 .lyrics-translation-col {

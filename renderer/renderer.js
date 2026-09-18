@@ -1659,6 +1659,82 @@ function skipBackward() {
 	lastSyncTimestamp = performance.now();
 }
 
+function formatLrcTimestamp(seconds) {
+	const minutes = Math.floor(seconds / 60);
+	const secs = Math.floor(seconds % 60);
+	const centiseconds = Math.round((seconds - Math.floor(seconds)) * 100);
+	const mm = String(minutes).padStart(2, "0");
+	const ss = String(secs).padStart(2, "0");
+	const xx = String(centiseconds).padStart(2, "0");
+	return `${mm}:${ss}.${xx}`;
+}
+
+function parseLrcTimestamp(text) {
+	const match = text.trim().match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
+	if (!match) return null;
+	const minutes = parseInt(match[1], 10);
+	const seconds = parseInt(match[2], 10);
+	const centiseconds = parseInt(match[3], 10);
+	if (seconds > 59) return null;
+	return minutes * 60 + seconds + centiseconds / 100;
+}
+
+function renderLyricsTimestampCol(syncedLyricsText) {
+	const col = document.getElementById("lyricsTimestampCol");
+	col.innerHTML = "";
+
+	const parsed = parseLrc(syncedLyricsText || "");
+	const lineCount = document.getElementById("lyricsArea").value.split("\n").length;
+	const rowCount = Math.max(lineCount, parsed.length);
+
+	for (let i = 0; i < rowCount; i++) {
+		const input = document.createElement("input");
+		input.type = "text";
+		input.className = "lyrics-timestamp-line";
+		input.value = parsed[i] ? formatLrcTimestamp(parsed[i].time) : "";
+		col.appendChild(input);
+	}
+}
+
+function syncLyricsTimestampColRowCount() {
+	const col = document.getElementById("lyricsTimestampCol");
+	const lineCount = document.getElementById("lyricsArea").value.split("\n").length;
+	const currentRows = col.children.length;
+
+	if (lineCount > currentRows) {
+		for (let i = currentRows; i < lineCount; i++) {
+			const input = document.createElement("input");
+			input.type = "text";
+			input.className = "lyrics-timestamp-line";
+			input.value = "";
+			col.appendChild(input);
+		}
+	} else if (lineCount < currentRows) {
+		for (let i = currentRows - 1; i >= lineCount; i--) {
+			col.removeChild(col.children[i]);
+		}
+	}
+}
+
+function buildSyncedLyricsFromTimestampCol() {
+	const col = document.getElementById("lyricsTimestampCol");
+	const lines = document.getElementById("lyricsArea").value.split("\n");
+	const rows = Array.from(col.children);
+	const lrcLines = [];
+
+	for (let i = 0; i < rows.length; i++) {
+		const raw = rows[i].value.trim();
+		if (!raw) continue;
+
+		const seconds = parseLrcTimestamp(raw);
+		if (seconds == null) return { error: `Invalid timestamp "${raw}" on line ${i + 1}. Use mm:ss.xx format.` };
+
+		lrcLines.push(`[${formatLrcTimestamp(seconds)}]${lines[i] || ""}`);
+	}
+
+	return { lrc: lrcLines.join("\n") };
+}
+
 async function opencustomiseModal(songsId) {
 	let song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url, thumbnailPath;
 
@@ -1740,6 +1816,8 @@ async function opencustomiseModal(songsId) {
 	const originalRow = cachedRows.find(r => !r.language);
 	if (originalRow) document.getElementById("lyricsArea").value = originalRow.lyrics || "";
 
+	renderLyricsTimestampCol(originalRow?.synced_lyrics || "");
+
 	const picker = document.getElementById("translatedLyricInput");
 	const currentLang = picker.value;
 	picker.innerHTML = '<option value="none">None</option><option value="new">New</option>';
@@ -1783,6 +1861,9 @@ async function opencustomiseModal(songsId) {
 	customiseDiv.dataset.origLanguage = language || "";
 	customiseDiv.dataset.origLyrics = document.getElementById("lyricsArea").value;
 	customiseDiv.dataset.origTranslation = document.getElementById("lyricsTranslationArea").value;
+	customiseDiv.dataset.origSyncedLyrics = Array.from(document.getElementById("lyricsTimestampCol").children)
+		.map(input => input.value)
+		.join("\n");
 	customiseDiv.dataset.origTranslationLang = document.getElementById("translatedLyricInput").value;
 	customiseDiv.style.display = "block";
 }
@@ -1799,6 +1880,7 @@ function isCustomiseModalDirty() {
 		document.getElementById("customiseSongLanguage").value != div.dataset.origLanguage ||
 		document.getElementById("lyricsArea").value != div.dataset.origLyrics ||
 		document.getElementById("lyricsTranslationArea").value != div.dataset.origTranslation ||
+		Array.from(document.getElementById("lyricsTimestampCol").children).map(input => input.value).join("\n") != div.dataset.origSyncedLyrics ||
 		document.getElementById("customiseThumbnail").files.length > 0
 	);
 }
@@ -1896,22 +1978,28 @@ async function saveEditedSong(translationOnly = false) {
 
 	if (!translationOnly) {
 		const lyricsValue = document.getElementById("lyricsArea").value;
+
+		const syncedResult = buildSyncedLyricsFromTimestampCol();
+		if (syncedResult.error) return await alertModal(syncedResult.error);
+		const syncedLyricsValue = syncedResult.lrc;
+
 		const cachedRows = songLyricsCache.get(savedSongId) || [];
 		const existingOriginal = cachedRows.find(r => !r.language);
 		if (existingOriginal) {
 			existingOriginal.lyrics = lyricsValue;
+			existingOriginal.synced_lyrics = syncedLyricsValue;
 			await callSqlite({
 				db: "musics",
-				query: "UPDATE lyrics SET lyrics = ? WHERE song_id = ? AND (language IS NULL OR language = '')",
-				args: [lyricsValue, savedSongId],
+				query: "UPDATE lyrics SET lyrics = ?, synced_lyrics = ? WHERE song_id = ? AND (language IS NULL OR language = '')",
+				args: [lyricsValue, syncedLyricsValue, savedSongId],
 				fetch: false,
 			});
 		} else {
-			cachedRows.push({ lyrics: lyricsValue, language: null });
+			cachedRows.push({ lyrics: lyricsValue, language: null, synced_lyrics: syncedLyricsValue });
 			await callSqlite({
 				db: "musics",
-				query: "INSERT INTO lyrics (song_id, lyrics, language) VALUES (?, ?, NULL)",
-				args: [savedSongId, lyricsValue],
+				query: "INSERT INTO lyrics (song_id, lyrics, language, synced_lyrics) VALUES (?, ?, NULL, ?)",
+				args: [savedSongId, lyricsValue, syncedLyricsValue],
 				fetch: false,
 			});
 		}
@@ -1920,9 +2008,12 @@ async function saveEditedSong(translationOnly = false) {
 		const hasLyrics = !!lyricsValue.trim();
 		document.getElementById("customiseButtonBottomRight").style.color = hasLyrics ? "lime" : "white";
 		customiseDiv.dataset.origLyrics = lyricsValue;
+		customiseDiv.dataset.origSyncedLyrics = Array.from(document.getElementById("lyricsTimestampCol").children)
+			.map(input => input.value)
+			.join("\n");
 
 		if (playingSongsID == savedSongId && pipShowLyrics == 1) {
-			updateMiniPlayer({ lyrics: lyricsValue, syncedLyrics: parseLrc(existingOriginal?.synced_lyrics || "") });
+			updateMiniPlayer({ lyrics: lyricsValue, syncedLyrics: parseLrc(syncedLyricsValue) });
 			lastPipLyricsSongId = "";
 		}
 
@@ -2684,6 +2775,10 @@ async function fetchLrclibForCurrentSong() {
 		const saved = await saveFetchedLyrics(songId, chosen);
 		document.getElementById("lyricsArea").value = saved.plainLyrics;
 		customiseDiv.dataset.origLyrics = saved.plainLyrics;
+		renderLyricsTimestampCol(saved.syncedLyrics);
+		customiseDiv.dataset.origSyncedLyrics = Array.from(document.getElementById("lyricsTimestampCol").children)
+			.map(input => input.value)
+			.join("\n");
 
 		const hasLyrics = !!saved.plainLyrics.trim();
 		document.getElementById("customiseButtonBottomRight").style.color = hasLyrics ? "lime" : "white";
@@ -2997,6 +3092,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	const lyricsArea = document.getElementById("lyricsArea");
 	const lyricsTranslationArea = document.getElementById("lyricsTranslationArea");
+	const lyricsTimestampCol = document.getElementById("lyricsTimestampCol");
 	let syncingScroll = false;
 
 	lyricsArea.addEventListener("scroll", () => {
@@ -3004,6 +3100,7 @@ document.addEventListener("DOMContentLoaded", function () {
 		syncingScroll = true;
 		const ratio = lyricsArea.scrollTop / (lyricsArea.scrollHeight - lyricsArea.clientHeight);
 		lyricsTranslationArea.scrollTop = ratio * (lyricsTranslationArea.scrollHeight - lyricsTranslationArea.clientHeight);
+		lyricsTimestampCol.scrollTop = lyricsArea.scrollTop;
 		syncingScroll = false;
 	});
 
@@ -3012,8 +3109,20 @@ document.addEventListener("DOMContentLoaded", function () {
 		syncingScroll = true;
 		const ratio = lyricsTranslationArea.scrollTop / (lyricsTranslationArea.scrollHeight - lyricsTranslationArea.clientHeight);
 		lyricsArea.scrollTop = ratio * (lyricsArea.scrollHeight - lyricsArea.clientHeight);
+		lyricsTimestampCol.scrollTop = lyricsArea.scrollTop;
 		syncingScroll = false;
 	});
+
+	lyricsTimestampCol.addEventListener("scroll", () => {
+		if (syncingScroll) return;
+		syncingScroll = true;
+		lyricsArea.scrollTop = lyricsTimestampCol.scrollTop;
+		const ratio = lyricsArea.scrollTop / (lyricsArea.scrollHeight - lyricsArea.clientHeight);
+		lyricsTranslationArea.scrollTop = ratio * (lyricsTranslationArea.scrollHeight - lyricsTranslationArea.clientHeight);
+		syncingScroll = false;
+	});
+
+	lyricsArea.addEventListener("input", syncLyricsTimestampColRowCount);
 
 	document.getElementById("debugButton").addEventListener("click", () => {
 		ipcRenderer.send("debug-mode");

@@ -178,6 +178,7 @@
 	let currentSyncedLyrics = [];
 	let currentLyricIndex = -1;
 	let keybinds = null;
+	let currentSongName = "";
 
 	function loadImage(elementId, url) {
 		try {
@@ -233,6 +234,8 @@
 			const lineRect = line.getBoundingClientRect();
 			const offset = lineRect.top - containerRect.top - containerRect.height / 2 + lineRect.height / 2;
 			container.scrollBy({ top: offset, behavior: "smooth" });
+		} else if (index < 0) {
+			container.scrollTo({ top: 0, behavior: "smooth" });
 		}
 	}
 
@@ -282,7 +285,12 @@
 				loadImage("pauseplay-button", `url("file://${path.join(assetsFolder, "play.svg").replace(/\\/g, "/")}")`);
 			}
 
-			if (data.songName != undefined) document.getElementById("song-name").innerText = data.songName;
+			if (data.songName != undefined) {
+				const songChanged = data.songName != currentSongName;
+				currentSongName = data.songName;
+				document.getElementById("song-name").innerText = data.songName;
+				if (songChanged) document.getElementById("lyrics-container").scrollTop = 0;
+			}
 			if (data.progress != undefined) document.getElementById("song-progress").innerText = data.progress;
 			if (data.isPlaying != undefined && assetsFolder) {
 				const icon = data.isPlaying ? "pause.svg" : "play.svg";

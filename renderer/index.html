@@ -144,10 +144,10 @@
 										<input type="text" id="customiseSongLink" />
 									</div>
 									<div class="customise-field-row" style="justify-content: space-around; text-align: center">
-										<div id="modalTimePlayed" style="color: darkgrey"></div>
-										<div id="modalSecondsPlayed" style="color: darkgrey"></div>
-										<div id="modalStabilised" style="color: darkgrey"></div>
-										<div id="modalFileSize" style="color: darkgrey"></div>
+										<div id="modalTimePlayed" class="customise-stat"></div>
+										<div id="modalSecondsPlayed" class="customise-stat"></div>
+										<div id="modalStabilised" class="customise-stat"></div>
+										<div id="modalFileSize" class="customise-stat"></div>
 									</div>
 								</div>
 								<!--<div id="modalPlaySpeed"></div>
@@ -182,6 +182,7 @@
 								<button id="autoTranslateBtn" disabled onclick="autoTranslateLyrics()">Auto-Translate</button>
 							</div>
 							<div class="lyrics-areas-row">
+								<div id="lyricsTimestampCol"></div>
 								<textarea name="lyricsArea" id="lyricsArea"></textarea>
 								<div id="lyricsProgressBar"></div>
 								<div class="lyrics-translation-col">
