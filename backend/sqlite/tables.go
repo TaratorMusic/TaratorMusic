@@ -52,6 +52,7 @@ var settingsColumns = []Column{
 	{Name: "key_searchPlaylist", Type: "TEXT", Default: "x"},
 	{Name: "key_searchShuffle", Type: "TEXT", Default: "c"},
 	{Name: "key_lyrics", Type: "TEXT", Default: "v"},
+	{Name: "key_PiP", Type: "TEXT", Default: "'b'"},
 	{Name: "statsTableColumns", Type: "TEXT", Default: "NULL"},
 	{Name: "pieChartColors", Type: "TEXT", Default: "NULL"},
 	{Name: "pieChartTopCategories", Type: "INTEGER", Default: "5"},

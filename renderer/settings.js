@@ -24,6 +24,7 @@ async function saveKeybinds() {
 	callSqlite({ db: "settings", query: "UPDATE settings SET key_searchPlaylist = ?", args: [document.getElementById("settingsSearchPlaylist").innerHTML] });
 	callSqlite({ db: "settings", query: "UPDATE settings SET key_searchShuffle = ?", args: [document.getElementById("settingsSearchShuffle").innerHTML] });
 	callSqlite({ db: "settings", query: "UPDATE settings SET key_lyrics = ?", args: [document.getElementById("settingsOpenLyrics").innerHTML] });
+	callSqlite({ db: "settings", query: "UPDATE settings SET key_PiP = ?", args: [document.getElementById("settingsPiP").innerHTML] });
 
 	key_Rewind = document.getElementById("settingsRewind").innerHTML;
 	key_Previous = document.getElementById("settingsPrevious").innerHTML;
@@ -42,6 +43,7 @@ async function saveKeybinds() {
 	key_searchPlaylist = document.getElementById("settingsSearchPlaylist").innerHTML;
 	key_searchShuffle = document.getElementById("settingsSearchShuffle").innerHTML;
 	key_lyrics = document.getElementById("settingsOpenLyrics").innerHTML;
+	key_PiP = document.getElementById("settingsPiP").innerHTML;
 }
 
 document.querySelectorAll(".settingsKeybinds button").forEach(button => {

@@ -115,6 +115,7 @@ let pipShowLyrics;
 let key_searchPlaylist;
 let key_searchShuffle;
 let key_lyrics;
+let key_PiP;
 
 let popularityFactor;
 let artistStrengthFactor;
@@ -212,6 +213,7 @@ async function initialiseDatabases() {
 	document.getElementById("settingsSearchPlaylist").innerHTML = settingsRow.key_searchPlaylist;
 	document.getElementById("settingsSearchShuffle").innerHTML = settingsRow.key_searchShuffle;
 	document.getElementById("settingsOpenLyrics").innerHTML = settingsRow.key_lyrics;
+	document.getElementById("settingsPiP").innerHTML = settingsRow.key_PiP;
 
 	key_Rewind = settingsRow.key_Rewind;
 	key_Previous = settingsRow.key_Previous;
@@ -244,6 +246,7 @@ async function initialiseDatabases() {
 	key_searchPlaylist = settingsRow.key_searchPlaylist;
 	key_searchShuffle = settingsRow.key_searchShuffle;
 	key_lyrics = settingsRow.key_lyrics;
+	key_PiP = settingsRow.key_PiP;
 
 	if (pictureInPicture == 1) {
 		lastPipLyricsSongId = "";
@@ -2224,6 +2227,11 @@ document.addEventListener("keydown", event => {
 		playLastPlaylist();
 	} else if (event.key == key_lyrics) {
 		opencustomiseModal(playingSongsID);
+	} else if (event.key == key_PiP) {
+		pictureInPicture = pictureInPicture == 1 ? 0 : 1;
+		callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
+		lastPipLyricsSongId = "";
+		pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics }) : ipcRenderer.send("miniplayer-close");
 	}
 
 	if (event.key == "ArrowLeft" && document.getElementById("my-music-content").style.display == "flex" && displayPage == "page") {
