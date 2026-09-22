@@ -242,6 +242,67 @@ async function promptUserOnSongs(redownload) {
 	return thePrompt;
 }
 
+function refreshLinetimeStatus() {
+	const binaryName = process.platform === "win32" ? "sounddetect.exe" : "sounddetect";
+	const binaryPath = path.join(backendFolder, binaryName);
+	const modelsDir = path.join(backendFolder, "sounddetect_models");
+	const modelPath = path.join(modelsDir, "mms_multilingual.onnx");
+	const dataPath = path.join(modelsDir, "mms_multilingual.onnx.data");
+	const tokenizerPath = path.join(modelsDir, "mms_multilingual_tokenizer.json");
+
+	const binEl = document.getElementById("linetimeBinaryStatus");
+	const modelEl = document.getElementById("linetimeModelStatus");
+	const tokEl = document.getElementById("linetimeTokenizerStatus");
+	const binBtn = document.getElementById("linetimeBinaryBtn");
+	const modelBtn = document.getElementById("linetimeModelBtn");
+	const tokBtn = document.getElementById("linetimeTokenizerBtn");
+
+	// Binary
+	if (fs.existsSync(binaryPath)) {
+		binEl.innerText = "Installed";
+		binEl.style.color = "lime";
+		binBtn.style.display = "none";
+	} else {
+		binEl.innerText = "Not installed";
+		binEl.style.color = "red";
+		binBtn.style.display = "";
+	}
+
+	// Model — detect Standard (FP32, has .data file >500MB) vs Fast (UINT8, no .data, <500MB)
+	if (fs.existsSync(modelPath)) {
+		try {
+			const sizeMB = Math.round(fs.statSync(modelPath).size / 1048576);
+			const hasData = fs.existsSync(dataPath);
+			if (hasData || sizeMB >= 500) {
+				modelEl.innerText = `Installed (Standard, FP32, ${sizeMB} MB)`;
+			} else {
+				modelEl.innerText = `Installed (Fast, UINT8, ${sizeMB} MB)`;
+			}
+			modelEl.style.color = "lime";
+			modelBtn.style.display = "none";
+		} catch (e) {
+			modelEl.innerText = "Installed";
+			modelEl.style.color = "lime";
+			modelBtn.style.display = "none";
+		}
+	} else {
+		modelEl.innerText = "Not installed";
+		modelEl.style.color = "red";
+		modelBtn.style.display = "";
+	}
+
+	// Tokenizer
+	if (fs.existsSync(tokenizerPath)) {
+		tokEl.innerText = "Installed";
+		tokEl.style.color = "lime";
+		tokBtn.style.display = "none";
+	} else {
+		tokEl.innerText = "Not installed";
+		tokEl.style.color = "red";
+		tokBtn.style.display = "";
+	}
+}
+
 async function updateYtdlp() {
 	const btn = document.getElementById("updateYtdlpButton");
 	btn.disabled = true;
@@ -293,6 +354,120 @@ async function updateYtdlp() {
 	setTimeout(() => {
 		btn.innerText = "Update";
 	}, 2000);
+}
+
+async function downloadLinetimeComponent(component) {
+	const progressContainer = document.getElementById("linetimeProgressContainer");
+	const progressBar = document.getElementById("linetimeProgressBar");
+	const progressText = document.getElementById("linetimeProgressText");
+
+	const gpuSelect = document.getElementById("linetimeGpuSelect");
+	const modelSelect = document.getElementById("linetimeModelSelect");
+	const useGPU = gpuSelect.value === "gpu";
+	const modelType = modelSelect.value;
+
+	const args = ["--force"];
+	if (useGPU) args.push("--gpu");
+	if (modelType === "fast") args.push("--model-fast");
+	else args.push("--model-standard");
+
+	// Skip everything except the requested component
+	if (component === "binary") {
+		args.push("--skip-model");
+		args.push("--skip-tokenizer");
+	} else if (component === "model") {
+		args.push("--skip-binary");
+		args.push("--skip-tokenizer");
+	} else if (component === "tokenizer") {
+		args.push("--skip-binary");
+		args.push("--skip-model");
+	}
+
+	progressContainer.style.display = "block";
+	progressBar.style.width = "0%";
+	progressText.textContent = `Downloading ${component}...`;
+
+	// Disable all download buttons during download
+	const binBtn = document.getElementById("linetimeBinaryBtn");
+	const modelBtn = document.getElementById("linetimeModelBtn");
+	const tokBtn = document.getElementById("linetimeTokenizerBtn");
+	binBtn.disabled = true;
+	modelBtn.disabled = true;
+	tokBtn.disabled = true;
+
+	try {
+		const bin = path.join(backendFolder, process.platform === "win32" ? "linetime_fetch.exe" : "linetime_fetch");
+		await new Promise((resolve, reject) => {
+			const fetchCwd = process.platform === "linux" ? taratorFolder : processFolder;
+			const proc = spawn(bin, args, { windowsHide: true, cwd: fetchCwd });
+
+			proc.stdout.on("data", d => {
+				const msg = d.toString();
+				console.log("[linetime_fetch]", msg.trim());
+
+				const pctMatch = msg.match(/(\d+)%/);
+				if (pctMatch) {
+					progressBar.style.width = parseInt(pctMatch[1]) + "%";
+				}
+
+				if (msg.includes("Downloading binary")) {
+					progressText.textContent = "Downloading binary...";
+					progressBar.style.width = "10%";
+				} else if (msg.includes("Downloading standard CTC")) {
+					progressText.textContent = "Downloading model (standard, ~1.2GB)...";
+					progressBar.style.width = "30%";
+				} else if (msg.includes("Downloading fast CTC")) {
+					progressText.textContent = "Downloading model (fast, ~303MB)...";
+					progressBar.style.width = "30%";
+				} else if (msg.includes("Downloading tokenizer")) {
+					progressText.textContent = "Downloading tokenizer...";
+					progressBar.style.width = "30%";
+				} else if (msg.includes("Extracting")) {
+					progressText.textContent = "Extracting...";
+					progressBar.style.width = "90%";
+				} else if (msg.includes("Done")) {
+					progressBar.style.width = "100%";
+				}
+			});
+
+			proc.stderr.on("data", d => {
+				const msg = d.toString();
+				console.error("[linetime_fetch]", msg.trim());
+			});
+
+			proc.on("error", reject);
+			proc.on("close", code => {
+				if (code !== 0) return reject(new Error(`linetime_fetch exited with code ${code}`));
+				resolve();
+			});
+		});
+
+		progressBar.style.width = "100%";
+		progressText.textContent = "Done!";
+
+		const gpuLabel = useGPU ? "GPU (CUDA)" : "CPU";
+		const modelLabel = modelType === "fast" ? "Fast (UINT8)" : "Standard (FP32)";
+		linetimeVersion = `${modelLabel} - ${gpuLabel}`;
+		await callSqlite({
+			db: "settings",
+			query: "UPDATE statistics SET linetime_version = ?",
+			args: [linetimeVersion],
+			fetch: false,
+		});
+
+		refreshLinetimeStatus();
+	} catch (error) {
+		progressText.textContent = "Failed";
+		progressBar.style.width = "0%";
+		await alertModal(`Failed to download ${component}: ${error.message ?? String(error)}`);
+	}
+
+	binBtn.disabled = false;
+	modelBtn.disabled = false;
+	tokBtn.disabled = false;
+	setTimeout(() => {
+		progressContainer.style.display = "none";
+	}, 3000);
 }
 
 async function foundNewSongs(folderSongs, databaseSongs) {

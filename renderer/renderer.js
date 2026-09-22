@@ -125,6 +125,7 @@ let artistListenTimeFactor;
 let randomFactor;
 let ytdlpLastUpdateDate;
 let ytdlpVersion;
+let linetimeVersion;
 let lastPipLyricsSongId = "";
 
 const LOG_LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
@@ -272,9 +273,10 @@ async function initialiseDatabases() {
 	artistListenTimeFactor = settingsRow.artistListenTimeFactor;
 	randomFactor = settingsRow.randomFactor;
 
-	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version FROM statistics LIMIT 1", fetch: true });
+	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_version FROM statistics LIMIT 1", fetch: true });
 	ytdlpLastUpdateDate = statsRows[0]?.ytdlp_last_update_date || 0;
 	ytdlpVersion = statsRows[0]?.ytdlp_version || "";
+	linetimeVersion = statsRows[0]?.linetime_version || "";
 
 	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
 	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
@@ -468,6 +470,7 @@ tabs.forEach(tab => {
 				} else if (content.id == "settings-content") {
 					document.getElementById("settings-content").style.display = "flex";
 					if (ytdlpVersion) document.getElementById("ytdlpCurrentVersion").innerText = `Current version: ${ytdlpVersion}`;
+					refreshLinetimeStatus();
 				} else if (content.id == "statistics-content") {
 					loadNewPage("statistics");
 				}
@@ -3053,6 +3056,24 @@ document.addEventListener("DOMContentLoaded", function () {
 	initialiseDatabases();
 
 	if (platform == "linux") loadJSFile("mpris");
+
+	// Check linetime installation on startup
+	setTimeout(() => {
+		const binaryName = process.platform === "win32" ? "sounddetect.exe" : "sounddetect";
+		const binaryPath = path.join(backendFolder, binaryName);
+		const modelsDir = path.join(backendFolder, "sounddetect_models");
+		const modelPath = path.join(modelsDir, "mms_multilingual.onnx");
+		const tokenizerPath = path.join(modelsDir, "mms_multilingual_tokenizer.json");
+
+		const missing = [];
+		if (!fs.existsSync(binaryPath)) missing.push("binary");
+		if (!fs.existsSync(modelPath)) missing.push("model");
+		if (!fs.existsSync(tokenizerPath)) missing.push("tokenizer");
+
+		if (missing.length > 0) {
+			alertModal(`Linetime components missing: ${missing.join(", ")}.\nGo to Settings > Linetime Aligner to download.`);
+		}
+	}, 2000);
 
 	document.querySelectorAll("[data-tooltip]").forEach(el => {
 		el.addEventListener("mouseenter", e => {
