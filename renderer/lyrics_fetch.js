@@ -42,6 +42,74 @@ function findCurrentLyricIndex(currentTime, syncedLyrics) {
 	return index;
 }
 
+function tokenizeText(input) {
+	return (normalizeText(input) || "")
+		.replace(/[^\p{L}\p{N}\s]/gu, " ")
+		.replace(/\s+/g, " ")
+		.trim()
+		.split(" ")
+		.filter(t => t.length > 0);
+}
+
+function cleanSearchTitle(input) {
+	return (input || "")
+		.replace(/\s*\((?:official video|official music video|official audio|official lyrics|lyric video|remastered|remaster|lyrics|audio|video|hd|4k|official)\)/gi, "")
+		.replace(/\s*\[(?:official video|official music video|official audio|official lyrics|lyric video|remastered|remaster|lyrics|audio|video|hd|4k|official)\]/gi, "")
+		.replace(/\s*\((?:feat|featuring|ft|f\.)\s*\.?\s*[^)]*\)/gi, "")
+		.replace(/\s*\[(?:feat|featuring|ft|f\.)\s*\.?\s*[^\]]*\]/gi, "")
+		.replace(/\s*-\s*(?:official video|official music video|official audio|official lyrics|lyrics|audio|video|remastered|remaster)\s*$/i, "")
+		.replace(/\s+(?:feat\.?|featuring|ft\.?)\s+.+$/i, "")
+		.replace(/[,.;:]+\s*$/g, "")
+		.trim();
+}
+
+function cleanArtistName(input) {
+	return (input || "")
+		.replace(/\s*-\s*topic\s*$/i, "")
+		.replace(/\bofficial\s+artist\s+channels?\b/gi, "")
+		.replace(/\bofficial\s+channels?\b/gi, "")
+		.replace(/\bchannels?\s*$/i, "")
+		.replace(/vevo/gi, "")
+		.replace(/\bofficial\b/gi, "")
+		.replace(/\s+/g, " ")
+		.replace(/[^\p{L}\p{N}]+$/u, "")
+		.trim();
+}
+
+function trackMatchScore(storedTitle, itemTitle) {
+	const storedKey = normalizeText(cleanSearchTitle(storedTitle));
+	const itemKey = normalizeText(cleanSearchTitle(itemTitle));
+	if (storedKey && itemKey && storedKey == itemKey) return 10;
+
+	const storedTokens = tokenizeText(storedTitle).filter(t => t.length >= 3);
+	const itemTokens = tokenizeText(itemTitle).filter(t => t.length >= 3);
+	if (!storedTokens.length || !itemTokens.length) return 0;
+
+	const matches = storedTokens.filter(t => itemTokens.some(tt => t.includes(tt) || tt.includes(t))).length;
+	const ratio = matches / storedTokens.length;
+	if (ratio >= 0.8) return 6;
+	if (ratio >= 0.5) return 3;
+	if (ratio > 0) return 1;
+	return 0;
+}
+
+function artistMatchScore(storedArtist, itemArtist) {
+	const stored = cleanArtistName(storedArtist);
+	const item = cleanArtistName(itemArtist);
+	const storedTokens = tokenizeText(stored);
+	const itemTokens = tokenizeText(item);
+	if (!storedTokens.length || !itemTokens.length) return 0;
+	if (normalizeText(stored) == normalizeText(item)) return 5;
+
+	const longStored = storedTokens.filter(t => t.length >= 2);
+	if (!longStored.length) return 0;
+
+	const matches = longStored.filter(t => itemTokens.some(tt => tt.length >= 2 && (t.includes(tt) || tt.includes(t)))).length;
+	if (matches >= Math.ceil(longStored.length / 2) && longStored.length > 1) return 4;
+	if (matches > 0) return 2;
+	return 0;
+}
+
 async function fetchLyricsFromLrclib(trackName, artistName, albumName) {
 	const params = new URLSearchParams({
 		track_name: trackName,
@@ -60,6 +128,7 @@ async function fetchLyricsFromLrclib(trackName, artistName, albumName) {
 			trackName: data.trackName,
 			artistName: data.artistName,
 			albumName: data.albumName,
+			id: data.id,
 		};
 	} catch (err) {
 		console.error("Error fetching lyrics from LRCLIB:", err);
@@ -67,9 +136,14 @@ async function fetchLyricsFromLrclib(trackName, artistName, albumName) {
 	}
 }
 
-async function searchLyricsOnLrclib(query) {
+async function searchLyricsOnLrclib(params) {
 	try {
-		const response = await fetch(`${LRCLIB_BASE}/search?q=${encodeURIComponent(query)}`);
+		const query = new URLSearchParams();
+		for (const [key, value] of Object.entries(params)) {
+			if (value) query.set(key, value);
+		}
+		if (!query.toString()) return [];
+		const response = await fetch(`${LRCLIB_BASE}/search?${query.toString()}`);
 		if (!response.ok) throw new Error(`LRCLIB search returned ${response.status}`);
 		const data = await response.json();
 		return data.map(item => ({
@@ -98,34 +172,33 @@ async function fetchSongLyrics(songId) {
 
 	if (!trackName) return { bestMatch: null, allResults: [] };
 
-	const exactMatch = await fetchLyricsFromLrclib(trackName, artistName, "");
+	const cleanTitle = cleanSearchTitle(trackName);
+	const cleanArtist = cleanArtistName(artistName);
+	const cleanDiffers = artistName && cleanArtist && normalizeText(cleanArtist) != normalizeText(artistName);
 
-	const searchQuery = artistName ? `${artistName} ${trackName}` : trackName;
-	const searchResults = await searchLyricsOnLrclib(searchQuery);
+	const [exactMatch, cleanedExactMatch, artistSearch, trackSearch] = await Promise.all([
+		fetchLyricsFromLrclib(trackName, artistName, ""),
+		cleanDiffers ? fetchLyricsFromLrclib(cleanTitle, cleanArtist, "") : Promise.resolve(null),
+		artistName ? searchLyricsOnLrclib({ track_name: trackName, artist_name: artistName }) : Promise.resolve([]),
+		searchLyricsOnLrclib({ track_name: trackName }),
+	]);
 
-	const allResults = [];
+	const byId = new Map();
+	const addItem = item => {
+		if (item && !byId.has(item.id)) byId.set(item.id, item);
+	};
 
-	if (exactMatch) {
-		allResults.push(exactMatch);
-	}
+	addItem(exactMatch);
+	addItem(cleanedExactMatch);
+	(await artistSearch).forEach(addItem);
+	(await trackSearch).forEach(addItem);
 
-	const normalizedTrack = normalizeText(trackName);
-	const normalizedArtist = normalizeText(artistName);
 	const scored = [];
-
-	for (const item of searchResults) {
-		let score = 0;
-		const normalizedItemTrack = normalizeText(item.trackName);
-		const normalizedItemArtist = normalizeText(item.artistName);
-
-		if (normalizedItemTrack == normalizedTrack) {
-			score += 10;
-		} else if (normalizedItemTrack.includes(normalizedTrack) || normalizedTrack.includes(normalizedItemTrack)) {
-			score += 6;
-		}
-
-		if (normalizedArtist && normalizedItemArtist.includes(normalizedArtist)) score += 5;
-		else if (normalizedArtist && normalizedArtist.includes(normalizedItemArtist)) score += 3;
+	for (const item of byId.values()) {
+		let score = trackMatchScore(trackName, item.trackName);
+		if (artistName) score += artistMatchScore(artistName, item.artistName);
+		if (item.id == exactMatch?.id) score += 20;
+		if (item.id == cleanedExactMatch?.id) score += 20;
 
 		if (duration > 0 && item.duration) {
 			const diff = Math.abs(item.duration - duration);
@@ -141,12 +214,7 @@ async function fetchSongLyrics(songId) {
 
 	scored.sort((a, b) => b._score - a._score);
 
-	for (const item of scored) {
-		if (!allResults.some(r => r.id === item.id)) {
-			allResults.push(item);
-		}
-	}
-
+	const allResults = scored.slice(0, 12);
 	const withLyrics = allResults.filter(r => r.plainLyrics);
 	const bestMatch = withLyrics[0] || allResults[0] || null;
 
