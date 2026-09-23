@@ -341,7 +341,7 @@ async function fetchPlaylistData(url) {
 		if (!match) throw new Error("Invalid playlist URL");
 		const playlistID = match[1];
 
-		const fetchPlaylist = require(path.join(processFolder, "renderer", "ytpl"));
+		const fetchPlaylist = require(path.join(appFilesFolder, "renderer", "ytpl"));
 		const playlist = await fetchPlaylist(playlistID, { limit: Infinity });
 
 		const playlistTitle = playlist.title || "Unknown Playlist";

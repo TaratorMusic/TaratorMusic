@@ -173,6 +173,10 @@ app.whenReady().then(() => {
 		return processDir;
 	});
 
+	ipcMain.handle("get-app-path", () => {
+		return app.getAppPath();
+	});
+
 	ipcMain.handle("raise-window", () => {
 		mainWindow.focus();
 		mainWindow.moveTop();

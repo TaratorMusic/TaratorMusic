@@ -15,6 +15,7 @@ let sqliteBinary;
 (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
 	processFolder = await ipcRenderer.invoke("get-app-process-path");
+	appFilesFolder = await ipcRenderer.invoke("get-app-path");
 
 	backendFolder = path.join(processFolder, "bin");
 	appThumbnailFolder = path.join(processFolder, "assets");
