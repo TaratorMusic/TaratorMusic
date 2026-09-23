@@ -152,6 +152,11 @@ function applyMetadata(songIdUsed, meta, unconditional = false) {
 			document.getElementById("customiseSongGenre").value = meta.genre;
 			document.getElementById("customiseSongArtist").value = meta.artist;
 			document.getElementById("customiseSongLanguage").value = meta.language;
+
+			const customiseDiv = document.getElementById("customiseModal");
+			customiseDiv.dataset.origGenre = meta.genre || "";
+			customiseDiv.dataset.origArtist = meta.artist || "";
+			customiseDiv.dataset.origLanguage = meta.language || "";
 		}
 	}
 }

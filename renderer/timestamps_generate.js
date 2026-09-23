@@ -43,7 +43,7 @@ async function generateTimestampsForCurrentSong() {
 
 	const cachedRows = songLyricsCache.get(songId) || [];
 	const originalRow = cachedRows.find(r => !r.language);
-	const plainLyrics = originalRow && originalRow.lyrics ? originalRow.lyrics.trim() : "";
+	const plainLyrics = originalRow && originalRow.lyrics ? originalRow.lyrics.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim() : "";
 
 	if (!plainLyrics) {
 		return await alertModal("No lyrics found for this song. Add or fetch lyrics first.");

@@ -2,20 +2,28 @@ const LRCLIB_BASE = "https://lrclib.net/api";
 
 function parseLrc(lrcString) {
 	if (!lrcString) return [];
-	const lines = lrcString.split("\n");
+	const lines = lrcString.split(/\r?\n/);
 	const result = [];
-	const regex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]\s?(.*)/;
+	const timestampRegex = /\[(\d{1,2}):(\d{1,2})(?:[.:,](\d{1,3}))?\]/g;
+	const stripRegex = /\[\d{1,2}:\d{1,2}(?:[.:,]\d{1,3})?\]/g;
 
 	for (const line of lines) {
-		const match = line.match(regex);
-		if (!match) continue;
-		const minutes = parseInt(match[1], 10);
-		const seconds = parseInt(match[2], 10);
-		let centiseconds = parseInt(match[3], 10);
-		if (match[3].length == 2) centiseconds *= 10;
-		const time = minutes * 60 + seconds + centiseconds / 1000;
-		const text = match[4].trim();
-		result.push({ time, text });
+		const timestamps = [];
+		let match;
+		timestampRegex.lastIndex = 0;
+		while ((match = timestampRegex.exec(line)) !== null) {
+			const minutes = parseInt(match[1], 10);
+			const seconds = parseInt(match[2], 10);
+			const fraction = match[3] || "";
+			let centiseconds = 0;
+			if (fraction.length == 1) centiseconds = parseInt(fraction, 10) * 100;
+			else if (fraction.length == 2) centiseconds = parseInt(fraction, 10) * 10;
+			else if (fraction.length == 3) centiseconds = parseInt(fraction, 10);
+			timestamps.push(minutes * 60 + seconds + centiseconds / 1000);
+		}
+		if (timestamps.length == 0) continue;
+		const text = line.replace(stripRegex, "").replace(/\r$/, "").trim();
+		for (const time of timestamps) result.push({ time, text });
 	}
 
 	return result;
@@ -149,8 +157,8 @@ async function saveFetchedLyrics(songId, lyricsData) {
 	const cachedRows = songLyricsCache.get(songId) || [];
 	const existingOriginal = cachedRows.find(r => !r.language);
 
-	const plainText = lyricsData.plainLyrics || "";
-	const syncedText = lyricsData.syncedLyrics || "";
+	const plainText = (lyricsData.plainLyrics || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+	const syncedText = (lyricsData.syncedLyrics || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
 	if (existingOriginal) {
 		existingOriginal.lyrics = plainText;

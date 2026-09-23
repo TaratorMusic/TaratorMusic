@@ -1674,13 +1674,53 @@ function formatLrcTimestamp(seconds) {
 }
 
 function parseLrcTimestamp(text) {
-	const match = text.trim().match(/^(\d{1,2}):(\d{2})\.(\d{2})$/);
+	const match = String(text).replace(/\s+/g, "").match(/^(\d{1,2}):(\d{1,2})(?:[.:,](\d{1,3}))?$/);
 	if (!match) return null;
 	const minutes = parseInt(match[1], 10);
 	const seconds = parseInt(match[2], 10);
-	const centiseconds = parseInt(match[3], 10);
 	if (seconds > 59) return null;
-	return minutes * 60 + seconds + centiseconds / 100;
+	const fraction = match[3] || "";
+	let centiseconds = 0;
+	if (fraction.length == 1) centiseconds = parseInt(fraction, 10) * 100;
+	else if (fraction.length == 2) centiseconds = parseInt(fraction, 10) * 10;
+	else if (fraction.length == 3) centiseconds = parseInt(fraction, 10);
+	return minutes * 60 + seconds + centiseconds / 1000;
+}
+
+function alignTimestampsToLines(parsed, lines) {
+	const times = new Array(lines.length).fill("");
+	if (!parsed.length) return times;
+
+	const normalizeLine = value => normalizeText(value).replace(/\s+/g, " ");
+	const normalizedLines = lines.map(normalizeLine);
+	const used = new Array(parsed.length).fill(false);
+	const normalizedParsed = parsed.map(entry => normalizeLine(entry.text));
+
+	for (let i = 0; i < lines.length; i++) {
+		if (!normalizedLines[i]) continue;
+		for (let j = 0; j < parsed.length; j++) {
+			if (used[j]) continue;
+			if (normalizedParsed[j] == normalizedLines[i]) {
+				times[i] = formatLrcTimestamp(parsed[j].time);
+				used[j] = true;
+				break;
+			}
+		}
+	}
+
+	for (let i = 0; i < lines.length; i++) {
+		if (times[i] || !normalizedLines[i]) continue;
+		for (let j = 0; j < parsed.length; j++) {
+			if (used[j] || !normalizedParsed[j]) continue;
+			if (normalizedParsed[j].includes(normalizedLines[i]) || normalizedLines[i].includes(normalizedParsed[j])) {
+				times[i] = formatLrcTimestamp(parsed[j].time);
+				used[j] = true;
+				break;
+			}
+		}
+	}
+
+	return times;
 }
 
 function renderLyricsTimestampCol(syncedLyricsText) {
@@ -1688,21 +1728,21 @@ function renderLyricsTimestampCol(syncedLyricsText) {
 	col.innerHTML = "";
 
 	const parsed = parseLrc(syncedLyricsText || "");
-	const lineCount = document.getElementById("lyricsArea").value.split("\n").length;
-	const rowCount = Math.max(lineCount, parsed.length);
+	const lines = document.getElementById("lyricsArea").value.split(/\r?\n/);
+	const times = alignTimestampsToLines(parsed, lines);
 
-	for (let i = 0; i < rowCount; i++) {
+	for (let i = 0; i < lines.length; i++) {
 		const input = document.createElement("input");
 		input.type = "text";
 		input.className = "lyrics-timestamp-line";
-		input.value = parsed[i] ? formatLrcTimestamp(parsed[i].time) : "";
+		input.value = times[i];
 		col.appendChild(input);
 	}
 }
 
 function syncLyricsTimestampColRowCount() {
 	const col = document.getElementById("lyricsTimestampCol");
-	const lineCount = document.getElementById("lyricsArea").value.split("\n").length;
+	const lineCount = document.getElementById("lyricsArea").value.split(/\r?\n/).length;
 	const currentRows = col.children.length;
 
 	if (lineCount > currentRows) {
@@ -1722,7 +1762,7 @@ function syncLyricsTimestampColRowCount() {
 
 function buildSyncedLyricsFromTimestampCol() {
 	const col = document.getElementById("lyricsTimestampCol");
-	const lines = document.getElementById("lyricsArea").value.split("\n");
+	const lines = document.getElementById("lyricsArea").value.split(/\r?\n/);
 	const rows = Array.from(col.children);
 	const lrcLines = [];
 
@@ -1874,7 +1914,7 @@ async function opencustomiseModal(songsId) {
 
 function isCustomiseModalDirty() {
 	const div = document.getElementById("customiseModal");
-	if (div.style.display != "flex") return false;
+	if (getComputedStyle(div).display == "none") return false;
 	if (!div.dataset.songID) return false;
 	return (
 		document.getElementById("customiseSongName").value.trim() != div.dataset.origName ||
@@ -1892,8 +1932,11 @@ function isCustomiseModalDirty() {
 async function closeCustomiseModal() {
 	if (isCustomiseModalDirty()) {
 		const save = await confirmModal("You have unsaved changes. Would you like to save before closing?", "Save & Close", "Discard");
-		if (save) await saveEditedSong();
-		else document.getElementById("customiseModal").style.display = "none";
+		if (save) {
+			const saved = await saveEditedSong();
+			if (!saved) return;
+		}
+		document.getElementById("customiseModal").style.display = "none";
 	} else {
 		document.getElementById("customiseModal").style.display = "none";
 	}
@@ -1912,11 +1955,17 @@ async function saveEditedSong(translationOnly = false) {
 	const songsArtist = document.getElementById("customiseSongArtist").value;
 	const songsLanguage = document.getElementById("customiseSongLanguage").value;
 
-	if (newNameInput.length < 1) return await alertModal("Please do not set a song name empty.");
+	if (newNameInput.length < 1) {
+		await alertModal("Please do not set a song name empty.");
+		return false;
+	}
 
 	if (songID.includes("tarator")) {
 		const row = songNameCache.get(songID);
-		if (!row) return await alertModal("Song not found in database.");
+		if (!row) {
+			await alertModal("Song not found in database.");
+			return false;
+		}
 
 		if (document.getElementById("my-music-content").style.display == "flex") {
 			element = document.querySelector(`.music-item[data-file-name="${songID}"]`);
@@ -1929,6 +1978,7 @@ async function saveEditedSong(translationOnly = false) {
 		if (newThumbFile) {
 			const buffer = Buffer.from(await newThumbFile.arrayBuffer());
 			fs.writeFileSync(thumbnailPath, buffer);
+			document.getElementById("customiseThumbnail").value = "";
 		}
 
 		const updated = await callSqlite({
@@ -1984,7 +2034,10 @@ async function saveEditedSong(translationOnly = false) {
 		const lyricsValue = document.getElementById("lyricsArea").value;
 
 		const syncedResult = buildSyncedLyricsFromTimestampCol();
-		if (syncedResult.error) return await alertModal(syncedResult.error);
+		if (syncedResult.error) {
+			await alertModal(syncedResult.error);
+			return false;
+		}
 		const syncedLyricsValue = syncedResult.lrc;
 
 		const cachedRows = songLyricsCache.get(savedSongId) || [];
@@ -2052,7 +2105,7 @@ async function saveEditedSong(translationOnly = false) {
 		customiseDiv.dataset.origTranslationLang = selectedLang;
 	}
 
-	if (translationOnly) return;
+	if (translationOnly) return true;
 
 	customiseDiv.style.display = "none";
 	document.querySelector(".customise-modal-body")?.classList.remove("lyrics-expanded");
@@ -2076,6 +2129,8 @@ async function saveEditedSong(translationOnly = false) {
 			if (bgEl) bgEl.style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 		}
 	}
+
+	return true;
 }
 
 function removeSong(fileToDelete) {
@@ -2753,7 +2808,7 @@ async function fetchLrclibForCurrentSong() {
 							const match = line.match(/^\[(\d{2}):(\d{2})\.(\d{2,3})\]\s?(.*)/);
 							if (match) {
 								const ts = `${match[1]}:${match[2]}`;
-								const text = match[4] || "";
+								const text = (match[4] || "").replace(/\r$/, "");
 								html += `<span class="synced-ts">${ts}</span> ${text}\n`;
 							} else if (line.trim()) {
 								html += `${line}\n`;
