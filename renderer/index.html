@@ -159,6 +159,7 @@
 									<button id="notInterestedToggle">Interested</button>
 									<button id="downloadThisSong">Download This Song</button>
 									<button id="stabiliseSongButton">Stabilise Song</button>
+									<button id="copyLyricsBtn" onclick="copyLyricsInLrcFormat()">Copy Lyrics</button>
 									<button id="fetchSongInfoButton" onclick="grabAndStoreSongInfo('html')">Fetch Song Info</button>
 									<button id="removeSongButton">Remove Song</button>
 									<button onclick="saveEditedSong()">Save</button>
@@ -169,25 +170,30 @@
 						</div>
 						<div class="customise-divider"></div>
 						<div class="customise-right-panel">
-							<div class="lyrics-header-row">
-								<div id="originalLyricName"></div>
-								<button id="lyricsExpandToggle" onclick="toggleLyricsExpand()">Expand Lyrics</button>
-								<button id="fetchLrclibBtn" onclick="fetchLrclibForCurrentSong()">Fetch Lyrics</button>
-								<button id="generateTimestampsBtn" onclick="generateTimestampsForCurrentSong()">Generate Timestamps</button>
-								<div id="translatedLyricName">Translated Language:</div>
-								<select name="translatedLyricName" id="translatedLyricInput" onchange="onTranslationPickerChange()">
-									<option value="none">None</option>
-									<option value="new">New</option>
-								</select>
-								<button id="deleteTranslationBtn" disabled onclick="deleteCurrentTranslation()">Delete</button>
-								<button id="autoTranslateBtn" disabled onclick="autoTranslateLyrics()">Auto-Translate</button>
-							</div>
-							<div class="lyrics-areas-row">
-								<div id="lyricsTimestampCol"></div>
-								<textarea name="lyricsArea" id="lyricsArea"></textarea>
-								<div id="lyricsProgressBar"></div>
-								<div class="lyrics-translation-col">
+							<div class="lyrics-split-row">
+								<div class="lyrics-headers-row">
+									<div class="lyrics-original-header">
+										<div id="originalLyricName"></div>
+										<button id="lyricsExpandToggle" class="lyrics-action-btn" onclick="toggleLyricsExpand()">Expand Lyrics</button>
+										<button id="fetchLrclibBtn" class="lyrics-action-btn" onclick="fetchLrclibForCurrentSong()">Fetch Lyrics</button>
+										<button id="generateTimestampsBtn" class="lyrics-action-btn" onclick="generateTimestampsForCurrentSong()">Generate Timestamps</button>
+									</div>
+									<div class="lyrics-translation-header">
+										<div id="translatedLyricName">Translated Language:</div>
+										<select name="translatedLyricName" id="translatedLyricInput" onchange="onTranslationPickerChange()">
+											<option value="none">None</option>
+											<option value="new">New</option>
+										</select>
+										<button id="deleteTranslationBtn" class="lyrics-action-btn" disabled onclick="deleteCurrentTranslation()">Delete</button>
+										<button id="autoTranslateBtn" class="lyrics-action-btn" disabled onclick="autoTranslateLyrics()">Auto-Translate</button>
+									</div>
+									<div class="lyrics-gutter-narrow"></div>
+								</div>
+								<div class="lyrics-bodies-row">
+									<div id="lyricsTimestampCol"></div>
+									<textarea name="lyricsArea" id="lyricsArea"></textarea>
 									<textarea name="lyricsTranslationArea" id="lyricsTranslationArea"></textarea>
+									<div id="lyricsProgressBar"></div>
 								</div>
 							</div>
 						</div>
@@ -374,7 +380,7 @@
 					<button id="updateYtdlpButton" onclick="updateYtdlp()">Update</button>
 					<h5 id="ytdlpCurrentVersion">Current version: unknown</h5>
 				</div>
-			<h5 id="ytdlpLastUpdateText">Updates yt-dlp to the latest version. Useful if downloads keep failing.</h5>
+				<h5 id="ytdlpLastUpdateText">Updates yt-dlp to the latest version. Useful if downloads keep failing.</h5>
 				<div class="settingsflexrow">
 					<h2>Debug Mode</h2>
 					<button id="debugButton">Toggle</button>
@@ -393,18 +399,18 @@
 				<h1 class="underline-text">Linetime Aligner</h1>
 				<div class="settingsflexrow">
 					<h2>Binary</h2>
-					<h5 id="linetimeBinaryStatus" style="color:gray">Checking...</h5>
-					<button id="linetimeBinaryBtn" style="display:none" onclick="downloadLinetimeComponent('binary')">Download</button>
+					<h5 id="linetimeBinaryStatus" style="color: gray">Checking...</h5>
+					<button id="linetimeBinaryBtn" style="display: none" onclick="downloadLinetimeComponent('binary')">Download</button>
 				</div>
 				<div class="settingsflexrow">
 					<h2>Model</h2>
-					<h5 id="linetimeModelStatus" style="color:gray">Checking...</h5>
-					<button id="linetimeModelBtn" style="display:none" onclick="downloadLinetimeComponent('model')">Download</button>
+					<h5 id="linetimeModelStatus" style="color: gray">Checking...</h5>
+					<button id="linetimeModelBtn" style="display: none" onclick="downloadLinetimeComponent('model')">Download</button>
 				</div>
 				<div class="settingsflexrow">
 					<h2>Tokenizer</h2>
-					<h5 id="linetimeTokenizerStatus" style="color:gray">Checking...</h5>
-					<button id="linetimeTokenizerBtn" style="display:none" onclick="downloadLinetimeComponent('tokenizer')">Download</button>
+					<h5 id="linetimeTokenizerStatus" style="color: gray">Checking...</h5>
+					<button id="linetimeTokenizerBtn" style="display: none" onclick="downloadLinetimeComponent('tokenizer')">Download</button>
 				</div>
 				<div class="settingsflexrow">
 					<h2>GPU</h2>
@@ -422,14 +428,14 @@
 					</select>
 				</div>
 				<h5>Choose which model to download. Fast is 75% smaller with negligible accuracy loss.</h5>
-				<div id="linetimeProgressContainer" style="display:none; margin-top:5px;">
-					<div style="background:rgba(255,255,255,0.1); border-radius:4px; height:6px; width:300px;">
-						<div id="linetimeProgressBar" style="background:lime; height:100%; width:0%; border-radius:4px; transition:width 0.3s;"></div>
+				<div id="linetimeProgressContainer" style="display: none; margin-top: 5px">
+					<div style="background: rgba(255, 255, 255, 0.1); border-radius: 4px; height: 6px; width: 300px">
+						<div id="linetimeProgressBar" style="background: lime; height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s"></div>
 					</div>
-					<h5 id="linetimeProgressText" style="margin-top:3px;">Downloading...</h5>
+					<h5 id="linetimeProgressText" style="margin-top: 3px">Downloading...</h5>
 				</div>
 				<h5 id="linetimeLastUpdateText">Select GPU and Model Size, then click Download on any missing component.</h5>
-			<h1 class="underline-text">Picture In Picture</h1>
+				<h1 class="underline-text">Picture In Picture</h1>
 				<div class="settingsflexrow">
 					<h2>Picture In Picture Mode</h2>
 					<label class="switch">

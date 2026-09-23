@@ -2,6 +2,7 @@
 
 -   Sidebar revamp
 
+-   add translations to the pip lyrics --> just the current lyric OR all lyrics
 -   Add volume bar that expands upwards to PiP
 -   Add translations to the PiP which will be toggleable
 -   We can toggle PiP lyrics and lyrics translations with a new upwards expanding PiP settings button

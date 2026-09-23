@@ -1779,6 +1779,72 @@ function buildSyncedLyricsFromTimestampCol() {
 	return { lrc: lrcLines.join("\n") };
 }
 
+async function copyLyricsInLrcFormat() {
+	const customiseDiv = document.getElementById("customiseModal");
+	if (!customiseDiv.dataset.songID) return;
+
+	const selection = await lyricCopyPickerModal();
+	if (!selection) return;
+
+	const includeTs = selection.timestamps;
+	const includeLyrics = selection.lyrics;
+	const includeTranslations = selection.translations;
+
+	const col = document.getElementById("lyricsTimestampCol");
+	const lines = document.getElementById("lyricsArea").value.split(/\r?\n/);
+	const transLines = document.getElementById("lyricsTranslationArea").value.split(/\r?\n/);
+	const rows = Array.from(col.children);
+
+	const outputLines = [];
+	let hasTs = false;
+
+	if (includeTs) {
+		for (let i = 0; i < rows.length; i++) {
+			const raw = rows[i].value.trim();
+			if (!raw) continue;
+
+			const seconds = parseLrcTimestamp(raw);
+			if (seconds == null) return await alertModal(`Invalid timestamp "${raw}" on line ${i + 1}. Use mm:ss.xx format.`);
+
+			const tag = `[${formatLrcTimestamp(seconds)}]`;
+			if (includeLyrics) outputLines.push(`${tag}${lines[i] || ""}`);
+			if (includeTranslations) outputLines.push(`${tag}${transLines[i] || ""}`);
+			if (!includeLyrics && !includeTranslations) outputLines.push(tag);
+			hasTs = true;
+		}
+	}
+
+	if (!includeTs || !hasTs) {
+		const count = Math.max(includeLyrics ? lines.length : 0, includeTranslations ? transLines.length : 0);
+		for (let i = 0; i < count; i++) {
+			if (includeLyrics) outputLines.push(lines[i] || "");
+			if (includeTranslations) outputLines.push(transLines[i] || "");
+		}
+	}
+
+	const body = outputLines.join("\n");
+	if (!body.trim()) return await alertModal("Nothing to copy.");
+
+	const headers = [];
+	if (hasTs) {
+		const songName = document.getElementById("customiseSongName").value.trim();
+		if (songName) headers.push(`[ti:${songName}]`);
+		const artist = document.getElementById("customiseSongArtist").value.trim();
+		if (artist && artist.toLowerCase() != "unknown") headers.push(`[ar:${artist}]`);
+	}
+
+	const lrc = headers.length ? `${headers.join("\n")}\n${body}` : body;
+	await ipcRenderer.invoke("write-clipboard", lrc);
+
+	const btn = document.getElementById("copyLyricsBtn");
+	if (btn) {
+		btn.textContent = "Copied!";
+		setTimeout(() => {
+			btn.textContent = "Copy Lyrics";
+		}, 1500);
+	}
+}
+
 async function opencustomiseModal(songsId) {
 	let song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url, thumbnailPath;
 

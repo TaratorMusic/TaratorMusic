@@ -1104,6 +1104,45 @@ input:checked + .slider:before {
     color: black;
 }
 
+.confirm-modal-actions button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.confirm-modal-actions button#lyricCopyConfirm {
+	background: rgb(23, 179, 31);
+	color: white;
+}
+
+.confirm-modal-actions button#lyricCopyCancel {
+	background: rgba(255, 255, 255, 0.85);
+}
+
+.lyric-copy-options {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	align-items: flex-start;
+	margin-top: 16px;
+}
+
+.lyric-copy-option {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 15px;
+	cursor: pointer;
+	color: #ededed;
+	width: 100%;
+}
+
+.lyric-copy-option input {
+	width: 16px;
+	height: 16px;
+	accent-color: #4fc3f7;
+	cursor: pointer;
+}
+
 #confirmModalPrimary {
 	background: #e53935;
 	color: #fff !important;
@@ -2182,20 +2221,62 @@ th {
 	min-height: 0;
 }
 
-.lyrics-header-row {
+.lyrics-split-row {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	overflow: hidden;
+	gap: 0.5vh;
+	min-height: 0;
+}
+
+.lyrics-headers-row,
+.lyrics-bodies-row {
+	display: grid;
+	grid-template-columns: 5vw 1fr 1fr 2vw;
+	gap: 0.5vw;
+	min-height: 0;
+}
+
+.lyrics-headers-row {
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.lyrics-original-header {
+	grid-column: 1 / 3;
+}
+
+.lyrics-translation-header {
+	grid-column: 3 / 4;
+}
+
+.lyrics-gutter-narrow {
+	grid-column: 4 / 5;
+}
+
+.lyrics-original-header,
+.lyrics-translation-header {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 	gap: 0.8vw;
+	min-width: 0;
 	flex-shrink: 0;
-	height: auto !important;
+	flex-wrap: wrap;
 }
 
-.lyrics-header-row div {
+.lyrics-original-header div,
+.lyrics-translation-header div {
 	flex: 1;
 	font-size: 0.85vw;
 	color: rgba(255, 255, 255, 0.7);
 	height: auto !important;
+}
+
+.lyrics-bodies-row {
+	flex: 1;
+	overflow: hidden;
 }
 
 #lyricsConfirm {
@@ -2210,24 +2291,7 @@ th {
 	flex-shrink: 0;
 }
 
-#lyricsExpandToggle {
-	padding: 5px 12px;
-	height: auto !important;
-	background: rgba(0, 0, 0, 0.5);
-	border: 1px solid rgba(255, 255, 255, 0.3);
-	border-radius: 4px;
-	cursor: pointer;
-	font-size: 0.8vw;
-	color: white !important;
-	flex-shrink: 0;
-	transition: background 0.2s ease;
-}
-
-#lyricsExpandToggle:hover {
-	background: rgba(255, 255, 255, 0.15);
-}
-
-#fetchLrclibBtn {
+#customiseModal .lyrics-action-btn {
 	padding: 5px 12px;
 	height: auto !important;
 	background: rgba(0, 0, 0, 0.5);
@@ -2238,25 +2302,16 @@ th {
 	color: #4fc3f7 !important;
 	flex-shrink: 0;
 	transition: background 0.2s ease;
-    margin-right: 11vw;
 }
 
-#fetchLrclibBtn:hover:not(:disabled) {
+#customiseModal .lyrics-action-btn:hover:not(:disabled) {
 	background: rgba(79, 195, 247, 0.2);
+	color: white !important;
 }
 
-#fetchLrclibBtn:disabled {
+#customiseModal .lyrics-action-btn:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
-}
-
-.lyrics-areas-row {
-	display: flex;
-	flex-direction: row;
-	flex: 1;
-	overflow: hidden;
-	gap: 0.5vw;
-	min-height: 0;
 }
 
 #lyricsArea,
@@ -2356,36 +2411,6 @@ th {
 	outline: 1px solid rgba(79, 195, 247, 0.5);
 }
 
-.lyrics-translation-col {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	overflow: hidden;
-	min-height: 0;
-}
-
-#autoTranslateBtn {
-	padding: 3px 8px;
-	height: auto !important;
-	background: rgba(20, 80, 180, 0.6);
-	border: 1px solid rgba(100, 160, 255, 0.4);
-	border-radius: 4px;
-	cursor: pointer;
-	font-size: 0.75vw;
-	color: white !important;
-	flex-shrink: 0;
-	transition: background 0.2s ease;
-}
-
-#autoTranslateBtn:hover:not(:disabled) {
-	background: rgba(30, 100, 220, 0.8);
-}
-
-#autoTranslateBtn:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
-}
-
 #translatedLyricInput,
 #translatedLyricInput > option {
 	color: black;
@@ -2394,28 +2419,6 @@ th {
 #lyricsSongName,
 #lyricsSongId {
 	height: auto !important;
-}
-
-#deleteTranslationBtn {
-	padding: 3px 8px;
-	height: auto !important;
-	background: rgba(180, 40, 40, 0.6);
-	border: 1px solid rgba(255, 100, 100, 0.4);
-	border-radius: 4px;
-	cursor: pointer;
-	font-size: 0.75vw;
-	color: white !important;
-	flex-shrink: 0;
-	transition: background 0.2s ease;
-}
-
-#deleteTranslationBtn:hover {
-	background: rgba(220, 50, 50, 0.8);
-}
-
-#deleteTranslationBtn:disabled {
-	opacity: 0.35;
-	cursor: not-allowed;
 }
 
 .lang-prompt-overlay {

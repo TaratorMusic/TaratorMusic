@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, clipboard } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
@@ -175,6 +175,10 @@ app.whenReady().then(() => {
 
 	ipcMain.handle("get-app-path", () => {
 		return app.getAppPath();
+	});
+
+	ipcMain.handle("write-clipboard", (event, text) => {
+		clipboard.writeText(String(text ?? ""));
 	});
 
 	ipcMain.handle("raise-window", () => {

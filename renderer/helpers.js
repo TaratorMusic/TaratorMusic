@@ -132,6 +132,85 @@ async function alertModal(message) {
 	return confirmModal(message, "Okay", null).then(() => {});
 }
 
+function lyricCopyPickerModal() {
+	return new Promise(resolve => {
+		const overlay = document.createElement("div");
+		overlay.className = "confirm-modal-overlay";
+
+		const modal = document.createElement("div");
+		modal.className = "confirm-modal";
+
+		const prompt = document.createElement("p");
+		prompt.textContent = "What do you want to copy?";
+		modal.appendChild(prompt);
+
+		const optionHost = document.createElement("div");
+		optionHost.className = "lyric-copy-options";
+
+		const checkboxes = {};
+		const options = [
+			{ key: "timestamps", text: "Timestamps", checked: true },
+			{ key: "lyrics", text: "Lyrics", checked: true },
+			{ key: "translations", text: "Translations", checked: false },
+		];
+
+		for (const opt of options) {
+			const row = document.createElement("label");
+			row.className = "lyric-copy-option";
+
+			const input = document.createElement("input");
+			input.type = "checkbox";
+			input.checked = opt.checked;
+			checkboxes[opt.key] = input;
+
+			row.appendChild(input);
+			row.appendChild(document.createTextNode(opt.text));
+			optionHost.appendChild(row);
+		}
+
+		const actions = document.createElement("div");
+		actions.className = "confirm-modal-actions";
+
+		const copyBtn = document.createElement("button");
+		copyBtn.id = "lyricCopyConfirm";
+		copyBtn.textContent = "Copy";
+		actions.appendChild(copyBtn);
+
+		const cancelBtn = document.createElement("button");
+		cancelBtn.id = "lyricCopyCancel";
+		cancelBtn.textContent = "Cancel";
+		actions.appendChild(cancelBtn);
+
+		modal.appendChild(optionHost);
+		modal.appendChild(actions);
+		overlay.appendChild(modal);
+		document.body.appendChild(overlay);
+
+		function updateCopyDisabled() {
+			copyBtn.disabled = !Object.values(checkboxes).some(input => input.checked);
+		}
+
+		function cleanup(result) {
+			overlay.remove();
+			resolve(result);
+		}
+
+		Object.values(checkboxes).forEach(input => input.addEventListener("change", updateCopyDisabled));
+
+		copyBtn.addEventListener("click", () => {
+			cleanup({
+				timestamps: checkboxes.timestamps.checked,
+				lyrics: checkboxes.lyrics.checked,
+				translations: checkboxes.translations.checked,
+			});
+		});
+		cancelBtn.addEventListener("click", () => cleanup(null));
+		overlay.addEventListener("click", e => { if (e.target == overlay) cleanup(null); });
+
+		updateCopyDisabled();
+	});
+}
+
 function findDuplicates(array) {
 	const seen = new Set();
 	const duplicates = new Set();
