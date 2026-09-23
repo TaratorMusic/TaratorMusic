@@ -3431,7 +3431,14 @@ document.addEventListener("DOMContentLoaded", function () {
 		ipcRenderer.send("download-update");
 	});
 
-	audioPlayer = spawn(path.join(backendFolder, "player"), [], { stdio: ["pipe", "pipe", "pipe"] });
+	const ytdlpName = platform === "win32" ? "yt-dlp.exe" : platform === "darwin" ? "yt-dlp_macos" : "yt-dlp_linux";
+	const ytdlpPath = fs.existsSync(path.join(taratorFolder, "bin", ytdlpName))
+		? path.join(taratorFolder, "bin", ytdlpName)
+		: path.join(backendFolder, ytdlpName);
+	audioPlayer = spawn(path.join(backendFolder, "player"), [], {
+		stdio: ["pipe", "pipe", "pipe"],
+		env: { ...process.env, YTDLP_PATH: ytdlpPath, FFMPEG_PATH: ffmpegPath },
+	});
 	audioPlayer.stderr.on("data", data => {
 		const msg = data.toString().trim();
 		if (msg.includes("Failed") || msg.includes("error") || msg.includes("Error")) {

@@ -423,15 +423,21 @@ void stream_url(const char *url) {
     }
 
     char cmd[2048];
+    /* Prefer explicit tool paths from the environment (set by the renderer for
+       packaged apps), falling back to dev-relative defaults. */
+    const char* yt_dlp = getenv("YTDLP_PATH");
+    const char* ffmpeg = getenv("FFMPEG_PATH");
+    if (yt_dlp && !yt_dlp[0]) yt_dlp = NULL;
+    if (ffmpeg && !ffmpeg[0]) ffmpeg = NULL;
 #ifdef _WIN32
-    const char* yt_dlp = "./bin/yt-dlp.exe";
-    const char* ffmpeg = "./node_modules\\@ffmpeg-installer\\win32-x64\\ffmpeg.exe";
+    if (yt_dlp == NULL) yt_dlp = "./bin/yt-dlp.exe";
+    if (ffmpeg == NULL) ffmpeg = "./node_modules\\@ffmpeg-installer\\win32-x64\\ffmpeg.exe";
 #elif defined(__APPLE__)
-    const char* yt_dlp = "./bin/yt-dlp_macos";
-    const char* ffmpeg = "./node_modules/@ffmpeg-installer/darwin-x64/ffmpeg";
+    if (yt_dlp == NULL) yt_dlp = "./bin/yt-dlp_macos";
+    if (ffmpeg == NULL) ffmpeg = "./node_modules/@ffmpeg-installer/darwin-x64/ffmpeg";
 #else
-    const char* yt_dlp = "./bin/yt-dlp_linux";
-    const char* ffmpeg = "./node_modules/@ffmpeg-installer/linux-x64/ffmpeg";
+    if (yt_dlp == NULL) yt_dlp = "./bin/yt-dlp_linux";
+    if (ffmpeg == NULL) ffmpeg = "./node_modules/@ffmpeg-installer/linux-x64/ffmpeg";
 #endif
 
 #ifdef _WIN32
