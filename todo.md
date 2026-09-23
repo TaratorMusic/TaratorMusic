@@ -1,5 +1,7 @@
 ### Version 1.9.x Planned Features
 
+-   Some titles in the PiP doesnt fit
+
 -   Sidebar revamp
 
 -   add translations to the pip lyrics --> just the current lyric OR all lyrics

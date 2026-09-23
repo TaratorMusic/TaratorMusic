@@ -690,7 +690,8 @@ audio {
 #music-search,
 #musicSearchInputAmount,
 #musicSearchEnterButton,
-#musicSearchRefreshButton {
+#musicSearchRefreshButton,
+#musicSearchHelpButton {
 	padding: 2px 4px;
 	background-color: rgba(0, 0, 0, 0.8);
 	transition: all 0.5s ease-in-out;
@@ -1143,6 +1144,63 @@ input:checked + .slider:before {
 	cursor: pointer;
 }
 
+.help-modal {
+	width: 520px;
+	max-width: 90%;
+	text-align: left;
+}
+
+.help-modal h3 {
+	margin: 0 0 12px;
+	color: #4fc3f7;
+}
+
+.help-modal p {
+	font-size: 14px;
+	line-height: 1.5;
+	margin: 0 0 14px;
+	color: #ededed;
+}
+
+.help-modal-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.help-modal-item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.help-modal-item code {
+	background: rgba(79, 195, 247, 0.15);
+	color: #4fc3f7;
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-size: 13px;
+	width: fit-content;
+}
+
+.help-modal-item span {
+	font-size: 13px;
+	color: #d5d5d5;
+	line-height: 1.4;
+}
+
+.help-modal-close {
+	margin-top: 18px;
+	width: 100%;
+	padding: 10px 0;
+	border: none;
+	border-radius: 6px;
+	background: rgba(255, 255, 255, 0.85);
+	font-size: 15px;
+	cursor: pointer;
+	color: black;
+}
+
 #confirmModalPrimary {
 	background: #e53935;
 	color: #fff !important;
@@ -1432,7 +1490,8 @@ th {
 
 #musicSearchInputAmount,
 #musicSearchEnterButton,
-#musicSearchRefreshButton {
+#musicSearchRefreshButton,
+#musicSearchHelpButton {
 	width: 3.5vh !important;
 	height: 3.5vh !important;
 	font-size: 2.2vh;

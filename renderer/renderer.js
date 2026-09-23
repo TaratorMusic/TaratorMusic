@@ -525,7 +525,13 @@ async function myMusicOnClick() {
 		renderMusics();
 	});
 
-	const tooltipElements = [musicSearchInput, musicSearchInputAmount, musicSearchEnterButton, musicSearchRefreshButton];
+	const musicSearchHelpButton = document.createElement("button");
+	musicSearchHelpButton.dataset.tooltip = "Search help";
+	musicSearchHelpButton.id = "musicSearchHelpButton";
+	musicSearchHelpButton.innerText = "?";
+	musicSearchHelpButton.addEventListener("click", showSearchHelpModal);
+
+	const tooltipElements = [musicSearchInput, musicSearchInputAmount, musicSearchEnterButton, musicSearchRefreshButton, musicSearchHelpButton];
 
 	tooltipElements.forEach(el => {
 		let timeoutId;
@@ -636,6 +642,7 @@ async function myMusicOnClick() {
 	musicSearchParts.appendChild(musicSearchInputAmount);
 	musicSearchParts.appendChild(musicSearchEnterButton);
 	musicSearchParts.appendChild(musicSearchRefreshButton);
+	musicSearchParts.appendChild(musicSearchHelpButton);
 	controlsBar.appendChild(musicSearchParts);
 	controlsBar.appendChild(musicModeSelect);
 	controlsBar.appendChild(buttonContainer);
@@ -660,6 +667,7 @@ function changeSearchBar() {
 	const musicSearchInputAmount = document.getElementById("musicSearchInputAmount");
 	const musicSearchEnterButton = document.getElementById("musicSearchEnterButton");
 	const musicSearchRefreshButton = document.getElementById("musicSearchRefreshButton");
+	const musicSearchHelpButton = document.getElementById("musicSearchHelpButton");
 	document.getElementById("music-search").value = "";
 
 	if (musicMode == "offline") {
@@ -674,6 +682,10 @@ function changeSearchBar() {
 		musicSearchRefreshButton.disabled = true;
 		musicSearchRefreshButton.style.cursor = "not-allowed";
 		musicSearchRefreshButton.style.backgroundColor = "rgba(80,80,80,0.95)";
+
+		musicSearchHelpButton.disabled = false;
+		musicSearchHelpButton.style.cursor = "pointer";
+		musicSearchHelpButton.style.backgroundColor = "rgba(0,0,0,0.8)";
 	} else {
 		musicSearchInputAmount.disabled = false;
 		musicSearchInputAmount.style.cursor = "unset";
@@ -686,6 +698,10 @@ function changeSearchBar() {
 		musicSearchRefreshButton.disabled = false;
 		musicSearchRefreshButton.style.cursor = "pointer";
 		musicSearchRefreshButton.style.backgroundColor = "rgba(0,0,0,0.8)";
+
+		musicSearchHelpButton.disabled = true;
+		musicSearchHelpButton.style.cursor = "not-allowed";
+		musicSearchHelpButton.style.backgroundColor = "rgba(80,80,80,0.95)";
 	}
 }
 
@@ -793,17 +809,32 @@ async function searchYoutubeInMusics() {
 
 function filterSongs(searchValue) {
 	const songs = Array.from(songNameCache.entries())
-		.map(([song_id, data]) => ({
-			id: song_id,
-			name: `${song_id}.${data.song_extension}`,
-			thumbnail: `file://${song_id}.${data.thumbnail_extension}`,
-			length: data.song_length || 0,
-			song_name: data.song_name,
-			artist: data.artist,
-			genre: data.genre,
-			language: data.language,
-			thumbnail_extension: data.thumbnail_extension,
-		}))
+		.map(([song_id, data]) => {
+			const lyricEntries = songLyricsCache.get(song_id) || [];
+			const original = lyricEntries.find(e => !e.language);
+			const translations = lyricEntries.filter(e => e.language);
+			const lyricsText = original?.lyrics || "";
+			const translationText = translations.map(e => e.lyrics || "").join("\n");
+
+			return {
+				id: song_id,
+				name: `${song_id}.${data.song_extension}`,
+				thumbnail: `file://${song_id}.${data.thumbnail_extension}`,
+				length: data.song_length || 0,
+				song_name: data.song_name,
+				artist: data.artist,
+				genre: data.genre,
+				language: data.language,
+				thumbnail_extension: data.thumbnail_extension,
+				stabilised: data.stabilised == 1,
+				interested: !Array.isArray(notInterestedSongs) || !notInterestedSongs.some(ni => ni.song_id == song_id),
+				hasLyrics: !!lyricsText.trim(),
+				hasTimestampedLyrics: !!(original?.synced_lyrics || "").trim(),
+				hasTranslations: translations.length > 0,
+				lyricsText,
+				translationText,
+			};
+		})
 		.sort((a, b) => normalizeText(a.song_name).localeCompare(normalizeText(b.song_name)));
 
 	if (!searchValue) return songs;
@@ -842,13 +873,34 @@ function filterSongs(searchValue) {
 		return tokens;
 	};
 
+	const ensureFlag = value => {
+		if (value == "yes" || value == "true" || value == "1") return true;
+		if (value == "no" || value == "false" || value == "0") return false;
+		return null;
+	};
+
 	const matchSong = (song, tokens) => {
-		const fields = [song.song_name, song.artist, song.genre, song.language, song.id?.toString()];
+		const coreFields = [song.song_name, song.artist, song.genre, song.language, song.id?.toString()];
+		const searchFields = [...coreFields, song.lyricsText, song.translationText];
+
+		const matchField = (field, value) => {
+			const flag = ensureFlag(value);
+			if (field == "interested") return flag != null ? (flag ? song.interested : !song.interested) : false;
+			if (field == "stabilised") return flag != null ? (flag ? song.stabilised : !song.stabilised) : false;
+			if (field == "lyrics") return flag != null ? (flag ? song.hasLyrics : !song.hasLyrics) : false;
+			if (field == "timestamped") return flag != null ? (flag ? song.hasTimestampedLyrics : !song.hasTimestampedLyrics) : false;
+			if (field == "translations") return flag != null ? (flag ? song.hasTranslations : !song.hasTranslations) : false;
+			return false;
+		};
 
 		const matchTerm = (term, exact) => {
-			if (term == " ") return fields.some(f => !f || String(f).trim() == "");
+			if (term == " ") return coreFields.some(f => !f || String(f).trim() == "");
+
+			const fieldMatch = term.match(/^([a-z]+):(.+)$/i);
+			if (fieldMatch) return matchField(fieldMatch[1].toLowerCase(), fieldMatch[2].trim());
+
 			const normalizedTerm = normalizeText(term);
-			return fields.some(f => {
+			return searchFields.some(f => {
 				if (!f) return false;
 				const v = normalizeText(f);
 				return exact ? v == normalizedTerm : v.includes(normalizedTerm);
@@ -909,6 +961,69 @@ function filterSongs(searchValue) {
 	};
 
 	return songs.filter(song => matchSong(song, tokenize(searchValue)));
+}
+
+function showSearchHelpModal() {
+	const overlay = document.createElement("div");
+	overlay.className = "confirm-modal-overlay";
+	overlay._comparisonCleanup = () => overlay.remove();
+
+	const modal = document.createElement("div");
+	modal.className = "confirm-modal help-modal";
+
+	const title = document.createElement("h3");
+	title.textContent = "My Music Search Tips";
+	modal.appendChild(title);
+
+	const intro = document.createElement("p");
+	intro.textContent = "These work in Offline Mode. Searches check the song name, artist, genre, language, song id, lyrics and lyric translations. Matching ignores case and accents (umlaut A = A).";
+	modal.appendChild(intro);
+
+	const list = document.createElement("div");
+	list.className = "help-modal-list";
+
+	const items = [
+		{ cmd: '"exact name"', desc: "Exact match: the whole field must equal the text inside the quotes." },
+		{ cmd: "word1 word2", desc: "Terms separated by a space are ANDed together." },
+		{ cmd: "word1 && word2  /  word1 + word2", desc: "AND: both terms must match, in any of the searched fields." },
+		{ cmd: "word1 || word2  /  word1, word2", desc: "OR: at least one of the terms must match." },
+		{ cmd: "!word", desc: "NOT: excludes songs containing this term." },
+		{ cmd: '" "', desc: "A space inside quotes matches songs that have an empty field (missing artist, genre or language)." },
+		{ cmd: "interested:yes  /  interested:no", desc: "Songs you are interested in, or marked as not interested." },
+		{ cmd: "stabilised:yes  /  stabilised:no", desc: "Songs whose volume has been stabilised, or not." },
+		{ cmd: "lyrics:yes  /  lyrics:no", desc: "Songs that have lyrics saved, or do not have lyrics." },
+		{ cmd: "timestamped:yes  /  timestamped:no", desc: "Songs that have timestamped (synced) lyrics, or not." },
+		{ cmd: "translations:yes  /  translations:no", desc: "Songs that have at least one lyric translation, or none." },
+		{ cmd: "lyric words...", desc: "Plain terms also match lyric text and lyric translations." },
+	];
+
+	for (const item of items) {
+		const row = document.createElement("div");
+		row.className = "help-modal-item";
+
+		const code = document.createElement("code");
+		code.textContent = item.cmd;
+
+		const desc = document.createElement("span");
+		desc.textContent = item.desc;
+
+		row.appendChild(code);
+		row.appendChild(desc);
+		list.appendChild(row);
+	}
+
+	modal.appendChild(list);
+
+	const closeBtn = document.createElement("button");
+	closeBtn.className = "help-modal-close";
+	closeBtn.textContent = "Close";
+	closeBtn.addEventListener("click", () => overlay.remove());
+	modal.appendChild(closeBtn);
+
+	overlay.appendChild(modal);
+	document.body.appendChild(overlay);
+
+	overlay.addEventListener("click", e => { if (e.target == overlay) overlay.remove(); });
 }
 
 function renderMusics(skipScrollSave = false) {
