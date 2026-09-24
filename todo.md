@@ -1,6 +1,11 @@
 ### Version 1.9.x Planned Features
 
 -   Sidebar revamp
+-   Linetime aligner downloaders needs to be worked on. you should be able to see the sizes of what you are downloadng and you need to be able to queue them. And i think Not installed doesnt turn to Installed without restart. it shouldnt let you pick GPU or pick a model if its not installed.
+
+-   Add proper switchable tabs to the settings.
+-   Make ytdlp installable later like Linetime. Dont make it installed on launch.
+-   If Linetime is not installed, dont warn on launch, warn on trying to use it
 
 -   add translations to the pip lyrics --> just the current lyric OR all lyrics
 -   Add volume bar that expands upwards to PiP

@@ -254,13 +254,16 @@ function refreshLinetimeStatus() {
 	const modelPath = path.join(modelsDir, "mms_multilingual.onnx");
 	const dataPath = path.join(modelsDir, "mms_multilingual.onnx.data");
 	const tokenizerPath = path.join(modelsDir, "mms_multilingual_tokenizer.json");
+	const whisperPath = path.join(modelsDir, "ggml-large-v3.bin");
 
 	const binEl = document.getElementById("linetimeBinaryStatus");
 	const modelEl = document.getElementById("linetimeModelStatus");
 	const tokEl = document.getElementById("linetimeTokenizerStatus");
+	const whisperEl = document.getElementById("linetimeWhisperStatus");
 	const binBtn = document.getElementById("linetimeBinaryBtn");
 	const modelBtn = document.getElementById("linetimeModelBtn");
 	const tokBtn = document.getElementById("linetimeTokenizerBtn");
+	const whisperBtn = document.getElementById("linetimeWhisperBtn");
 
 	// Binary
 	if (fs.existsSync(binaryPath)) {
@@ -305,6 +308,24 @@ function refreshLinetimeStatus() {
 		tokEl.innerText = "Not installed";
 		tokEl.style.color = "red";
 		tokBtn.style.display = "";
+	}
+
+	// Whisper model
+	if (fs.existsSync(whisperPath)) {
+		try {
+			const sizeMB = Math.round(fs.statSync(whisperPath).size / 1048576);
+			whisperEl.innerText = `Installed (${sizeMB} MB)`;
+			whisperEl.style.color = "lime";
+			whisperBtn.style.display = "none";
+		} catch (e) {
+			whisperEl.innerText = "Installed";
+			whisperEl.style.color = "lime";
+			whisperBtn.style.display = "none";
+		}
+	} else {
+		whisperEl.innerText = "Not installed";
+		whisperEl.style.color = "red";
+		whisperBtn.style.display = "";
 	}
 }
 
@@ -368,24 +389,33 @@ async function downloadLinetimeComponent(component) {
 
 	const gpuSelect = document.getElementById("linetimeGpuSelect");
 	const modelSelect = document.getElementById("linetimeModelSelect");
+	const whisperSelect = document.getElementById("linetimeWhisperSelect");
 	const useGPU = gpuSelect.value === "gpu";
 	const modelType = modelSelect.value;
+	const whisperType = whisperSelect ? whisperSelect.value : "whisper";
 
 	const args = ["--force"];
 	if (useGPU) args.push("--gpu");
-	if (modelType === "fast") args.push("--model-fast");
-	else args.push("--model-standard");
 
 	// Skip everything except the requested component
 	if (component === "binary") {
 		args.push("--skip-model");
 		args.push("--skip-tokenizer");
+		args.push("--skip-whisper");
 	} else if (component === "model") {
 		args.push("--skip-binary");
 		args.push("--skip-tokenizer");
+		args.push("--skip-whisper");
+		args.push("--model-" + modelType);
 	} else if (component === "tokenizer") {
 		args.push("--skip-binary");
 		args.push("--skip-model");
+		args.push("--skip-whisper");
+	} else if (component === "whisper") {
+		args.push("--skip-binary");
+		args.push("--skip-model");
+		args.push("--skip-tokenizer");
+		args.push("--model-" + whisperType);
 	}
 
 	progressContainer.style.display = "block";
@@ -396,9 +426,11 @@ async function downloadLinetimeComponent(component) {
 	const binBtn = document.getElementById("linetimeBinaryBtn");
 	const modelBtn = document.getElementById("linetimeModelBtn");
 	const tokBtn = document.getElementById("linetimeTokenizerBtn");
+	const whisperBtn = document.getElementById("linetimeWhisperBtn");
 	binBtn.disabled = true;
 	modelBtn.disabled = true;
 	tokBtn.disabled = true;
+	if (whisperBtn) whisperBtn.disabled = true;
 
 	try {
 		const bin = path.join(backendFolder, process.platform === "win32" ? "linetime_fetch.exe" : "linetime_fetch");
@@ -427,6 +459,9 @@ async function downloadLinetimeComponent(component) {
 				} else if (msg.includes("Downloading tokenizer")) {
 					progressText.textContent = "Downloading tokenizer...";
 					progressBar.style.width = "30%";
+				} else if (msg.includes("Downloading Whisper large-v3 model")) {
+					progressText.textContent = "Downloading Whisper model (~" + msg.match(/~(\d+\.?\d*)MB/) + ")...";
+					progressBar.style.width = "30%";
 				} else if (msg.includes("Extracting")) {
 					progressText.textContent = "Extracting...";
 					progressBar.style.width = "90%";
@@ -452,7 +487,12 @@ async function downloadLinetimeComponent(component) {
 
 		const gpuLabel = useGPU ? "GPU (CUDA)" : "CPU";
 		const modelLabel = modelType === "fast" ? "Fast (UINT8)" : "Standard (FP32)";
-		linetimeVersion = `${modelLabel} - ${gpuLabel}`;
+		let versionParts = [`${modelLabel} - ${gpuLabel}`];
+		if (component === "whisper") {
+			const whisperLabels = { "whisper": "fp16", "whisper-q4": "q4_0", "whisper-q5": "q5_0", "whisper-q8": "q8_0" };
+			versionParts.push("Whisper: " + (whisperLabels[whisperType] || whisperType));
+		}
+		linetimeVersion = versionParts.join(" | ");
 		await callSqlite({
 			db: "settings",
 			query: "UPDATE statistics SET linetime_version = ?",
@@ -470,6 +510,7 @@ async function downloadLinetimeComponent(component) {
 	binBtn.disabled = false;
 	modelBtn.disabled = false;
 	tokBtn.disabled = false;
+	if (whisperBtn) whisperBtn.disabled = false;
 	setTimeout(() => {
 		progressContainer.style.display = "none";
 	}, 3000);

@@ -10,13 +10,15 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 const (
-	githubAPI   = "https://api.github.com/repos/Victiniiiii/Linetime/releases/latest"
-	binDir      = "bin"
-	modelsDir   = "bin/sounddetect_models"
-	huggingFace = "https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main"
+	githubAPI      = "https://api.github.com/repos/Victiniiiii/Linetime/releases/latest"
+	binDir         = "bin"
+	modelsDir      = "bin/sounddetect_models"
+	huggingFace    = "https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main"
+	whisperHF      = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
 )
 
 type GitHubRelease struct {
@@ -301,9 +303,67 @@ func downloadModel(modelType string, force bool, downloadTokenizer bool) error {
 		return downloadModelFP32(force)
 	case "fast":
 		return downloadModelUINT8(force)
+	case "whisper":
+		return downloadWhisperModel("standard", force)
+	case "whisper-q4":
+		return downloadWhisperModel("q4", force)
+	case "whisper-q5":
+		return downloadWhisperModel("q5", force)
+	case "whisper-q8":
+		return downloadWhisperModel("q8", force)
 	default:
-		return fmt.Errorf("unknown model type: %s (expected 'standard' or 'fast')", modelType)
+		return fmt.Errorf("unknown model type: %s (expected 'standard', 'fast', 'whisper', 'whisper-q4', 'whisper-q5', 'whisper-q8')", modelType)
 	}
+}
+
+func downloadWhisperModel(quant string, force bool) error {
+	var modelName, modelURL string
+	var expectedSize int64
+
+	switch quant {
+	case "standard":
+		modelName = "ggml-large-v3.bin"
+		modelURL = whisperHF + "/ggml-large-v3.bin"
+		expectedSize = 3095033483
+	case "q4":
+		modelName = "ggml-large-v3-q4_0.bin"
+		modelURL = whisperHF + "/ggml-large-v3-q4_0.bin"
+		expectedSize = 1900000000
+	case "q5":
+		modelName = "ggml-large-v3-q5_0.bin"
+		modelURL = whisperHF + "/ggml-large-v3-q5_0.bin"
+		expectedSize = 2100000000
+	case "q8":
+		modelName = "ggml-large-v3-q8_0.bin"
+		modelURL = whisperHF + "/ggml-large-v3-q8_0.bin"
+		expectedSize = 2600000000
+	default:
+		return fmt.Errorf("unknown whisper quantization: %s", quant)
+	}
+
+	modelPath := filepath.Join(modelsDir, modelName)
+
+	if !force {
+		if info, err := os.Stat(modelPath); err == nil {
+			if info.Size() >= expectedSize*9/10 {
+				fmt.Printf("Whisper model (%s, ~%.0fMB) already exists, skipping\n", quant, float64(expectedSize)/1048576)
+				return nil
+			}
+		}
+	}
+
+	fmt.Printf("Downloading Whisper large-v3 model (%s, ~%.0fMB)...\n", quant, float64(expectedSize)/1048576)
+
+	if err := downloadFile(modelURL, modelPath); err != nil {
+		return fmt.Errorf("error downloading whisper model: %v", err)
+	}
+
+	if info, err := os.Stat(modelPath); err == nil && info.Size() < expectedSize*8/10 {
+		return fmt.Errorf("downloaded model seems incomplete (%d bytes, expected ~%d)", info.Size(), expectedSize)
+	}
+
+	fmt.Printf("Whisper model (%s) downloaded successfully\n", quant)
+	return nil
 }
 
 func downloadModelFP32(force bool) error {
@@ -405,6 +465,7 @@ func main() {
 	skipBinary := false
 	skipModel := false
 	skipTokenizer := false
+	skipWhisper := false
 
 	for _, arg := range os.Args[1:] {
 		switch {
@@ -416,29 +477,43 @@ func main() {
 			modelType = "standard"
 		case arg == "--model-fast":
 			modelType = "fast"
+		case arg == "--model-whisper":
+			modelType = "whisper"
+		case arg == "--model-whisper-q4":
+			modelType = "whisper-q4"
+		case arg == "--model-whisper-q5":
+			modelType = "whisper-q5"
+		case arg == "--model-whisper-q8":
+			modelType = "whisper-q8"
 		case arg == "--skip-binary":
 			skipBinary = true
 		case arg == "--skip-model":
 			skipModel = true
 		case arg == "--skip-tokenizer":
 			skipTokenizer = true
+		case arg == "--skip-whisper":
+			skipWhisper = true
 		case arg == "--help" || arg == "-h":
-			fmt.Println("Linetime fetcher - downloads Linetime binary and CTC alignment model")
+			fmt.Println("Linetime fetcher - downloads Linetime binary, CTC alignment model, and Whisper model")
 			fmt.Println()
 			fmt.Println("Usage: linetime_fetch [options]")
 			fmt.Println()
 			fmt.Println("Options:")
-			fmt.Println("  --force           Re-download even if files exist")
-			fmt.Println("  --gpu             Download GPU variant (requires NVIDIA CUDA 12)")
-			fmt.Println("  --model-standard  Download standard FP32 model (~1.2GB, default)")
-			fmt.Println("  --model-fast      Download fast UINT8 model (~303MB)")
-			fmt.Println("  --skip-binary     Skip binary download")
-			fmt.Println("  --skip-model      Skip model download")
-			fmt.Println("  --skip-tokenizer  Skip tokenizer download")
-			fmt.Println("  -h, --help        Show this help")
+			fmt.Println("  --force              Re-download even if files exist")
+			fmt.Println("  --gpu                Download GPU variant (requires NVIDIA CUDA 12)")
+			fmt.Println("  --model-standard     Download standard CTC FP32 model (~1.2GB, default)")
+			fmt.Println("  --model-fast         Download fast CTC UINT8 model (~303MB)")
+			fmt.Println("  --model-whisper      Download Whisper large-v3 fp16 (~3.1GB)")
+			fmt.Println("  --model-whisper-q4   Download Whisper large-v3 q4_0 (~1.9GB)")
+			fmt.Println("  --model-whisper-q5   Download Whisper large-v3 q5_0 (~2.1GB)")
+			fmt.Println("  --model-whisper-q8   Download Whisper large-v3 q8_0 (~2.6GB)")
+			fmt.Println("  --skip-binary        Skip binary download")
+			fmt.Println("  --skip-model         Skip CTC model download")
+			fmt.Println("  --skip-tokenizer     Skip tokenizer download")
+			fmt.Println("  -h, --help           Show this help")
 			fmt.Println()
 			fmt.Println("Environment:")
-			fmt.Println("  GITHUB_TOKEN      GitHub API token (optional, avoids rate limits)")
+			fmt.Println("  GITHUB_TOKEN         GitHub API token (optional, avoids rate limits)")
 			os.Exit(0)
 		}
 	}
@@ -458,7 +533,15 @@ func main() {
 
 	if !skipModel || !skipTokenizer {
 		if err := downloadModel(modelType, force, !skipTokenizer); err != nil {
-			fmt.Fprintf(os.Stderr, "Error downloading model: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error downloading CTC model: %v\n", err)
+			os.Exit(1)
+		}
+		changed = true
+	}
+
+	if !skipWhisper && strings.HasPrefix(modelType, "whisper") {
+		if err := downloadModel(modelType, force, false); err != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading Whisper model: %v\n", err)
 			os.Exit(1)
 		}
 		changed = true

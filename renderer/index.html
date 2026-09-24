@@ -413,6 +413,21 @@
 					<button id="linetimeTokenizerBtn" style="display: none" onclick="downloadLinetimeComponent('tokenizer')">Download</button>
 				</div>
 				<div class="settingsflexrow">
+					<h2>Whisper Model</h2>
+					<h5 id="linetimeWhisperStatus" style="color: gray">Checking...</h5>
+					<button id="linetimeWhisperBtn" style="display: none" onclick="downloadLinetimeComponent('whisper')">Download</button>
+				</div>
+				<div class="settingsflexrow">
+					<h2>Whisper Quant</h2>
+					<select id="linetimeWhisperSelect">
+						<option value="whisper" selected>Standard (fp16, 3.1 GB)</option>
+						<option value="whisper-q4">Fast (q4_0, 1.9 GB)</option>
+						<option value="whisper-q5">Balanced (q5_0, 2.1 GB)</option>
+						<option value="whisper-q8">High Quality (q8_0, 2.6 GB)</option>
+					</select>
+				</div>
+				<h5>Choose Whisper model for Methods B/C (audio-only transcription & hint reconciliation). Standard fp16 is default.</h5>
+				<div class="settingsflexrow">
 					<h2>GPU</h2>
 					<select id="linetimeGpuSelect">
 						<option value="cpu" selected>CPU</option>
