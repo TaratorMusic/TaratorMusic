@@ -68,6 +68,9 @@ var statsColumns = []Column{
 	{Name: "ytdlp_last_update_date", Type: "INTEGER", Default: "(strftime('%s','now'))"},
 	{Name: "ytdlp_version", Type: "TEXT", Default: "''"},
 	{Name: "linetime_version", Type: "TEXT", Default: "''"},
+	{Name: "linetime_selected_whisper", Type: "TEXT", Default: "''"},
+	{Name: "linetime_selected_binary", Type: "TEXT", Default: "''"},
+	{Name: "linetime_selected_model", Type: "TEXT", Default: "''"},
 	{Name: "recommendations_last_refresh", Type: "INTEGER", Default: "0"},
 }
 

@@ -642,6 +642,15 @@ audio {
 	height: 4vh;
 }
 
+#linetimeBinaryTable,
+#linetimeBinaryTable *,
+#linetimeModelTable,
+#linetimeModelTable *,
+#linetimeWhisperTable,
+#linetimeWhisperTable * {
+	height: auto !important;
+}
+
 #settings-content h1 {
 	margin: 5vh 0;
 }

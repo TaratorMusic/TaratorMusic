@@ -13,7 +13,7 @@ function startDaemon() {
 			try {
 				const response = JSON.parse(line.trim());
 				updateDiscordStatus(response.status);
-			} catch (e) {
+			} catch (_e) {
 				logChange("error", `Failed to parse daemon response: ${line}`);
 				updateDiscordStatus("error");
 			}
@@ -70,7 +70,6 @@ function sendCommandToDaemon(command, args = []) {
 		discordDaemon.stdin.write(commandLine);
 	}
 }
-
 function toggleDiscordAPI() {
 	if (discordRPCstatus) {
 		discordRPCstatus = false;

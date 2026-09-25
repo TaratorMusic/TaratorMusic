@@ -14,7 +14,8 @@
 		"testdist": "npx electron-builder --dir",
 		"gobuild": "node compiler.js gobuild",
 		"cbuild": "node compiler.js cbuild",
-		"ytdlp_fetch": "node compiler.js ytdlp_fetch"
+		"ytdlp_fetch": "node compiler.js ytdlp_fetch",
+		"lint": "oxlint index.js compiler.js renderer/"
 	},
 	"repository": {
 		"type": "git",
@@ -103,6 +104,7 @@
 	},
 	"devDependencies": {
 		"electron": "^40.7.0",
-		"electron-builder": "^26.8.1"
+		"electron-builder": "^26.8.1",
+		"oxlint": "^1.85.0"
 	}
 }

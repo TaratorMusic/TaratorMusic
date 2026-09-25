@@ -397,59 +397,9 @@
 				</div>
 				<h5>Controls how much detail is logged to the database and console.</h5>
 				<h1 class="underline-text">Linetime Aligner</h1>
-				<div class="settingsflexrow">
-					<h2>Binary</h2>
-					<h5 id="linetimeBinaryStatus" style="color: gray">Checking...</h5>
-					<button id="linetimeBinaryBtn" style="display: none" onclick="downloadLinetimeComponent('binary')">Download</button>
-				</div>
-				<div class="settingsflexrow">
-					<h2>Model</h2>
-					<h5 id="linetimeModelStatus" style="color: gray">Checking...</h5>
-					<button id="linetimeModelBtn" style="display: none" onclick="downloadLinetimeComponent('model')">Download</button>
-				</div>
-				<div class="settingsflexrow">
-					<h2>Tokenizer</h2>
-					<h5 id="linetimeTokenizerStatus" style="color: gray">Checking...</h5>
-					<button id="linetimeTokenizerBtn" style="display: none" onclick="downloadLinetimeComponent('tokenizer')">Download</button>
-				</div>
-				<div class="settingsflexrow">
-					<h2>Whisper Model</h2>
-					<h5 id="linetimeWhisperStatus" style="color: gray">Checking...</h5>
-					<button id="linetimeWhisperBtn" style="display: none" onclick="downloadLinetimeComponent('whisper')">Download</button>
-				</div>
-				<div class="settingsflexrow">
-					<h2>Whisper Quant</h2>
-					<select id="linetimeWhisperSelect">
-						<option value="whisper" selected>Standard (fp16, 3.1 GB)</option>
-						<option value="whisper-q4">Fast (q4_0, 1.9 GB)</option>
-						<option value="whisper-q5">Balanced (q5_0, 2.1 GB)</option>
-						<option value="whisper-q8">High Quality (q8_0, 2.6 GB)</option>
-					</select>
-				</div>
-				<h5>Choose Whisper model for Methods B/C (audio-only transcription & hint reconciliation). Standard fp16 is default.</h5>
-				<div class="settingsflexrow">
-					<h2>GPU</h2>
-					<select id="linetimeGpuSelect">
-						<option value="cpu" selected>CPU</option>
-						<option value="gpu">GPU (NVIDIA CUDA 12)</option>
-					</select>
-				</div>
-				<h5>Select GPU acceleration. GPU requires an NVIDIA GPU with CUDA 12 installed.</h5>
-				<div class="settingsflexrow">
-					<h2>Model Size</h2>
-					<select id="linetimeModelSelect">
-						<option value="standard" selected>Standard (1.2 GB, FP32)</option>
-						<option value="fast">Fast (303 MB, UINT8)</option>
-					</select>
-				</div>
-				<h5>Choose which model to download. Fast is 75% smaller with negligible accuracy loss.</h5>
-				<div id="linetimeProgressContainer" style="display: none; margin-top: 5px">
-					<div style="background: rgba(255, 255, 255, 0.1); border-radius: 4px; height: 6px; width: 300px">
-						<div id="linetimeProgressBar" style="background: lime; height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s"></div>
-					</div>
-					<h5 id="linetimeProgressText" style="margin-top: 3px">Downloading...</h5>
-				</div>
-				<h5 id="linetimeLastUpdateText">Select GPU and Model Size, then click Download on any missing component.</h5>
+				<div id="linetimeBinaryTable" style="margin-top: 8px; font-size: 13px;"></div>
+				<div id="linetimeModelTable" style="margin-top: 8px; font-size: 13px;"></div>
+				<div id="linetimeWhisperTable" style="margin-top: 8px; font-size: 13px;"></div>
 				<h1 class="underline-text">Picture In Picture</h1>
 				<div class="settingsflexrow">
 					<h2>Picture In Picture Mode</h2>
@@ -541,10 +491,10 @@
 		<script src="helpers.js"></script>
 		<script src="playlists.js"></script>
 		<script src="discord.js"></script>
-		<script src="renderer.js"></script>
-		<script src="lyrics_fetch.js"></script>
-		<script src="scan_songs.js"></script>
 		<script src="run_spawn_processes.js"></script>
+		<script src="lyrics_fetch.js"></script>
+		<script src="renderer.js"></script>
+		<script src="scan_songs.js"></script>
 		<script src="recommendations.js"></script>
 		<script src="timestamps_generate.js"></script>
 	</body>

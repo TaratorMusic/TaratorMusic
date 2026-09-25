@@ -1,16 +1,33 @@
 const os = require("os");
 
 function getSoundDetectBinary() {
-	const name = process.platform === "win32" ? "sounddetect.exe" : "sounddetect";
-	return path.join(backendFolder, name);
+	const effective = getEffectiveLinetimeSelection();
+	return getLinetimeBinaryPath(effective.binary);
+}
+
+function getSoundDetectLibDir() {
+	const effective = getEffectiveLinetimeSelection();
+	const v = LINETIME_BINARY_VARIANTS.find(x => x.id === effective.binary);
+	if (!v) return path.join(getLinetimeFolder(), "lib");
+	return path.join(getLinetimeFolder(), v.libDir);
 }
 
 function getSoundDetectModels() {
-	return path.join(backendFolder, "sounddetect_models");
+	return path.join(getLinetimeFolder(), "sounddetect_models");
+}
+
+function getLinetimeFfmpegPath() {
+	const ext = process.platform === "win32" ? ".exe" : "";
+	return path.join(getLinetimeFolder(), "ffmpeg" + ext);
+}
+
+function getLinetimeWhisperCliPath() {
+	const ext = process.platform === "win32" ? ".exe" : "";
+	return path.join(getLinetimeFolder(), "whisper-cli" + ext);
 }
 
 function convertToWav16k(inputPath, outputPath) {
-	const ffmpegBin = require("@ffmpeg-installer/ffmpeg").path;
+	const ffmpegBin = getLinetimeFfmpegPath();
 
 	return new Promise((resolve, reject) => {
 		const proc = spawn(ffmpegBin, [
@@ -38,7 +55,7 @@ async function runSoundDetect(args, env) {
 	await new Promise((resolve, reject) => {
 		const proc = spawn(binaryPath, args, {
 			windowsHide: true,
-			cwd: backendFolder,
+			cwd: getLinetimeFolder(),
 			env: env,
 		});
 
@@ -66,21 +83,27 @@ async function generateTimestampsForCurrentSong() {
 	const originalRow = cachedRows.find(r => !r.language);
 	const plainLyrics = originalRow && originalRow.lyrics ? originalRow.lyrics.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim() : "";
 
+	const effective = getEffectiveLinetimeSelection();
 	const binaryPath = getSoundDetectBinary();
 	if (!fs.existsSync(binaryPath)) {
 		return await alertModal("Linetime is not installed. Go to Settings > Linetime Aligner to download it.");
 	}
 
-	const modelsDir = getSoundDetectModels();
-	const modelPath = path.join(modelsDir, "mms_multilingual.onnx");
-	const tokenizerPath = path.join(modelsDir, "mms_multilingual_tokenizer.json");
-	const whisperPath = path.join(modelsDir, "ggml-large-v3.bin");
-
-	if (!fs.existsSync(modelPath)) {
+	const modelPath = getLinetimeModelPath(effective.model);
+	if (!isLinetimeModelInstalled(effective.model)) {
 		return await alertModal("Alignment model not found. Go to Settings > Linetime Aligner to download it.");
 	}
 
-	const methodChoice = await showMethodSelectionModal(plainLyrics, fs.existsSync(whisperPath));
+	const tokenizerPath = getLinetimeModelDataPath(effective.model).replace("mms_multilingual_standard.onnx.data", "mms_multilingual_tokenizer.json");
+	if (!fs.existsSync(tokenizerPath)) {
+		return await alertModal("Tokenizer not found. Go to Settings > Linetime Aligner to download it.");
+	}
+
+	const whisperPath = effective.whisper ? getLinetimeWhisperPath(effective.whisper) : null;
+	const whisperCliPath = getLinetimeWhisperCliPath();
+	const ffmpegPath = getLinetimeFfmpegPath();
+
+	const methodChoice = await showMethodSelectionModal(plainLyrics, !!whisperPath);
 	if (!methodChoice) return;
 
 	const { method, language } = methodChoice;
@@ -96,7 +119,7 @@ async function generateTimestampsForCurrentSong() {
 	const lyricsTmpPath = path.join(tmpDir, "sd_lyrics_" + tmpId + ".txt");
 	const outputLrcPath = path.join(tmpDir, "sd_output_" + tmpId + ".lrc");
 
-	const libDir = path.join(path.dirname(binaryPath), "lib");
+	const libDir = getSoundDetectLibDir();
 	const env = Object.assign({}, process.env);
 	if (process.platform !== "win32") {
 		env.LD_LIBRARY_PATH = libDir + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
@@ -112,18 +135,24 @@ async function generateTimestampsForCurrentSong() {
 		const args = [wavPath];
 		if (method !== "b") args.push(lyricsTmpPath);
 		args.push("--method", method);
-		if (method === "c") {
-			if (!fs.existsSync(whisperPath)) {
-				return await alertModal("Whisper model not found for Method C. Download it in Settings > Linetime Aligner.");
+		if (method === "b" || method === "c") {
+			if (!whisperPath || !fs.existsSync(whisperPath)) {
+				return await alertModal(`Whisper model not found for Method ${method.toUpperCase()}. Download it in Settings > Linetime Aligner.`);
+			}
+			if (!fs.existsSync(whisperCliPath)) {
+				return await alertModal("Whisper CLI not found. Go to Settings > Linetime Aligner to reinstall Linetime.");
 			}
 			args.push("--model-c", whisperPath);
+			args.push("--whisper-cli", whisperCliPath);
 		}
 		if (method === "a" || method === "c") {
 			args.push("--model-a", modelPath);
 			args.push("--tokenizer", tokenizerPath);
 		}
 		if (language) args.push("--language", language);
-		args.push("--gpu", "-o", outputLrcPath);
+		args.push("--ffmpeg", ffmpegPath);
+		const prov = effective.binary === "gpu" ? "cuda" : "cpu";
+		args.push("--provider", prov, "-o", outputLrcPath);
 
 		await runSoundDetect(args, env);
 
@@ -223,8 +252,10 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel) {
 				name: "Auto-generate (no lyrics needed)", 
 				desc: "Transcribes the audio from scratch using AI. Use when you don't have lyrics. Needs Whisper model (~3GB).", 
 				needsLang: true,
-				disabledReason: hasWhisperModel ? null : "Download Whisper model in Settings > Linetime Aligner",
-				available: hasWhisperModel 
+				disabledReason: hasLyrics 
+					? "Method B is only available when no lyrics exist. Use Method C to fix existing lyrics."
+					: (hasWhisperModel ? null : "Download Whisper model in Settings > Linetime Aligner"),
+				available: !hasLyrics && hasWhisperModel 
 			},
 			{ 
 				id: "c", 

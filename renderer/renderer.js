@@ -5,6 +5,7 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
+let processFolder, appFilesFolder;
 let recommendationsCache = localStorage.getItem("recommendationsCache") || null;
 
 const sqlitePending = {};
@@ -12,7 +13,7 @@ let sqliteCounter = 0;
 let sqliteBuffer = "";
 let sqliteBinary;
 
-(async () => {
+let pathsReady = (async () => {
 	taratorFolder = await ipcRenderer.invoke("get-app-base-path");
 	processFolder = await ipcRenderer.invoke("get-app-process-path");
 	appFilesFolder = await ipcRenderer.invoke("get-app-path");
@@ -28,6 +29,7 @@ let sqliteBinary;
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
 	if (!fs.existsSync(path.join(taratorFolder, "bin"))) fs.mkdirSync(path.join(taratorFolder, "bin"));
+	if (!fs.existsSync(path.join(taratorFolder, "linetime"))) fs.mkdirSync(path.join(taratorFolder, "linetime"));
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");
@@ -127,16 +129,27 @@ let randomFactor;
 let ytdlpLastUpdateDate;
 let ytdlpVersion;
 let linetimeVersion;
+let linetimeSelectedWhisper;
+let linetimeSelectedBinary;
+let linetimeSelectedModel;
 let lastPipLyricsSongId = "";
 
 const LOG_LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 const LOG_LEVEL = LOG_LEVELS[localStorage.getItem("logLevel") || "info"] ?? LOG_LEVELS.info;
 
 function callSqlite({ db, query, args = [], fetch = false }) {
+	if (!sqliteBinary || sqliteBinary.killed) {
+		return Promise.reject(new Error("sqlite binary not available"));
+	}
 	return new Promise((resolve, reject) => {
 		const id = String(sqliteCounter++);
 		sqlitePending[id] = res => (res.error ? reject(new Error(res.error)) : resolve(res.rows ?? []));
-		sqliteBinary.stdin.write(JSON.stringify({ id, db, query, args, fetch }) + "\n");
+		sqliteBinary.stdin.write(JSON.stringify({ id, db, query, args, fetch }) + "\n", err => {
+			if (err) {
+				delete sqlitePending[id];
+				reject(err);
+			}
+		});
 	});
 }
 
@@ -185,11 +198,35 @@ async function initialiseDatabases() {
 
 	sqliteBinary.on("error", error => {
 		logChange("error", `failed to start sqlite binary: ${error.message ?? String(error)}`);
+		const err = new Error(`sqlite binary error: ${error.message ?? String(error)}`);
+		for (const id of Object.keys(sqlitePending)) {
+			sqlitePending[id]({ error: err.message });
+			delete sqlitePending[id];
+		}
 	});
 
 	sqliteBinary.on("close", code => {
 		logChange("info", `go process exited with code ${code}`);
+		if (code !== 0) {
+			const err = new Error(`sqlite process exited with code ${code}`);
+			for (const id of Object.keys(sqlitePending)) {
+				sqlitePending[id]({ error: err.message });
+				delete sqlitePending[id];
+			}
+		}
 	});
+
+	// Ensure new linetime columns exist (for migration from older versions)
+	await callSqlite({
+		db: "settings",
+		query: "ALTER TABLE statistics ADD COLUMN linetime_selected_binary TEXT DEFAULT ''",
+		fetch: false,
+	}).catch(() => {});
+	await callSqlite({
+		db: "settings",
+		query: "ALTER TABLE statistics ADD COLUMN linetime_selected_model TEXT DEFAULT ''",
+		fetch: false,
+	}).catch(() => {});
 
 	const settingsRows = await callSqlite({
 		db: "settings",
@@ -274,10 +311,13 @@ async function initialiseDatabases() {
 	artistListenTimeFactor = settingsRow.artistListenTimeFactor;
 	randomFactor = settingsRow.randomFactor;
 
-	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_version FROM statistics LIMIT 1", fetch: true });
+	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_version, linetime_selected_whisper, linetime_selected_binary, linetime_selected_model FROM statistics LIMIT 1", fetch: true });
 	ytdlpLastUpdateDate = statsRows[0]?.ytdlp_last_update_date || 0;
 	ytdlpVersion = statsRows[0]?.ytdlp_version || "";
 	linetimeVersion = statsRows[0]?.linetime_version || "";
+	linetimeSelectedWhisper = statsRows[0]?.linetime_selected_whisper || "";
+	linetimeSelectedBinary = statsRows[0]?.linetime_selected_binary || "";
+	linetimeSelectedModel = statsRows[0]?.linetime_selected_model || "";
 
 	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
 	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
@@ -312,6 +352,7 @@ async function initialiseDatabases() {
 
 	document.getElementById("main-menu").click();
 	ipcRenderer.send("renderer-domready");
+	refreshLinetimeStatus();
 	updateProgressPaused();
 
 	document.getElementById("weight1").value = popularityFactor;
@@ -3287,30 +3328,26 @@ function updateMainLyricsSync(currentTime) {
 	}
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
+	try {
+		await pathsReady;
+	} catch (e) {
+		console.error("Failed to initialize paths:", e);
+		alertModal("Failed to initialize application paths: " + (e.message ?? String(e)));
+		return;
+	}
+
 	document.querySelector("#mainmenulogo").style.backgroundImage = `url("file://${path.join(appThumbnailFolder, "tarator1024_icon.png").replace(/\\/g, "/")}")`;
 
-	initialiseDatabases();
+	try {
+		await initialiseDatabases();
+	} catch (e) {
+		console.error("Database initialization failed:", e);
+		alertModal("Database initialization failed: " + (e.message ?? String(e)));
+		return;
+	}
 
 	if (platform == "linux") loadJSFile("mpris");
-
-	// Check linetime installation on startup
-	setTimeout(() => {
-		const binaryName = process.platform === "win32" ? "sounddetect.exe" : "sounddetect";
-		const binaryPath = path.join(backendFolder, binaryName);
-		const modelsDir = path.join(backendFolder, "sounddetect_models");
-		const modelPath = path.join(modelsDir, "mms_multilingual.onnx");
-		const tokenizerPath = path.join(modelsDir, "mms_multilingual_tokenizer.json");
-
-		const missing = [];
-		if (!fs.existsSync(binaryPath)) missing.push("binary");
-		if (!fs.existsSync(modelPath)) missing.push("model");
-		if (!fs.existsSync(tokenizerPath)) missing.push("tokenizer");
-
-		if (missing.length > 0) {
-			alertModal(`Linetime components missing: ${missing.join(", ")}.\nGo to Settings > Linetime Aligner to download.`);
-		}
-	}, 2000);
 
 	document.querySelectorAll("[data-tooltip]").forEach(el => {
 		el.addEventListener("mouseenter", e => {
