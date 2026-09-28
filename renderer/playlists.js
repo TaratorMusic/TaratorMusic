@@ -258,6 +258,10 @@ function displayPlaylists(playlists) {
 		for (let i = 0; i < playlist.songs.length; i++) {
 			const playlistSong = document.createElement("div");
 			playlistSong.className = "playlist-song";
+			playlistSong.addEventListener("contextmenu", event => {
+				event.preventDefault();
+				showSongContextMenu(event, playlist.songs[i]);
+			});
 
 			playlistSong.addEventListener("click", () => {
 				playPlaylist(playlist.id, i);

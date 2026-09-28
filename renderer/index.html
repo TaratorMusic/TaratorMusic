@@ -65,6 +65,16 @@
 					<div id="speedOptions" class="speed-options"></div>
 				</div>
 			</div>
+			<div id="queueModal" class="modal">
+				<div id="queueModalContent" class="modal-content">
+					<div class="flexrow">
+						<div class="modalTitle">Queue</div>
+						<span class="close" onclick="closeModal()">&times;</span>
+					</div>
+					<button id="queueShuffleButton" onclick="toggleQueueShuffle()">Queue Shuffle: Off</button>
+					<div id="queueList" class="scrollArea"></div>
+				</div>
+			</div>
 
 			<div id="downloadModal" class="modal">
 				<div id="downloadModalContent" class="modal-content">
@@ -481,6 +491,13 @@
 			<span id="video-length">00:00 / 00:00</span>
 			<input type="range" id="volume" min="0" max="100" value="100" />
 			<button id="songSettingsButton" class="audio-button"></button>
+		</div>
+		<button id="queuePreview" onclick="openQueueModal()">
+			<span id="queuePreviewText">Next: None</span>
+			<img src="../assets/next.svg" alt="Open Queue" />
+		</button>
+		<div id="songContextMenu">
+			<div onclick="addContextSongToQueue()">Add to Queue</div>
 		</div>
 		<div id="tooltip"></div>
 		<div id="settingsMenu">
