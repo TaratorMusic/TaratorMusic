@@ -77,6 +77,10 @@ let isInterpolating = false; // If song is playing at the moment
 let playlistIdsForStartup = []; // At app launch, makes all playlist ID's an array to send to startup_check
 let isLoadingRecommendations = false; // If the app is currently loading recommendations (prevents duplication)
 let tickTimer = null;
+let songQueue = [];
+let isQueueShuffleActive = false;
+let contextSongId = null;
+let nextQueueSongIndex = null;
 
 let songNameCache = new Map(); // Song cache
 let playlistsMap = new Map(); // Playlist cache
@@ -1256,6 +1260,10 @@ function createMusicElement(songFile) {
 	musicElement.classList.add("music-item");
 	musicElement.setAttribute("alt", songFile.name);
 	musicElement.setAttribute("data-file-name", songFile.id);
+	musicElement.addEventListener("contextmenu", event => {
+		event.preventDefault();
+		showSongContextMenu(event, songFile.id);
+	});
 
 	const songNameElement = document.createElement("div");
 	let fileNameWithoutExtension;
@@ -1333,6 +1341,68 @@ function getStreamedSongData(songId) {
 		fetch: false,
 	});
 	return data;
+}
+
+function getQueueSongName(songId) {
+	const data = songId.includes("tarator") ? songNameCache.get(songId) : getStreamedSongData(songId);
+	return data?.song_name || songId;
+}
+
+function showSongContextMenu(event, songId) {
+	contextSongId = songId;
+	const menu = document.getElementById("songContextMenu");
+	menu.style.display = "block";
+	menu.style.left = `${Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8)}px`;
+	menu.style.top = `${Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8)}px`;
+}
+
+function addContextSongToQueue() {
+	if (!contextSongId) return;
+	songQueue.push(contextSongId);
+	contextSongId = null;
+	document.getElementById("songContextMenu").style.display = "none";
+	updateQueueDisplay();
+}
+
+function getNextQueuedSongIndex() {
+	if (!isQueueShuffleActive) return 0;
+	if (nextQueueSongIndex == null || nextQueueSongIndex >= songQueue.length) nextQueueSongIndex = Math.floor(Math.random() * songQueue.length);
+	return nextQueueSongIndex;
+}
+
+function updateQueueDisplay() {
+	const preview = document.getElementById("queuePreviewText");
+	const list = document.getElementById("queueList");
+	const nextSong = songQueue.length > 0 ? songQueue[getNextQueuedSongIndex()] : null;
+	preview.textContent = nextSong ? `Next: ${getQueueSongName(nextSong)}` : "Next: None";
+	list.innerHTML = "";
+
+	if (songQueue.length == 0) {
+		const empty = document.createElement("div");
+		empty.className = "queue-empty";
+		empty.textContent = "The queue is empty.";
+		list.appendChild(empty);
+		return;
+	}
+
+	for (const songId of songQueue) {
+		const item = document.createElement("div");
+		item.className = "queue-list-item";
+		item.textContent = getQueueSongName(songId);
+		list.appendChild(item);
+	}
+}
+
+function openQueueModal() {
+	updateQueueDisplay();
+	document.getElementById("queueModal").style.display = "block";
+}
+
+function toggleQueueShuffle() {
+	isQueueShuffleActive = !isQueueShuffleActive;
+	nextQueueSongIndex = null;
+	document.getElementById("queueShuffleButton").textContent = `Queue Shuffle: ${isQueueShuffleActive ? "On" : "Off"}`;
+	updateQueueDisplay();
 }
 
 function playMusic(songId, playlistId) {
@@ -1543,6 +1613,13 @@ async function playPreviousSong() {
 
 async function playNextSong() {
 	if (!playingSongsID) return;
+	if (songQueue.length > 0) {
+		const queueIndex = getNextQueuedSongIndex();
+		const queuedSongId = songQueue.splice(queueIndex, 1)[0];
+		nextQueueSongIndex = null;
+		updateQueueDisplay();
+		return playMusic(queuedSongId, currentPlaylist);
+	}
 	if (isLooping) return playMusic(playingSongsID, null);
 
 	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
@@ -3338,6 +3415,11 @@ document.addEventListener("DOMContentLoaded", async function () {
 	}
 
 	document.querySelector("#mainmenulogo").style.backgroundImage = `url("file://${path.join(appThumbnailFolder, "tarator1024_icon.png").replace(/\\/g, "/")}")`;
+	document.addEventListener("click", event => {
+		const menu = document.getElementById("songContextMenu");
+		if (!menu.contains(event.target)) menu.style.display = "none";
+	});
+	updateQueueDisplay();
 
 	try {
 		await initialiseDatabases();
@@ -3509,7 +3591,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 				}
 			} else if (trimmed == "EV_ENDED") {
 				isInterpolating = false;
-				if (isAutoplayActive) {
+				if (songQueue.length > 0 || isAutoplayActive) {
 					playNextSong();
 				} else {
 					playButton.style.display = "inline-block";

@@ -2652,3 +2652,79 @@ th {
 #mainLyricsContainer .main-lyric-line.past {
 	color: #888;
 }
+
+#queuePreview {
+	position: fixed;
+	right: 1vw;
+	bottom: 8.5vh;
+	max-width: 24vw;
+	height: 34px;
+	padding: 4px 8px 4px 12px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: white;
+	background-color: #333;
+	border: 1px solid white;
+	border-radius: 5px;
+	cursor: pointer;
+	z-index: 99;
+}
+
+#queuePreviewText {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#queuePreview img {
+	width: 22px;
+	height: 22px;
+	flex-shrink: 0;
+}
+
+#songContextMenu {
+	position: fixed;
+	display: none;
+	padding: 6px 10px;
+	color: white;
+	background-color: #333;
+	border: 1px solid white;
+	border-radius: 4px;
+	cursor: pointer;
+	z-index: 200;
+}
+
+#songContextMenu div:hover {
+	filter: brightness(0.7);
+}
+
+#queueModalContent {
+	width: 40vw;
+	height: 60vh;
+	margin: 15vh 0 0 30vw;
+}
+
+#queueModalContent .modalTitle {
+	width: 35vw;
+}
+
+#queueShuffleButton {
+	width: fit-content;
+	margin: 1vh 0;
+	padding: 8px 12px;
+}
+
+#queueList {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	overflow-y: auto;
+}
+
+.queue-list-item,
+.queue-empty {
+	padding: 10px;
+	background-color: #333;
+	border-radius: 4px;
+}
