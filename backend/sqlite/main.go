@@ -7,10 +7,29 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	_ "modernc.org/sqlite"
 )
+
+var validIdentifier = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// preparer is satisfied by both *sql.DB and *sql.Tx.
+type preparer interface {
+	Prepare(query string) (*sql.Stmt, error)
+}
+
+// execPrepared prepares stmt (built from identifiers validated by the caller)
+// and executes it, since SQL identifiers cannot be passed as bind parameters.
+func execPrepared(p preparer, stmt string) (sql.Result, error) {
+	prepared, err := p.Prepare(stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer prepared.Close()
+	return prepared.Exec()
+}
 
 var databasesFolder = os.Args[1]
 var settingsDbPath = filepath.Join(databasesFolder, "settings.db")
@@ -145,8 +164,14 @@ func scanRows(rows *sql.Rows) ([]map[string]interface{}, error) {
 }
 
 func createTable(database *sql.DB, tableName string, columns []Column) error {
+	if !validIdentifier.MatchString(tableName) {
+		return fmt.Errorf("invalid table name: %q", tableName)
+	}
 	defs := []string{}
 	for _, col := range columns {
+		if !validIdentifier.MatchString(col.Name) {
+			return fmt.Errorf("invalid column name: %q", col.Name)
+		}
 		def := col.Name + " " + col.Type
 		if col.Default != "" {
 			def += " DEFAULT " + col.Default
@@ -155,12 +180,26 @@ func createTable(database *sql.DB, tableName string, columns []Column) error {
 	}
 	sqlStmt := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s);",
 		tableName, strings.Join(defs, ", "))
-	_, err := database.Exec(sqlStmt)
+	_, err := execPrepared(database, sqlStmt)
 	return err
 }
 
 func syncTable(database *sql.DB, tableName string, columns []Column) error {
-	rows, err := database.Query(fmt.Sprintf("PRAGMA table_info(%s);", tableName))
+	if !validIdentifier.MatchString(tableName) {
+		return fmt.Errorf("invalid table name: %q", tableName)
+	}
+	for _, col := range columns {
+		if !validIdentifier.MatchString(col.Name) {
+			return fmt.Errorf("invalid column name: %q", col.Name)
+		}
+	}
+
+	pragmaStmt, err := database.Prepare(fmt.Sprintf("PRAGMA table_info(%s);", tableName))
+	if err != nil {
+		return fmt.Errorf("failed to get table info for %q: %w", tableName, err)
+	}
+	defer pragmaStmt.Close()
+	rows, err := pragmaStmt.Query()
 	if err != nil {
 		return fmt.Errorf("failed to get table info for %q: %w", tableName, err)
 	}
@@ -210,7 +249,7 @@ func syncTable(database *sql.DB, tableName string, columns []Column) error {
 		}
 
 		oldTableName := tableName + "_old"
-		if _, err := tx.Exec(fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", tableName, oldTableName)); err != nil {
+		if _, err := execPrepared(tx, fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", tableName, oldTableName)); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -224,7 +263,7 @@ func syncTable(database *sql.DB, tableName string, columns []Column) error {
 			defs = append(defs, def)
 		}
 		sqlStmt := fmt.Sprintf("CREATE TABLE %s (%s);", tableName, strings.Join(defs, ", "))
-		if _, err := tx.Exec(sqlStmt); err != nil {
+		if _, err := execPrepared(tx, sqlStmt); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -239,13 +278,13 @@ func syncTable(database *sql.DB, tableName string, columns []Column) error {
 		if len(commonCols) > 0 {
 			colsStr := strings.Join(commonCols, ", ")
 			copyStmt := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s;", tableName, colsStr, colsStr, oldTableName)
-			if _, err := tx.Exec(copyStmt); err != nil {
+			if _, err := execPrepared(tx, copyStmt); err != nil {
 				tx.Rollback()
 				return err
 			}
 		}
 
-		if _, err := tx.Exec(fmt.Sprintf("DROP TABLE %s;", oldTableName)); err != nil {
+		if _, err := execPrepared(tx, fmt.Sprintf("DROP TABLE %s;", oldTableName)); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -264,7 +303,7 @@ func syncTable(database *sql.DB, tableName string, columns []Column) error {
 		if col.Default != "" {
 			alterStmt += " DEFAULT " + col.Default
 		}
-		if _, err := database.Exec(alterStmt); err != nil {
+		if _, err := execPrepared(database, alterStmt); err != nil {
 			return fmt.Errorf("failed to add column %q to %q: %w", col.Name, tableName, err)
 		}
 	}
