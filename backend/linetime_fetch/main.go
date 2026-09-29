@@ -184,16 +184,20 @@ func extractTarGz(tgzPath, destDir string) error {
 }
 
 type platformConfig struct {
-	assetName    string
-	binaryName   string
-	ffmpegName   string
-	gpuSupported bool
+	assetName      string
+	binaryName     string
+	ffmpegName     string
+	whisperCliName string
+	gpuSupported   bool
 }
 
 func getPlatformConfig(useGPU bool) (platformConfig, error) {
 	var cfg platformConfig
 	cfg.gpuSupported = useGPU && runtime.GOOS == "linux"
 	cfg.ffmpegName = appfiles.LinetimeFfmpegName()
+	// The release archives name this file without a platform suffix on every
+	// platform, unlike the binary and ffmpeg.
+	cfg.whisperCliName = "whisper-cli"
 
 	switch runtime.GOOS {
 	case "linux":
@@ -364,6 +368,30 @@ func downloadBinary(useGPU, force bool) error {
 				return fmt.Errorf("error moving lib to lib_gpu: %v", err)
 			}
 			fmt.Println("GPU libraries extracted to bin/lib_gpu/")
+		}
+
+		// The GPU archive's whisper-cli is the CUDA build. It goes in its own
+		// folder rather than over the CPU one, so the CPU CLI stays usable when
+		// the aligner is switched back. This file used to be left in the staging
+		// directory and deleted with it, which is why whisper kept running on the
+		// CPU even with the GPU aligner selected.
+		srcCli := filepath.Join(stagingDir, cfg.whisperCliName)
+		if _, err := os.Stat(srcCli); err == nil {
+			dstCliFolder := filepath.Join(binDir, appfiles.LinetimeWhisperCliGPUDir)
+			if err := os.MkdirAll(dstCliFolder, 0755); err != nil {
+				return fmt.Errorf("error creating whisper_cli_gpu: %v", err)
+			}
+			dstCli := filepath.Join(dstCliFolder, appfiles.LinetimeWhisperCliExecName())
+			os.Remove(dstCli)
+			if err := os.Rename(srcCli, dstCli); err != nil {
+				return fmt.Errorf("error moving CUDA whisper-cli: %v", err)
+			}
+			if runtime.GOOS != "windows" {
+				if err := os.Chmod(dstCli, 0755); err != nil {
+					return fmt.Errorf("error setting executable permission: %v", err)
+				}
+			}
+			fmt.Println("CUDA whisper-cli extracted to bin/whisper_cli_gpu/")
 		}
 	}
 

@@ -10,6 +10,7 @@ const (
 	LinetimeModelsDirName    = "sounddetect_models"
 	LinetimeWhisperCliDir    = "whisper_cli"
 	LinetimeGPULibDirName    = "lib_gpu"
+	LinetimeWhisperCliGPUDir = "whisper_cli_gpu"
 	LinetimeTokenizerName    = "mms_multilingual_tokenizer.json"
 	LinetimeModelStandard    = "mms_fa.onnx"
 	LinetimeModelStandardDta = "mms_fa.onnx.data"
@@ -51,6 +52,13 @@ func LinetimeGPULibPath(folder string) string {
 
 func LinetimeWhisperCliPath(folder string) string {
 	return filepath.Join(folder, LinetimeWhisperCliDir, LinetimeWhisperCliExecName())
+}
+
+// LinetimeWhisperCliGPUPath is the CUDA-built whisper-cli that ships inside the
+// GPU bundle. It is kept apart from the CPU one so switching the aligner back
+// to the CPU cannot leave a binary behind that needs lib_gpu to start.
+func LinetimeWhisperCliGPUPath(folder string) string {
+	return filepath.Join(folder, LinetimeWhisperCliGPUDir, LinetimeWhisperCliExecName())
 }
 
 // WhisperModelName maps a whisper variant id to its model filename. Returns "" for
@@ -112,5 +120,15 @@ func LinetimeComponents(folder string) []Component {
 	cli.Optional = true
 	cli.Unsupported = !WhisperCliSupported()
 
-	return []Component{cpu, gpu, tokenizer, standard, fast, whisperFP16, whisperQ5, cli}
+	// The CUDA whisper-cli arrives with the GPU bundle rather than from its own
+	// download, so it is a separate optional component: reporting it apart keeps
+	// the GPU aligner present when a bundle predates this, instead of folding a
+	// missing CLI into the aligner's own state.
+	gpuCli := NewComponent("gpu-cli", "cli", "Whisper CLI (CUDA)", map[string]string{
+		"cli": LinetimeWhisperCliGPUPath(folder),
+	})
+	gpuCli.Optional = true
+	gpuCli.Unsupported = !GPUSupported()
+
+	return []Component{cpu, gpu, tokenizer, standard, fast, whisperFP16, whisperQ5, cli, gpuCli}
 }

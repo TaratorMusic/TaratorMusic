@@ -307,7 +307,12 @@ async function transcribeLyrics(wavPath, language, onProgress) {
 
 	try {
 		await new Promise((resolve, reject) => {
-			const proc = spawn(cliPath, args, { windowsHide: true, cwd: getLinetimeWhisperCliFolder() });
+			const env = Object.assign({}, process.env);
+			const libDir = getLinetimeWhisperCliLibDir();
+			if (libDir && process.platform !== "win32") {
+				env.LD_LIBRARY_PATH = libDir + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
+			}
+			const proc = spawn(cliPath, args, { windowsHide: true, cwd: getLinetimeWhisperCliFolder(), env });
 
 			let stderr = "";
 			proc.stderr.on("data", chunk => { stderr += chunk.toString(); });

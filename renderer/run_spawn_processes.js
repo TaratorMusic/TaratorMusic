@@ -174,12 +174,32 @@ function getLinetimeModelDataPath(id) {
 	return getAppFilePart(id, "data");
 }
 
-function getLinetimeWhisperCliFolder() {
-	return path.join(getLinetimeFolder(), "whisper_cli");
+// The CUDA whisper-cli ships inside the GPU bundle. While the GPU aligner is the
+// active binary and that CLI is present, transcription runs on the GPU too;
+// otherwise the CPU one is used, which is why the two are kept in separate
+// folders rather than overwriting one another.
+function getLinetimeWhisperCliPath() {
+	if (isLinetimeUsingGpuBinary() && linetimePartExists("gpu-cli", "cli")) {
+		return getAppFilePart("gpu-cli", "cli");
+	}
+	return getAppFilePart("whisper-cli", "cli");
 }
 
-function getLinetimeWhisperCliPath() {
-	return getAppFilePart("whisper-cli", "cli");
+function getLinetimeWhisperCliFolder() {
+	return path.dirname(getLinetimeWhisperCliPath() || path.join(getLinetimeFolder(), "whisper_cli"));
+}
+
+function isLinetimeUsingGpuBinary() {
+	return linetimeSelectedBinary === "gpu" && isLinetimeBinaryInstalled("gpu");
+}
+
+// Shared library folder the active whisper-cli needs. The CUDA build links
+// against the GPU bundle's libraries, the CPU one against its own folder.
+function getLinetimeWhisperCliLibDir() {
+	if (getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli")) {
+		return getAppFilePart("gpu", "lib");
+	}
+	return getLinetimeWhisperCliFolder();
 }
 
 function getLinetimeWhisperCliSizeDesc() {
@@ -555,7 +575,7 @@ function renderLinetimeTable(containerId, title, items) {
 				actionBtns += `<button class="linetime-action-btn linetime-btn-pick" ${pickClick}>${item.active ? "Active" : "Pick"}</button>`;
 			}
 
-			if (!item.installed) {
+			if (!item.installed && item.downloadFn) {
 				const dlClick = busy ? "disabled" : `onclick="${item.downloadFn}('${item.id}')"`;
 				actionBtns += `<button class="linetime-action-btn" ${dlClick}>Download</button>`;
 			} else if (item.deleteFn) {
@@ -692,20 +712,44 @@ function refreshLinetimeStatus() {
 
 	const cliSupported = getAppFileState("whisper-cli") !== "unsupported";
 	const cliInstalled = isLinetimeWhisperCliInstalled();
-	const cliDir = getLinetimeWhisperCliFolder();
+	// The CPU row always measures the CPU folder. getLinetimeWhisperCliFolder()
+	// follows whichever CLI is active, which would report the GPU folder here.
+	const cliDir = path.dirname(getAppFilePart("whisper-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli"));
 	const cliSizeText = cliSupported
 		? (cliInstalled ? linetimeFileSizeText(dirFilePaths(cliDir), getLinetimeWhisperCliSizeDesc()) : getLinetimeWhisperCliSizeDesc())
 		: "N/A";
+
+	// The CUDA CLI has no download or delete of its own: it arrives and leaves
+	// with the GPU bundle, and it is picked automatically. It is listed so the
+	// GPU path is visible rather than a silent speed difference.
+	const gpuCliSupported = getAppFileState("gpu-cli") !== "unsupported";
+	const gpuCliInstalled = gpuCliSupported && linetimePartExists("gpu-cli", "cli");
+	const gpuCliDir = path.dirname(getAppFilePart("gpu-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli_gpu"));
+	const gpuCliActive = gpuCliInstalled && getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli");
+	const gpuCliSizeText = !gpuCliSupported
+		? "N/A"
+		: (gpuCliInstalled ? linetimeFileSizeText(dirFilePaths(gpuCliDir), "Installed") : "Included with GPU bundle");
+
 	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", [{
 		id: "whisper-cli",
 		label: "Whisper CLI",
 		installed: cliInstalled,
-		active: false,
+		active: cliInstalled && !gpuCliActive,
 		supported: cliSupported,
 		sizeText: cliSizeText,
 		useFn: null,
 		downloadFn: "linetimeDownloadWhisperCli",
 		deleteFn: "linetimeDeleteWhisperCli",
+	}, {
+		id: "gpu-cli",
+		label: "Whisper CLI (CUDA)",
+		installed: gpuCliInstalled,
+		active: gpuCliActive,
+		supported: gpuCliSupported,
+		sizeText: gpuCliSizeText,
+		useFn: null,
+		downloadFn: null,
+		deleteFn: null,
 	}]);
 
 	renderAppFileNotice();
