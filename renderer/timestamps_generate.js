@@ -102,6 +102,14 @@ function soundDetectCrashed(error) {
 	return !!error?.signal;
 }
 
+// Linetime treats an explicitly requested provider as a requirement and exits 1
+// with this on stderr rather than falling back. The CUDA provider library lists
+// cuDNN as a hard dependency, so a bundle missing it cannot load the provider at
+// all and the run would otherwise appear to succeed on the CPU.
+function soundDetectProviderUnavailable(error) {
+	return /refusing to fall back/i.test(error?.stderrTail || "");
+}
+
 // A GPU bundle built with -march=native on an AVX-512 machine takes SIGILL inside
 // the whisper backend when run on a CPU without those instructions. It is not a
 // CUDA problem: --provider cpu still crashes, because the code was compiled that
@@ -125,30 +133,39 @@ function gpuBundleFingerprint() {
 }
 
 function isLinetimeGpuBundleBroken() {
+	return !!linetimeGpuBundleBrokenReason();
+}
+
+// Why the bundle was recorded as broken, or "" if it was not. The two reasons
+// are not equivalent: a Whisper crash leaves method a usable, while a provider
+// that cannot load fails inside the CTC aligner and takes every method with it.
+function linetimeGpuBundleBrokenReason() {
 	try {
 		const raw = localStorage.getItem(LINETIME_GPU_BUNDLE_BROKEN_KEY);
-		if (!raw) return false;
+		if (!raw) return "";
 		// A bare "1" predates fingerprinting and cannot be tied to a binary, so it
 		// is discarded rather than trusted.
 		if (raw === "1") {
 			localStorage.removeItem(LINETIME_GPU_BUNDLE_BROKEN_KEY);
-			return false;
+			return "";
 		}
 		const rec = JSON.parse(raw);
 		if (!rec || rec.fp !== gpuBundleFingerprint()) {
 			localStorage.removeItem(LINETIME_GPU_BUNDLE_BROKEN_KEY);
-			return false;
+			return "";
 		}
-		return true;
+		// Records written before the reason was stored mean a Whisper crash, which
+		// is the only cause that existed then.
+		return rec.reason || "crash";
 	} catch (_) {
-		return false;
+		return "";
 	}
 }
 
-function markLinetimeGpuBundleBroken() {
+function markLinetimeGpuBundleBroken(reason) {
 	try {
 		localStorage.setItem(LINETIME_GPU_BUNDLE_BROKEN_KEY,
-			JSON.stringify({ fp: gpuBundleFingerprint(), at: Date.now() }));
+			JSON.stringify({ fp: gpuBundleFingerprint(), at: Date.now(), reason: reason || "crash" }));
 	} catch (_) {}
 }
 
@@ -159,7 +176,11 @@ function clearLinetimeGpuBundleBroken() {
 // True when this run must be refused because the GPU bundle already crashed on
 // this machine. Method a never loads a Whisper model, so it stays allowed.
 function gpuBundleBlocksWhisper(binaryId, method) {
-	if (binaryId !== "gpu") return false;
+	const reason = linetimeGpuBundleBrokenReason();
+	if (binaryId !== "gpu" || !reason) return false;
+	// A provider that cannot load fails while the CTC aligner initialises, so
+	// every method is blocked, not only the ones that run Whisper.
+	if (reason === "provider") return true;
 	return (method === "b" || method === "c") && isLinetimeGpuBundleBroken();
 }
 
@@ -217,10 +238,14 @@ async function runSoundDetect(args, env, task, method) {
 	const binaryPath = getLinetimeBinaryPath(effective.binary);
 
 	if (gpuBundleBlocksWhisper(effective.binary, method)) {
-		const message = "The GPU Linetime bundle is not compatible with this CPU and is already "
-			+ "recorded as broken. Nothing was retried. Download the CPU binary in "
-			+ "Settings > Linetime Aligner and select it, or use Method A, which does not "
-			+ "load a Whisper model.";
+		const message = linetimeGpuBundleBrokenReason() === "provider"
+			? "The GPU Linetime bundle cannot load CUDA, so it will not run any method on the "
+				+ "GPU. Its libraries are incomplete, most often a missing cuDNN, and nothing was "
+				+ "retried. Download the CPU binary in Settings > Linetime Aligner and select it."
+			: "The GPU Linetime bundle is not compatible with this CPU and is already "
+				+ "recorded as broken. Nothing was retried. Download the CPU binary in "
+				+ "Settings > Linetime Aligner and select it, or use Method A, which does not "
+				+ "load a Whisper model.";
 		logChange("warn", "Linetime run refused before starting.\n" + message
 			+ "\nbinary: " + binaryPath + "\nmethod: " + method);
 		throw new Error(message);
@@ -229,9 +254,24 @@ async function runSoundDetect(args, env, task, method) {
 	try {
 		await runSoundDetectOnce(binaryPath, args, env, task);
 	} catch (error) {
-		if (effective.binary !== "gpu" || !soundDetectCrashed(error)) throw error;
+		if (effective.binary !== "gpu") throw error;
 
-		markLinetimeGpuBundleBroken();
+		if (soundDetectProviderUnavailable(error)) {
+			markLinetimeGpuBundleBroken("provider");
+			const reason = "The GPU Linetime bundle could not load CUDA. The ONNX Runtime CUDA "
+				+ "provider depends on cuDNN, so the bundle is incomplete and the run would have "
+				+ "silently used the CPU instead.";
+			logChange("warn", reason + "\nbinary: " + binaryPath
+				+ "\nmethod: " + method
+				+ "\n" + (error.stderrTail || ""));
+			throw new Error(reason + "\n\nNothing was retried, and no method will use this "
+				+ "bundle until it is replaced. Download the CPU binary in "
+				+ "Settings > Linetime Aligner and select it.");
+		}
+
+		if (!soundDetectCrashed(error)) throw error;
+
+		markLinetimeGpuBundleBroken("crash");
 		const reason = error.signal === "SIGILL"
 			? "The GPU Linetime bundle was compiled with CPU instructions this machine does not "
 				+ "have (SIGILL). The Whisper step cannot run here."
