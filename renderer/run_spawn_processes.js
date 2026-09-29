@@ -129,15 +129,22 @@ const LINETIME_BINARY_VARIANTS = Object.freeze([
 	{ id: "gpu", label: "GPU (CUDA 12)", executable: "sounddetect_gpu", libDir: "lib_gpu", gpu: true },
 ]);
 
+const LINETIME_BINARY_SIZES = Object.freeze({
+	linux: Object.freeze({ cpu: "~40 MB", gpu: "~805 MB" }),
+	win32: Object.freeze({ cpu: "~42 MB", gpu: null }),
+	darwin: Object.freeze({ cpu: "~16 MB", gpu: null }),
+});
+
+let linetimeDownloadInProgress = false;
+
 const LINETIME_MODEL_VARIANTS = Object.freeze([
-	{ id: "standard", label: "Standard (FP32)", file: "mms_multilingual_standard.onnx", dataFile: "mms_multilingual_standard.onnx.data", sizeDesc: "~1.2 GB", requiresData: true },
-	{ id: "fast", label: "Fast (UINT8)", file: "mms_multilingual_fast.onnx", dataFile: null, sizeDesc: "~303 MB", requiresData: false },
+	{ id: "standard", label: "Standard (FP32)", file: "mms_fa.onnx", dataFile: "mms_fa.onnx.data", sizeDesc: "~1.2 GB", requiresData: true },
+	{ id: "fast", label: "Fast (UINT8)", file: "mms_fa_uint8.onnx", dataFile: null, sizeDesc: "~289 MB", requiresData: false },
 ]);
 
 const LINETIME_WHISPER_VARIANTS = Object.freeze([
-	{ id: "standard", label: "Standard (fp16)", file: "ggml-large-v3.bin", sizeDesc: "~3.1 GB" },
-	{ id: "whisper-q5", label: "Balanced (q5_0)", file: "ggml-large-v3-q5_0.bin", sizeDesc: "~2.1 GB" },
-	{ id: "whisper-q8", label: "High Quality (q8_0)", file: "ggml-large-v3-q8_0.bin", sizeDesc: "~2.6 GB" },
+	{ id: "standard", label: "Standard (fp16)", file: "ggml-large-v3.bin", sizeDesc: "~2.9 GB" },
+	{ id: "whisper-q5", label: "Balanced (q5_0)", file: "ggml-large-v3-q5_0.bin", sizeDesc: "~1 GB" },
 ]);
 
 function getLinetimeFolder() {
@@ -163,10 +170,31 @@ function getLinetimeModelDataPath(id) {
 	return path.join(getLinetimeFolder(), "sounddetect_models", v.dataFile);
 }
 
+function getLinetimeWhisperCliFolder() {
+	return path.join(getLinetimeFolder(), "whisper_cli");
+}
+
+function getLinetimeWhisperCliPath() {
+	const ext = process.platform === "win32" ? ".exe" : "";
+	return path.join(getLinetimeWhisperCliFolder(), "whisper-cli" + ext);
+}
+
+function getLinetimeWhisperCliSizeDesc() {
+	if (process.platform === "darwin") return null;
+	if (process.platform === "win32") {
+		return process.arch === "arm64" ? "~4.2 MB" : "~8.2 MB";
+	}
+	return process.arch === "arm64" ? "~4.4 MB" : "~9.3 MB";
+}
+
 function getLinetimeWhisperPath(id) {
 	const v = LINETIME_WHISPER_VARIANTS.find(x => x.id === id);
 	if (!v) return null;
 	return path.join(getLinetimeFolder(), "sounddetect_models", v.file);
+}
+
+function getLinetimeTokenizerPath() {
+	return path.join(getLinetimeFolder(), "sounddetect_models", "mms_multilingual_tokenizer.json");
 }
 
 function getLinetimeFfmpegPath() {
@@ -174,13 +202,14 @@ function getLinetimeFfmpegPath() {
 	return path.join(getLinetimeFolder(), "ffmpeg" + ext);
 }
 
-function getLinetimeWhisperCliPath() {
-	const ext = process.platform === "win32" ? ".exe" : "";
-	return path.join(getLinetimeFolder(), "whisper-cli" + ext);
-}
-
 function getLinetimeBinaryVariant(id) {
 	return LINETIME_BINARY_VARIANTS.find(x => x.id === id);
+}
+
+function getLinetimeBinarySizeDesc(variantId) {
+	const sizes = LINETIME_BINARY_SIZES[process.platform];
+	if (!sizes) return null;
+	return sizes[variantId] ?? null;
 }
 
 function getLinetimeModelVariant(id) {
@@ -198,8 +227,6 @@ function isLinetimeBinaryInstalled(id) {
 	if (!fs.existsSync(binPath)) return false;
 	const ffmpegPath = getLinetimeFfmpegPath();
 	if (!fs.existsSync(ffmpegPath)) return false;
-	const whisperCliPath = getLinetimeWhisperCliPath();
-	if (!fs.existsSync(whisperCliPath)) return false;
 	if (v.gpu) {
 		const libDir = path.join(getLinetimeFolder(), v.libDir);
 		if (!fs.existsSync(libDir)) return false;
@@ -224,6 +251,16 @@ function isLinetimeWhisperInstalled(id) {
 	if (!v) return false;
 	const whisperPath = getLinetimeWhisperPath(id);
 	return fs.existsSync(whisperPath);
+}
+
+function isLinetimeWhisperCliInstalled() {
+	const sizeDesc = getLinetimeWhisperCliSizeDesc();
+	if (sizeDesc === null) return false;
+	return fs.existsSync(getLinetimeWhisperCliPath());
+}
+
+function isLinetimeTokenizerInstalled() {
+	return fs.existsSync(getLinetimeTokenizerPath());
 }
 
 function getEffectiveLinetimeSelection() {
@@ -364,127 +401,195 @@ async function promptUserOnSongs(redownload) {
 	return thePrompt;
 }
 
-function refreshLinetimeStatus() {
-	const tokEl = document.getElementById("linetimeTokenizerStatus");
-	const tokBtn = document.getElementById("linetimeTokenizerBtn");
+const LINETIME_TABLE_COLUMNS = "150px 80px 100px 1fr";
 
+function linetimeBytesText(total) {
+	if (total < 1048576) return Math.max(1, Math.round(total / 1024)) + " KB";
+	if (total < 1073741824) return (Math.round(total / 104857.6) / 10) + " MB";
+	return (Math.round(total / 107374182.4) / 10) + " GB";
+}
+
+function linetimeFileSizeBytes(filePaths) {
+	let total = 0;
+	for (const filePath of filePaths) {
+		if (!filePath) continue;
+		try {
+			total += fs.statSync(filePath).size;
+		} catch (_) {}
+	}
+	return total;
+}
+
+function linetimeFileSizeText(filePaths, fallback) {
+	const total = linetimeFileSizeBytes(filePaths);
+	if (total <= 0) return fallback;
+	return linetimeBytesText(total);
+}
+
+function dirFilePaths(dir) {
+	try {
+		return fs.readdirSync(dir).map(f => path.join(dir, f));
+	} catch {
+		return [];
+	}
+}
+
+// The GPU bundle is mostly shared libraries, so its real footprint is the
+// lib_gpu tree. Summing only the executable reported 2.7 MB for a 1.5 GB
+// install and made a complete download look truncated.
+function dirSizeBytes(dir) {
+	let total = 0;
+	for (const entry of dirFilePaths(dir)) {
+		try {
+			const stat = fs.statSync(entry);
+			if (stat.isDirectory()) total += dirSizeBytes(entry);
+			else if (stat.isFile()) total += stat.size;
+		} catch (_) {}
+	}
+	return total;
+}
+
+function renderLinetimeTable(containerId, title, items) {
+	const el = document.getElementById(containerId);
+	if (!el) return;
+
+	const busy = linetimeDownloadInProgress;
+
+	const header = `
+		<div style="font-weight:bold;margin-bottom:6px;">${title}</div>
+		<div style="display:grid;grid-template-columns:${LINETIME_TABLE_COLUMNS};gap:8px;font-weight:bold;color:#ccc;margin-bottom:4px;">
+			<div>Variant</div><div>Size</div><div>Status</div><div>Action</div>
+		</div>`;
+
+	const rows = items.map(item => {
+		const supported = item.supported !== false;
+
+		let statusClass = "linetime-status-missing";
+		let statusText = "Not installed";
+		if (!supported) {
+			statusText = "Not available on this OS";
+		} else if (item.active) {
+			statusClass = "linetime-status-active";
+			statusText = "Active";
+		} else if (item.installed) {
+			statusClass = "linetime-status-ok";
+			statusText = "Installed";
+		}
+
+		let actionBtns = "";
+		if (supported) {
+			if (item.useFn) {
+				const pickEnabled = item.installed && !item.active && !busy;
+				const pickClick = pickEnabled ? `onclick="${item.useFn}('${item.id}')"` : "disabled";
+				actionBtns += `<button class="linetime-action-btn linetime-btn-pick" ${pickClick}>${item.active ? "Active" : "Pick"}</button>`;
+			}
+
+			if (!item.installed) {
+				const dlClick = busy ? "disabled" : `onclick="${item.downloadFn}('${item.id}')"`;
+				actionBtns += `<button class="linetime-action-btn" ${dlClick}>Download</button>`;
+			} else if (item.deleteFn) {
+				const delClick = busy ? "disabled" : `onclick="${item.deleteFn}('${item.id}')"`;
+				actionBtns += `<button class="linetime-action-btn linetime-btn-delete" ${delClick}>Delete</button>`;
+			}
+		}
+
+		return `
+			<div style="display:grid;grid-template-columns:${LINETIME_TABLE_COLUMNS};gap:8px;margin:4px 0;align-items:center;padding:4px 0;border-bottom:1px solid #333;">
+				<div>${item.label}</div>
+				<div>${item.sizeText}</div>
+				<div><span class="${statusClass}">${statusText}</span></div>
+				<div>${actionBtns}</div>
+			</div>`;
+	}).join("");
+
+	el.innerHTML = header + rows;
+}
+
+function refreshLinetimeStatus() {
 	const effective = getEffectiveLinetimeSelection();
 
-	// Binary table
-	const binTable = document.getElementById("linetimeBinaryTable");
-	if (binTable) {
-		const rows = LINETIME_BINARY_VARIANTS.map(v => {
-			const installed = isLinetimeBinaryInstalled(v.id);
-			const active = effective.binary === v.id;
-			let sizeMB = 0;
-			if (installed) {
-				try { sizeMB = Math.round(fs.statSync(getLinetimeBinaryPath(v.id)).size / 1048576); } catch (_) {}
-			}
-			const state = installed ? (active ? "Active" : "Installed") : "Not installed";
-			const color = installed ? (active ? "#2f2" : "lime") : "red";
-			const actionBtns = installed
-				? (active
-					? `<button class="linetime-action-btn" disabled>Active</button>`
-					: `<button class="linetime-action-btn" onclick="linetimeUseBinary('${v.id}')">Pick</button>
-					   <button class="linetime-action-btn" onclick="linetimeDownloadBinary('${v.id}')">Download</button>`)
-				: `<button class="linetime-action-btn" onclick="linetimeDownloadBinary('${v.id}')">Download</button>`;
-			const delBtn = installed && !active ? `<button class="linetime-action-btn" onclick="linetimeDeleteBinary('${v.id}')" style="background:#a33;">Delete</button>` : "";
-			return `
-				<div style="display:grid;grid-template-columns:120px 80px 100px 1fr;gap:8px;margin:4px 0;align-items:center;padding:4px 0;border-bottom:1px solid #222;">
-					<div>${v.label}</div>
-					<div>${installed ? sizeMB + " MB" : ""}</div>
-					<div style="color:${color};">${state}</div>
-					<div>${actionBtns} ${delBtn}</div>
-				</div>`;
-		}).join("");
-		binTable.innerHTML = `
-			<div style="display:grid;grid-template-columns:120px 80px 100px 1fr;gap:8px;font-weight:bold;color:#888;margin-bottom:4px;">
-				<div>Variant</div><div>Size</div><div>Status</div><div>Action</div>
-			</div>
-			<div style="grid-column:1/-1;color:#888;font-size:11px;margin-bottom:4px;">GPU requires NVIDIA CUDA 12. Active variant used for timestamp generation.</div>` + rows;
-	}
+	const binaryItems = LINETIME_BINARY_VARIANTS.map(v => {
+		const sizeDesc = getLinetimeBinarySizeDesc(v.id);
+		const supported = sizeDesc !== null;
+		const installed = supported && isLinetimeBinaryInstalled(v.id);
+		const gpuLibBytes = v.gpu ? dirSizeBytes(path.join(getLinetimeFolder(), v.libDir)) : 0;
+		const binBytes = linetimeFileSizeBytes([getLinetimeBinaryPath(v.id)]);
+		const sizeText = supported
+			? ((binBytes + gpuLibBytes) > 0 ? linetimeBytesText(binBytes + gpuLibBytes) : sizeDesc)
+			: "N/A";
+		return {
+			id: v.id,
+			label: v.label,
+			installed,
+			active: supported && installed && effective.binary === v.id,
+			supported,
+			sizeText,
+			useFn: "linetimeUseBinary",
+			downloadFn: "linetimeDownloadBinary",
+			deleteFn: "linetimeDeleteBinary",
+		};
+	});
+	renderLinetimeTable("linetimeBinaryTable", "Binary", binaryItems);
 
-	// CTC Model table
-	const modelTable = document.getElementById("linetimeModelTable");
-	if (modelTable) {
-		const rows = LINETIME_MODEL_VARIANTS.map(v => {
-			const installed = isLinetimeModelInstalled(v.id);
-			const active = effective.model === v.id;
-			let sizeMB = 0;
-			if (installed) {
-				try { sizeMB = Math.round(fs.statSync(getLinetimeModelPath(v.id)).size / 1048576); } catch (_) {}
-			}
-			const state = installed ? (active ? "Active" : "Installed") : "Not installed";
-			const color = installed ? (active ? "#2f2" : "lime") : "red";
-			const actionBtns = installed
-				? (active
-					? `<button class="linetime-action-btn" disabled>Active</button>`
-					: `<button class="linetime-action-btn" onclick="linetimeUseModel('${v.id}')">Pick</button>
-					   <button class="linetime-action-btn" onclick="linetimeDownloadModel('${v.id}')">Download</button>`)
-				: `<button class="linetime-action-btn" onclick="linetimeDownloadModel('${v.id}')">Download</button>`;
-			const delBtn = installed && !active ? `<button class="linetime-action-btn" onclick="linetimeDeleteModel('${v.id}')" style="background:#a33;">Delete</button>` : "";
-			return `
-				<div style="display:grid;grid-template-columns:140px 80px 100px 1fr;gap:8px;margin:4px 0;align-items:center;padding:4px 0;border-bottom:1px solid #222;">
-					<div>${v.label}</div>
-					<div>${installed ? sizeMB + " MB" : v.sizeDesc}</div>
-					<div style="color:${color};">${state}</div>
-					<div>${actionBtns} ${delBtn}</div>
-				</div>`;
-		}).join("");
-		modelTable.innerHTML = `
-			<div style="display:grid;grid-template-columns:140px 80px 100px 1fr;gap:8px;font-weight:bold;color:#888;margin-bottom:4px;">
-				<div>Variant</div><div>Size</div><div>Status</div><div>Action</div>
-			</div>
-			<div style="grid-column:1/-1;color:#888;font-size:11px;margin-bottom:4px;">Standard (FP32) is more accurate. Fast (UINT8) is 75% smaller. Active variant used for alignment.</div>` + rows;
-	}
+	const tokenizerInstalled = isLinetimeTokenizerInstalled();
+	const modelItems = [{
+		id: "tokenizer",
+		label: "Tokenizer (required)",
+		installed: tokenizerInstalled,
+		active: false,
+		sizeText: tokenizerInstalled ? linetimeFileSizeText([getLinetimeTokenizerPath()], "~1 KB") : "~1 KB",
+		useFn: null,
+		downloadFn: "linetimeDownloadTokenizer",
+		deleteFn: "linetimeDeleteTokenizer",
+	}];
 
-	// Tokenizer
-	const tokenizerPath = getLinetimeModelPath("standard").replace("mms_multilingual_standard.onnx", "mms_multilingual_tokenizer.json");
-	if (tokEl) {
-		if (fs.existsSync(tokenizerPath)) {
-			tokEl.innerText = "Installed";
-			tokEl.style.color = "lime";
-			if (tokBtn) tokBtn.style.display = "none";
-		} else {
-			tokEl.innerText = "Not installed";
-			tokEl.style.color = "red";
-			if (tokBtn) tokBtn.style.display = "";
-		}
-	}
+	LINETIME_MODEL_VARIANTS.forEach(v => {
+		const installed = isLinetimeModelInstalled(v.id);
+		modelItems.push({
+			id: v.id,
+			label: v.label,
+			installed,
+			active: installed && effective.model === v.id,
+			sizeText: linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], v.sizeDesc),
+			useFn: "linetimeUseModel",
+			downloadFn: "linetimeDownloadModel",
+			deleteFn: "linetimeDeleteModel",
+		});
+	});
+	renderLinetimeTable("linetimeModelTable", "Alignment models", modelItems);
 
-	// Whisper table
-	const whisperTable = document.getElementById("linetimeWhisperTable");
-	if (whisperTable) {
-		const rows = LINETIME_WHISPER_VARIANTS.map(v => {
-			const installed = isLinetimeWhisperInstalled(v.id);
-			const active = effective.whisper === v.id;
-			let sizeMB = 0;
-			if (installed) {
-				try { sizeMB = Math.round(fs.statSync(getLinetimeWhisperPath(v.id)).size / 1048576); } catch (_) {}
-			}
-			const state = installed ? (active ? "Active" : "Installed") : "Not installed";
-			const color = installed ? (active ? "#2f2" : "lime") : "red";
-			const actionBtns = installed
-				? (active
-					? `<button class="linetime-action-btn" disabled>Active</button>`
-					: `<button class="linetime-action-btn" onclick="linetimeUseWhisper('${v.id}')">Pick</button>
-					   <button class="linetime-action-btn" onclick="linetimeDownloadWhisper('${v.id}')">Download</button>`)
-				: `<button class="linetime-action-btn" onclick="linetimeDownloadWhisper('${v.id}')">Download</button>`;
-			const delBtn = installed && !active ? `<button class="linetime-action-btn" onclick="linetimeDeleteWhisper('${v.id}')" style="background:#a33;">Delete</button>` : "";
-			return `
-				<div style="display:grid;grid-template-columns:160px 80px 100px 1fr;gap:8px;margin:4px 0;align-items:center;padding:4px 0;border-bottom:1px solid #222;">
-					<div>${v.label}</div>
-					<div>${installed ? sizeMB + " MB" : v.sizeDesc}</div>
-					<div style="color:${color};">${state}</div>
-					<div>${actionBtns} ${delBtn}</div>
-				</div>`;
-		}).join("");
-		whisperTable.innerHTML = `
-			<div style="display:grid;grid-template-columns:160px 80px 100px 1fr;gap:8px;font-weight:bold;color:#888;margin-bottom:4px;">
-				<div>Variant</div><div>Size</div><div>Status</div><div>Action</div>
-			</div>
-			<div style="grid-column:1/-1;color:#888;font-size:11px;margin-bottom:4px;">One Whisper model required for Methods B & C (auto-generate / fix lyrics). Active variant used for transcription.</div>` + rows;
-	}
+	const whisperItems = LINETIME_WHISPER_VARIANTS.map(v => {
+		const installed = isLinetimeWhisperInstalled(v.id);
+		return {
+			id: v.id,
+			label: v.label,
+			installed,
+			active: installed && effective.whisper === v.id,
+			sizeText: linetimeFileSizeText([getLinetimeWhisperPath(v.id)], v.sizeDesc),
+			useFn: "linetimeUseWhisper",
+			downloadFn: "linetimeDownloadWhisper",
+			deleteFn: "linetimeDeleteWhisper",
+		};
+	});
+	renderLinetimeTable("linetimeWhisperTable", "Whisper models (optional)", whisperItems);
+
+	const cliSupported = getLinetimeWhisperCliSizeDesc() !== null;
+	const cliInstalled = isLinetimeWhisperCliInstalled();
+	const cliDir = getLinetimeWhisperCliFolder();
+	const cliSizeText = cliSupported
+		? (cliInstalled ? linetimeFileSizeText(dirFilePaths(cliDir), getLinetimeWhisperCliSizeDesc()) : getLinetimeWhisperCliSizeDesc())
+		: "N/A";
+	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", [{
+		id: "whisper-cli",
+		label: "Whisper CLI",
+		installed: cliInstalled,
+		active: false,
+		supported: cliSupported,
+		sizeText: cliSizeText,
+		useFn: null,
+		downloadFn: "linetimeDownloadWhisperCli",
+		deleteFn: "linetimeDeleteWhisperCli",
+	}]);
 }
 
 async function updateYtdlp() {
@@ -497,18 +602,16 @@ async function updateYtdlp() {
 		const result = await new Promise((resolve, reject) => {
 			const fetchCwd = process.platform === "linux" ? taratorFolder : processFolder;
 			const proc = spawn(bin, ["--force"], { windowsHide: true, cwd: fetchCwd });
-			let stdout = "";
-			let stderr = "";
-			proc.stdout.on("data", d => {
-				const msg = d.toString();
-				stdout += msg;
-				console.log("[ytdlp_fetch]", msg.trim());
-			});
-			proc.stderr.on("data", d => {
-				const msg = d.toString();
-				stderr += msg;
-				console.error("[ytdlp_fetch]", msg.trim());
-			});
+		let stdout = "";
+		let stderr = "";
+		proc.stdout.on("data", d => {
+			stdout += d.toString();
+		});
+		// yt-dlp writes progress to stderr on a successful run, so logging it as an
+		// error would cry wolf. The accumulated text is reported by the close handler.
+		proc.stderr.on("data", d => {
+			stderr += d.toString();
+		});
 			proc.on("error", reject);
 			proc.on("close", code => {
 				if (code != 0) return reject(new Error(stderr || `ytdlp_fetch exited ${code}`));
@@ -541,84 +644,84 @@ async function updateYtdlp() {
 }
 
 
-function setLinetimeDownloadButtonsDisabled(disabled) {
-	const actionBtns = document.querySelectorAll("#settings-content .linetime-action-btn");
-	actionBtns.forEach(b => b.disabled = disabled);
-	const tokBtn = document.getElementById("linetimeTokenizerBtn");
-	if (tokBtn) tokBtn.disabled = disabled;
-}
-
 async function downloadLinetimeVariant(component, variant) {
 	if (linetimeDownloadInProgress) {
 		await alertModal("A download is already in progress. Please wait.");
 		return;
 	}
 	linetimeDownloadInProgress = true;
-	setLinetimeDownloadButtonsDisabled(true);
+	refreshLinetimeStatus();
 
 	const progressContainer = document.getElementById("linetimeProgressContainer");
 	const progressBar = document.getElementById("linetimeProgressBar");
 	const progressText = document.getElementById("linetimeProgressText");
 
-	let args = ["--force", "--asset-dir", getLinetimeFolder(), "--release", LINETIME_RELEASE_TAG];
-	let useGPU = false;
+	let args = ["--force", "--asset-dir=" + getLinetimeFolder(), "--release=" + LINETIME_RELEASE_TAG];
 	let modelType = "standard";
-	let gpuLabel = "CPU";
-	let modelLabel = "Standard (FP32)";
+	let label = "Linetime component";
+	let sizeDesc = "";
 
-	// Parse component and variant to build correct args
 	if (component === "binary") {
-		useGPU = variant === "gpu";
-		if (useGPU) args.push("--gpu");
-		args.push("--skip-model", "--skip-tokenizer", "--skip-whisper");
-		gpuLabel = useGPU ? "GPU (CUDA)" : "CPU";
+		if (variant === "gpu") args.push("--gpu");
+		args.push("--skip-model", "--skip-tokenizer", "--skip-whisper", "--skip-whisper-cli");
+		label = getLinetimeBinaryVariant(variant)?.label ?? "binary";
+		sizeDesc = getLinetimeBinarySizeDesc(variant) ?? "";
 	} else if (component === "model") {
 		modelType = variant;
-		args.push("--skip-binary", "--skip-tokenizer", "--skip-whisper", "--model-" + modelType);
-		modelLabel = modelType === "fast" ? "Fast (UINT8)" : "Standard (FP32)";
+		args.push("--skip-binary", "--skip-tokenizer", "--skip-whisper", "--skip-whisper-cli", "--model-" + modelType);
+		label = getLinetimeModelVariant(variant)?.label ?? "CTC model";
+		sizeDesc = getLinetimeModelVariant(variant)?.sizeDesc ?? "";
 	} else if (component === "tokenizer") {
-		args.push("--tokenizer-only");
+		args.push("--skip-binary", "--skip-model", "--skip-whisper", "--tokenizer-only");
+		label = "Tokenizer";
 	} else if (component === "whisper") {
-		const whisperMap = { standard: "whisper", "whisper-q5": "whisper-q5", "whisper-q8": "whisper-q8" };
-		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--model-" + (whisperMap[variant] || variant));
+		const whisperMap = { standard: "whisper", "whisper-q5": "whisper-q5" };
+		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper-cli", "--model-" + (whisperMap[variant] || variant));
+		label = getLinetimeWhisperVariant(variant)?.label ?? "Whisper model";
+		sizeDesc = getLinetimeWhisperVariant(variant)?.sizeDesc ?? "";
+	} else if (component === "whisper-cli") {
+		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-only");
+		label = "Whisper CLI";
+		sizeDesc = getLinetimeWhisperCliSizeDesc() ?? "";
 	}
+
+	const sizeSuffix = sizeDesc ? ` (${sizeDesc})` : "";
 
 	progressContainer.style.display = "block";
 	progressBar.style.width = "0%";
-	progressText.textContent = `Downloading ${component} (${variant})...`;
+	progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
 
-	setLinetimeDownloadButtonsDisabled(true);
+	let lastErrorLine = "";
 
 	try {
 		const bin = path.join(backendFolder, process.platform === "win32" ? "linetime_fetch.exe" : "linetime_fetch");
 		await new Promise((resolve, reject) => {
 			const proc = spawn(bin, args, { windowsHide: true, cwd: getLinetimeFolder() });
 
+			let reportedError = false;
 			proc.stdout.on("data", d => {
 				const msg = d.toString();
-				console.log("[linetime_fetch]", msg.trim());
 
 				const pctMatch = msg.match(/(\d+)%/);
 				if (pctMatch) {
 					progressBar.style.width = parseInt(pctMatch[1]) + "%";
-				}
-
-				if (msg.includes("Downloading binary")) {
-					progressText.textContent = `Downloading binary ${variant} (~2.5 MB)...`;
+				} else if (msg.includes("Downloading binary")) {
+					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
 					progressBar.style.width = "10%";
 				} else if (msg.includes("Downloading standard CTC")) {
-					progressText.textContent = "Downloading CTC model (standard, ~1.2 GB)...";
+					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
 					progressBar.style.width = "30%";
 				} else if (msg.includes("Downloading fast CTC")) {
-					progressText.textContent = "Downloading CTC model (fast, ~303 MB)...";
+					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
 					progressBar.style.width = "30%";
 				} else if (msg.includes("Downloading tokenizer")) {
-					progressText.textContent = "Downloading tokenizer (~1 KB)...";
+					progressText.textContent = "Downloading tokenizer...";
 					progressBar.style.width = "30%";
 				} else if (msg.includes("Downloading Whisper large-v3 model")) {
-					const mbMatch = msg.match(/~(\d+\.?\d*)MB/);
-					const mb = mbMatch ? mbMatch[1] : "?";
-					progressText.textContent = `Downloading Whisper ${variant} (~${mb} MB)...`;
+					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
+					progressBar.style.width = "30%";
+				} else if (msg.includes("Downloading Whisper CLI")) {
+					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
 					progressBar.style.width = "30%";
 				} else if (msg.includes("Extracting")) {
 					progressText.textContent = "Extracting...";
@@ -629,8 +732,14 @@ async function downloadLinetimeVariant(component, variant) {
 			});
 
 			proc.stderr.on("data", d => {
-				const msg = d.toString();
-				console.error("[linetime_fetch]", msg.trim());
+				const firstLine = d.toString().split("\n").map(l => l.trim()).find(l => l);
+				if (!firstLine) return;
+				if (!reportedError) {
+					reportedError = true;
+					logChange("error", "[linetime_fetch] " + firstLine);
+				}
+				lastErrorLine = firstLine;
+				progressText.textContent = firstLine;
 			});
 
 			proc.on("error", reject);
@@ -643,144 +752,31 @@ async function downloadLinetimeVariant(component, variant) {
 		progressBar.style.width = "100%";
 		progressText.textContent = "Done!";
 
-		refreshLinetimeStatus();
+		// A fresh download may carry a different CLI than the one that was probed.
+		clearSoundDetectCapsCache();
+		// Only a new GPU bundle can fix a GPU bundle that crashed before.
+		if (component === "binary" && variant === "gpu") clearLinetimeGpuBundleBroken();
 
-		await alertModal(`${component} (${variant}) downloaded and installed successfully!`);
+		await alertModal(`${label} downloaded and installed successfully.`);
 	} catch (error) {
-		progressText.textContent = "Failed";
+		const reason = lastErrorLine || error.message || String(error);
+		progressText.textContent = reason;
 		progressBar.style.width = "0%";
-		await alertModal(`Failed to download ${component} (${variant}): ${error.message ?? String(error)}`);
+		await alertModal(`Failed to download ${label}: ${reason}`);
 	}
 
-	setLinetimeDownloadButtonsDisabled(false);
 	linetimeDownloadInProgress = false;
-	setTimeout(() => {
-		progressContainer.style.display = "none";
-	}, 3000);
-}
+	refreshLinetimeStatus();
 
-
-function setLinetimeDownloadButtonsDisabled(disabled) {
-	const actionBtns = document.querySelectorAll("#settings-content .linetime-action-btn");
-	actionBtns.forEach(b => b.disabled = disabled);
-	const tokBtn = document.getElementById("linetimeTokenizerBtn");
-	if (tokBtn) tokBtn.disabled = disabled;
-}
-
-async function downloadLinetimeVariant(component, variant) {
-	if (linetimeDownloadInProgress) {
-		await alertModal("A download is already in progress. Please wait.");
-		return;
-	}
-	linetimeDownloadInProgress = true;
-	setLinetimeDownloadButtonsDisabled(true);
-
-	const progressContainer = document.getElementById("linetimeProgressContainer");
-	const progressBar = document.getElementById("linetimeProgressBar");
-	const progressText = document.getElementById("linetimeProgressText");
-
-	let args = ["--force", "--asset-dir", getLinetimeFolder(), "--release", LINETIME_RELEASE_TAG];
-	let useGPU = false;
-	let modelType = "standard";
-	let gpuLabel = "CPU";
-	let modelLabel = "Standard (FP32)";
-
-	// Parse component and variant to build correct args
-	if (component === "binary") {
-		useGPU = variant === "gpu";
-		if (useGPU) args.push("--gpu");
-		args.push("--skip-model", "--skip-tokenizer", "--skip-whisper");
-		gpuLabel = useGPU ? "GPU (CUDA)" : "CPU";
-	} else if (component === "model") {
-		modelType = variant;
-		args.push("--skip-binary", "--skip-tokenizer", "--skip-whisper", "--model-" + modelType);
-		modelLabel = modelType === "fast" ? "Fast (UINT8)" : "Standard (FP32)";
-	} else if (component === "tokenizer") {
-		args.push("--tokenizer-only");
-	} else if (component === "whisper") {
-		const whisperMap = { standard: "whisper", "whisper-q5": "whisper-q5", "whisper-q8": "whisper-q8" };
-		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--model-" + (whisperMap[variant] || variant));
-	}
-
-	progressContainer.style.display = "block";
-	progressBar.style.width = "0%";
-	progressText.textContent = `Downloading ${component} (${variant})...`;
-
-	setLinetimeDownloadButtonsDisabled(true);
-
-	try {
-		const bin = path.join(backendFolder, process.platform === "win32" ? "linetime_fetch.exe" : "linetime_fetch");
-		await new Promise((resolve, reject) => {
-			const proc = spawn(bin, args, { windowsHide: true, cwd: getLinetimeFolder() });
-
-			proc.stdout.on("data", d => {
-				const msg = d.toString();
-				console.log("[linetime_fetch]", msg.trim());
-
-				const pctMatch = msg.match(/(\d+)%/);
-				if (pctMatch) {
-					progressBar.style.width = parseInt(pctMatch[1]) + "%";
-				}
-
-				if (msg.includes("Downloading binary")) {
-					progressText.textContent = `Downloading binary ${variant} (~2.5 MB)...`;
-					progressBar.style.width = "10%";
-				} else if (msg.includes("Downloading standard CTC")) {
-					progressText.textContent = "Downloading CTC model (standard, ~1.2 GB)...";
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Downloading fast CTC")) {
-					progressText.textContent = "Downloading CTC model (fast, ~303 MB)...";
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Downloading tokenizer")) {
-					progressText.textContent = "Downloading tokenizer (~1 KB)...";
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Downloading Whisper large-v3 model")) {
-					const mbMatch = msg.match(/~(\d+\.?\d*)MB/);
-					const mb = mbMatch ? mbMatch[1] : "?";
-					progressText.textContent = `Downloading Whisper ${variant} (~${mb} MB)...`;
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Extracting")) {
-					progressText.textContent = "Extracting...";
-					progressBar.style.width = "90%";
-				} else if (msg.includes("Done")) {
-					progressBar.style.width = "100%";
-				}
-			});
-
-			proc.stderr.on("data", d => {
-				const msg = d.toString();
-				console.error("[linetime_fetch]", msg.trim());
-			});
-
-			proc.on("error", reject);
-			proc.on("close", code => {
-				if (code !== 0) return reject(new Error(`linetime_fetch exited with code ${code}`));
-				resolve();
-			});
-		});
-
-		progressBar.style.width = "100%";
-		progressText.textContent = "Done!";
-
-		refreshLinetimeStatus();
-
-		await alertModal(`${component} (${variant}) downloaded and installed successfully!`);
-	} catch (error) {
-		progressText.textContent = "Failed";
-		progressBar.style.width = "0%";
-		await alertModal(`Failed to download ${component} (${variant}): ${error.message ?? String(error)}`);
-	}
-
-	setLinetimeDownloadButtonsDisabled(false);
-	linetimeDownloadInProgress = false;
 	setTimeout(() => {
 		progressContainer.style.display = "none";
 	}, 3000);
 }
 
 async function linetimeUseBinary(variant) {
+	const v = getLinetimeBinaryVariant(variant);
 	if (!isLinetimeBinaryInstalled(variant)) {
-		await alertModal(`${variant} binary not installed. Download it first.`);
+		await alertModal(`${v?.label ?? variant} binary is not installed. Download it first.`);
 		return;
 	}
 	linetimeSelectedBinary = variant;
@@ -791,12 +787,12 @@ async function linetimeUseBinary(variant) {
 		fetch: false,
 	});
 	refreshLinetimeStatus();
-	await alertModal(`Using ${variant} binary`);
 }
 
 async function linetimeUseModel(variant) {
+	const v = getLinetimeModelVariant(variant);
 	if (!isLinetimeModelInstalled(variant)) {
-		await alertModal(`${variant} model not installed. Download it first.`);
+		await alertModal(`${v?.label ?? variant} is not installed. Download it first.`);
 		return;
 	}
 	linetimeSelectedModel = variant;
@@ -807,12 +803,12 @@ async function linetimeUseModel(variant) {
 		fetch: false,
 	});
 	refreshLinetimeStatus();
-	await alertModal(`Using ${variant} CTC model`);
 }
 
 async function linetimeUseWhisper(variant) {
+	const v = getLinetimeWhisperVariant(variant);
 	if (!isLinetimeWhisperInstalled(variant)) {
-		await alertModal(`${variant} Whisper model not installed. Download it first.`);
+		await alertModal(`${v?.label ?? variant} is not installed. Download it first.`);
 		return;
 	}
 	linetimeSelectedWhisper = variant;
@@ -823,16 +819,11 @@ async function linetimeUseWhisper(variant) {
 		fetch: false,
 	});
 	refreshLinetimeStatus();
-	await alertModal(`Using ${variant} Whisper model`);
 }
 
 async function linetimeDeleteBinary(variant) {
-	const effective = getEffectiveLinetimeSelection();
-	if (effective.binary === variant) {
-		await alertModal("Cannot delete active binary. Switch to another first.");
-		return;
-	}
-	const confirm = await confirmModal(`Delete ${variant} binary?`, "Delete", "Cancel");
+	const label = getLinetimeBinaryVariant(variant)?.label ?? variant;
+	const confirm = await confirmModal(`Delete the ${label} binary?`, "Delete", "Cancel");
 	if (!confirm) return;
 
 	const binPath = getLinetimeBinaryPath(variant);
@@ -841,21 +832,21 @@ async function linetimeDeleteBinary(variant) {
 		if (variant === "gpu") {
 			const libDir = path.join(getLinetimeFolder(), "lib_gpu");
 			if (fs.existsSync(libDir)) fs.rmSync(libDir, { recursive: true, force: true });
+			// A re-downloaded bundle should be given a clean chance, in case the
+			// previous one crashed for a reason that has since been fixed.
+			clearLinetimeGpuBundleBroken();
 		}
+		clearSoundDetectCapsCache();
 		refreshLinetimeStatus();
-		await alertModal(`${variant} binary deleted`);
+		await alertModal(`${label} binary deleted`);
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);
 	}
 }
 
 async function linetimeDeleteModel(variant) {
-	const effective = getEffectiveLinetimeSelection();
-	if (effective.model === variant) {
-		await alertModal("Cannot delete active model. Switch to another first.");
-		return;
-	}
-	const confirm = await confirmModal(`Delete ${variant} CTC model?`, "Delete", "Cancel");
+	const label = getLinetimeModelVariant(variant)?.label ?? variant;
+	const confirm = await confirmModal(`Delete the ${label} CTC model?`, "Delete", "Cancel");
 	if (!confirm) return;
 
 	const modelPath = getLinetimeModelPath(variant);
@@ -867,32 +858,53 @@ async function linetimeDeleteModel(variant) {
 			if (fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
 		}
 		refreshLinetimeStatus();
-		await alertModal(`${variant} model deleted`);
+		await alertModal(`${label} CTC model deleted`);
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);
 	}
 }
 
 async function linetimeDeleteWhisper(variant) {
-	const effective = getEffectiveLinetimeSelection();
-	if (effective.whisper === variant) {
-		await alertModal("Cannot delete active Whisper model. Switch to another first.");
-		return;
-	}
-	const confirm = await confirmModal(`Delete ${variant} Whisper model?`, "Delete", "Cancel");
+	const label = getLinetimeWhisperVariant(variant)?.label ?? variant;
+	const confirm = await confirmModal(`Delete the ${label} Whisper model?`, "Delete", "Cancel");
 	if (!confirm) return;
 
 	const whisperPath = getLinetimeWhisperPath(variant);
 	try {
 		fs.unlinkSync(whisperPath);
 		refreshLinetimeStatus();
-		await alertModal(`${variant} Whisper model deleted`);
+		await alertModal(`${label} Whisper model deleted`);
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);
 	}
 }
 
-// Download handlers that read variant from the button
+async function linetimeDeleteTokenizer() {
+	const confirm = await confirmModal("Delete the tokenizer? Alignment needs it, so you will have to download it again.", "Delete", "Cancel");
+	if (!confirm) return;
+
+	try {
+		fs.unlinkSync(getLinetimeTokenizerPath());
+		refreshLinetimeStatus();
+		await alertModal("Tokenizer deleted");
+	} catch (e) {
+		await alertModal(`Failed to delete: ${e.message}`);
+	}
+}
+
+async function linetimeDeleteWhisperCli() {
+	const confirm = await confirmModal("Delete the Whisper CLI? Auto-generate needs it, so you will have to download it again.", "Delete", "Cancel");
+	if (!confirm) return;
+
+	try {
+		fs.rmSync(getLinetimeWhisperCliFolder(), { recursive: true, force: true });
+		refreshLinetimeStatus();
+		await alertModal("Whisper CLI deleted");
+	} catch (e) {
+		await alertModal(`Failed to delete: ${e.message}`);
+	}
+}
+
 function linetimeDownloadBinary(variant) {
 	downloadLinetimeVariant("binary", variant);
 }
@@ -903,6 +915,14 @@ function linetimeDownloadModel(variant) {
 
 function linetimeDownloadWhisper(variant) {
 	downloadLinetimeVariant("whisper", variant);
+}
+
+function linetimeDownloadTokenizer() {
+	downloadLinetimeVariant("tokenizer", "standard");
+}
+
+function linetimeDownloadWhisperCli() {
+	downloadLinetimeVariant("whisper-cli", "whisper-cli");
 }
 
 

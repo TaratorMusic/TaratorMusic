@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -21,6 +22,12 @@ const (
 	modelsDir   = "sounddetect_models"
 	huggingFace = "https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main"
 	whisperHF   = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
+
+	// whisper.cpp publishes prebuilt whisper-cli binaries. The macOS asset is
+	// only an xcframework for embedding, so there is no CLI to download there.
+	whisperCppTag  = "b5130"
+	whisperCppBase = "https://github.com/ggml-org/whisper.cpp/releases/download/" + whisperCppTag
+	whisperCliDir  = "whisper_cli"
 )
 
 type GitHubRelease struct {
@@ -176,11 +183,10 @@ func extractTarGz(tgzPath, destDir string) error {
 }
 
 type platformConfig struct {
-	assetName      string
-	binaryName     string
-	whisperCliName string
-	ffmpegName     string
-	gpuSupported   bool
+	assetName    string
+	binaryName   string
+	ffmpegName   string
+	gpuSupported bool
 }
 
 func getPlatformConfig(useGPU bool) (platformConfig, error) {
@@ -198,17 +204,14 @@ func getPlatformConfig(useGPU bool) (platformConfig, error) {
 		if useGPU {
 			cfg.binaryName = "linetime"
 		}
-		cfg.whisperCliName = "whisper-cli"
 		cfg.ffmpegName = "ffmpeg"
 	case "darwin":
 		cfg.assetName = "linetime-macos-universal.tar.gz"
 		cfg.binaryName = "linetime-macos-universal"
-		cfg.whisperCliName = "whisper-cli"
 		cfg.ffmpegName = "ffmpeg"
 	case "windows":
 		cfg.assetName = "linetime-windows-x64.tar.gz"
 		cfg.binaryName = "linetime-windows-x64.exe"
-		cfg.whisperCliName = "whisper-cli.exe"
 		cfg.ffmpegName = "ffmpeg.exe"
 		if useGPU {
 			return cfg, fmt.Errorf("GPU variant not available for Windows")
@@ -219,16 +222,19 @@ func getPlatformConfig(useGPU bool) (platformConfig, error) {
 	return cfg, nil
 }
 
+// Dest names are fixed and platform independent apart from the extension so the
+// renderer can locate the binary without duplicating this platform table. The
+// old scheme built names from the release asset name, which produced different
+// filenames per platform and a broken "linetime-windows-x64.exe_cpu" on Windows.
 func getBinaryName(useGPU bool) string {
-	cfg, _ := getPlatformConfig(useGPU)
-	base := strings.TrimSuffix(cfg.binaryName, ".exe")
-	if runtime.GOOS == "windows" {
-		base += ".exe"
-	}
+	name := "sounddetect_cpu"
 	if useGPU {
-		return base + "_gpu"
+		name = "sounddetect_gpu"
 	}
-	return base + "_cpu"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	return name
 }
 
 func downloadBinary(useGPU, force bool) error {
@@ -349,15 +355,6 @@ func downloadBinary(useGPU, force bool) error {
 		return fmt.Errorf("error moving binary: %v", err)
 	}
 
-	// Move whisper-cli if present
-	whisperCliSrc := filepath.Join(stagingDir, cfg.whisperCliName)
-	whisperCliDst := filepath.Join(binDir, cfg.whisperCliName)
-	if _, err := os.Stat(whisperCliSrc); err == nil {
-		if err := os.Rename(whisperCliSrc, whisperCliDst); err != nil {
-			return fmt.Errorf("error moving whisper-cli: %v", err)
-		}
-	}
-
 	// Move ffmpeg if present
 	ffmpegSrc := filepath.Join(stagingDir, cfg.ffmpegName)
 	ffmpegDst := filepath.Join(binDir, cfg.ffmpegName)
@@ -384,9 +381,6 @@ func downloadBinary(useGPU, force bool) error {
 		if err := os.Chmod(binaryPath, 0755); err != nil {
 			return fmt.Errorf("error setting executable permission: %v", err)
 		}
-		if err := os.Chmod(whisperCliDst, 0755); err != nil {
-			// Ignore error if whisper-cli doesn't exist
-		}
 		if err := os.Chmod(ffmpegDst, 0755); err != nil {
 			// Ignore error if ffmpeg doesn't exist
 		}
@@ -396,21 +390,317 @@ func downloadBinary(useGPU, force bool) error {
 	return nil
 }
 
+// extractTarGzLinks extracts an archive that uses symlinks to provide
+// versioned shared library names (libfoo.so -> libfoo.so.1 -> libfoo.so.1.2).
+// Links are resolved into real file copies so the result has no dangling
+// links, and any link pointing outside the destination is rejected.
+func extractTarGzLinks(tgzPath, destDir string) error {
+	f, err := os.Open(tgzPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+
+	type pendingLink struct {
+		path   string
+		target string
+	}
+	var links []pendingLink
+
+	tr := tar.NewReader(gz)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if filepath.IsAbs(header.Name) {
+			return fmt.Errorf("archive contains absolute path: %s", header.Name)
+		}
+		cleanName := filepath.Clean(header.Name)
+		if strings.HasPrefix(cleanName, "..") || strings.Contains(cleanName, string(filepath.Separator)+"..") {
+			return fmt.Errorf("archive contains path traversal: %s", header.Name)
+		}
+		target := filepath.Join(destDir, cleanName)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
+			outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+		case tar.TypeSymlink:
+			links = append(links, pendingLink{path: target, target: header.Linkname})
+		default:
+			return fmt.Errorf("archive contains unsupported entry type: %s", header.Name)
+		}
+	}
+
+	// Resolve links in passes so chains such as .so -> .so.1 -> .so.1.2 work
+	// regardless of the order they appear in the archive.
+	for pass := 0; pass < 8 && len(links) > 0; pass++ {
+		var unresolved []pendingLink
+		for _, l := range links {
+			if filepath.IsAbs(l.target) {
+				return fmt.Errorf("archive symlink is absolute: %s", l.path)
+			}
+			resolved := filepath.Clean(filepath.Join(filepath.Dir(l.path), l.target))
+			rel, err := filepath.Rel(destDir, resolved)
+			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return fmt.Errorf("archive symlink escapes destination: %s -> %s", l.path, l.target)
+			}
+			data, err := os.ReadFile(resolved)
+			if err != nil {
+				unresolved = append(unresolved, l)
+				continue
+			}
+			if err := os.WriteFile(l.path, data, 0644); err != nil {
+				return err
+			}
+		}
+		if len(unresolved) == len(links) {
+			return fmt.Errorf("could not resolve %d symlink(s) in archive", len(unresolved))
+		}
+		links = unresolved
+	}
+	if len(links) > 0 {
+		return fmt.Errorf("could not resolve %d symlink(s) in archive", len(links))
+	}
+	return nil
+}
+
+func extractZip(zipPath, destDir string) error {
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		if filepath.IsAbs(f.Name) {
+			return fmt.Errorf("archive contains absolute path: %s", f.Name)
+		}
+		cleanName := filepath.Clean(f.Name)
+		if strings.HasPrefix(cleanName, "..") || strings.Contains(cleanName, string(filepath.Separator)+"..") {
+			return fmt.Errorf("archive contains path traversal: %s", f.Name)
+		}
+		target := filepath.Join(destDir, cleanName)
+
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+			return err
+		}
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, f.Mode())
+		if err != nil {
+			rc.Close()
+			return err
+		}
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getWhisperCliAsset() (string, error) {
+	if runtime.GOOS == "linux" {
+		if runtime.GOARCH == "arm64" {
+			return "whisper-bin-ubuntu-arm64.tar.gz", nil
+		}
+		return "whisper-bin-ubuntu-x64.tar.gz", nil
+	}
+	if runtime.GOOS == "windows" {
+		if runtime.GOARCH == "386" {
+			return "whisper-bin-Win32.zip", nil
+		}
+		return "whisper-bin-x64.zip", nil
+	}
+	if runtime.GOOS == "darwin" {
+		return "", fmt.Errorf("whisper.cpp does not publish a macOS whisper-cli build, only an xcframework for embedding")
+	}
+	return "", fmt.Errorf("no whisper-cli build available for %s/%s", runtime.GOOS, runtime.GOARCH)
+}
+
+func isWhisperCliSharedLib(name string) bool {
+	lower := strings.ToLower(name)
+	return strings.HasSuffix(lower, ".dll") || strings.Contains(lower, ".so")
+}
+
+func downloadWhisperCli(force bool) error {
+	assetName, err := getWhisperCliAsset()
+	if err != nil {
+		return err
+	}
+
+	execName := "whisper-cli"
+	if runtime.GOOS == "windows" {
+		execName = "whisper-cli.exe"
+	}
+	finalDir := filepath.Join(binDir, whisperCliDir)
+
+	// The executable cannot start without its shared libraries, so both must be
+	// present or a partial install is repaired.
+	if !force {
+		entries, err := os.ReadDir(finalDir)
+		if err == nil {
+			hasExec := false
+			hasLib := false
+			for _, e := range entries {
+				if e.IsDir() {
+					continue
+				}
+				if isWhisperCliSharedLib(e.Name()) {
+					hasLib = true
+				}
+				if e.Name() != execName {
+					continue
+				}
+				if info, err := e.Info(); err == nil && info.Size() > 0 {
+					hasExec = true
+				}
+			}
+			if hasExec && hasLib {
+				fmt.Println("Whisper CLI already exists, skipping")
+				return nil
+			}
+		}
+	}
+
+	url := whisperCppBase + "/" + assetName
+	fmt.Printf("Downloading Whisper CLI (%s)...\n", assetName)
+
+	archivePath := filepath.Join(os.TempDir(), "tarator_whisper_cli_archive")
+	if err := downloadFile(url, archivePath); err != nil {
+		return fmt.Errorf("error downloading whisper-cli: %v", err)
+	}
+	defer os.Remove(archivePath)
+
+	stagingDir := filepath.Join(os.TempDir(), "tarator_whisper_cli_staging")
+	os.RemoveAll(stagingDir)
+	if err := os.MkdirAll(stagingDir, 0755); err != nil {
+		return err
+	}
+	defer os.RemoveAll(stagingDir)
+
+	if strings.HasSuffix(assetName, ".zip") {
+		err = extractZip(archivePath, stagingDir)
+	} else {
+		err = extractTarGzLinks(archivePath, stagingDir)
+	}
+	if err != nil {
+		return fmt.Errorf("error extracting whisper-cli: %v", err)
+	}
+
+	// Build beside the target so a failure here never destroys a working install.
+	// A sibling keeps the swap on one filesystem so the rename cannot fail late.
+	nextDir := finalDir + ".new"
+	os.RemoveAll(nextDir)
+	if err := os.MkdirAll(nextDir, 0755); err != nil {
+		return err
+	}
+	defer os.RemoveAll(nextDir)
+
+	foundExec := false
+	walkErr := filepath.Walk(stagingDir, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		base := info.Name()
+		isExec := base == execName
+		if !isExec && !isWhisperCliSharedLib(base) {
+			return nil
+		}
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		mode := os.FileMode(0644)
+		if isExec {
+			mode = 0755
+			foundExec = true
+		}
+		return os.WriteFile(filepath.Join(nextDir, base), data, mode)
+	})
+	if walkErr != nil {
+		return walkErr
+	}
+	if !foundExec {
+		return fmt.Errorf("%s not found inside %s", execName, assetName)
+	}
+
+	if err := os.RemoveAll(finalDir); err != nil {
+		return err
+	}
+	if err := os.Rename(nextDir, finalDir); err != nil {
+		return err
+	}
+
+	fmt.Println("Whisper CLI downloaded successfully")
+	return nil
+}
+
+func downloadTokenizerFile(force bool) error {
+	if err := os.MkdirAll(modelsDir, 0755); err != nil {
+		return fmt.Errorf("error creating models directory: %v", err)
+	}
+
+	tokenizerPath := filepath.Join(modelsDir, "mms_multilingual_tokenizer.json")
+	if _, err := os.Stat(tokenizerPath); err == nil && !force {
+		fmt.Println("Tokenizer already present, skipping")
+		return nil
+	}
+
+	fmt.Println("Downloading tokenizer...")
+	tokenizerURL := huggingFace + "/tokenizer.json"
+	if err := downloadFile(tokenizerURL, tokenizerPath); err != nil {
+		return fmt.Errorf("error downloading tokenizer: %v", err)
+	}
+	return nil
+}
+
 func downloadModel(modelType string, force bool, downloadTokenizer bool) error {
 	if err := os.MkdirAll(modelsDir, 0755); err != nil {
 		return fmt.Errorf("error creating models directory: %v", err)
 	}
 
 	if downloadTokenizer {
-		tokenizerPath := filepath.Join(modelsDir, "mms_multilingual_tokenizer.json")
-		if _, err := os.Stat(tokenizerPath); err != nil || force {
-			fmt.Println("Downloading tokenizer...")
-			tokenizerURL := huggingFace + "/tokenizer.json"
-			if err := downloadFile(tokenizerURL, tokenizerPath); err != nil {
-				return fmt.Errorf("error downloading tokenizer: %v", err)
-			}
-		} else {
-			fmt.Println("Tokenizer already present, skipping")
+		if err := downloadTokenizerFile(force); err != nil {
+			return err
 		}
 	}
 
@@ -423,10 +713,8 @@ func downloadModel(modelType string, force bool, downloadTokenizer bool) error {
 		return downloadWhisperModel("standard", force)
 	case "whisper-q5":
 		return downloadWhisperModel("q5", force)
-	case "whisper-q8":
-		return downloadWhisperModel("q8", force)
 	default:
-		return fmt.Errorf("unknown model type: %s (expected 'standard', 'fast', 'whisper', 'whisper-q5', 'whisper-q8')", modelType)
+		return fmt.Errorf("unknown model type: %s (expected 'standard', 'fast', 'whisper', 'whisper-q5')", modelType)
 	}
 }
 
@@ -442,11 +730,9 @@ func downloadWhisperModel(quant string, force bool) error {
 	case "q5":
 		modelName = "ggml-large-v3-q5_0.bin"
 		modelURL = whisperHF + "/ggml-large-v3-q5_0.bin"
-		expectedSize = 2100000000
+		expectedSize = 1081140203
 	case "q8":
-		modelName = "ggml-large-v3-q8_0.bin"
-		modelURL = whisperHF + "/ggml-large-v3-q8_0.bin"
-		expectedSize = 2600000000
+		return fmt.Errorf("ggml-large-v3 q8_0 is not published in %s, only large-v3 fp16 and large-v3 q5_0 exist", whisperHF)
 	default:
 		return fmt.Errorf("unknown whisper quantization: %s", quant)
 	}
@@ -483,8 +769,10 @@ func downloadWhisperModel(quant string, force bool) error {
 }
 
 func downloadModelFP32(force bool) error {
-	onnxPath := filepath.Join(modelsDir, "mms_multilingual_standard.onnx")
-	dataPath := filepath.Join(modelsDir, "mms_multilingual_standard.onnx.data")
+	// Keep the upstream filenames: the ONNX graph references its external
+	// weights as "mms_fa.onnx.data", so renaming either file breaks loading.
+	onnxPath := filepath.Join(modelsDir, "mms_fa.onnx")
+	dataPath := filepath.Join(modelsDir, "mms_fa.onnx.data")
 
 	if !force {
 		if _, err := os.Stat(onnxPath); err == nil {
@@ -518,7 +806,7 @@ func downloadModelFP32(force bool) error {
 }
 
 func downloadModelUINT8(force bool) error {
-	onnxPath := filepath.Join(modelsDir, "mms_multilingual_fast.onnx")
+	onnxPath := filepath.Join(modelsDir, "mms_fa_uint8.onnx")
 
 	if !force {
 		if _, err := os.Stat(onnxPath); err == nil {
@@ -578,6 +866,8 @@ func main() {
 	skipModel := false
 	skipTokenizer := false
 	skipWhisper := false
+	skipWhisperCli := false
+	onlyWhisperCli := false
 	tokenizerOnly := false
 	assetDir := "."
 
@@ -595,8 +885,6 @@ func main() {
 			modelType = "whisper"
 		case arg == "--model-whisper-q5":
 			modelType = "whisper-q5"
-		case arg == "--model-whisper-q8":
-			modelType = "whisper-q8"
 		case arg == "--skip-binary":
 			skipBinary = true
 		case arg == "--skip-model":
@@ -605,6 +893,10 @@ func main() {
 			skipTokenizer = true
 		case arg == "--skip-whisper":
 			skipWhisper = true
+		case arg == "--skip-whisper-cli":
+			skipWhisperCli = true
+		case arg == "--whisper-cli-only":
+			onlyWhisperCli = true
 		case arg == "--tokenizer-only":
 			tokenizerOnly = true
 		case strings.HasPrefix(arg, "--asset-dir="):
@@ -621,13 +913,14 @@ func main() {
 			fmt.Println("  --gpu                 Download GPU variant (requires NVIDIA CUDA 12, Linux only)")
 			fmt.Println("  --model-standard      Download standard CTC FP32 model (~1.2GB, default)")
 			fmt.Println("  --model-fast          Download fast CTC UINT8 model (~303MB)")
-			fmt.Println("  --model-whisper       Download Whisper large-v3 fp16 (~3.1GB)")
-			fmt.Println("  --model-whisper-q5    Download Whisper large-v3 q5_0 (~2.1GB)")
-			fmt.Println("  --model-whisper-q8    Download Whisper large-v3 q8_0 (~2.6GB)")
+			fmt.Println("  --model-whisper       Download Whisper large-v3 fp16 (~2.9GB)")
+			fmt.Println("  --model-whisper-q5    Download Whisper large-v3 q5_0 (~1GB)")
 			fmt.Println("  --skip-binary         Skip binary download")
 			fmt.Println("  --skip-model          Skip CTC model download")
 			fmt.Println("  --skip-tokenizer      Skip tokenizer download")
 			fmt.Println("  --skip-whisper        Skip Whisper model download")
+			fmt.Println("  --skip-whisper-cli    Skip Whisper CLI download (needed to transcribe lyrics)")
+			fmt.Println("  --whisper-cli-only    Download only the Whisper CLI")
 			fmt.Println("  --tokenizer-only      Download only the tokenizer (skips binary, model, whisper)")
 			fmt.Println("  --asset-dir=<path>    Set asset directory (default: current directory)")
 			fmt.Println("  --release=<tag>       GitHub release tag (default: latest, env LINETIME_RELEASE_TAG)")
@@ -637,6 +930,13 @@ func main() {
 			fmt.Println("  GITHUB_TOKEN          GitHub API token (optional, avoids rate limits)")
 			fmt.Println("  LINETIME_RELEASE_TAG  Release tag to download (default: latest)")
 			os.Exit(0)
+		default:
+			if strings.HasPrefix(arg, "--model-") {
+				fmt.Fprintf(os.Stderr, "Unknown option: %s\n\n", arg)
+				fmt.Fprintln(os.Stderr, "Available models: --model-standard, --model-fast, --model-whisper, --model-whisper-q5")
+				fmt.Fprintln(os.Stderr, "There is no large-v3 q8_0 model published upstream, only large-v3 fp16 and large-v3 q5_0.")
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -653,7 +953,9 @@ func main() {
 
 	changed := false
 
-	if !skipBinary && !tokenizerOnly {
+	onlyOneComponent := tokenizerOnly || onlyWhisperCli
+
+	if !skipBinary && !onlyOneComponent {
 		if err := downloadBinary(useGPU, force); err != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading binary: %v\n", err)
 			os.Exit(1)
@@ -661,13 +963,30 @@ func main() {
 		changed = true
 	}
 
+	if !skipWhisperCli && !tokenizerOnly {
+		// whisper.cpp ships no macOS CLI build, so treat it as optional there
+		// instead of failing the whole fetch. The app disables the row anyway.
+		if _, err := getWhisperCliAsset(); err != nil {
+			if onlyWhisperCli {
+				fmt.Fprintf(os.Stderr, "Error downloading whisper-cli: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Fprintf(os.Stderr, "Skipping whisper-cli: %v\n", err)
+		} else if err := downloadWhisperCli(force); err != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading whisper-cli: %v\n", err)
+			os.Exit(1)
+		} else {
+			changed = true
+		}
+	}
+
 	if tokenizerOnly {
-		if err := downloadModel("standard", force, true); err != nil {
+		if err := downloadTokenizerFile(force); err != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading tokenizer: %v\n", err)
 			os.Exit(1)
 		}
 		changed = true
-	} else if !skipModel || !skipTokenizer {
+	} else if !onlyWhisperCli && (!skipModel || !skipTokenizer) {
 		if err := downloadModel(modelType, force, !skipTokenizer); err != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading CTC model: %v\n", err)
 			os.Exit(1)
@@ -675,7 +994,7 @@ func main() {
 		changed = true
 	}
 
-	if !skipWhisper && strings.HasPrefix(modelType, "whisper") && !tokenizerOnly {
+	if !skipWhisper && strings.HasPrefix(modelType, "whisper") && !onlyOneComponent {
 		if err := downloadModel(modelType, force, false); err != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading Whisper model: %v\n", err)
 			os.Exit(1)

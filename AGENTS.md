@@ -36,6 +36,9 @@ No test framework. No linter configured. Do not invent either.
 - Be concise. No filler, no meta commentary, no summaries.
 - Never use `switch`/`case`. Use `if`/`else`.
 - Ask questions in plaintext, numbered 1 to n if multiple.
+- Never write `console.log`/`console.warn`/`console.error`. Use `logChange(level, message)` in `renderer/renderer.js`, which also persists to the `logs` DB.
+- Editor flows stage their result in the UI and let the user press Save. Never write the `lyrics` table from a generator, and never persist an empty `lyrics` value: the transcription is only real once it is in the textarea.
+- Comparison UI: reuse `comparisonModal()` in `renderer/helpers.js` instead of building a new modal.
 
 ## Code Conventions
 

@@ -34,6 +34,7 @@
 -   auto form playlist from artist-genre-language
 -   Add a progress bar in the lyrics page. Maybe use soundwaves?
 -   Search code for TODO'S
+-   Allow users to use their own global packages
 
 ### Big updates remaining:
 

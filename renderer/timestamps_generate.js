@@ -1,29 +1,18 @@
 const os = require("os");
+const { spawnSync } = require("child_process");
 
 function getSoundDetectBinary() {
 	const effective = getEffectiveLinetimeSelection();
 	return getLinetimeBinaryPath(effective.binary);
 }
 
+// Only the GPU build needs a library path. The CPU build is self contained and
+// would break if it inherited a GPU lib path from the environment.
 function getSoundDetectLibDir() {
 	const effective = getEffectiveLinetimeSelection();
 	const v = LINETIME_BINARY_VARIANTS.find(x => x.id === effective.binary);
-	if (!v) return path.join(getLinetimeFolder(), "lib");
+	if (!v || !v.gpu) return null;
 	return path.join(getLinetimeFolder(), v.libDir);
-}
-
-function getSoundDetectModels() {
-	return path.join(getLinetimeFolder(), "sounddetect_models");
-}
-
-function getLinetimeFfmpegPath() {
-	const ext = process.platform === "win32" ? ".exe" : "";
-	return path.join(getLinetimeFolder(), "ffmpeg" + ext);
-}
-
-function getLinetimeWhisperCliPath() {
-	const ext = process.platform === "win32" ? ".exe" : "";
-	return path.join(getLinetimeFolder(), "whisper-cli" + ext);
 }
 
 function convertToWav16k(inputPath, outputPath) {
@@ -50,9 +39,105 @@ function convertToWav16k(inputPath, outputPath) {
 	});
 }
 
-async function runSoundDetect(args, env) {
+// The published v1.2 binary and the current Linetime source disagree on the CLI:
+// the release takes --model-b with --method both and cannot transcribe, the source
+// takes --model-c with --method c and transcribes through whisper-cli. Probe the
+// installed binary so both work. Usage goes to stderr, so both streams are read.
+const LINETIME_RELEASE_CLI_CAPS = Object.freeze({ newCli: false, hasBoth: true });
+let soundDetectCapsCache = new Map();
+
+function detectSoundDetectCaps() {
 	const binaryPath = getSoundDetectBinary();
-	await new Promise((resolve, reject) => {
+	if (soundDetectCapsCache.has(binaryPath)) return soundDetectCapsCache.get(binaryPath);
+
+	const result = spawnSync(binaryPath, ["--help"], {
+		encoding: "utf8",
+		timeout: 15000,
+		windowsHide: true,
+	});
+	const help = (result.stdout || "") + (result.stderr || "");
+
+	let caps;
+	if (result.error || (!help.trim() && result.status !== 0)) {
+		caps = Object.assign({}, LINETIME_RELEASE_CLI_CAPS);
+		logChange("warn", "Linetime capability probe failed for " + binaryPath
+			+ ", assuming the released CLI.\n" + (result.error ? String(result.error.message) : "no help output"));
+	} else {
+		caps = {
+			newCli: /--model-c/.test(help) && /--whisper-cli/.test(help),
+			hasBoth: /a\|b\|both/.test(help),
+		};
+		if (!caps.newCli && !caps.hasBoth) {
+			caps = Object.assign({}, LINETIME_RELEASE_CLI_CAPS);
+			logChange("warn", "Linetime capability probe returned unrecognised help from " + binaryPath
+				+ ", assuming the released CLI.");
+		}
+	}
+
+	soundDetectCapsCache.set(binaryPath, caps);
+	return caps;
+}
+
+function clearSoundDetectCapsCache() {
+	soundDetectCapsCache = new Map();
+}
+
+function soundDetectCrashed(error) {
+	return /exited with code null/.test(error?.message ?? "");
+}
+
+function rewriteProviderArg(args, provider) {
+	const next = args.slice();
+	const index = next.indexOf("--provider");
+	if (index !== -1 && index + 1 < next.length) next[index + 1] = provider;
+	return next;
+}
+
+function readProviderArg(args) {
+	const index = args.indexOf("--provider");
+	if (index === -1 || index + 1 >= args.length) return "unknown";
+	return args[index + 1];
+}
+
+// A GPU bundle built with -march=native on an AVX-512 machine dies with SIGILL
+// inside ggml_cpu_init, which whisper calls at init. Not a CUDA problem:
+// forcing --provider cpu still crashes. The signal is undetectable up front, so
+// the first crash is remembered and later Whisper runs skip the GPU bundle
+// instead of paying the crash again. Method a never reaches whisper.
+const LINETIME_GPU_BUNDLE_BROKEN_KEY = "taratorLinetimeGpuBundleBroken";
+
+function isLinetimeGpuBundleBroken() {
+	try { return localStorage.getItem(LINETIME_GPU_BUNDLE_BROKEN_KEY) === "1"; }
+	catch (_) { return false; }
+}
+
+function markLinetimeGpuBundleBroken() {
+	try { localStorage.setItem(LINETIME_GPU_BUNDLE_BROKEN_KEY, "1"); } catch (_) {}
+}
+
+function clearLinetimeGpuBundleBroken() {
+	try { localStorage.removeItem(LINETIME_GPU_BUNDLE_BROKEN_KEY); } catch (_) {}
+}
+
+function linetimeBinaryForMethod(binaryId, method) {
+	if (binaryId !== "gpu") return binaryId;
+	const needsWhisper = method === "b" || method === "c";
+	if (needsWhisper && isLinetimeGpuBundleBroken()) return "cpu";
+	return binaryId;
+}
+
+// CUDA only accelerates the ONNX CTC model. On the released binary the Whisper
+// pass is statically linked without CUDA, so asking for cuda there kills the
+// process at whisper model init. Methods b and c always run Whisper, so on the
+// old CLI they must stay on cpu. Method a is CTC only, so cuda genuinely helps.
+function pickLinetimeProvider(binaryId, method, caps) {
+	if (binaryId !== "gpu") return "cpu";
+	if (!caps.newCli && (method === "b" || method === "c")) return "cpu";
+	return "cuda";
+}
+
+function runSoundDetectOnce(binaryPath, args, env, task) {
+	return new Promise((resolve, reject) => {
 		const proc = spawn(binaryPath, args, {
 			windowsHide: true,
 			cwd: getLinetimeFolder(),
@@ -60,15 +145,151 @@ async function runSoundDetect(args, env) {
 		});
 
 		let stderr = "";
-		proc.stderr.on("data", chunk => { stderr += chunk.toString(); });
+		let stderrTail = "";
+		proc.stderr.on("data", chunk => {
+			const text = chunk.toString();
+			stderr += text;
+			stderrTail = (stderrTail + text).split("\n").slice(-12).join("\n");
+			// Newer builds report "[progress] 42% Stage". Only the number matters.
+			for (const line of text.split("\n")) {
+				const match = /^\[progress\]\s+(\d+)%\s*/.exec(line.trim());
+				if (match && task) task.creep(parseInt(match[1], 10) / 100);
+			}
+		});
 		proc.stdout.on("data", () => {});
 
 		proc.on("close", code => {
 			if (code === 0) resolve();
-			else reject(new Error("sounddetect exited with code " + code + "\n" + stderr));
+			else reject(new Error("sounddetect exited with code " + code + "\n" + stderrTail));
 		});
 		proc.on("error", err => reject(err));
 	});
+}
+
+async function runSoundDetect(args, env, task, method) {
+	const effective = getEffectiveLinetimeSelection();
+	const binaryId = linetimeBinaryForMethod(effective.binary, method);
+	const binaryPath = getLinetimeBinaryPath(binaryId);
+	if (binaryId !== effective.binary) {
+		logChange("info", "Linetime skipped the GPU bundle for method " + method
+			+ " because it previously crashed on this CPU.");
+	}
+	try {
+		await runSoundDetectOnce(binaryPath, args, env, task);
+		return;
+	} catch (error) {
+		if (binaryId !== "gpu" || !soundDetectCrashed(error)) throw error;
+
+		logChange("warn", "Linetime GPU run crashed, falling back to CPU.\nbinary: " + binaryPath
+			+ "\nprovider: " + readProviderArg(args)
+			+ "\n" + (error?.message ?? String(error)));
+		markLinetimeGpuBundleBroken();
+
+		const cpuBinary = getLinetimeBinaryPath("cpu");
+		if (!cpuBinary || !fs.existsSync(cpuBinary)) throw error;
+
+		// The CPU build has no CUDA provider, so the provider must be rewritten or
+		// the retry drives the same crashing code path. It also needs no lib path.
+		const cpuArgs = rewriteProviderArg(args, "cpu");
+		const cpuEnv = Object.assign({}, env);
+		delete cpuEnv.LD_LIBRARY_PATH;
+		try {
+			await runSoundDetectOnce(cpuBinary, cpuArgs, cpuEnv, task);
+		} catch (cpuError) {
+			throw new Error(error.message + "\n\nCPU retry also failed: " + (cpuError?.message ?? cpuError));
+		}
+	}
+}
+
+// The user only cares that the number goes up, so progress is task based: every
+// finished step advances a fixed slice. Creep may only move within the current
+// step, never past it, so the bar cannot claim a step is done before it is.
+const TIMESTAMPS_PROGRESS_STEPS = 5;
+
+function setTimestampsProgress(fraction) {
+	const btn = document.getElementById("generateTimestampsBtn");
+	if (!btn) return;
+	const clamped = Math.max(0, Math.min(1, fraction));
+	btn.textContent = Math.round(clamped * 100) + "%";
+}
+
+function timestampsTask() {
+	let done = 0;
+	const span = 1 / TIMESTAMPS_PROGRESS_STEPS;
+	return {
+		complete() {
+			done++;
+			setTimestampsProgress(done * span);
+		},
+		creep(fractionOfStep) {
+			setTimestampsProgress(done * span + span * Math.max(0, Math.min(0.9, fractionOfStep)));
+		},
+	};
+}
+
+function parseSrtLyrics(srtPath) {
+	const raw = fs.readFileSync(srtPath, "utf8");
+	const lines = [];
+	for (const block of raw.split(/\r?\n\s*\r?\n/)) {
+		const parts = block.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+		if (parts.length < 2) continue;
+		if (!parts[1].includes("-->")) continue;
+		const text = parts.slice(2).join(" ").trim();
+		if (text) lines.push(text);
+	}
+	return lines;
+}
+
+async function transcribeLyrics(wavPath, language, onProgress) {
+	const cliPath = getLinetimeWhisperCliPath();
+	if (!fs.existsSync(cliPath)) {
+		throw new Error("Whisper CLI not found. Download it in Settings > Linetime Aligner.");
+	}
+
+	const effective = getEffectiveLinetimeSelection();
+	if (!effective.whisper) {
+		throw new Error("No Whisper model installed. Download one in Settings > Linetime Aligner.");
+	}
+	const modelPath = getLinetimeWhisperPath(effective.whisper);
+	if (!fs.existsSync(modelPath)) {
+		throw new Error("Whisper model file not found. Re-download it in Settings > Linetime Aligner.");
+	}
+
+	const outPrefix = path.join(os.tmpdir(), "tarator_transcribe_" + Date.now());
+	const args = ["-m", modelPath, "-f", wavPath, "-osrt", "-of", outPrefix, "-np"];
+	if (language) args.push("-l", language);
+	if (process.platform === "linux") args.push("-t", String(Math.max(1, os.cpus().length - 1)));
+	if (process.platform === "win32") args.push("-ng");
+
+	try {
+		await new Promise((resolve, reject) => {
+			const proc = spawn(cliPath, args, { windowsHide: true, cwd: getLinetimeWhisperCliFolder() });
+
+			let stderr = "";
+			proc.stderr.on("data", chunk => { stderr += chunk.toString(); });
+			proc.stdout.on("data", chunk => {
+				const text = chunk.toString();
+				const m = text.match(/\[(\d{2}):(\d{2}):(\d{2})\.\d{3} --> (\d{2}):(\d{2}):(\d{2})\.\d{3}\]/g);
+				if (m && m.length > 0) onProgress?.(m.length);
+			});
+
+			proc.on("close", code => {
+				if (code === 0) resolve();
+				else reject(new Error("whisper-cli exited with code " + code + "\n" + stderr));
+			});
+			proc.on("error", err => reject(err));
+		});
+
+		const srtPath = outPrefix + ".srt";
+		if (!fs.existsSync(srtPath)) throw new Error("whisper-cli produced no output file.");
+		const lines = parseSrtLyrics(srtPath);
+		if (lines.length === 0) throw new Error("No speech was detected in this track.");
+		return lines;
+	} finally {
+		for (const ext of [".srt", ".wav", ".json", ".txt"]) {
+			try { fs.unlinkSync(outPrefix + ext); } catch (_) {}
+		}
+	}
 }
 
 async function generateTimestampsForCurrentSong() {
@@ -84,8 +305,7 @@ async function generateTimestampsForCurrentSong() {
 	const plainLyrics = originalRow && originalRow.lyrics ? originalRow.lyrics.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim() : "";
 
 	const effective = getEffectiveLinetimeSelection();
-	const binaryPath = getSoundDetectBinary();
-	if (!fs.existsSync(binaryPath)) {
+	if (!isLinetimeBinaryInstalled(effective.binary)) {
 		return await alertModal("Linetime is not installed. Go to Settings > Linetime Aligner to download it.");
 	}
 
@@ -94,16 +314,15 @@ async function generateTimestampsForCurrentSong() {
 		return await alertModal("Alignment model not found. Go to Settings > Linetime Aligner to download it.");
 	}
 
-	const tokenizerPath = getLinetimeModelDataPath(effective.model).replace("mms_multilingual_standard.onnx.data", "mms_multilingual_tokenizer.json");
+	const tokenizerPath = getLinetimeTokenizerPath();
 	if (!fs.existsSync(tokenizerPath)) {
 		return await alertModal("Tokenizer not found. Go to Settings > Linetime Aligner to download it.");
 	}
 
 	const whisperPath = effective.whisper ? getLinetimeWhisperPath(effective.whisper) : null;
-	const whisperCliPath = getLinetimeWhisperCliPath();
 	const ffmpegPath = getLinetimeFfmpegPath();
 
-	const methodChoice = await showMethodSelectionModal(plainLyrics, !!whisperPath);
+	const methodChoice = await showMethodSelectionModal(plainLyrics, !!whisperPath, isLinetimeWhisperCliInstalled());
 	if (!methodChoice) return;
 
 	const { method, language } = methodChoice;
@@ -121,87 +340,107 @@ async function generateTimestampsForCurrentSong() {
 
 	const libDir = getSoundDetectLibDir();
 	const env = Object.assign({}, process.env);
-	if (process.platform !== "win32") {
+	if (libDir && process.platform !== "win32") {
 		env.LD_LIBRARY_PATH = libDir + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
 	}
 
+	const task = timestampsTask();
+	setTimestampsProgress(0);
+	const bail = async message => {
+		btn.textContent = "Failed";
+		return await alertModal(message);
+	};
+
 	try {
-		if (method !== "b") {
-			fs.writeFileSync(lyricsTmpPath, plainLyrics, "utf8");
-		}
-
 		await convertToWav16k(audioPath, wavPath);
+		task.complete();
 
-		const args = [wavPath];
-		if (method !== "b") args.push(lyricsTmpPath);
-		args.push("--method", method);
-		if (method === "b" || method === "c") {
-			if (!whisperPath || !fs.existsSync(whisperPath)) {
-				return await alertModal(`Whisper model not found for Method ${method.toUpperCase()}. Download it in Settings > Linetime Aligner.`);
+		let lyricsForAligner = plainLyrics;
+		if (!lyricsForAligner || !lyricsForAligner.trim()) {
+			try {
+				const transcribed = await transcribeLyrics(wavPath, language, n => {
+					task.creep(Math.min(0.9, n / 40));
+				});
+				lyricsForAligner = transcribed.join("\n");
+			} catch (tErr) {
+				return await bail(tErr.message ?? String(tErr));
 			}
-			if (!fs.existsSync(whisperCliPath)) {
-				return await alertModal("Whisper CLI not found. Go to Settings > Linetime Aligner to reinstall Linetime.");
-			}
-			args.push("--model-c", whisperPath);
-			args.push("--whisper-cli", whisperCliPath);
 		}
-		if (method === "a" || method === "c") {
+		task.complete();
+		fs.writeFileSync(lyricsTmpPath, lyricsForAligner, "utf8");
+
+		const caps = detectSoundDetectCaps();
+		const cliInstalled = isLinetimeWhisperCliInstalled();
+
+		// The released binary's plain "b" is Whisper DTW only. It skips CTC, drifts
+		// across a track and eventually collapses several lines onto the same
+		// timestamp. The hybrid runs CTC and merges, which is what this flow needs.
+		// The source build's "b" already refines with CTC internally, so it stays.
+		const alignerMethod = method === "c"
+			? (caps.hasBoth ? "both" : "c")
+			: (method === "b" && caps.hasBoth ? "both" : method);
+		const alignerUsesWhisper = alignerMethod === "b" || alignerMethod === "c" || alignerMethod === "both";
+		const alignerUsesCtc = alignerMethod === "a" || alignerMethod === "c" || alignerMethod === "both";
+
+		const args = [wavPath, lyricsTmpPath];
+		args.push("--method", alignerMethod);
+		if (alignerUsesWhisper) {
+			if (!whisperPath || !fs.existsSync(whisperPath)) {
+				return await bail(`Whisper model not found for Method ${method.toUpperCase()}. Download it in Settings > Linetime Aligner.`);
+			}
+			args.push(caps.newCli ? "--model-c" : "--model-b", whisperPath);
+			if (caps.newCli) {
+				if (!cliInstalled) {
+					return await bail("Whisper CLI not found. Go to Settings > Linetime Aligner to download it.");
+				}
+				args.push("--whisper-cli", getLinetimeWhisperCliPath());
+			}
+		}
+		if (alignerUsesCtc) {
 			args.push("--model-a", modelPath);
 			args.push("--tokenizer", tokenizerPath);
 		}
 		if (language) args.push("--language", language);
 		args.push("--ffmpeg", ffmpegPath);
-		const prov = effective.binary === "gpu" ? "cuda" : "cpu";
-		args.push("--provider", prov, "-o", outputLrcPath);
+		const provider = pickLinetimeProvider(effective.binary, method, caps);
+		logChange("info", "Linetime run: binary=" + getLinetimeBinaryPath(linetimeBinaryForMethod(effective.binary, method))
+			+ "\nmethod=" + method + " aligner=" + alignerMethod + " provider=" + provider
+			+ " cli=" + (caps.newCli ? "source" : "release"));
+		args.push("--provider", provider, "-o", outputLrcPath);
 
-		await runSoundDetect(args, env);
+		await runSoundDetect(args, env, task, method);
+		task.complete();
 
 		if (!fs.existsSync(outputLrcPath)) {
-			return await alertModal("Generation completed but no output file was created.");
+			return await bail("Generation completed but no output file was created.");
 		}
 
 		const syncedText = fs.readFileSync(outputLrcPath, "utf8").trim();
 		if (!syncedText) {
-			return await alertModal("Generation completed but LRC output was empty.");
+			return await bail("Generation completed but LRC output was empty.");
 		}
+		task.complete();
 
-		const confirm = await showPreviewModal(syncedText, method);
-		if (!confirm) return;
-
-		if (originalRow) {
-			originalRow.synced_lyrics = syncedText;
-			await callSqlite({
-				db: "musics",
-				query: "UPDATE lyrics SET synced_lyrics = ? WHERE song_id = ? AND (language IS NULL OR language = '')",
-				args: [syncedText, songId],
-				fetch: false,
-			});
-		} else {
-			cachedRows.push({ lyrics: plainLyrics, language: null, synced_lyrics: syncedText });
-			await callSqlite({
-				db: "musics",
-				query: "INSERT INTO lyrics (song_id, lyrics, language, synced_lyrics) VALUES (?, ?, NULL, ?)",
-				args: [songId, plainLyrics, syncedText],
-				fetch: false,
-			});
+		const applied = await stageTimestampsInEditor(syncedText, method);
+		if (!applied) {
+			btn.textContent = "Cancelled";
+			return;
 		}
-		songLyricsCache.set(songId, cachedRows);
+		task.complete();
 
-		renderLyricsTimestampCol(syncedText);
-		customiseDiv.dataset.origSyncedLyrics = Array.from(document.getElementById("lyricsTimestampCol").children)
-			.map(input => input.value)
-			.join("\n");
+		btn.textContent = "Press Save";
 
-		document.getElementById("customiseButtonBottomRight").style.color = "lime";
-
+		// The baseline datasets are left untouched on purpose so isCustomiseModalDirty
+		// reports the staged result as unsaved and closing the modal offers to save.
 		if (playingSongsID == songId && pipShowLyrics == 1) {
-			updateMiniPlayer({ lyrics: plainLyrics, syncedLyrics: parseLrc(syncedText) });
+			updateMiniPlayer({
+				lyrics: document.getElementById("lyricsArea").value,
+				syncedLyrics: parseLrc(syncedText),
+			});
 			lastPipLyricsSongId = "";
 		}
 
 		if (lyricsPanelVisible && playingSongsID == songId) renderMainLyrics();
-
-		btn.textContent = "Done!";
 	} catch (error) {
 		btn.textContent = "Failed";
 		await alertModal("Failed to generate timestamps: " + (error.message || String(error)));
@@ -222,7 +461,7 @@ function getSelectedLanguage() {
 	return langEl ? langEl.value.trim() : "";
 }
 
-function showMethodSelectionModal(plainLyrics, hasWhisperModel) {
+function showMethodSelectionModal(plainLyrics, hasWhisperModel, hasWhisperCli) {
 	return new Promise(resolve => {
 		const overlay = document.createElement("div");
 		overlay.className = "confirm-modal-overlay";
@@ -250,17 +489,19 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel) {
 			{ 
 				id: "b", 
 				name: "Auto-generate (no lyrics needed)", 
-				desc: "Transcribes the audio from scratch using AI. Use when you don't have lyrics. Needs Whisper model (~3GB).", 
+				desc: "Transcribes the audio from scratch with the Whisper CLI, then times it. Use when you don't have lyrics. Slow, and needs both a Whisper model and the Whisper CLI.",
 				needsLang: true,
-				disabledReason: hasLyrics 
-					? "Method B is only available when no lyrics exist. Use Method C to fix existing lyrics."
-					: (hasWhisperModel ? null : "Download Whisper model in Settings > Linetime Aligner"),
-				available: !hasLyrics && hasWhisperModel 
+				disabledReason: hasLyrics
+					? "Auto-generate is only available when no lyrics exist. Use the hybrid option to fix existing lyrics."
+					: (!hasWhisperModel
+						? "Download Whisper model in Settings > Linetime Aligner"
+						: (!hasWhisperCli ? "Download Whisper CLI in Settings > Linetime Aligner" : null)),
+				available: !hasLyrics && hasWhisperModel && hasWhisperCli
 			},
 			{ 
 				id: "c", 
 				name: "Auto-generate + fix my lyrics", 
-				desc: "Transcribes audio, then corrects your lyrics (fixes typos, restores missing parts). Best accuracy. Needs Whisper model (~3GB).", 
+				desc: "Runs Whisper and CTC alignment together, then merges the best result. Fixes typos and restores missing parts. Needs a Whisper model and the alignment model.",
 				needsLang: true,
 				disabledReason: hasLyrics 
 					? (hasWhisperModel ? null : "Download Whisper model in Settings > Linetime Aligner")
@@ -365,58 +606,70 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel) {
 	});
 }
 
-function showPreviewModal(lrcText, method) {
-	return new Promise(resolve => {
-		const overlay = document.createElement("div");
-		overlay.className = "confirm-modal-overlay";
+// Strips LRC timestamps and id tags so the text fits back in the plain lyrics box.
+function lrcToPlainLines(lrcText) {
+	const lines = [];
+	for (const raw of lrcText.split(/\r?\n/)) {
+		let line = raw.trim();
+		if (!line) continue;
+		if (/^\[(ti|ar|al|au|by|re|ve|length|offset|la|lang):/i.test(line)) continue;
+		line = line.replace(/^(?:\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\])+/, "").trim();
+		if (line) lines.push(line);
+	}
+	return lines;
+}
 
-		const modal = document.createElement("div");
-		modal.className = "confirm-modal";
-		modal.style.maxWidth = "700px";
-		modal.style.maxHeight = "80vh";
-		modal.style.overflow = "auto";
+function escapeForPreview(text) {
+	const escaped = String(text)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
+	return '<div class="comparison-empty" style="white-space:pre-wrap;font-family:monospace;font-size:12px;line-height:1.5;">' + escaped + "</div>";
+}
 
-		const title = document.createElement("h3");
-		title.textContent = `Preview — Method ${method.toUpperCase()}`;
-		modal.appendChild(title);
+// Stages the result in the editor and never writes the database. With nothing to
+// compare against it applies directly. Otherwise the modal asks first, and
+// cancelling discards the whole run.
+async function stageTimestampsInEditor(syncedText, method) {
+	const lyricsArea = document.getElementById("lyricsArea");
+	const existingPlain = lyricsArea.value.trim();
+	const generatedLines = lrcToPlainLines(syncedText);
 
-		const pre = document.createElement("pre");
-		pre.style.whiteSpace = "pre-wrap";
-		pre.style.fontSize = "12px";
-		pre.style.lineHeight = "1.4";
-		pre.style.maxHeight = "50vh";
-		pre.style.overflow = "auto";
-		pre.style.background = "rgba(0,0,0,0.3)";
-		pre.style.padding = "12px";
-		pre.style.borderRadius = "4px";
-		pre.style.margin = "12px 0";
-		pre.textContent = lrcText;
-		modal.appendChild(pre);
+	if (generatedLines.length === 0) {
+		await alertModal("Generation produced no usable lyric lines.");
+		return false;
+	}
 
-		const actions = document.createElement("div");
-		actions.className = "confirm-modal-actions";
+	// Method A keeps the words it was given, so it only has something to compare
+	// when timestamps are already saved. B and C rewrite words, so any existing
+	// lyrics are worth comparing against.
+	const generatesWords = method === "b" || method === "c";
+	const songId = document.getElementById("customiseModal").dataset.songID;
+	const existingRow = (songLyricsCache.get(songId) || []).find(r => !r.language);
+	const existingSynced = existingRow && existingRow.synced_lyrics ? existingRow.synced_lyrics.trim() : "";
+	const hasSomethingToCompare = !!existingSynced || (generatesWords && !!existingPlain);
 
-		const applyBtn = document.createElement("button");
-		applyBtn.id = "confirmModalPrimary";
-		applyBtn.textContent = "Apply";
-		actions.appendChild(applyBtn);
+	if (hasSomethingToCompare) {
+		// With timestamps already saved the comparison is about timing, so the
+		// generated side must show its timestamps too.
+		const choice = await comparisonModal({
+			title: "Compare Timestamps — Method " + method.toUpperCase(),
+			currentLabel: existingSynced ? "Saved" : "Current lyrics",
+			fetchedLabel: "Generated",
+			current: existingSynced || existingPlain || null,
+			results: [existingSynced ? syncedText : generatedLines.join("\n")],
+			renderPreview: escapeForPreview,
+		});
+		if (choice === null) return false;
+	}
 
-		const cancelBtn = document.createElement("button");
-		cancelBtn.id = "confirmModalSecondary";
-		cancelBtn.textContent = "Cancel";
-		actions.appendChild(cancelBtn);
+	// Method A must never overwrite the user's wording. B and C rewrite the words,
+	// so the generated text is authoritative there.
+	if (!existingPlain || generatesWords) {
+		lyricsArea.value = generatedLines.join("\n");
+		lyricsArea.dispatchEvent(new Event("input", { bubbles: true }));
+	}
 
-		modal.appendChild(actions);
-		overlay.appendChild(modal);
-		document.body.appendChild(overlay);
-
-		function cleanup(result) {
-			overlay.remove();
-			resolve(result);
-		}
-
-		applyBtn.addEventListener("click", () => cleanup(true));
-		cancelBtn.addEventListener("click", () => cleanup(false));
-		overlay.addEventListener("click", e => { if (e.target === overlay) cleanup(false); });
-	});
+	renderLyricsTimestampCol(syncedText);
+	return true;
 }
