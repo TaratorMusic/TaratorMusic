@@ -277,6 +277,13 @@ function removeExtensions(input) {
 	return input.replace(/\.[^/.]+$/, "");
 }
 
+function getYtDlpPath() {
+	const ytdlpName = platform === "win32" ? "yt-dlp.exe" : platform === "darwin" ? "yt-dlp_macos" : "yt-dlp_linux";
+	const updatedPath = path.join(taratorFolder, "bin", ytdlpName);
+	if (fs.existsSync(updatedPath)) return updatedPath;
+	return path.join(backendFolder, ytdlpName);
+}
+
 async function generateId() {
 	let id;
 

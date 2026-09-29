@@ -715,6 +715,23 @@ audio {
 	color: #ff6b6b;
 }
 
+#settings-content .app-file-notice {
+	padding: 8px 10px;
+	margin: 10px 0 4px;
+	border-left: 3px solid #ffcc00;
+	background: rgba(255, 204, 0, 0.08);
+	border-radius: 3px;
+	font-size: 12px;
+	line-height: 1.5;
+	color: #ddd;
+}
+
+#settings-content .app-file-notice.optional {
+	border-left-color: #666;
+	background: rgba(255, 255, 255, 0.04);
+	color: #aaa;
+}
+
 #linetimeProgressTrack {
 	width: 100%;
 	height: 6px !important;

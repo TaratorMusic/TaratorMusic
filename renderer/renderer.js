@@ -29,7 +29,6 @@ let pathsReady = (async () => {
 	if (!fs.existsSync(thumbnailFolder)) fs.mkdirSync(thumbnailFolder);
 	if (!fs.existsSync(databasesFolder)) fs.mkdirSync(databasesFolder);
 	if (!fs.existsSync(path.join(taratorFolder, "bin"))) fs.mkdirSync(path.join(taratorFolder, "bin"));
-	if (!fs.existsSync(path.join(taratorFolder, "linetime"))) fs.mkdirSync(path.join(taratorFolder, "linetime"));
 })();
 
 const tabs = document.querySelectorAll(".sidebar div");
@@ -472,7 +471,14 @@ async function initialiseDatabases() {
 	}
 
 	await getPlaylists(false);
-	startupCheck();
+	// Awaited so the report is in hand before the Settings tab can ask for it.
+	// Separate from startupCheck on purpose: that tool's output is a song map whose
+	// key count is compared against the song count, so folding a health report into
+	// it would make the app think new songs appeared and insert a junk row.
+	await Promise.all([startupCheck(), runBinaryCheck()]);
+	// The Linetime tables rendered above before the report existed, so they showed
+	// everything as not installed. Redraw now that the real state is known.
+	refreshLinetimeStatus();
 	setupLazyBackgrounds();
 }
 
@@ -3550,13 +3556,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 		ipcRenderer.send("download-update");
 	});
 
-	const ytdlpName = platform === "win32" ? "yt-dlp.exe" : platform === "darwin" ? "yt-dlp_macos" : "yt-dlp_linux";
-	const ytdlpPath = fs.existsSync(path.join(taratorFolder, "bin", ytdlpName))
-		? path.join(taratorFolder, "bin", ytdlpName)
-		: path.join(backendFolder, ytdlpName);
 	audioPlayer = spawn(path.join(backendFolder, "player"), [], {
 		stdio: ["pipe", "pipe", "pipe"],
-		env: { ...process.env, YTDLP_PATH: ytdlpPath, FFMPEG_PATH: ffmpegPath },
+		env: { ...process.env, YTDLP_PATH: getYtDlpPath(), FFMPEG_PATH: ffmpegPath },
 	});
 	audioPlayer.stderr.on("data", data => {
 		const msg = data.toString().trim();

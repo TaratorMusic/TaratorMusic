@@ -7,12 +7,13 @@ function getSoundDetectBinary() {
 }
 
 // Only the GPU build needs a library path. The CPU build is self contained and
-// would break if it inherited a GPU lib path from the environment.
+// would break if it inherited a GPU lib path from the environment. The directory
+// comes from the binary_check report, not a table duplicated here.
 function getSoundDetectLibDir() {
 	const effective = getEffectiveLinetimeSelection();
 	const v = LINETIME_BINARY_VARIANTS.find(x => x.id === effective.binary);
 	if (!v || !v.gpu) return null;
-	return path.join(getLinetimeFolder(), v.libDir);
+	return getAppFilePart("gpu", "lib");
 }
 
 function convertToWav16k(inputPath, outputPath) {
@@ -46,14 +47,26 @@ function convertToWav16k(inputPath, outputPath) {
 const LINETIME_RELEASE_CLI_CAPS = Object.freeze({ newCli: false, hasBoth: true });
 let soundDetectCapsCache = new Map();
 
+// The probe has to run with the same library path as the real invocation. A GPU
+// bundle cannot start at all without it, so probing without it makes --help print
+// a loader error and every GPU build looks like an unrecognised CLI.
 function detectSoundDetectCaps() {
 	const binaryPath = getSoundDetectBinary();
+	if (!binaryPath) return Object.assign({}, LINETIME_RELEASE_CLI_CAPS);
 	if (soundDetectCapsCache.has(binaryPath)) return soundDetectCapsCache.get(binaryPath);
+
+	const env = Object.assign({}, process.env);
+	const libDir = getSoundDetectLibDir();
+	if (libDir && process.platform !== "win32") {
+		env.LD_LIBRARY_PATH = libDir + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
+	}
 
 	const result = spawnSync(binaryPath, ["--help"], {
 		encoding: "utf8",
 		timeout: 15000,
 		windowsHide: true,
+		cwd: getLinetimeFolder(),
+		env,
 	});
 	const help = (result.stdout || "") + (result.stderr || "");
 
@@ -82,48 +95,72 @@ function clearSoundDetectCapsCache() {
 	soundDetectCapsCache = new Map();
 }
 
+// Death by signal, which is what an illegal instruction from a bundle built with
+// -march=native looks like. A clean non-zero exit is a normal failure, not a
+// signal-death, and is reported as-is.
 function soundDetectCrashed(error) {
-	return /exited with code null/.test(error?.message ?? "");
+	return !!error?.signal;
 }
 
-function rewriteProviderArg(args, provider) {
-	const next = args.slice();
-	const index = next.indexOf("--provider");
-	if (index !== -1 && index + 1 < next.length) next[index + 1] = provider;
-	return next;
-}
-
-function readProviderArg(args) {
-	const index = args.indexOf("--provider");
-	if (index === -1 || index + 1 >= args.length) return "unknown";
-	return args[index + 1];
-}
-
-// A GPU bundle built with -march=native on an AVX-512 machine dies with SIGILL
-// inside ggml_cpu_init, which whisper calls at init. Not a CUDA problem:
-// forcing --provider cpu still crashes. The signal is undetectable up front, so
-// the first crash is remembered and later Whisper runs skip the GPU bundle
-// instead of paying the crash again. Method a never reaches whisper.
+// A GPU bundle built with -march=native on an AVX-512 machine takes SIGILL inside
+// the whisper backend when run on a CPU without those instructions. It is not a
+// CUDA problem: --provider cpu still crashes, because the code was compiled that
+// way. The signal cannot be predicted, so the first crash is remembered and later
+// Whisper runs refuse to start rather than paying a multi-gigabyte model load to
+// crash again. Method a never loads a Whisper model, so it is unaffected.
 const LINETIME_GPU_BUNDLE_BROKEN_KEY = "taratorLinetimeGpuBundleBroken";
 
+// Identifies the exact binary the crash was recorded against, so replacing the
+// bundle clears the flag by itself. Without this a fixed or rebuilt binary stays
+// permanently blocked by a verdict about the old one.
+function gpuBundleFingerprint() {
+	const p = getLinetimeBinaryPath("gpu");
+	if (!p) return "";
+	try {
+		const s = fs.statSync(p);
+		return s.size + ":" + s.mtimeMs;
+	} catch (_) {
+		return "";
+	}
+}
+
 function isLinetimeGpuBundleBroken() {
-	try { return localStorage.getItem(LINETIME_GPU_BUNDLE_BROKEN_KEY) === "1"; }
-	catch (_) { return false; }
+	try {
+		const raw = localStorage.getItem(LINETIME_GPU_BUNDLE_BROKEN_KEY);
+		if (!raw) return false;
+		// A bare "1" predates fingerprinting and cannot be tied to a binary, so it
+		// is discarded rather than trusted.
+		if (raw === "1") {
+			localStorage.removeItem(LINETIME_GPU_BUNDLE_BROKEN_KEY);
+			return false;
+		}
+		const rec = JSON.parse(raw);
+		if (!rec || rec.fp !== gpuBundleFingerprint()) {
+			localStorage.removeItem(LINETIME_GPU_BUNDLE_BROKEN_KEY);
+			return false;
+		}
+		return true;
+	} catch (_) {
+		return false;
+	}
 }
 
 function markLinetimeGpuBundleBroken() {
-	try { localStorage.setItem(LINETIME_GPU_BUNDLE_BROKEN_KEY, "1"); } catch (_) {}
+	try {
+		localStorage.setItem(LINETIME_GPU_BUNDLE_BROKEN_KEY,
+			JSON.stringify({ fp: gpuBundleFingerprint(), at: Date.now() }));
+	} catch (_) {}
 }
 
 function clearLinetimeGpuBundleBroken() {
 	try { localStorage.removeItem(LINETIME_GPU_BUNDLE_BROKEN_KEY); } catch (_) {}
 }
 
-function linetimeBinaryForMethod(binaryId, method) {
-	if (binaryId !== "gpu") return binaryId;
-	const needsWhisper = method === "b" || method === "c";
-	if (needsWhisper && isLinetimeGpuBundleBroken()) return "cpu";
-	return binaryId;
+// True when this run must be refused because the GPU bundle already crashed on
+// this machine. Method a never loads a Whisper model, so it stays allowed.
+function gpuBundleBlocksWhisper(binaryId, method) {
+	if (binaryId !== "gpu") return false;
+	return (method === "b" || method === "c") && isLinetimeGpuBundleBroken();
 }
 
 // CUDA only accelerates the ONNX CTC model. On the released binary the Whisper
@@ -158,46 +195,53 @@ function runSoundDetectOnce(binaryPath, args, env, task) {
 		});
 		proc.stdout.on("data", () => {});
 
-		proc.on("close", code => {
-			if (code === 0) resolve();
-			else reject(new Error("sounddetect exited with code " + code + "\n" + stderrTail));
+		proc.on("close", (code, signal) => {
+			if (code === 0) return resolve();
+			// A null code means the process died on a signal. SIGILL in particular
+			// means the bundle was compiled with instructions this CPU does not have.
+			const cause = signal ? "killed by " + signal : "exited with code " + code;
+			const err = new Error("Linetime aligner " + cause);
+			err.signal = signal || null;
+			err.stderrTail = stderrTail;
+			reject(err);
 		});
 		proc.on("error", err => reject(err));
 	});
 }
 
+// No fallback to another bundle. If the selected one cannot run on this CPU the
+// run stops and says why, rather than silently switching binaries behind the
+// user's back.
 async function runSoundDetect(args, env, task, method) {
 	const effective = getEffectiveLinetimeSelection();
-	const binaryId = linetimeBinaryForMethod(effective.binary, method);
-	const binaryPath = getLinetimeBinaryPath(binaryId);
-	if (binaryId !== effective.binary) {
-		logChange("info", "Linetime skipped the GPU bundle for method " + method
-			+ " because it previously crashed on this CPU.");
+	const binaryPath = getLinetimeBinaryPath(effective.binary);
+
+	if (gpuBundleBlocksWhisper(effective.binary, method)) {
+		const message = "The GPU Linetime bundle is not compatible with this CPU and is already "
+			+ "recorded as broken. Nothing was retried. Download the CPU binary in "
+			+ "Settings > Linetime Aligner and select it, or use Method A, which does not "
+			+ "load a Whisper model.";
+		logChange("warn", "Linetime run refused before starting.\n" + message
+			+ "\nbinary: " + binaryPath + "\nmethod: " + method);
+		throw new Error(message);
 	}
+
 	try {
 		await runSoundDetectOnce(binaryPath, args, env, task);
-		return;
 	} catch (error) {
-		if (binaryId !== "gpu" || !soundDetectCrashed(error)) throw error;
+		if (effective.binary !== "gpu" || !soundDetectCrashed(error)) throw error;
 
-		logChange("warn", "Linetime GPU run crashed, falling back to CPU.\nbinary: " + binaryPath
-			+ "\nprovider: " + readProviderArg(args)
-			+ "\n" + (error?.message ?? String(error)));
 		markLinetimeGpuBundleBroken();
-
-		const cpuBinary = getLinetimeBinaryPath("cpu");
-		if (!cpuBinary || !fs.existsSync(cpuBinary)) throw error;
-
-		// The CPU build has no CUDA provider, so the provider must be rewritten or
-		// the retry drives the same crashing code path. It also needs no lib path.
-		const cpuArgs = rewriteProviderArg(args, "cpu");
-		const cpuEnv = Object.assign({}, env);
-		delete cpuEnv.LD_LIBRARY_PATH;
-		try {
-			await runSoundDetectOnce(cpuBinary, cpuArgs, cpuEnv, task);
-		} catch (cpuError) {
-			throw new Error(error.message + "\n\nCPU retry also failed: " + (cpuError?.message ?? cpuError));
-		}
+		const reason = error.signal === "SIGILL"
+			? "The GPU Linetime bundle was compiled with CPU instructions this machine does not "
+				+ "have (SIGILL). The Whisper step cannot run here."
+			: "The GPU Linetime bundle crashed (" + (error.signal || "unknown signal") + ").";
+		logChange("warn", reason + "\nbinary: " + binaryPath
+			+ "\nmethod: " + method
+			+ "\n" + (error.stderrTail || ""));
+		throw new Error(reason + "\n\nNothing was retried. Download the CPU binary in "
+			+ "Settings > Linetime Aligner and select it, or use Method A, which does not "
+			+ "load a Whisper model.");
 	}
 }
 
@@ -348,26 +392,13 @@ async function generateTimestampsForCurrentSong() {
 	setTimestampsProgress(0);
 	const bail = async message => {
 		btn.textContent = "Failed";
+		logChange("warn", "Timestamp generation stopped: " + message);
 		return await alertModal(message);
 	};
 
 	try {
 		await convertToWav16k(audioPath, wavPath);
 		task.complete();
-
-		let lyricsForAligner = plainLyrics;
-		if (!lyricsForAligner || !lyricsForAligner.trim()) {
-			try {
-				const transcribed = await transcribeLyrics(wavPath, language, n => {
-					task.creep(Math.min(0.9, n / 40));
-				});
-				lyricsForAligner = transcribed.join("\n");
-			} catch (tErr) {
-				return await bail(tErr.message ?? String(tErr));
-			}
-		}
-		task.complete();
-		fs.writeFileSync(lyricsTmpPath, lyricsForAligner, "utf8");
 
 		const caps = detectSoundDetectCaps();
 		const cliInstalled = isLinetimeWhisperCliInstalled();
@@ -380,9 +411,34 @@ async function generateTimestampsForCurrentSong() {
 			? (caps.hasBoth ? "both" : "c")
 			: (method === "b" && caps.hasBoth ? "both" : method);
 		const alignerUsesWhisper = alignerMethod === "b" || alignerMethod === "c" || alignerMethod === "both";
-		const alignerUsesCtc = alignerMethod === "a" || alignerMethod === "c" || alignerMethod === "both";
+		// The source CLI re-times its transcription with the CTC model inside method b
+		// and silently keeps whisper's raw segment times when that model is absent.
+		// So method b needs the alignment model too, or the timestamps are the coarse
+		// per-segment ones rather than per-line.
+		const alignerUsesCtc = alignerMethod === "a" || alignerMethod === "c"
+			|| alignerMethod === "both" || (caps.newCli && alignerMethod === "b");
 
-		const args = [wavPath, lyricsTmpPath];
+		// The source CLI transcribes through whisper-cli itself and rejects a lyrics
+		// file for method b ("method b does not accept a lyrics file"). The released
+		// CLI cannot transcribe at all, so that one still needs the text supplied.
+		const cliTranscribes = caps.newCli && alignerMethod === "b";
+		const passesLyrics = !cliTranscribes;
+
+		let lyricsForAligner = plainLyrics;
+		if (passesLyrics && (!lyricsForAligner || !lyricsForAligner.trim())) {
+			try {
+				const transcribed = await transcribeLyrics(wavPath, language, n => {
+					task.creep(Math.min(0.9, n / 40));
+				});
+				lyricsForAligner = transcribed.join("\n");
+			} catch (tErr) {
+				return await bail(tErr.message ?? String(tErr));
+			}
+		}
+		task.complete();
+		if (passesLyrics) fs.writeFileSync(lyricsTmpPath, lyricsForAligner, "utf8");
+
+		const args = passesLyrics ? [wavPath, lyricsTmpPath] : [wavPath];
 		args.push("--method", alignerMethod);
 		if (alignerUsesWhisper) {
 			if (!whisperPath || !fs.existsSync(whisperPath)) {
@@ -403,7 +459,7 @@ async function generateTimestampsForCurrentSong() {
 		if (language) args.push("--language", language);
 		args.push("--ffmpeg", ffmpegPath);
 		const provider = pickLinetimeProvider(effective.binary, method, caps);
-		logChange("info", "Linetime run: binary=" + getLinetimeBinaryPath(linetimeBinaryForMethod(effective.binary, method))
+		logChange("info", "Linetime run: binary=" + getLinetimeBinaryPath(effective.binary)
 			+ "\nmethod=" + method + " aligner=" + alignerMethod + " provider=" + provider
 			+ " cli=" + (caps.newCli ? "source" : "release"));
 		args.push("--provider", provider, "-o", outputLrcPath);
@@ -443,7 +499,13 @@ async function generateTimestampsForCurrentSong() {
 		if (lyricsPanelVisible && playingSongsID == songId) renderMainLyrics();
 	} catch (error) {
 		btn.textContent = "Failed";
-		await alertModal("Failed to generate timestamps: " + (error.message || String(error)));
+		const detail = error.message || String(error);
+		logChange("error", "Timestamp generation failed: " + detail);
+		// The GPU incompatibility message is already a complete explanation with its
+		// own next step, so do not wrap it in a generic prefix.
+		await alertModal(detail.startsWith("The GPU Linetime bundle")
+			? detail
+			: "Failed to generate timestamps: " + detail);
 	} finally {
 		setTimeout(() => {
 			btn.textContent = "Generate Timestamps";

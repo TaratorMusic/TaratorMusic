@@ -8,12 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/Victiniiiii/TaratorMusic/backend/internal/appfiles"
 )
 
 const (
-	githubAPI     = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
-	binDir        = "bin"
-	ytdlpBaseName = "yt-dlp"
+	githubAPI = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+	binDir    = "bin"
 )
 
 type GitHubRelease struct {
@@ -32,34 +33,25 @@ func main() {
 		}
 	}
 
-	var assetName, outputName string
-	switch runtime.GOOS {
-	case "windows":
-		assetName = "yt-dlp.exe"
-		outputName = "yt-dlp.exe"
-	case "darwin":
-		assetName = "yt-dlp_macos"
-		outputName = "yt-dlp_macos"
-	case "linux":
-		assetName = "yt-dlp_linux"
-		outputName = "yt-dlp_linux"
-	default:
+	// The name is both the upstream release asset and our stored name, and it
+	// lives in appfiles so binary_check resolves the same file we write.
+	if !appfiles.PlatformSupported() {
 		fmt.Fprintf(os.Stderr, "Unsupported platform: %s\n", runtime.GOOS)
 		os.Exit(1)
 	}
+	assetName := appfiles.YtdlpName()
+	outputName := assetName
 
 	outputPath := filepath.Join(binDir, outputName)
+	// A zero length file is a leftover from an interrupted download. Reuse the same
+	// check linetime_fetch uses so a partial install is repaired rather than kept.
 	if !force {
-		if _, err := os.Stat(outputPath); err == nil {
+		if info, err := os.Stat(outputPath); err == nil && info.Size() > 0 {
 			fmt.Printf("yt-dlp binary already exists at %s, skipping download\n", outputPath)
 			return
 		}
 	} else {
-		if err := os.Remove(outputPath); err != nil && !os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Error removing old binary: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("Force mode: removed existing binary, downloading latest...")
+		fmt.Println("Force mode: downloading latest...")
 	}
 
 	fmt.Printf("Fetching latest yt-dlp release for %s...\n", runtime.GOOS)
@@ -125,24 +117,49 @@ func main() {
 		os.Exit(1)
 	}
 
-	outFile, err := os.Create(outputPath)
+	// Write to a temp file and rename, so a failure part way through leaves the
+	// working binary in place instead of deleting it.
+	tmpPath := outputPath + ".part"
+	outFile, err := os.Create(tmpPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
 		os.Exit(1)
 	}
-	defer outFile.Close()
 
-	_, err = io.Copy(outFile, dlResp.Body)
+	written, err := io.Copy(outFile, dlResp.Body)
+	outFile.Close()
 	if err != nil {
+		os.Remove(tmpPath)
 		fmt.Fprintf(os.Stderr, "Error writing binary: %v\n", err)
 		os.Exit(1)
 	}
 
+	// GitHub redirects the asset to a CDN. Without this a proxy or captive portal
+	// returning 200 with an HTML page would be installed as yt-dlp and reported
+	// as a success.
+	if dlResp.ContentLength > 0 && written != dlResp.ContentLength {
+		os.Remove(tmpPath)
+		fmt.Fprintf(os.Stderr, "Download incomplete: got %d bytes, expected %d\n", written, dlResp.ContentLength)
+		os.Exit(1)
+	}
+	if written == 0 {
+		os.Remove(tmpPath)
+		fmt.Fprintln(os.Stderr, "Downloaded file was empty")
+		os.Exit(1)
+	}
+
 	if runtime.GOOS != "windows" {
-		if err := os.Chmod(outputPath, 0755); err != nil {
+		if err := os.Chmod(tmpPath, 0755); err != nil {
+			os.Remove(tmpPath)
 			fmt.Fprintf(os.Stderr, "Error setting executable permission: %v\n", err)
 			os.Exit(1)
 		}
+	}
+
+	if err := os.Rename(tmpPath, outputPath); err != nil {
+		os.Remove(tmpPath)
+		fmt.Fprintf(os.Stderr, "Error installing binary: %v\n", err)
+		os.Exit(1)
 	}
 
 	fmt.Printf("Successfully downloaded yt-dlp %s to %s\n", release.TagName, outputPath)

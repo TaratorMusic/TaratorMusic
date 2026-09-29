@@ -124,9 +124,12 @@ async function grabAndStoreSongInfo(songId) {
 
 const LINETIME_RELEASE_TAG = "latest";
 
+// Presentation metadata only. Filenames live in the Go appfiles package and
+// arrive in the binary_check report, so a rename there cannot leave the renderer
+// looking for a file nothing writes any more.
 const LINETIME_BINARY_VARIANTS = Object.freeze([
-	{ id: "cpu", label: "CPU", executable: "sounddetect_cpu", libDir: "lib", gpu: false },
-	{ id: "gpu", label: "GPU (CUDA 12)", executable: "sounddetect_gpu", libDir: "lib_gpu", gpu: true },
+	{ id: "cpu", label: "CPU", gpu: false },
+	{ id: "gpu", label: "GPU (CUDA 12)", gpu: true },
 ]);
 
 const LINETIME_BINARY_SIZES = Object.freeze({
@@ -138,36 +141,37 @@ const LINETIME_BINARY_SIZES = Object.freeze({
 let linetimeDownloadInProgress = false;
 
 const LINETIME_MODEL_VARIANTS = Object.freeze([
-	{ id: "standard", label: "Standard (FP32)", file: "mms_fa.onnx", dataFile: "mms_fa.onnx.data", sizeDesc: "~1.2 GB", requiresData: true },
-	{ id: "fast", label: "Fast (UINT8)", file: "mms_fa_uint8.onnx", dataFile: null, sizeDesc: "~289 MB", requiresData: false },
+	{ id: "standard", label: "Standard (FP32)", sizeDesc: "~1.2 GB", requiresData: true },
+	{ id: "fast", label: "Fast (UINT8)", sizeDesc: "~289 MB", requiresData: false },
 ]);
 
 const LINETIME_WHISPER_VARIANTS = Object.freeze([
-	{ id: "standard", label: "Standard (fp16)", file: "ggml-large-v3.bin", sizeDesc: "~2.9 GB" },
-	{ id: "whisper-q5", label: "Balanced (q5_0)", file: "ggml-large-v3-q5_0.bin", sizeDesc: "~1 GB" },
+	{ id: "standard", label: "Standard (fp16)", reportId: "whisper-standard", sizeDesc: "~2.9 GB" },
+	{ id: "whisper-q5", label: "Balanced (q5_0)", reportId: "whisper-q5", sizeDesc: "~1 GB" },
 ]);
 
 function getLinetimeFolder() {
-	return path.join(taratorFolder, "linetime");
+	return backendFolder;
 }
 
+// Filenames come from the binary_check report so Go owns them. Existence is still
+// verified live wherever it matters, because the report is only a boot snapshot and
+// the user can delete a file at any time.
 function getLinetimeBinaryPath(id) {
-	const v = LINETIME_BINARY_VARIANTS.find(x => x.id === id);
-	if (!v) return null;
-	const ext = process.platform === "win32" ? ".exe" : "";
-	return path.join(getLinetimeFolder(), v.executable + ext);
+	if (!getLinetimeBinaryVariant(id)) return null;
+	return getAppFilePart(id, "binary");
 }
 
 function getLinetimeModelPath(id) {
-	const v = LINETIME_MODEL_VARIANTS.find(x => x.id === id);
+	const v = getLinetimeModelVariant(id);
 	if (!v) return null;
-	return path.join(getLinetimeFolder(), "sounddetect_models", v.file);
+	return getAppFilePart(id, "model");
 }
 
 function getLinetimeModelDataPath(id) {
-	const v = LINETIME_MODEL_VARIANTS.find(x => x.id === id);
-	if (!v || !v.dataFile) return null;
-	return path.join(getLinetimeFolder(), "sounddetect_models", v.dataFile);
+	const v = getLinetimeModelVariant(id);
+	if (!v || !v.requiresData) return null;
+	return getAppFilePart(id, "data");
 }
 
 function getLinetimeWhisperCliFolder() {
@@ -175,8 +179,7 @@ function getLinetimeWhisperCliFolder() {
 }
 
 function getLinetimeWhisperCliPath() {
-	const ext = process.platform === "win32" ? ".exe" : "";
-	return path.join(getLinetimeWhisperCliFolder(), "whisper-cli" + ext);
+	return getAppFilePart("whisper-cli", "cli");
 }
 
 function getLinetimeWhisperCliSizeDesc() {
@@ -188,18 +191,17 @@ function getLinetimeWhisperCliSizeDesc() {
 }
 
 function getLinetimeWhisperPath(id) {
-	const v = LINETIME_WHISPER_VARIANTS.find(x => x.id === id);
+	const v = getLinetimeWhisperVariant(id);
 	if (!v) return null;
-	return path.join(getLinetimeFolder(), "sounddetect_models", v.file);
+	return getAppFilePart(v.reportId || v.id, "model");
 }
 
 function getLinetimeTokenizerPath() {
-	return path.join(getLinetimeFolder(), "sounddetect_models", "mms_multilingual_tokenizer.json");
+	return getAppFilePart("tokenizer", "tokenizer");
 }
 
 function getLinetimeFfmpegPath() {
-	const ext = process.platform === "win32" ? ".exe" : "";
-	return path.join(getLinetimeFolder(), "ffmpeg" + ext);
+	return getAppFilePart("cpu", "ffmpeg");
 }
 
 function getLinetimeBinaryVariant(id) {
@@ -220,47 +222,44 @@ function getLinetimeWhisperVariant(id) {
 	return LINETIME_WHISPER_VARIANTS.find(x => x.id === id);
 }
 
+// Existence is checked live, not taken from the report state, because the report
+// is a boot snapshot. A null path means the report never arrived, which counts as
+// not installed rather than throwing.
+function linetimePartExists(id, part) {
+	const p = getAppFilePart(id, part);
+	return !!p && fs.existsSync(p);
+}
+
 function isLinetimeBinaryInstalled(id) {
-	const v = getLinetimeBinaryVariant(id);
-	if (!v) return false;
-	const binPath = getLinetimeBinaryPath(id);
-	if (!fs.existsSync(binPath)) return false;
-	const ffmpegPath = getLinetimeFfmpegPath();
-	if (!fs.existsSync(ffmpegPath)) return false;
-	if (v.gpu) {
-		const libDir = path.join(getLinetimeFolder(), v.libDir);
-		if (!fs.existsSync(libDir)) return false;
-	}
+	if (!getLinetimeBinaryVariant(id)) return false;
+	if (getAppFileState(id) === "unsupported") return false;
+	if (!linetimePartExists(id, "binary")) return false;
+	if (!linetimePartExists("cpu", "ffmpeg")) return false;
+	if (getLinetimeBinaryVariant(id).gpu && !linetimePartExists("gpu", "lib")) return false;
 	return true;
 }
 
 function isLinetimeModelInstalled(id) {
 	const v = getLinetimeModelVariant(id);
 	if (!v) return false;
-	const modelPath = getLinetimeModelPath(id);
-	if (!fs.existsSync(modelPath)) return false;
-	if (v.requiresData) {
-		const dataPath = getLinetimeModelDataPath(id);
-		if (!fs.existsSync(dataPath)) return false;
-	}
+	if (!linetimePartExists(id, "model")) return false;
+	if (v.requiresData && !linetimePartExists(id, "data")) return false;
 	return true;
 }
 
 function isLinetimeWhisperInstalled(id) {
 	const v = getLinetimeWhisperVariant(id);
 	if (!v) return false;
-	const whisperPath = getLinetimeWhisperPath(id);
-	return fs.existsSync(whisperPath);
+	return linetimePartExists(v.reportId || v.id, "model");
 }
 
 function isLinetimeWhisperCliInstalled() {
-	const sizeDesc = getLinetimeWhisperCliSizeDesc();
-	if (sizeDesc === null) return false;
-	return fs.existsSync(getLinetimeWhisperCliPath());
+	if (getAppFileState("whisper-cli") === "unsupported") return false;
+	return linetimePartExists("whisper-cli", "cli");
 }
 
 function isLinetimeTokenizerInstalled() {
-	return fs.existsSync(getLinetimeTokenizerPath());
+	return linetimePartExists("tokenizer", "tokenizer");
 }
 
 function getEffectiveLinetimeSelection() {
@@ -381,6 +380,68 @@ async function startupCheck() {
 		callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = LTRIM(song_extension, '.')", fetch: false });
 		callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')", fetch: false });
 	});
+}
+
+let appBinaryReport = null;
+
+// Reports which required files are actually on disk. Optional components that are
+// simply not downloaded yet are expected, so only genuinely required ones are
+// logged; the Settings tab shows the full picture either way.
+async function runBinaryCheck() {
+	const bin = path.join(backendFolder, process.platform === "win32" ? "binary_check.exe" : "binary_check");
+	const userDataBin = path.join(taratorFolder, "bin");
+
+	const result = await new Promise(resolve => {
+		const proc = spawn(bin, [backendFolder, userDataBin], { windowsHide: true });
+		let out = "";
+		proc.stdout.on("data", d => (out += d.toString()));
+		proc.on("error", err => resolve({ error: err }));
+		proc.on("close", code => {
+			if (code !== 0 || !out.trim()) return resolve({ error: new Error("exited with code " + code) });
+			try {
+				resolve({ report: JSON.parse(out) });
+			} catch (e) {
+				resolve({ error: e });
+			}
+		});
+	});
+
+	if (result.error) {
+		appBinaryReport = null;
+		// The whole Linetime panel reads its paths from this report, so without it
+		// every row would claim "Not installed" even when the file is on disk. Say so
+		// plainly instead of letting the tables lie.
+		logChange("warn", "Component inventory unavailable, binary_check did not run ("
+			+ (result.error.message ?? result.error)
+			+ "). Filenames come from it, so the Linetime rows cannot be verified. Run npm run gobuild.");
+		return;
+	}
+
+	appBinaryReport = result.report;
+	const missing = result.report.components.filter(c => c.state === "missing" && !c.optional);
+	if (missing.length > 0) {
+		logChange("warn", "Missing required files: " + missing.map(c => c.label).join(", "));
+	}
+	const unsupported = result.report.components.filter(c => c.state === "unsupported");
+	if (unsupported.length > 0) {
+		logChange("info", "Not available on " + process.platform + ": " + unsupported.map(c => c.label).join(", "));
+	}
+}
+
+// State of a component from the boot report, or null when unknown. Lets the
+// settings tables stop hardcoding filenames that the Go tools also own.
+function getAppFileState(id) {
+	if (!appBinaryReport || !Array.isArray(appBinaryReport.components)) return null;
+	const c = appBinaryReport.components.find(x => x.id === id);
+	return c ? c.state : null;
+}
+
+// Resolves one named part of a component, e.g. the ffmpeg inside the cpu binary.
+function getAppFilePart(id, part) {
+	if (!appBinaryReport || !Array.isArray(appBinaryReport.components)) return null;
+	const c = appBinaryReport.components.find(x => x.id === id);
+	if (!c || !c.parts) return null;
+	return c.parts[part] ?? null;
 }
 
 async function promptUserOnSongs(redownload) {
@@ -505,17 +566,62 @@ function renderLinetimeTable(containerId, title, items) {
 	el.innerHTML = header + rows;
 }
 
+// After anything that changes what is on disk the boot report is stale, so it is
+// regenerated before the tables redraw. Selection changes do not need this.
+async function refreshLinetimeReport() {
+	await runBinaryCheck();
+	refreshLinetimeStatus();
+}
+
+// Non-modal on purpose. A modal on every cold boot for an optional feature is
+// hostile, so the report lives quietly in Settings and in the log.
+function renderAppFileNotice() {
+	const el = document.getElementById("appFileNotice");
+	if (!el) return;
+
+	if (!appBinaryReport || !Array.isArray(appBinaryReport.components)) {
+		// Do not fall through to "everything is missing": the rows cannot be
+		// trusted without the report, and saying so is more useful than a lie.
+		el.className = "app-file-notice";
+		el.textContent = "Component inventory unavailable: binary_check did not run, so these rows cannot be verified. Run npm run gobuild to build it. Downloads still work.";
+		el.style.display = "block";
+		return;
+	}
+
+	const missing = appBinaryReport.components.filter(c => c.state === "missing");
+	if (missing.length === 0) {
+		el.style.display = "none";
+		return;
+	}
+
+	const required = missing.filter(c => !c.optional);
+	const optional = missing.filter(c => c.optional);
+	const parts = [];
+	if (required.length > 0) {
+		parts.push("Missing: " + required.map(c => c.label).join(", ") + ".");
+	}
+	if (optional.length > 0) {
+		parts.push("Optional, not downloaded yet: " + optional.map(c => c.label).join(", ") + ".");
+	}
+
+	el.className = required.length > 0 ? "app-file-notice" : "app-file-notice optional";
+	el.textContent = parts.join(" ");
+	el.style.display = "block";
+}
+
 function refreshLinetimeStatus() {
 	const effective = getEffectiveLinetimeSelection();
 
 	const binaryItems = LINETIME_BINARY_VARIANTS.map(v => {
-		const sizeDesc = getLinetimeBinarySizeDesc(v.id);
-		const supported = sizeDesc !== null;
+		// Platform support comes from the report, not a table duplicated here, so
+		// the UI cannot disagree with the check about what is possible.
+		const supported = getAppFileState(v.id) !== "unsupported";
 		const installed = supported && isLinetimeBinaryInstalled(v.id);
-		const gpuLibBytes = v.gpu ? dirSizeBytes(path.join(getLinetimeFolder(), v.libDir)) : 0;
+		const gpuLibPath = v.gpu ? getAppFilePart("gpu", "lib") : null;
+		const gpuLibBytes = gpuLibPath ? dirSizeBytes(gpuLibPath) : 0;
 		const binBytes = linetimeFileSizeBytes([getLinetimeBinaryPath(v.id)]);
 		const sizeText = supported
-			? ((binBytes + gpuLibBytes) > 0 ? linetimeBytesText(binBytes + gpuLibBytes) : sizeDesc)
+			? ((binBytes + gpuLibBytes) > 0 ? linetimeBytesText(binBytes + gpuLibBytes) : getLinetimeBinarySizeDesc(v.id))
 			: "N/A";
 		return {
 			id: v.id,
@@ -573,7 +679,7 @@ function refreshLinetimeStatus() {
 	});
 	renderLinetimeTable("linetimeWhisperTable", "Whisper models (optional)", whisperItems);
 
-	const cliSupported = getLinetimeWhisperCliSizeDesc() !== null;
+	const cliSupported = getAppFileState("whisper-cli") !== "unsupported";
 	const cliInstalled = isLinetimeWhisperCliInstalled();
 	const cliDir = getLinetimeWhisperCliFolder();
 	const cliSizeText = cliSupported
@@ -590,6 +696,8 @@ function refreshLinetimeStatus() {
 		downloadFn: "linetimeDownloadWhisperCli",
 		deleteFn: "linetimeDeleteWhisperCli",
 	}]);
+
+	renderAppFileNotice();
 }
 
 async function updateYtdlp() {
@@ -600,8 +708,12 @@ async function updateYtdlp() {
 	try {
 		const bin = path.join(backendFolder, process.platform === "win32" ? "ytdlp_fetch.exe" : "ytdlp_fetch");
 		const result = await new Promise((resolve, reject) => {
-			const fetchCwd = process.platform === "linux" ? taratorFolder : processFolder;
-			const proc = spawn(bin, ["--force"], { windowsHide: true, cwd: fetchCwd });
+			// ytdlp_fetch writes a relative "bin/<name>", so the cwd decides the
+			// destination. It must be userData, not the install dir: on Windows and
+			// macOS processDir is the app bundle, which is not writable and, on macOS,
+			// would invalidate the code signature. taratorFolder is also what the
+			// readers in download_music.js prefer.
+			const proc = spawn(bin, ["--force"], { windowsHide: true, cwd: taratorFolder });
 		let stdout = "";
 		let stderr = "";
 		proc.stdout.on("data", d => {
@@ -766,7 +878,7 @@ async function downloadLinetimeVariant(component, variant) {
 	}
 
 	linetimeDownloadInProgress = false;
-	refreshLinetimeStatus();
+	await refreshLinetimeReport();
 
 	setTimeout(() => {
 		progressContainer.style.display = "none";
@@ -830,14 +942,14 @@ async function linetimeDeleteBinary(variant) {
 	try {
 		fs.unlinkSync(binPath);
 		if (variant === "gpu") {
-			const libDir = path.join(getLinetimeFolder(), "lib_gpu");
-			if (fs.existsSync(libDir)) fs.rmSync(libDir, { recursive: true, force: true });
+			const libDir = getAppFilePart("gpu", "lib");
+			if (libDir && fs.existsSync(libDir)) fs.rmSync(libDir, { recursive: true, force: true });
 			// A re-downloaded bundle should be given a clean chance, in case the
 			// previous one crashed for a reason that has since been fixed.
 			clearLinetimeGpuBundleBroken();
 		}
 		clearSoundDetectCapsCache();
-		refreshLinetimeStatus();
+		await refreshLinetimeReport();
 		await alertModal(`${label} binary deleted`);
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);
@@ -853,11 +965,11 @@ async function linetimeDeleteModel(variant) {
 	const v = getLinetimeModelVariant(variant);
 	try {
 		fs.unlinkSync(modelPath);
-		if (v && v.dataFile) {
+		if (v && v.requiresData) {
 			const dataPath = getLinetimeModelDataPath(variant);
-			if (fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
+			if (dataPath && fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
 		}
-		refreshLinetimeStatus();
+		await refreshLinetimeReport();
 		await alertModal(`${label} CTC model deleted`);
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);
@@ -872,7 +984,7 @@ async function linetimeDeleteWhisper(variant) {
 	const whisperPath = getLinetimeWhisperPath(variant);
 	try {
 		fs.unlinkSync(whisperPath);
-		refreshLinetimeStatus();
+		await refreshLinetimeReport();
 		await alertModal(`${label} Whisper model deleted`);
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);
@@ -885,7 +997,7 @@ async function linetimeDeleteTokenizer() {
 
 	try {
 		fs.unlinkSync(getLinetimeTokenizerPath());
-		refreshLinetimeStatus();
+		await refreshLinetimeReport();
 		await alertModal("Tokenizer deleted");
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);
@@ -897,8 +1009,9 @@ async function linetimeDeleteWhisperCli() {
 	if (!confirm) return;
 
 	try {
-		fs.rmSync(getLinetimeWhisperCliFolder(), { recursive: true, force: true });
-		refreshLinetimeStatus();
+		const cliPath = getLinetimeWhisperCliPath();
+		if (cliPath) fs.rmSync(path.dirname(cliPath), { recursive: true, force: true });
+		await refreshLinetimeReport();
 		await alertModal("Whisper CLI deleted");
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);

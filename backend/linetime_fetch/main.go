@@ -14,12 +14,14 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/Victiniiiii/TaratorMusic/backend/internal/appfiles"
 )
 
 const (
 	githubAPI   = "https://api.github.com/repos/Victiniiiii/Linetime/releases/"
 	binDir      = "."
-	modelsDir   = "sounddetect_models"
+	modelsDir   = appfiles.LinetimeModelsDirName
 	huggingFace = "https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main"
 	whisperHF   = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
 
@@ -27,7 +29,6 @@ const (
 	// only an xcframework for embedding, so there is no CLI to download there.
 	whisperCppTag  = "b5130"
 	whisperCppBase = "https://github.com/ggml-org/whisper.cpp/releases/download/" + whisperCppTag
-	whisperCliDir  = "whisper_cli"
 )
 
 type GitHubRelease struct {
@@ -192,6 +193,7 @@ type platformConfig struct {
 func getPlatformConfig(useGPU bool) (platformConfig, error) {
 	var cfg platformConfig
 	cfg.gpuSupported = useGPU && runtime.GOOS == "linux"
+	cfg.ffmpegName = appfiles.LinetimeFfmpegName()
 
 	switch runtime.GOOS {
 	case "linux":
@@ -204,15 +206,12 @@ func getPlatformConfig(useGPU bool) (platformConfig, error) {
 		if useGPU {
 			cfg.binaryName = "linetime"
 		}
-		cfg.ffmpegName = "ffmpeg"
 	case "darwin":
 		cfg.assetName = "linetime-macos-universal.tar.gz"
 		cfg.binaryName = "linetime-macos-universal"
-		cfg.ffmpegName = "ffmpeg"
 	case "windows":
 		cfg.assetName = "linetime-windows-x64.tar.gz"
 		cfg.binaryName = "linetime-windows-x64.exe"
-		cfg.ffmpegName = "ffmpeg.exe"
 		if useGPU {
 			return cfg, fmt.Errorf("GPU variant not available for Windows")
 		}
@@ -222,19 +221,10 @@ func getPlatformConfig(useGPU bool) (platformConfig, error) {
 	return cfg, nil
 }
 
-// Dest names are fixed and platform independent apart from the extension so the
-// renderer can locate the binary without duplicating this platform table. The
-// old scheme built names from the release asset name, which produced different
-// filenames per platform and a broken "linetime-windows-x64.exe_cpu" on Windows.
+// Dest names live in the appfiles package so binary_check validates exactly what
+// this tool writes.
 func getBinaryName(useGPU bool) string {
-	name := "sounddetect_cpu"
-	if useGPU {
-		name = "sounddetect_gpu"
-	}
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
-	return name
+	return appfiles.LinetimeBinaryName(useGPU)
 }
 
 func downloadBinary(useGPU, force bool) error {
@@ -568,7 +558,7 @@ func downloadWhisperCli(force bool) error {
 	if runtime.GOOS == "windows" {
 		execName = "whisper-cli.exe"
 	}
-	finalDir := filepath.Join(binDir, whisperCliDir)
+	finalDir := filepath.Join(binDir, appfiles.LinetimeWhisperCliDir)
 
 	// The executable cannot start without its shared libraries, so both must be
 	// present or a partial install is repaired.
@@ -679,7 +669,7 @@ func downloadTokenizerFile(force bool) error {
 		return fmt.Errorf("error creating models directory: %v", err)
 	}
 
-	tokenizerPath := filepath.Join(modelsDir, "mms_multilingual_tokenizer.json")
+	tokenizerPath := filepath.Join(modelsDir, appfiles.LinetimeTokenizerName)
 	if _, err := os.Stat(tokenizerPath); err == nil && !force {
 		fmt.Println("Tokenizer already present, skipping")
 		return nil
@@ -724,11 +714,11 @@ func downloadWhisperModel(quant string, force bool) error {
 
 	switch quant {
 	case "standard":
-		modelName = "ggml-large-v3.bin"
+		modelName = appfiles.LinetimeWhisperFP16
 		modelURL = whisperHF + "/ggml-large-v3.bin"
 		expectedSize = 3095033483
 	case "q5":
-		modelName = "ggml-large-v3-q5_0.bin"
+		modelName = appfiles.LinetimeWhisperQ5
 		modelURL = whisperHF + "/ggml-large-v3-q5_0.bin"
 		expectedSize = 1081140203
 	case "q8":
@@ -771,8 +761,8 @@ func downloadWhisperModel(quant string, force bool) error {
 func downloadModelFP32(force bool) error {
 	// Keep the upstream filenames: the ONNX graph references its external
 	// weights as "mms_fa.onnx.data", so renaming either file breaks loading.
-	onnxPath := filepath.Join(modelsDir, "mms_fa.onnx")
-	dataPath := filepath.Join(modelsDir, "mms_fa.onnx.data")
+	onnxPath := filepath.Join(modelsDir, appfiles.LinetimeModelStandard)
+	dataPath := filepath.Join(modelsDir, appfiles.LinetimeModelStandardDta)
 
 	if !force {
 		if _, err := os.Stat(onnxPath); err == nil {
@@ -806,7 +796,7 @@ func downloadModelFP32(force bool) error {
 }
 
 func downloadModelUINT8(force bool) error {
-	onnxPath := filepath.Join(modelsDir, "mms_fa_uint8.onnx")
+	onnxPath := filepath.Join(modelsDir, appfiles.LinetimeModelFast)
 
 	if !force {
 		if _, err := os.Stat(onnxPath); err == nil {
