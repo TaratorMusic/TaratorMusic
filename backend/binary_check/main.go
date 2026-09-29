@@ -15,7 +15,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
 
 	"github.com/Victiniiiii/TaratorMusic/backend/internal/appfiles"
 )
@@ -91,8 +95,17 @@ func main() {
 		"bundled": filepath.Join(appBin, appfiles.YtdlpName()),
 	})))
 
-	for _, c := range appfiles.LinetimeComponents(linetimeFolder) {
-		comps = append(comps, resolve(c))
+	linetime := appfiles.LinetimeComponents(linetimeFolder)
+	for _, c := range linetime {
+		c = resolve(c)
+		// The aligner prints its version on the first line of --help. Reporting it
+		// lets the app show which build is installed, which matters because the
+		// released 1.2 bundle and a locally built 1.3 behave differently. Only the
+		// GPU bundle carries a lib folder, and Parts["lib"] is empty for the others.
+		if c.Group == "binary" && c.State == appfiles.StatePresent {
+			c.Version = probeVersion(c.Parts["binary"], c.Parts["lib"])
+		}
+		comps = append(comps, c)
 	}
 
 	out, err := json.Marshal(report{Components: comps})
@@ -101,4 +114,38 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println(string(out))
+}
+
+var versionPattern = regexp.MustCompile(`(?i)\bv?(\d+\.\d+(?:\.\d+)?)\b`)
+
+// probeVersion runs --help and reads the version off the first line. It has to
+// stay cheap and silent: this runs at every launch, and a binary that cannot
+// start is not an error here, it is already reported as missing or broken
+// elsewhere.
+func probeVersion(binary, libDir string) string {
+	if binary == "" || !exists(binary) {
+		return ""
+	}
+	cmd := exec.Command(binary, "--help")
+	if libDir != "" {
+		env := os.Environ()
+		separator := ":"
+		if runtime.GOOS == "windows" {
+			separator = ";"
+		}
+		cmd.Env = append(env, "LD_LIBRARY_PATH="+libDir+separator+os.Getenv("LD_LIBRARY_PATH"))
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil && len(output) == 0 {
+		return ""
+	}
+	text := string(output)
+	if idx := strings.IndexByte(text, '\n'); idx != -1 {
+		text = text[:idx]
+	}
+	match := versionPattern.FindStringSubmatch(text)
+	if len(match) < 2 {
+		return ""
+	}
+	return match[1]
 }

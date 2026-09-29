@@ -33,6 +33,7 @@ type Component struct {
 	Parts       map[string]string `json:"parts"`
 	Files       []string          `json:"files"`
 	State       string            `json:"state"`
+	Version     string            `json:"version,omitempty"`
 	Optional    bool              `json:"optional,omitempty"`
 	Unsupported bool              `json:"unsupported,omitempty"`
 }

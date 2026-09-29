@@ -444,6 +444,15 @@ function getAppFilePart(id, part) {
 	return c.parts[part] ?? null;
 }
 
+// Version string the binary reported about itself, or "" when it could not be
+// read. The released 1.2 aligner and a locally built 1.3 differ in whether they
+// can drive the Whisper CLI, so it is worth surfacing.
+function getAppFileVersion(id) {
+	if (!appBinaryReport || !Array.isArray(appBinaryReport.components)) return "";
+	const c = appBinaryReport.components.find(x => x.id === id);
+	return c && typeof c.version === "string" ? c.version : "";
+}
+
 async function promptUserOnSongs(redownload) {
 	let thePrompt = "";
 
@@ -536,6 +545,7 @@ function renderLinetimeTable(containerId, title, items) {
 			statusClass = "linetime-status-ok";
 			statusText = "Installed";
 		}
+		if (item.version) statusText += " \u00b7 v" + item.version;
 
 		let actionBtns = "";
 		if (supported) {
@@ -629,6 +639,7 @@ function refreshLinetimeStatus() {
 			installed,
 			active: supported && installed && effective.binary === v.id,
 			supported,
+			version: getAppFileVersion(v.id),
 			sizeText,
 			useFn: "linetimeUseBinary",
 			downloadFn: "linetimeDownloadBinary",
