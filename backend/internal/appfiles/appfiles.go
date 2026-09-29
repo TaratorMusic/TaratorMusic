@@ -60,9 +60,12 @@ func PlatformSupported() bool {
 }
 
 // GPUSupported reports whether the CUDA build exists for this platform. The
-// release only publishes it for linux.
+// release publishes it for linux and windows, not for macOS.
 func GPUSupported() bool {
-	return runtime.GOOS == "linux"
+	// Windows is included because nvcc needs MSVC, so the Windows bundle is a
+	// separate build, but it is the same NVIDIA CUDA path. macOS is not: there
+	// the GPU is reached through CoreML inside the aligner, not a CUDA bundle.
+	return runtime.GOOS == "linux" || runtime.GOOS == "windows"
 }
 
 // WhisperCliSupported reports whether whisper.cpp publishes a CLI build here.

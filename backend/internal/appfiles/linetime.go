@@ -2,6 +2,7 @@ package appfiles
 
 import (
 	"path/filepath"
+	"runtime"
 )
 
 // Directory and file names inside the Linetime folder. These mirror what
@@ -82,10 +83,17 @@ func LinetimeComponents(folder string) []Component {
 		"ffmpeg": LinetimeFfmpegPath(folder),
 	})
 
-	gpu := NewComponent("gpu", "binary", "GPU (CUDA 12)", map[string]string{
+	// The lib part only exists on Linux. The Windows bundle keeps its CUDA DLLs
+	// flat next to the executable because that is where the loader looks, so
+	// declaring a lib folder there would leave the component permanently
+	// reported as missing.
+	gpuParts := map[string]string{
 		"binary": filepath.Join(folder, LinetimeBinaryName(true)),
-		"lib":    LinetimeGPULibPath(folder),
-	})
+	}
+	if runtime.GOOS == "linux" {
+		gpuParts["lib"] = LinetimeGPULibPath(folder)
+	}
+	gpu := NewComponent("gpu", "binary", "GPU (CUDA 12)", gpuParts)
 	gpu.Optional = true
 	gpu.Unsupported = !GPUSupported()
 

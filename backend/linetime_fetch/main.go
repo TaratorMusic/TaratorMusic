@@ -184,16 +184,18 @@ func extractTarGz(tgzPath, destDir string) error {
 }
 
 type platformConfig struct {
-	assetName      string
-	binaryName     string
-	ffmpegName     string
-	whisperCliName string
-	gpuSupported   bool
+	assetName        string
+	legacyAssetName  string
+	binaryName       string
+	legacyBinaryName string
+	ffmpegName       string
+	whisperCliName   string
+	gpuSupported     bool
 }
 
 func getPlatformConfig(useGPU bool) (platformConfig, error) {
 	var cfg platformConfig
-	cfg.gpuSupported = useGPU && runtime.GOOS == "linux"
+	cfg.gpuSupported = useGPU && GPUSupportedOS()
 	cfg.ffmpegName = appfiles.LinetimeFfmpegName()
 	// The release archives name this file without a platform suffix on every
 	// platform, unlike the binary and ffmpeg.
@@ -201,28 +203,54 @@ func getPlatformConfig(useGPU bool) (platformConfig, error) {
 
 	switch runtime.GOOS {
 	case "linux":
-		cfg.assetName = "linetime-linux-x64"
+		cfg.assetName = "linetime-linux-x64-cpu.tar.gz"
+		cfg.legacyAssetName = "linetime-linux-x64.tar.gz"
+		cfg.binaryName = "linetime-linux-x64-cpu"
+		cfg.legacyBinaryName = "linetime-linux-x64"
 		if useGPU {
-			cfg.assetName += "-gpu"
-		}
-		cfg.assetName += ".tar.gz"
-		cfg.binaryName = "linetime-linux-x64"
-		if useGPU {
+			cfg.assetName = "linetime-linux-x64-gpu.tar.gz"
 			cfg.binaryName = "linetime"
+			cfg.legacyAssetName, cfg.legacyBinaryName = "", ""
 		}
 	case "darwin":
 		cfg.assetName = "linetime-macos-universal.tar.gz"
 		cfg.binaryName = "linetime-macos-universal"
 	case "windows":
-		cfg.assetName = "linetime-windows-x64.tar.gz"
-		cfg.binaryName = "linetime-windows-x64.exe"
+		cfg.assetName = "linetime-windows-x64-cpu.tar.gz"
+		cfg.legacyAssetName = "linetime-windows-x64.tar.gz"
+		cfg.binaryName = "linetime-windows-x64-cpu.exe"
+		cfg.legacyBinaryName = "linetime-windows-x64.exe"
 		if useGPU {
-			return cfg, fmt.Errorf("GPU variant not available for Windows")
+			cfg.assetName = "linetime-windows-x64-gpu.zip"
+			cfg.binaryName = "linetime.exe"
+			cfg.legacyAssetName, cfg.legacyBinaryName = "", ""
 		}
 	default:
 		return cfg, fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
 	return cfg, nil
+}
+
+// GPUSupportedOS mirrors appfiles.GPUSupported. nvcc requires MSVC, so the
+// Windows bundle is a separate MSVC build, but it is still CUDA and still an
+// NVIDIA requirement. macOS is excluded because there the GPU path is CoreML,
+// which is driven by the aligner rather than by a CUDA bundle.
+func GPUSupportedOS() bool {
+	return runtime.GOOS == "linux" || runtime.GOOS == "windows"
+}
+
+func readDirNames(dir string) []string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	return names
 }
 
 // Dest names live in the appfiles package so binary_check validates exactly what
@@ -291,13 +319,28 @@ func downloadBinary(useGPU, force bool) error {
 		return fmt.Errorf("error decoding release info: %v", err)
 	}
 
-	assetName := cfg.assetName
+	// The CPU archives were renamed to ...-x64-cpu so the name says which one
+	// they are, but releases published before that rename still use the old
+	// names. Both are tried, newest naming first, so the download keeps working
+	// against whatever release is actually current.
+	candidates := []string{cfg.assetName}
+	if cfg.legacyAssetName != "" {
+		candidates = append(candidates, cfg.legacyAssetName)
+	}
+
 	var downloadURL string
 	var assetDigest string
-	for _, asset := range release.Assets {
-		if asset.Name == assetName {
-			downloadURL = asset.BrowserDownloadURL
-			assetDigest = asset.Digest
+	var assetName string
+	for _, candidate := range candidates {
+		for _, asset := range release.Assets {
+			if asset.Name == candidate {
+				downloadURL = asset.BrowserDownloadURL
+				assetDigest = asset.Digest
+				assetName = candidate
+				break
+			}
+		}
+		if downloadURL != "" {
 			break
 		}
 	}
@@ -307,7 +350,7 @@ func downloadBinary(useGPU, force bool) error {
 		if useGPU {
 			gpuHint = " (GPU)"
 		}
-		return fmt.Errorf("could not find %s%s in release %s", assetName, gpuHint, release.TagName)
+		return fmt.Errorf("could not find %s%s in release %s", cfg.assetName, gpuHint, release.TagName)
 	}
 
 	gpuLabel := "CPU"
@@ -336,14 +379,24 @@ func downloadBinary(useGPU, force bool) error {
 	}
 	defer os.RemoveAll(stagingDir)
 
-	if err := extractTarGz(tmpFile, stagingDir); err != nil {
+	if strings.HasSuffix(tmpFile, ".zip") {
+		if err := extractZip(tmpFile, stagingDir); err != nil {
+			return fmt.Errorf("error extracting archive: %v", err)
+		}
+	} else if err := extractTarGz(tmpFile, stagingDir); err != nil {
 		return fmt.Errorf("error extracting archive: %v", err)
 	}
 
+	// An archive that predates the rename carries the old binary name inside it.
+	binaryInArchive := cfg.binaryName
+	if assetName == cfg.legacyAssetName {
+		binaryInArchive = cfg.legacyBinaryName
+	}
+
 	// Find and move the binary
-	extractedBinary := filepath.Join(stagingDir, cfg.binaryName)
+	extractedBinary := filepath.Join(stagingDir, binaryInArchive)
 	if _, err := os.Stat(extractedBinary); err != nil {
-		return fmt.Errorf("extracted binary not found: %s", cfg.binaryName)
+		return fmt.Errorf("extracted binary not found: %s", binaryInArchive)
 	}
 	if err := os.Rename(extractedBinary, binaryPath); err != nil {
 		return fmt.Errorf("error moving binary: %v", err)
@@ -360,14 +413,34 @@ func downloadBinary(useGPU, force bool) error {
 
 	// Move lib directory for GPU
 	if useGPU {
-		srcLib := filepath.Join(stagingDir, "lib")
-		dstLib := filepath.Join(binDir, "lib_gpu")
-		if _, err := os.Stat(srcLib); err == nil {
-			os.RemoveAll(dstLib)
-			if err := os.Rename(srcLib, dstLib); err != nil {
-				return fmt.Errorf("error moving lib to lib_gpu: %v", err)
+		// On Windows the CUDA DLLs are flat in the archive and have to stay flat:
+		// the loader searches the executable's own directory, and there is no
+		// LD_LIBRARY_PATH to point elsewhere before the image is mapped.
+		if runtime.GOOS == "windows" {
+			moved := 0
+			for _, entry := range readDirNames(stagingDir) {
+				if !strings.HasSuffix(strings.ToLower(entry), ".dll") {
+					continue
+				}
+				if err := os.Rename(filepath.Join(stagingDir, entry), filepath.Join(binDir, entry)); err != nil {
+					return fmt.Errorf("error moving %s next to the binary: %v", entry, err)
+				}
+				moved++
 			}
-			fmt.Println("GPU libraries extracted to bin/lib_gpu/")
+			if moved == 0 {
+				return fmt.Errorf("the GPU archive contained no DLLs, so the CUDA provider cannot load")
+			}
+			fmt.Printf("%d GPU DLLs extracted next to the binary.\n", moved)
+		} else {
+			srcLib := filepath.Join(stagingDir, "lib")
+			dstLib := filepath.Join(binDir, "lib_gpu")
+			if _, err := os.Stat(srcLib); err == nil {
+				os.RemoveAll(dstLib)
+				if err := os.Rename(srcLib, dstLib); err != nil {
+					return fmt.Errorf("error moving lib to lib_gpu: %v", err)
+				}
+				fmt.Println("GPU libraries extracted to bin/lib_gpu/")
+			}
 		}
 
 		// The GPU archive's whisper-cli is the CUDA build. It goes in its own
