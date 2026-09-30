@@ -259,6 +259,64 @@ func getBinaryName(useGPU bool) string {
 	return appfiles.LinetimeBinaryName(useGPU)
 }
 
+// fetchLatestLinetimeRelease reads the release the app should install from. Shared
+// with the CUDA whisper-cli download, whose asset lives in the same release.
+func fetchLatestLinetimeRelease() (GitHubRelease, error) {
+	var release GitHubRelease
+	releaseTag := os.Getenv("LINETIME_RELEASE_TAG")
+	if releaseTag == "" {
+		releaseTag = "latest"
+	}
+	apiURL := githubAPI
+	if releaseTag != "latest" {
+		apiURL += "tags/" + url.PathEscape(releaseTag)
+	} else {
+		apiURL += "latest"
+	}
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return release, fmt.Errorf("error creating request: %v", err)
+	}
+
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+		fmt.Println("Using authenticated GitHub API request")
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return release, fmt.Errorf("error fetching release info: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return release, fmt.Errorf("GitHub API returned status: %s", resp.Status)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return release, fmt.Errorf("error decoding release info: %v", err)
+	}
+	return release, nil
+}
+
+// findReleaseAssetURL resolves an asset name to its download URL, trying each
+// candidate in order so a rename does not break an existing install.
+func findReleaseAssetURL(release GitHubRelease, candidates ...string) string {
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+		for _, asset := range release.Assets {
+			if asset.Name == candidate {
+				return asset.BrowserDownloadURL
+			}
+		}
+	}
+	return ""
+}
+
 func downloadBinary(useGPU, force bool) error {
 	cfg, err := getPlatformConfig(useGPU)
 	if err != nil {
@@ -280,43 +338,9 @@ func downloadBinary(useGPU, force bool) error {
 		fmt.Println("Force mode: removed existing binary, downloading latest...")
 	}
 
-	fmt.Println("Fetching Linetime release from GitHub...")
-
-	releaseTag := os.Getenv("LINETIME_RELEASE_TAG")
-	if releaseTag == "" {
-		releaseTag = "latest"
-	}
-	apiURL := githubAPI
-	if releaseTag != "latest" {
-		apiURL += "tags/" + url.PathEscape(releaseTag)
-	} else {
-		apiURL += "latest"
-	}
-
-	req, err := http.NewRequest("GET", apiURL, nil)
+	release, err := fetchLatestLinetimeRelease()
 	if err != nil {
-		return fmt.Errorf("error creating request: %v", err)
-	}
-
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-		fmt.Println("Using authenticated GitHub API request")
-	}
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("error fetching release info: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("GitHub API returned status: %s", resp.Status)
-	}
-
-	var release GitHubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return fmt.Errorf("error decoding release info: %v", err)
+		return err
 	}
 
 	// The CPU archives were renamed to ...-x64-cpu so the name says which one
@@ -644,22 +668,119 @@ func getWhisperCliAsset() (string, error) {
 	return "", fmt.Errorf("no whisper-cli build available for %s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
+// largeExecutable reports whether a file is big enough to be a statically linked
+// build. A dynamically linked whisper-cli is around a megabyte; the static CUDA
+// one is over 100 MB because the CUDA code is linked in. The threshold sits well
+// clear of both so a normal build is never mistaken for either.
+func largeExecutable(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Size() > 32*1024*1024
+}
+
 func isWhisperCliSharedLib(name string) bool {
 	lower := strings.ToLower(name)
 	return strings.HasSuffix(lower, ".dll") || strings.Contains(lower, ".so")
 }
 
+// getGpuWhisperCliAsset names the CUDA whisper-cli published by the Linetime
+// release. Upstream whisper.cpp ships a cublas build for Windows but none for
+// Linux, so the release has to carry its own. Both archives were built by the
+// same GPU jobs that build the aligner, so they match the CUDA version it was
+// compiled against.
+func getGpuWhisperCliAsset() (string, error) {
+	if runtime.GOOS == "linux" && runtime.GOARCH == "amd64" {
+		return "linetime-whisper-cli-cuda-x64.tar.gz", nil
+	}
+	if runtime.GOOS == "windows" && runtime.GOARCH == "amd64" {
+		return "linetime-whisper-cli-cuda-x64-windows.zip", nil
+	}
+	return "", fmt.Errorf("no CUDA whisper-cli is published for %s/%s", runtime.GOOS, runtime.GOARCH)
+}
+
+// downloadWhisperCli installs the CPU or the CUDA build. The two differ only in
+// the asset and the destination folder, and the install is the same atomic
+// staging-and-swap in both cases, so they share one implementation.
 func downloadWhisperCli(force bool) error {
-	assetName, err := getWhisperCliAsset()
+	return installWhisperCli(downloadWhisperCliSpec(force))
+}
+
+func downloadGpuWhisperCli(force bool) error {
+	spec := downloadGpuWhisperCliSpec(force)
+	if spec.asset == "" {
+		return fmt.Errorf("no CUDA whisper-cli asset for this platform")
+	}
+	// The CUDA CLI is published by the Linetime release, not by upstream
+	// whisper.cpp, so it is resolved through the same release lookup the aligner
+	// uses rather than a hardcoded URL.
+	release, err := fetchLatestLinetimeRelease()
 	if err != nil {
 		return err
 	}
-
-	execName := "whisper-cli"
-	if runtime.GOOS == "windows" {
-		execName = "whisper-cli.exe"
+	url := findReleaseAssetURL(release, spec.asset)
+	if url == "" {
+		return fmt.Errorf("could not find %s in release %s. It ships with the GPU build, "+
+			"so a release made before it was published will not have it",
+			spec.asset, release.TagName)
 	}
-	finalDir := filepath.Join(binDir, appfiles.LinetimeWhisperCliDir)
+	spec.url = url
+	return installWhisperCli(spec)
+}
+
+type whisperCliSpec struct {
+	asset    string
+	url      string
+	execName string
+	finalDir string
+	force    bool
+}
+
+func downloadWhisperCliSpec(force bool) whisperCliSpec {
+	asset, err := getWhisperCliAsset()
+	if err != nil {
+		asset = ""
+	}
+	return whisperCliSpec{
+		asset:    asset,
+		url:      whisperCppBase + "/" + asset,
+		execName: whisperCliExecName(),
+		finalDir: filepath.Join(binDir, appfiles.LinetimeWhisperCliDir),
+		force:    force,
+	}
+}
+
+func downloadGpuWhisperCliSpec(force bool) whisperCliSpec {
+	asset, err := getGpuWhisperCliAsset()
+	if err != nil {
+		asset = ""
+	}
+	return whisperCliSpec{
+		asset: asset,
+		// The CUDA CLI is a Linetime release asset, not an upstream whisper.cpp one.
+		url:      "",
+		execName: whisperCliExecName(),
+		finalDir: filepath.Join(binDir, appfiles.LinetimeWhisperCliGPUDir),
+		force:    force,
+	}
+}
+
+func whisperCliExecName() string {
+	if runtime.GOOS == "windows" {
+		return "whisper-cli.exe"
+	}
+	return "whisper-cli"
+}
+
+// installWhisperCli downloads, stages and swaps the CLI into place. The previous
+// working install is only removed once the new one is fully written beside it, so
+// a failure partway cannot leave the user with no CLI at all.
+func installWhisperCli(spec whisperCliSpec) error {
+	if spec.asset == "" {
+		return fmt.Errorf("no whisper-cli asset for this platform")
+	}
+	assetName := spec.asset
+	execName := spec.execName
+	finalDir := spec.finalDir
+	force := spec.force
 
 	// The executable cannot start without its shared libraries, so both must be
 	// present or a partial install is repaired.
@@ -682,8 +803,13 @@ func downloadWhisperCli(force bool) error {
 					hasExec = true
 				}
 			}
-			if hasExec && hasLib {
-				fmt.Println("Whisper CLI already exists, skipping")
+			// A large executable means a statically linked build, which is how the
+			// CUDA CLI is published on Linux: one file with nothing beside it. The
+			// CPU build links libwhisper dynamically, so it does have libraries.
+			// Judging by size keeps the skip working for both instead of demanding a
+			// library the static build never ships.
+			if hasExec && (hasLib || largeExecutable(filepath.Join(finalDir, execName))) {
+				fmt.Printf("%s already exists, skipping\n", spec.url)
 				return nil
 			}
 		}
@@ -705,6 +831,7 @@ func downloadWhisperCli(force bool) error {
 	}
 	defer os.RemoveAll(stagingDir)
 
+	var err error
 	if strings.HasSuffix(assetName, ".zip") {
 		err = extractZip(archivePath, stagingDir)
 	} else {
@@ -959,6 +1086,7 @@ func main() {
 	skipWhisper := false
 	skipWhisperCli := false
 	onlyWhisperCli := false
+	gpuWhisperCliOnly := false
 	tokenizerOnly := false
 	assetDir := "."
 
@@ -988,6 +1116,8 @@ func main() {
 			skipWhisperCli = true
 		case arg == "--whisper-cli-only":
 			onlyWhisperCli = true
+		case arg == "--whisper-cli-gpu-only":
+			gpuWhisperCliOnly = true
 		case arg == "--tokenizer-only":
 			tokenizerOnly = true
 		case strings.HasPrefix(arg, "--asset-dir="):
@@ -1012,6 +1142,7 @@ func main() {
 			fmt.Println("  --skip-whisper        Skip Whisper model download")
 			fmt.Println("  --skip-whisper-cli    Skip Whisper CLI download (needed to transcribe lyrics)")
 			fmt.Println("  --whisper-cli-only    Download only the Whisper CLI")
+			fmt.Println("  --whisper-cli-gpu-only  Download only the CUDA Whisper CLI (requires NVIDIA CUDA 12)")
 			fmt.Println("  --tokenizer-only      Download only the tokenizer (skips binary, model, whisper)")
 			fmt.Println("  --asset-dir=<path>    Set asset directory (default: current directory)")
 			fmt.Println("  --release=<tag>       GitHub release tag (default: latest, env LINETIME_RELEASE_TAG)")
@@ -1052,6 +1183,17 @@ func main() {
 			os.Exit(1)
 		}
 		changed = true
+	}
+
+	// The CUDA CLI is a separate download from the CPU one, so it is only ever
+	// fetched when asked for. It is not part of the default fetch because a user
+	// without an NVIDIA card should not pay for it.
+	if gpuWhisperCliOnly {
+		if err := downloadGpuWhisperCli(force); err != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading CUDA whisper-cli: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	if !skipWhisperCli && !tokenizerOnly {
