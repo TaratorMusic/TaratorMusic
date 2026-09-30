@@ -18,3 +18,12 @@ node_modules/
 *.mp4
 *.m4a
 *-player-script.js
+# Linetime assets, downloaded at runtime. These appear in the repo root as well
+# as bin/ during development, and must never be committed.
+/ffmpeg
+/sounddetect_cpu
+/sounddetect_cpu.exe
+/sounddetect_gpu
+/sounddetect_gpu.exe
+/sounddetect_models/
+/whisper_cli/
