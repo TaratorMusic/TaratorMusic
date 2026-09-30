@@ -728,7 +728,7 @@ function refreshLinetimeStatus() {
 	const gpuCliActive = gpuCliInstalled && getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli");
 	const gpuCliSizeText = !gpuCliSupported
 		? "N/A"
-		: (gpuCliInstalled ? linetimeFileSizeText(dirFilePaths(gpuCliDir), "Installed") : "Included with GPU bundle");
+		: (gpuCliInstalled ? linetimeFileSizeText(dirFilePaths(gpuCliDir), "Installed") : "~100 MB");
 
 	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", [{
 		id: "whisper-cli",
@@ -748,8 +748,8 @@ function refreshLinetimeStatus() {
 		supported: gpuCliSupported,
 		sizeText: gpuCliSizeText,
 		useFn: null,
-		downloadFn: null,
-		deleteFn: null,
+		downloadFn: "linetimeDownloadGpuWhisperCli",
+		deleteFn: gpuCliInstalled ? "linetimeDeleteGpuWhisperCli" : null,
 	}]);
 
 	renderAppFileNotice();
@@ -850,6 +850,12 @@ async function downloadLinetimeVariant(component, variant) {
 		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-only");
 		label = "Whisper CLI";
 		sizeDesc = getLinetimeWhisperCliSizeDesc() ?? "";
+	} else if (component === "gpu-cli") {
+		// The CUDA CLI is a Linetime release asset, so the fetch resolves it through
+		// the release rather than the upstream whisper.cpp URL the CPU one uses.
+		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-gpu-only");
+		label = "CUDA Whisper CLI";
+		sizeDesc = "~100 MB";
 	}
 
 	const sizeSuffix = sizeDesc ? ` (${sizeDesc})` : "";
@@ -1064,10 +1070,43 @@ async function linetimeDeleteWhisperCli() {
 	if (!confirm) return;
 
 	try {
-		const cliPath = getLinetimeWhisperCliPath();
+		// Deliberately not getLinetimeWhisperCliPath(): that follows whichever CLI is
+		// active, so on a GPU setup this button would delete the CUDA one instead of
+		// the CPU one its row refers to.
+		const cliPath = getAppFilePart("whisper-cli", "cli");
 		if (cliPath) fs.rmSync(path.dirname(cliPath), { recursive: true, force: true });
 		await refreshLinetimeReport();
 		await alertModal("Whisper CLI deleted");
+	} catch (e) {
+		await alertModal(`Failed to delete: ${e.message}`);
+	}
+}
+
+async function linetimeDownloadGpuWhisperCli() {
+	// The report is the source of truth for whether a platform has a CUDA bundle.
+	// Asking the Go helper would mean a new preload bridge for one boolean.
+	if (getAppFileState("gpu-cli") === "unsupported") {
+		await alertModal("The CUDA Whisper CLI needs an NVIDIA GPU with CUDA 12, which this app does not support on this system.");
+		return;
+	}
+	const confirm = await confirmModal(
+		"Download the CUDA Whisper CLI? It is about 100 MB and is what makes transcription run on the GPU instead of the CPU.",
+		"Download", "Cancel");
+	if (!confirm) return;
+	await downloadLinetimeVariant("gpu-cli", "whisper-cli-gpu-only");
+}
+
+async function linetimeDeleteGpuWhisperCli() {
+	const confirm = await confirmModal(
+		"Delete the CUDA Whisper CLI? GPU transcription will stop working and fall back to the CPU CLI, which is much slower.",
+		"Delete", "Cancel");
+	if (!confirm) return;
+
+	try {
+		const cliPath = getAppFilePart("gpu-cli", "cli");
+		if (cliPath) fs.rmSync(path.dirname(cliPath), { recursive: true, force: true });
+		await refreshLinetimeReport();
+		await alertModal("CUDA Whisper CLI deleted");
 	} catch (e) {
 		await alertModal(`Failed to delete: ${e.message}`);
 	}
