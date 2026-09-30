@@ -563,9 +563,21 @@ async function generateTimestampsForCurrentSong() {
 	}
 }
 
-function getSelectedLanguage() {
+// The language box is free text and the DB stores full English names like
+// "Bosnian", but whisper only understands codes like "bs". Passing the raw value
+// through leaves whisper auto-detecting, which on Lavanda picked Turkish and
+// transliterated the whole song through Turkish phonology. Mapping it here takes
+// that run from 6/16 to 13/16 lines landing on a ground-truth timestamp.
+async function getSelectedLanguage() {
 	const langEl = document.getElementById("customiseSongLanguage");
-	return langEl ? langEl.value.trim() : "";
+	const raw = langEl ? langEl.value.trim() : "";
+	if (!raw) return "";
+	if (!window.LANG_MAP) await loadJSFile("lang_map");
+	const key = raw.toLowerCase();
+	// "none" is what the DB stores for a song with no known language, and it must
+	// not reach whisper as a code.
+	if (key === "none") return "";
+	return window.LANG_MAP[key] ?? raw;
 }
 
 function showMethodSelectionModal(plainLyrics, hasWhisperModel, hasWhisperCli) {
@@ -705,8 +717,10 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel, hasWhisperCli) {
 				alertModal("Please select a method first.");
 				return;
 			}
-			const language = getSelectedLanguage() || undefined;
-			cleanup({ method, language });
+		// Awaited because resolving the code loads lang_map.js on first use.
+		getSelectedLanguage().then(code => {
+			cleanup({ method, language: code || undefined });
+		});
 		});
 		cancelBtn.addEventListener("click", () => cleanup(null));
 		overlay.addEventListener("click", e => { if (e.target === overlay) cleanup(null); });
