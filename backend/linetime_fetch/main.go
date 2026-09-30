@@ -222,7 +222,7 @@ func getPlatformConfig(useGPU bool) (platformConfig, error) {
 		cfg.legacyBinaryName = "linetime-windows-x64.exe"
 		if useGPU {
 			cfg.assetName = "linetime-windows-x64-gpu.zip"
-			cfg.binaryName = "linetime.exe"
+			cfg.binaryName = "linetime-windows-x64-gpu.exe"
 			cfg.legacyAssetName, cfg.legacyBinaryName = "", ""
 		}
 	default:
