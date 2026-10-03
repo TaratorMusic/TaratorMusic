@@ -91,7 +91,7 @@ function toggleDiscordAPI() {
 
 function updateDiscordPresence() {
 	if (!discordRPCstatus) return;
-	const fullSongData = playingSongsID.startsWith("tarator") ? songNameCache.get(playingSongsID) : streamedSongsCache.get(playingSongsID);
+	const fullSongData = songNameCache.has(playingSongsID) ? songNameCache.get(playingSongsID) : streamedSongsCache.get(playingSongsID);
 	const isIdle = !audioPlayer;
 	const songName = isIdle ? "" : fullSongData.song_name;
 	const artistData = isIdle ? null : { artist: fullSongData?.artist || null };

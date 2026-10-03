@@ -413,7 +413,6 @@ async function renderPlaylistUI(playlistTitle, playlistThumbnail, videoItems) {
 				saveAsPlaylist.style.backgroundColor = window.isSaveAsPlaylistActive ? "green" : "red";
 			};
 		} else {
-			if (videoItems[i - 1].id) songAndThumbnail.setAttribute("data-id", videoItems[i - 1].id);
 			const deleteThisPlaylistSong = document.createElement("button");
 			deleteThisPlaylistSong.id = "deleteThisPlaylistSong" + i;
 			deleteThisPlaylistSong.className = "deleteThisPlaylistSong";
@@ -784,7 +783,7 @@ async function actuallyDownloadTheSong() {
 			if (link && titleInput) {
 				songLinks.push(link);
 				songTitles.push(titleInput.value.trim());
-				songElement.hasAttribute("data-id") ? songIds.push(songElement.getAttribute("data-id")) : songIds.push(await generateId());
+				songIds.push(await generateId());
 			}
 		}
 

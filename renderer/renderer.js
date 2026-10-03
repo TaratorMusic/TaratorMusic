@@ -1275,7 +1275,7 @@ function createMusicElement(songFile) {
 	const songNameElement = document.createElement("div");
 	let fileNameWithoutExtension;
 
-	if (songFile.id.includes("tarator")) {
+	if (songNameCache.has(songFile.id)) {
 		fileNameWithoutExtension = path.parse(songFile.name).name;
 		const thumbnailPath = path.join(thumbnailFolder, fileNameWithoutExtension + "." + songFile.thumbnail_extension);
 		if (fs.existsSync(thumbnailPath)) {
@@ -1351,7 +1351,7 @@ function getStreamedSongData(songId) {
 }
 
 function getQueueSongName(songId) {
-	const data = songId.includes("tarator") ? songNameCache.get(songId) : getStreamedSongData(songId);
+	const data = songNameCache.has(songId) ? songNameCache.get(songId) : getStreamedSongData(songId);
 	return data?.song_name || songId;
 }
 
@@ -1416,7 +1416,7 @@ function playMusic(songId, playlistId) {
 	saveUserProgress();
 
 	try {
-		const offlineMode = !!songId.includes("tarator");
+		const offlineMode = songNameCache.has(songId);
 		const songNameEl = document.getElementById("song-name");
 		playingSongsID = songId;
 
@@ -2088,7 +2088,7 @@ async function copyLyricsInLrcFormat() {
 async function opencustomiseModal(songsId) {
 	let song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url, thumbnailPath;
 
-	if (songsId.includes("tarator")) {
+	if (songNameCache.has(songsId)) {
 		const songData = songNameCache.get(songsId) || {};
 		({ song_name, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language, song_url } = songData);
 
@@ -2266,7 +2266,7 @@ async function saveEditedSong(translationOnly = false) {
 		return false;
 	}
 
-	if (songID.includes("tarator")) {
+	if (songNameCache.has(songID)) {
 		const row = songNameCache.get(songID);
 		if (!row) {
 			await alertModal("Song not found in database.");
@@ -2419,7 +2419,7 @@ async function saveEditedSong(translationOnly = false) {
 
 	if (playingSongsID == customiseDiv.dataset.songID) {
 		document.getElementById("song-name").innerText = newNameInput;
-		if (songID.includes("tarator")) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
+		if (songNameCache.has(songID)) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
 	}
 
 	if (document.getElementById("my-music-content").style.display == "flex" && element) {
@@ -2427,7 +2427,7 @@ async function saveEditedSong(translationOnly = false) {
 		if (musicSearchValue) document.getElementById("music-search").value = musicSearchValue;
 		if (newNameInput == removeExtensions(playingSongsID)) element.classList.add("playing");
 
-		if (songID.includes("tarator")) {
+		if (songNameCache.has(songID)) {
 			const nameEl = element.querySelector(".song-name");
 			if (nameEl) nameEl.textContent = newNameInput;
 

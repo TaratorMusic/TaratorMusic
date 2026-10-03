@@ -123,7 +123,7 @@ function displayPlaylists(playlists) {
 
 			playlistRecommendButton.addEventListener("click", async () => {
 				await loadJSFile("download_music");
-				const taratorSongIds = playlist.songs.filter(id => id.includes("tarator"));
+				const taratorSongIds = playlist.songs.filter(id => songNameCache.has(id));
 				if (taratorSongIds.length == 0) {
 					return alertModal("No local songs found in this playlist to base recommendations on.");
 				}
@@ -269,7 +269,7 @@ function displayPlaylists(playlists) {
 
 			let name;
 
-			if (playlist.songs[i].includes("tarator")) {
+			if (songNameCache.has(playlist.songs[i])) {
 				name = getSongNameById(playlist.songs[i]);
 				playlistSong.innerText = name;
 			} else {
