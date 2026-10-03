@@ -242,223 +242,319 @@
 			<div id="my-music-content" class="tab-content hidden"></div>
 			<div id="playlists-content" class="tab-content hidden"></div>
 			<div id="settings-content" class="tab-content hidden scrollArea">
-				<h1 class="underline-text">Keybinds</h1>
-				<h2 style="margin-top: -3vh">You can choose which keys will activate which actions here.</h2>
-				<div class="settingsKeybinds">
-					<div>Back 5 Seconds:</div>
-					<button id="settingsRewind" required></button>
+				<div class="settings-topbar">
+					<button class="settings-tab-btn active" data-settings-tab="keybinds" onclick="switchSettingsTab('keybinds')">Keybinds</button>
+					<button class="settings-tab-btn" data-settings-tab="appearance" onclick="switchSettingsTab('appearance')">Appearance</button>
+					<button class="settings-tab-btn" data-settings-tab="volume" onclick="switchSettingsTab('volume')">Volume</button>
+					<button class="settings-tab-btn" data-settings-tab="discord" onclick="switchSettingsTab('discord')">Discord</button>
+					<button class="settings-tab-btn" data-settings-tab="songinfo" onclick="switchSettingsTab('songinfo')">Song Info</button>
+					<button class="settings-tab-btn" data-settings-tab="library" onclick="switchSettingsTab('library')">Library</button>
+					<button class="settings-tab-btn" data-settings-tab="recommendations" onclick="switchSettingsTab('recommendations')">Recommendations</button>
+					<button class="settings-tab-btn" data-settings-tab="pip" onclick="switchSettingsTab('pip')">PiP</button>
+					<button class="settings-tab-btn" data-settings-tab="packages" onclick="switchSettingsTab('packages')">Packages</button>
+					<button class="settings-tab-btn" data-settings-tab="system" onclick="switchSettingsTab('system')">System</button>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Previous Song:</div>
-					<button id="settingsPrevious" required></button>
+				<div id="settings-tab-keybinds" class="settings-tab-panel">
+					<h1 class="settings-title">Keybinds</h1>
+					<h2 class="settings-sub">You can choose which keys will activate which actions here.</h2>
+					<div class="keybinds-grid">
+					<div class="settingsKeybinds">
+						<div>Back 5 Seconds:</div>
+						<button id="settingsRewind" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Previous Song:</div>
+						<button id="settingsPrevious" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Play/Pause:</div>
+						<button id="settingsPlayPause" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Next Song:</div>
+						<button id="settingsNext" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Skip 5 Seconds:</div>
+						<button id="settingsSkip" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Autoplay:</div>
+						<button id="settingsAutoplay" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Shuffle:</div>
+						<button id="settingsShuffle" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Mute:</div>
+						<button id="settingsMute" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Speed:</div>
+						<button id="settingsSpeed" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Loop:</div>
+						<button id="settingsLoop" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Search Song:</div>
+						<button id="settingsSearchSong" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Random Song:</div>
+						<button id="settingsRandomSong" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Random Playlist:</div>
+						<button id="settingsRandomPlaylist" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Last Playlist:</div>
+						<button id="settingsLastPlaylist" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Search Playlist:</div>
+						<button id="settingsSearchPlaylist" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Search Shuffle:</div>
+						<button id="settingsSearchShuffle" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Open Customisation:</div>
+						<button id="settingsOpenLyrics" required></button>
+					</div>
+					<div class="settingsKeybinds">
+						<div>Toggle PiP:</div>
+						<button id="settingsPiP" required></button>
+					</div>
+					<button class="btn-primary" onclick="saveKeybinds()">Save Keybinds</button>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Play/Pause:</div>
-					<button id="settingsPlayPause" required></button>
+				<div id="settings-tab-appearance" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Appearance</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Edit Background</h2>
+						<button onclick="changeBackground('blue')">Blue</button>
+						<button onclick="changeBackground('red')">Red</button>
+						<button onclick="changeBackground('green')">Green</button>
+						<button onclick="changeBackground('purple')">Purple</button>
+						<button onclick="changeBackground('black')">Black</button>
+						<div>Custom:</div>
+						<input style="cursor: pointer" type="color" id="picker" />
+					</div>
+					<h5>Change the background color or upload your own background with this setting.</h5>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Next Song:</div>
-					<button id="settingsNext" required></button>
+				<div id="settings-tab-volume" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Volume</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Divide the Volume</h2>
+						<select name="dividevolume" id="dividevolume" onchange="handleDropdownChange('dividevolume', this)">
+							<option value="1">Don't divide the volume</option>
+							<option value="10">Divide by 10</option>
+							<option value="20">Divide by 20</option>
+							<option value="50">Divide by 50</option>
+						</select>
+					</div>
+					<h5>Divide the Volume will make the volume control easier if you want to listen to the songs more quietly.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Stabilise Volume While Downloading Music</h2>
+						<label class="switch">
+							<input type="checkbox" id="stabiliseVolumeToggle" onclick="stabiliseVolumeToggleTogglerFunction()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<h5>If not selected, you will need to manually stabilise song volumes using the button below.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Stabilise All Volumes</h2>
+						<button onclick="processAllFiles()">Stabilise</button>
+						<div class="settingsflexrow" id="stabiliseProgress">Progress: Didn't start</div>
+					</div>
+					<h5>Helps all the songs sounds the same on the same volume.</h5>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Skip 5 Seconds:</div>
-					<button id="settingsSkip" required></button>
+				<div id="settings-tab-discord" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Discord</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Discord Connection</h2>
+						<label class="switch">
+							<input type="checkbox" id="toggleSwitchDiscord" onclick="toggleDiscordAPI()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<h5>Share your status in Discord!</h5>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Autoplay:</div>
-					<button id="settingsAutoplay" required></button>
+				<div id="settings-tab-songinfo" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Song Info</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Fetch Song Information</h2>
+						<button onclick="grabAndStoreSongInfo()">Check</button>
+					</div>
+					<h5>You can fetch song genre, artist and language for all songs by checking online.</h5>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Shuffle:</div>
-					<button id="settingsShuffle" required></button>
+				<div id="settings-tab-library" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Library</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Redownload Old Songs</h2>
+						<button onclick="redownloadAllSongs()">Redownload</button>
+					</div>
+					<h5>You can use your old database to redownload all the songs back.</h5>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Mute:</div>
-					<button id="settingsMute" required></button>
+				<div id="settings-tab-recommendations" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Recommendations</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Fetch Recommendations While Downloading Music</h2>
+						<label class="switch">
+							<input type="checkbox" id="recommendationsToggle" onclick="recommendationsToggleTogglerFunction()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<h5>If not selected, you will need to manually fetch recommendations using the button below.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Fetch Song Recommendations</h2>
+						<button id="fetchRecommendationsDataButton" onclick="fetchRecommendationsData()">Check</button>
+					</div>
+					<h5>Fetches all song recommendations for the currently installed songs.</h5>
+					</div>
+					<h2 class="settings-sub">Consider them as percentages, the total needs to be equal to 100.</h2>
+					<div class="setting-card">
+					<div class="settingsflexrow">Popularity Factor <input type="number" id="weight1" min="0" max="100" /></div>
+					<h5>Higher the value, more chance the user gets a more popular song from the desired artists.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">Artist Strength Factor <input type="number" id="weight2" min="0" max="100" /></div>
+					<h5>The importance given to the amount of fans the songs artist has in Deezer.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">Similar Artists Factor <input type="number" id="weight3" min="0" max="100" /></div>
+					<h5>The songs artists similar artists and how much they are listened to by the user.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">User Preference Factor <input type="number" id="weight4" min="0" max="100" /></div>
+					<h5>If the user prefers to listen to the same artists or likes to explore new ones.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">Artist Listen Time Factor <input type="number" id="weight5" min="0" max="100" /></div>
+					<h5>How much the user listened to the artist of the song.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">Random Factor <input type="number" id="weight6" min="0" max="100" /></div>
+					<h5>Randomness to change the recommendations each time.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<button class="btn-primary" onclick="saveRecommendationWeights()">Save Weights</button>
+						<button onclick="resetRecommendationWeights()">Reset Weights</button>
+					</div>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Speed:</div>
-					<button id="settingsSpeed" required></button>
+				<div id="settings-tab-pip" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Picture In Picture</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Picture In Picture Mode</h2>
+						<label class="switch">
+							<input type="checkbox" id="pictureInPictureToggle" onclick="pictureInPictureTogglerFunction()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<h5>This option will create a smaller window for you to track your current song.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Show Thumbnail</h2>
+						<label class="switch">
+							<input type="checkbox" id="pipThumbnailToggle" onclick="pipThumbnailTogglerFunction()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<h5>Show or hide the album art in the PiP window.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Show Lyrics</h2>
+						<label class="switch">
+							<input type="checkbox" id="pipLyricsToggle" onclick="pipLyricsTogglerFunction()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<h5>Display song lyrics in the PiP window that scroll with the song progress.</h5>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Loop:</div>
-					<button id="settingsLoop" required></button>
+				<div id="settings-tab-system" class="settings-tab-panel hidden">
+					<h1 class="settings-title">System</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Debug Mode</h2>
+						<button id="debugButton">Toggle</button>
+					</div>
+					<h5>Enter debug mode to see the errors and the logs.</h5>
+					</div>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Log Level</h2>
+						<select id="logLevelSelect" onchange="changeLogLevel(this.value)">
+							<option value="error">Error only</option>
+							<option value="warn">Warn and above</option>
+							<option value="info" selected>Info and above</option>
+							<option value="debug">Debug (verbose)</option>
+						</select>
+					</div>
+					<h5>Controls how much detail is logged to the database and console.</h5>
+					</div>
 				</div>
-				<div class="settingsKeybinds">
-					<div>Search Song:</div>
-					<button id="settingsSearchSong" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Random Song:</div>
-					<button id="settingsRandomSong" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Random Playlist:</div>
-					<button id="settingsRandomPlaylist" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Last Playlist:</div>
-					<button id="settingsLastPlaylist" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Search Playlist:</div>
-					<button id="settingsSearchPlaylist" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Search Shuffle:</div>
-					<button id="settingsSearchShuffle" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Open Customisation:</div>
-					<button id="settingsOpenLyrics" required></button>
-				</div>
-				<div class="settingsKeybinds">
-					<div>Toggle PiP:</div>
-					<button id="settingsPiP" required></button>
-				</div>
-				<button onclick="saveKeybinds()">Save Keybinds</button>
-				<h1 class="underline-text">Customisation</h1>
-				<div class="settingsflexrow">
-					<h2>Divide the Volume</h2>
-					<select name="dividevolume" id="dividevolume" onchange="handleDropdownChange('dividevolume', this)">
-						<option value="1">Don't divide the volume</option>
-						<option value="10">Divide by 10</option>
-						<option value="20">Divide by 20</option>
-						<option value="50">Divide by 50</option>
-					</select>
-				</div>
-				<h5>Divide the Volume will make the volume control easier if you want to listen to the songs more quietly.</h5>
-				<div class="settingsflexrow">
-					<h2>Edit Background</h2>
-					<button onclick="changeBackground('blue')">Blue</button>
-					<button onclick="changeBackground('red')">Red</button>
-					<button onclick="changeBackground('green')">Green</button>
-					<button onclick="changeBackground('purple')">Purple</button>
-					<button onclick="changeBackground('black')">Black</button>
-					<div>Custom:</div>
-					<input style="cursor: pointer" type="color" id="picker" />
-				</div>
-				<h5>Change the background color or upload your own background with this setting.</h5>
-				<h1 class="underline-text">System</h1>
-				<div class="settingsflexrow">
-					<h2>Discord Connection</h2>
-					<label class="switch">
-						<input type="checkbox" id="toggleSwitchDiscord" onclick="toggleDiscordAPI()" />
-						<span class="slider round"></span>
-					</label>
-				</div>
-				<h5>Share your status in Discord!</h5>
-				<div class="settingsflexrow">
-					<h2>Stabilise Volume While Downloading Music</h2>
-					<label class="switch">
-						<input type="checkbox" id="stabiliseVolumeToggle" onclick="stabiliseVolumeToggleTogglerFunction()" />
-						<span class="slider round"></span>
-					</label>
-				</div>
-				<h5>If not selected, you will need to manually stabilise song volumes using the button below.</h5>
-				<div class="settingsflexrow">
-					<h2>Fetch Recommendations While Downloading Music</h2>
-					<label class="switch">
-						<input type="checkbox" id="recommendationsToggle" onclick="recommendationsToggleTogglerFunction()" />
-						<span class="slider round"></span>
-					</label>
-				</div>
-				<h5>If not selected, you will need to manually fetch recommendations using the button below.</h5>
-				<div class="settingsflexrow">
-					<h2>Stabilise All Volumes</h2>
-					<button onclick="processAllFiles()">Stabilise</button>
-					<div class="settingsflexrow" id="stabiliseProgress">Progress: Didn't start</div>
-				</div>
-				<h5>Helps all the songs sounds the same on the same volume.</h5>
-				<div class="settingsflexrow">
-					<h2>Fetch Song Recommendations</h2>
-					<button id="fetchRecommendationsDataButton" onclick="fetchRecommendationsData()">Check</button>
-				</div>
-				<h5>Fetches all song recommendations for the currently installed songs.</h5>
-				<div class="settingsflexrow">
-					<h2>Fetch Song Information</h2>
-					<button onclick="grabAndStoreSongInfo()">Check</button>
-				</div>
-				<h5>You can fetch song genre, artist and language for all songs by checking online.</h5>
-				<div class="settingsflexrow">
-					<h2>Redownload Old Songs</h2>
-					<button onclick="redownloadAllSongs()">Redownload</button>
-				</div>
-				<h5>You can use your old database to redownload all the songs back.</h5>
-				<div class="settingsflexrow">
-					<h2>Update yt-dlp</h2>
-					<button id="updateYtdlpButton" onclick="updateYtdlp()">Update</button>
-					<h5 id="ytdlpCurrentVersion">Current version: unknown</h5>
-				</div>
-				<h5 id="ytdlpLastUpdateText">Updates yt-dlp to the latest version. Useful if downloads keep failing.</h5>
-				<div class="settingsflexrow">
-					<h2>Debug Mode</h2>
-					<button id="debugButton">Toggle</button>
-				</div>
-				<h5>Enter debug mode to see the errors and the logs.</h5>
-				<div class="settingsflexrow">
-					<h2>Log Level</h2>
-					<select id="logLevelSelect" onchange="changeLogLevel(this.value)">
-						<option value="error">Error only</option>
-						<option value="warn">Warn and above</option>
-						<option value="info" selected>Info and above</option>
-						<option value="debug">Debug (verbose)</option>
-					</select>
-				</div>
-				<h5>Controls how much detail is logged to the database and console.</h5>
-				<h1 class="underline-text">Linetime Aligner</h1>
-				<div id="linetimeBinaryTable" style="margin-top: 8px; font-size: 13px;"></div>
-				<div id="linetimeModelTable" style="margin-top: 8px; font-size: 13px;"></div>
-				<div id="linetimeWhisperTable" style="margin-top: 8px; font-size: 13px;"></div>
-				<div id="linetimeCliTable" style="margin-top: 8px; font-size: 13px;"></div>
-				<div id="appFileNotice" class="app-file-notice" style="display: none;"></div>
-				<div class="linetime-cli-note">Whisper CLI transcribes the audio to produce lyrics, which is what makes Auto-generate work. whisper.cpp does not publish a macOS build of this tool, so it is unavailable there.</div>
-				<div id="linetimeProgressContainer" style="display: none; margin-top: 12px;">
-					<div id="linetimeProgressTrack"><div id="linetimeProgressBar"></div></div>
-					<div id="linetimeProgressText"></div>
-				</div>
-				<h1 class="underline-text">Picture In Picture</h1>
-				<div class="settingsflexrow">
-					<h2>Picture In Picture Mode</h2>
-					<label class="switch">
-						<input type="checkbox" id="pictureInPictureToggle" onclick="pictureInPictureTogglerFunction()" />
-						<span class="slider round"></span>
-					</label>
-				</div>
-				<h5>This option will create a smaller window for you to track your current song.</h5>
-				<div class="settingsflexrow">
-					<h2>Show Thumbnail</h2>
-					<label class="switch">
-						<input type="checkbox" id="pipThumbnailToggle" onclick="pipThumbnailTogglerFunction()" />
-						<span class="slider round"></span>
-					</label>
-				</div>
-				<h5>Show or hide the album art in the PiP window.</h5>
-				<div class="settingsflexrow">
-					<h2>Show Lyrics</h2>
-					<label class="switch">
-						<input type="checkbox" id="pipLyricsToggle" onclick="pipLyricsTogglerFunction()" />
-						<span class="slider round"></span>
-					</label>
-				</div>
-				<h5>Display song lyrics in the PiP window that scroll with the song progress.</h5>
-				<h1 class="underline-text">Recommendations Weights</h1>
-				<h2 style="margin-top: -3vh">Consider them as percentages, the total needs to be equal to 100.</h2>
-				<div class="settingsflexrow">Popularity Factor <input type="number" id="weight1" min="0" max="100" /></div>
-				<h5>Higher the value, more chance the user gets a more popular song from the desired artists.</h5>
-				<div class="settingsflexrow">Artist Strength Factor <input type="number" id="weight2" min="0" max="100" /></div>
-				<h5>The importance given to the amount of fans the songs artist has in Deezer.</h5>
-				<div class="settingsflexrow">Similar Artists Factor <input type="number" id="weight3" min="0" max="100" /></div>
-				<h5>The songs artists similar artists and how much they are listened to by the user.</h5>
-				<div class="settingsflexrow">User Preference Factor <input type="number" id="weight4" min="0" max="100" /></div>
-				<h5>If the user prefers to listen to the same artists or likes to explore new ones.</h5>
-				<div class="settingsflexrow">Artist Listen Time Factor <input type="number" id="weight5" min="0" max="100" /></div>
-				<h5>How much the user listened to the artist of the song.</h5>
-				<div class="settingsflexrow">Random Factor <input type="number" id="weight6" min="0" max="100" /></div>
-				<h5>Randomness to change the recommendations each time.</h5>
-				<div class="settingsflexrow">
-					<button onclick="saveRecommendationWeights()">Save Weights</button>
-					<button onclick="resetRecommendationWeights()">Reset Weights</button>
+				<div id="settings-tab-packages" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Packages</h1>
+					<div class="packages-layout">
+						<div class="packages-sidebar">
+							<button class="packages-side-btn active" data-package-tab="ytdlp" onclick="switchPackageTab('ytdlp')">yt-dlp</button>
+							<button class="packages-side-btn" data-package-tab="linetime" onclick="switchPackageTab('linetime')">Linetime</button>
+						</div>
+						<div class="packages-content">
+							<div id="settings-pkg-ytdlp" class="package-panel">
+								<h2>yt-dlp</h2>
+								<div class="setting-card">
+								<div class="settingsflexrow">
+									<h2>Update yt-dlp</h2>
+									<button id="updateYtdlpButton" onclick="updateYtdlp()">Update</button>
+									<h5 id="ytdlpCurrentVersion">Current version: unknown</h5>
+								</div>
+								<h5 id="ytdlpLastUpdateText">Updates yt-dlp to the latest version. Useful if downloads keep failing.</h5>
+								</div>
+							</div>
+							<div id="settings-pkg-linetime" class="package-panel hidden">
+								<h2>Linetime Aligner</h2>
+								<div id="appFileNotice" class="app-file-notice" style="display: none;"></div>
+								<div id="linetimeBinaryTable" style="margin-top: 8px; font-size: 13px;"></div>
+								<div id="linetimeModelTable" style="margin-top: 8px; font-size: 13px;"></div>
+								<div id="linetimeWhisperTable" style="margin-top: 8px; font-size: 13px;"></div>
+								<div id="linetimeCliTable" style="margin-top: 8px; font-size: 13px;"></div>
+								<div class="linetime-cli-note">Whisper CLI transcribes the audio to produce lyrics, which is what makes Auto-generate work. whisper.cpp does not publish a macOS build of this tool, so it is unavailable there.</div>
+								<div id="linetimeProgressContainer" style="display: none; margin-top: 12px;">
+									<div id="linetimeProgressTrack"><div id="linetimeProgressBar"></div></div>
+									<div id="linetimeProgressText"></div>
+								</div>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 			<div id="statistics-content" class="scrollArea hidden tab-content"></div>

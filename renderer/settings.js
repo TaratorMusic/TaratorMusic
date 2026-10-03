@@ -253,3 +253,29 @@ function changeLogLevel(level) {
 	localStorage.setItem("logLevel", level);
 	window.location.reload();
 }
+
+function switchSettingsTab(name) {
+	document.querySelectorAll(".settings-tab-btn").forEach(btn => {
+		if (btn.dataset.settingsTab == name) btn.classList.add("active");
+		else btn.classList.remove("active");
+	});
+	document.querySelectorAll(".settings-tab-panel").forEach(panel => {
+		if (panel.id == "settings-tab-" + name) panel.classList.remove("hidden");
+		else panel.classList.add("hidden");
+	});
+	document.getElementById("settings-content").scrollTop = 0;
+}
+
+function switchPackageTab(name) {
+	document.querySelectorAll(".packages-side-btn").forEach(btn => {
+		if (btn.dataset.packageTab == name) btn.classList.add("active");
+		else btn.classList.remove("active");
+	});
+	document.querySelectorAll(".package-panel").forEach(panel => {
+		if (panel.id == "settings-pkg-" + name) panel.classList.remove("hidden");
+		else panel.classList.add("hidden");
+	});
+}
+
+switchSettingsTab("keybinds");
+switchPackageTab("ytdlp");

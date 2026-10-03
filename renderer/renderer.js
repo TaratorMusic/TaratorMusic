@@ -521,6 +521,7 @@ tabs.forEach(tab => {
 					document.getElementById("playlists-content").style.display = "grid";
 				} else if (content.id == "settings-content") {
 					document.getElementById("settings-content").style.display = "flex";
+					if (typeof switchSettingsTab == "function") switchSettingsTab("keybinds");
 					if (ytdlpVersion) document.getElementById("ytdlpCurrentVersion").innerText = `Current version: ${ytdlpVersion}`;
 					refreshLinetimeStatus();
 				} else if (content.id == "statistics-content") {

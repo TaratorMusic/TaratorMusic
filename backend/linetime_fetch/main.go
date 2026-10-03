@@ -24,6 +24,9 @@ const (
 	modelsDir   = appfiles.LinetimeModelsDirName
 	huggingFace = "https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main"
 	whisperHF   = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
+	// Silero VAD, for --vad. whisper.cpp publishes it as a GGUF model, and this is
+	// where the bundled whisper-cli script fetches it from.
+	vadHF = "https://huggingface.co/ggml-org/whisper-vad/resolve/main/"
 
 	// whisper.cpp publishes prebuilt whisper-cli binaries. The macOS asset is
 	// only an xcframework for embedding, so there is no CLI to download there.
@@ -986,6 +989,43 @@ func downloadWhisperModel(quant string, force bool) error {
 	return nil
 }
 
+// downloadVadModel fetches the Silero VAD model that whisper's --vad needs. It is
+// tiny, so there is no size class to speak of, but the download still goes to a
+// .part file first: a truncated GGUF is not something whisper reports clearly, it
+// just falls back to no VAD.
+func downloadVadModel(force bool) error {
+	if err := os.MkdirAll(modelsDir, 0755); err != nil {
+		return fmt.Errorf("error creating models directory: %v", err)
+	}
+
+	modelName := appfiles.LinetimeVadModel
+	modelPath := filepath.Join(modelsDir, modelName)
+	if !force {
+		if info, err := os.Stat(modelPath); err == nil && info.Size() > 100*1024 {
+			fmt.Println("Voice activity model already exists, skipping")
+			return nil
+		}
+	}
+
+	modelURL := vadHF + modelName
+	fmt.Println("Downloading voice activity model (~0.9MB)...")
+	if err := downloadFile(modelURL, modelPath+".part"); err != nil {
+		return fmt.Errorf("error downloading voice activity model: %v", err)
+	}
+	// 885 KB in practice. A file far below that is a failed or proxied response
+	// rather than a model, and installing it would silently disable VAD.
+	if info, err := os.Stat(modelPath + ".part"); err == nil && info.Size() < 400*1024 {
+		os.Remove(modelPath + ".part")
+		return fmt.Errorf("downloaded voice activity model seems incomplete (%d bytes)", info.Size())
+	}
+	if err := os.Rename(modelPath+".part", modelPath); err != nil {
+		return fmt.Errorf("error moving voice activity model: %v", err)
+	}
+
+	fmt.Println("Voice activity model downloaded successfully")
+	return nil
+}
+
 func downloadModelFP32(force bool) error {
 	// Keep the upstream filenames: the ONNX graph references its external
 	// weights as "mms_fa.onnx.data", so renaming either file breaks loading.
@@ -1087,6 +1127,7 @@ func main() {
 	skipWhisperCli := false
 	onlyWhisperCli := false
 	gpuWhisperCliOnly := false
+	vadOnly := false
 	tokenizerOnly := false
 	assetDir := "."
 
@@ -1118,6 +1159,8 @@ func main() {
 			onlyWhisperCli = true
 		case arg == "--whisper-cli-gpu-only":
 			gpuWhisperCliOnly = true
+		case arg == "--vad-only":
+			vadOnly = true
 		case arg == "--tokenizer-only":
 			tokenizerOnly = true
 		case strings.HasPrefix(arg, "--asset-dir="):
@@ -1143,6 +1186,7 @@ func main() {
 			fmt.Println("  --skip-whisper-cli    Skip Whisper CLI download (needed to transcribe lyrics)")
 			fmt.Println("  --whisper-cli-only    Download only the Whisper CLI")
 			fmt.Println("  --whisper-cli-gpu-only  Download only the CUDA Whisper CLI (requires NVIDIA CUDA 12)")
+			fmt.Println("  --vad-only            Download only the voice activity model")
 			fmt.Println("  --tokenizer-only      Download only the tokenizer (skips binary, model, whisper)")
 			fmt.Println("  --asset-dir=<path>    Set asset directory (default: current directory)")
 			fmt.Println("  --release=<tag>       GitHub release tag (default: latest, env LINETIME_RELEASE_TAG)")
@@ -1183,6 +1227,14 @@ func main() {
 			os.Exit(1)
 		}
 		changed = true
+	}
+
+	if vadOnly {
+		if err := downloadVadModel(force); err != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading voice activity model: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	// The CUDA CLI is a separate download from the CPU one, so it is only ever
