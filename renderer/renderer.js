@@ -2420,7 +2420,13 @@ async function saveEditedSong(translationOnly = false) {
 	if (playingSongsID == customiseDiv.dataset.songID) {
 		document.getElementById("song-name").innerText = newNameInput;
 		if (songNameCache.has(songID)) document.getElementById("videothumbnailbox").style.backgroundImage = `url("${thumbnailPath}?t=${Date.now()}")`;
+		updateDiscordPresence();
+		if (typeof editMPRIS == "function") editMPRIS();
 	}
+
+	document.querySelectorAll(`.playlist-song[data-song-id="${songID}"]`).forEach(playlistSongEl => {
+		playlistSongEl.innerText = newNameInput;
+	});
 
 	if (document.getElementById("my-music-content").style.display == "flex" && element) {
 		if (musicScrollPos) document.getElementById("music-list-container").scrollTop = musicScrollPos;

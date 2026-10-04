@@ -2,10 +2,8 @@
 
 -   Sidebar revamp
 
--   Add proper switchable tabs to the settings.
+-   Reports of slow app launch in Windows, convert Golang logic to Rust and add debug while launching.
 -   Make ytdlp installable later like Linetime. Dont make it installed on launch.
--   If Linetime is not installed, dont warn on launch, warn on trying to use it
--   Downloads are creating undefined songs
 
 -   add translations to the pip lyrics --> just the current lyric OR all lyrics
 -   Add volume bar that expands upwards to PiP
@@ -24,9 +22,9 @@
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
 -   recommendations just for a song or playlist
--   Fix streaming in windows
+-   Fix streaming in windows --> Check logs
 -   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
--   Add song to queue, Customisable queue list with drag and drop (similar to youtube)
+-   Customisable queue list with drag and drop (similar to youtube)
 -   Some streamed songs dont have thumbnails in menus
 -   tooltip spawns wrongly then gets fixed afterwards
 -   Customise Dc Rich Presence box in the settings
