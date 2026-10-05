@@ -1670,9 +1670,12 @@ async function playNextSong() {
 	} else {
 		if (canUsePlaylist) {
 			const validSongs = currentPlaylistData.songs.filter(id => !notInterestedIds.includes(id));
-			const currentIndex = validSongs.indexOf(currentPlaylistData.songs[currentPlaylistElement]);
-			if (currentIndex >= 0 && currentIndex < validSongs.length - 1) {
-				nextSongId = validSongs[currentIndex + 1];
+			const pointedSongId = currentPlaylistData.songs[currentPlaylistElement];
+			const currentSongRemoved = pointedSongId != playingSongsID && !currentPlaylistData.songs.includes(playingSongsID);
+			const currentIndex = validSongs.indexOf(pointedSongId);
+			const nextIndex = currentSongRemoved ? currentIndex : currentIndex + 1;
+			if (currentIndex >= 0 && nextIndex < validSongs.length) {
+				nextSongId = validSongs[nextIndex];
 				currentPlaylistElement = currentPlaylistData.songs.indexOf(nextSongId);
 			}
 		} else {
@@ -2466,8 +2469,14 @@ function removeSong(fileToDelete) {
 			for (const [id, playlist] of playlistsMap) {
 				if (!playlist.songs.includes(fileToDelete)) continue;
 
+				const removedIndex = playlist.songs.indexOf(fileToDelete);
+
 				const updatedSongs = playlist.songs.filter(song => song != fileToDelete);
 				playlist.songs = updatedSongs;
+
+				if (id == currentPlaylist && removedIndex > -1 && removedIndex < currentPlaylistElement) {
+					currentPlaylistElement--;
+				}
 
 				callSqlite({
 					db: "playlists",
