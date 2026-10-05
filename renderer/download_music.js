@@ -31,14 +31,19 @@ function formatYtdlpError(stderr) {
 	return cleaned || "Unknown error";
 }
 
+const SPOTIFY_PATH_REGEX = /(?:https?:\/\/)?(?:www\.)?open\.spotify\.com\/(?:intl-[a-z]{2}(?:-[a-z]{2,4})?\/|embed\/|user\/[^/]+\/)?(track|playlist|album)\/([a-zA-Z0-9]+)/i;
+
+function parseSpotifyLink(link) {
+	const match = String(link).trim().match(SPOTIFY_PATH_REGEX);
+	if (!match) return null;
+	return { type: match[1].toLowerCase(), id: match[2] };
+}
+
 function differentiateMediaLinks(url) {
 	const trimmedUrl = url.trim();
 
 	const ytVideoRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 	const ytPlaylistRegex = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([a-zA-Z0-9_-]+)/;
-	const spotifyTrackRegex = /(?:https?:\/\/)?open\.spotify\.com\/track\/([a-zA-Z0-9]+)/;
-	const spotifyPlaylistRegex = /(?:https?:\/\/)?open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/;
-	const spotifyAlbumRegex = /(?:https?:\/\/)?open\.spotify\.com\/album\/([a-zA-Z0-9]+)/;
 
 	let cleanUrl = trimmedUrl;
 
@@ -56,22 +61,10 @@ function differentiateMediaLinks(url) {
 		return { type: "youtube_playlist", url: cleanUrl };
 	}
 
-	const spotifyTrackMatch = trimmedUrl.match(spotifyTrackRegex);
-	if (spotifyTrackMatch) {
-		cleanUrl = `https://open.spotify.com/track/${spotifyTrackMatch[1]}`;
-		return { type: "spotify_track", url: cleanUrl };
-	}
-
-	const spotifyPlaylistMatch = trimmedUrl.match(spotifyPlaylistRegex);
-	if (spotifyPlaylistMatch) {
-		cleanUrl = `https://open.spotify.com/playlist/${spotifyPlaylistMatch[1]}`;
-		return { type: "spotify_playlist", url: cleanUrl };
-	}
-
-	const spotifyAlbumMatch = trimmedUrl.match(spotifyAlbumRegex);
-	if (spotifyAlbumMatch) {
-		cleanUrl = `https://open.spotify.com/album/${spotifyAlbumMatch[1]}`;
-		return { type: "spotify_album", url: cleanUrl };
+	const spotifyMatch = parseSpotifyLink(trimmedUrl);
+	if (spotifyMatch) {
+		cleanUrl = `https://open.spotify.com/${spotifyMatch.type}/${spotifyMatch.id}`;
+		return { type: `spotify_${spotifyMatch.type}`, url: cleanUrl };
 	}
 
 	return { type: "search", url: trimmedUrl };
@@ -1215,9 +1208,9 @@ async function getSpotifySongName(link) {
 	const fetch = require("node-fetch");
 	const cheerio = require("cheerio");
 
-	const trackMatch = link.match(/open\.spotify\.com\/track\/([a-zA-Z0-9]+)/);
-	if (!trackMatch) throw new Error("Invalid Spotify track URL.");
-	const cleanLink = `https://open.spotify.com/track/${trackMatch[1]}`;
+	const spotifyMatch = parseSpotifyLink(link);
+	if (!spotifyMatch || spotifyMatch.type != "track") throw new Error("Invalid Spotify track URL.");
+	const cleanLink = `https://open.spotify.com/track/${spotifyMatch.id}`;
 
 	const response = await fetch(cleanLink, {
 		headers: {
@@ -1248,10 +1241,10 @@ async function getSpotifySongName(link) {
 }
 
 async function getPlaylistSongsAndArtists(link, isAlbum = false) {
-	const typeRegex = isAlbum ? /open\.spotify\.com\/album\/([a-zA-Z0-9]+)/ : /open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/;
-	const typeMatch = link.match(typeRegex);
-	if (!typeMatch) throw new Error(`Invalid Spotify ${isAlbum ? "album" : "playlist"} URL.`);
-	const cleanLink = `https://open.spotify.com/${isAlbum ? "album" : "playlist"}/${typeMatch[1]}`;
+	const wantedType = isAlbum ? "album" : "playlist";
+	const spotifyMatch = parseSpotifyLink(link);
+	if (!spotifyMatch || spotifyMatch.type != wantedType) throw new Error(`Invalid Spotify ${wantedType} URL.`);
+	const cleanLink = `https://open.spotify.com/${wantedType}/${spotifyMatch.id}`;
 
 	document.getElementById("downloadModalText").innerText = "Loading Spotify page...";
 

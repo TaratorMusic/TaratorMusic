@@ -234,7 +234,7 @@ app.whenReady().then(() => {
 					};
 
 					const check = () => {
-						if (document.querySelector('a[href*="/track/"]')) {
+						if (document.querySelector('[data-testid="infinite-scroll-list"] a[href*="/track/"]')) {
 							clearTimeout(timeout);
 							resolve();
 							return;
@@ -301,16 +301,21 @@ app.whenReady().then(() => {
 						});
 					}
 
+					function findTracklist() {
+						return document.querySelector('[data-testid="infinite-scroll-list"]') || document.body;
+					}
+
 					function extractTracks() {
 						const tracks = [];
 						const seen = new Set();
-						const trackLinks = document.querySelectorAll('a[href*="/track/"]');
+						const trackLinks = findTracklist().querySelectorAll('a[href*="/track/"]');
 
 						trackLinks.forEach(link => {
 							const href = link.getAttribute("href");
 							const trackId = href.match(/\\/track\\/([a-zA-Z0-9]+)/);
 							if (!trackId) return;
 							if (seen.has(trackId[1])) return;
+							if (link.closest('[data-testid="recommended-tracks-context"]')) return;
 							seen.add(trackId[1]);
 
 							const row = link.closest("[aria-rowindex]") || link.closest("div[data-testid]") || link.parentElement?.parentElement?.parentElement;
@@ -356,14 +361,7 @@ app.whenReady().then(() => {
 						return tracks;
 					}
 
-					const container = findScrollContainer();
-
-					if (!container) {
-						await new Promise(r => setTimeout(r, 3000));
-						const fallbackTracks = extractTracks();
-						if (fallbackTracks.length > 0) return fallbackTracks;
-						return [];
-					}
+					const container = findScrollContainer() || document.scrollingElement || document.documentElement;
 
 					let sameCount = 0;
 					let prevCount = 0;
@@ -372,7 +370,7 @@ app.whenReady().then(() => {
 						container.scrollBy(0, 800);
 						await new Promise(r => setTimeout(r, 800));
 
-						const currentCount = container.querySelectorAll('a[href*="/track/"]').length;
+						const currentCount = findTracklist().querySelectorAll('a[href*="/track/"]').length;
 
 						if (currentCount === prevCount) {
 							sameCount++;
