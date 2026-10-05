@@ -1,3 +1,33 @@
+const SONG_INFO_BUTTON_LABEL = "Fetch Song Info";
+const SONG_INFO_BUTTON_BUSY_LABEL = "Fetching...";
+
+let isFetchingSongInfo = false;
+
+function setSongInfoButtonBusy(busy) {
+	isFetchingSongInfo = busy;
+	const btn = document.getElementById("fetchSongInfoButton");
+	if (!btn) return;
+	btn.disabled = busy;
+	btn.textContent = busy ? SONG_INFO_BUTTON_BUSY_LABEL : SONG_INFO_BUTTON_LABEL;
+}
+
+async function fetchSongInfoFromModal() {
+	if (isFetchingSongInfo) return;
+
+	const btn = document.getElementById("fetchSongInfoButton");
+	if (btn && btn.disabled) return;
+
+	setSongInfoButtonBusy(true);
+
+	try {
+		await grabAndStoreSongInfo("html");
+	} catch (error) {
+		logChange("error", error.message ?? String(error));
+	} finally {
+		setSongInfoButtonBusy(false);
+	}
+}
+
 async function grabAndStoreSongInfo(songId) {
 	let fetchedId = songId;
 	if (fetchedId == "html") fetchedId = document.getElementById("customiseModal").dataset.songID;

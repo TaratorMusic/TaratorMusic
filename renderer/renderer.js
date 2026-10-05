@@ -2100,6 +2100,7 @@ async function opencustomiseModal(songsId) {
 		document.getElementById("downloadThisSong").disabled = true;
 		document.getElementById("stabiliseSongButton").disabled = stabilised == 1;
 		document.getElementById("fetchSongInfoButton").disabled = false;
+		document.getElementById("fetchSongInfoButton").textContent = "Fetch Song Info";
 		document.getElementById("removeSongButton").disabled = false;
 		document.getElementById("customiseSongLink").disabled = false;
 		document.getElementById("customiseThumbnail").disabled = false;
