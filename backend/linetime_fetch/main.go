@@ -125,67 +125,6 @@ func downloadFile(urlStr, dest string) error {
 	return nil
 }
 
-func extractTarGz(tgzPath, destDir string) error {
-	f, err := os.Open(tgzPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return err
-	}
-	defer gz.Close()
-
-	tr := tar.NewReader(gz)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		// Security: prevent path traversal
-		if filepath.IsAbs(header.Name) {
-			return fmt.Errorf("archive contains absolute path: %s", header.Name)
-		}
-		cleanName := filepath.Clean(header.Name)
-		if strings.HasPrefix(cleanName, "..") || strings.Contains(cleanName, string(filepath.Separator)+"..") {
-			return fmt.Errorf("archive contains path traversal: %s", header.Name)
-		}
-		// Reject symlinks and hardlinks for security
-		if header.Typeflag == tar.TypeSymlink || header.Typeflag == tar.TypeLink {
-			return fmt.Errorf("archive contains unsupported link type: %s", header.Name)
-		}
-
-		target := filepath.Join(destDir, cleanName)
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-				return err
-			}
-			outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(outFile, tr); err != nil {
-				outFile.Close()
-				return err
-			}
-			outFile.Close()
-		}
-	}
-	return nil
-}
-
 type platformConfig struct {
 	assetName        string
 	legacyAssetName  string
@@ -410,7 +349,7 @@ func downloadBinary(useGPU, force bool) error {
 		if err := extractZip(tmpFile, stagingDir); err != nil {
 			return fmt.Errorf("error extracting archive: %v", err)
 		}
-	} else if err := extractTarGz(tmpFile, stagingDir); err != nil {
+	} else if err := extractTarGzLinks(tmpFile, stagingDir); err != nil {
 		return fmt.Errorf("error extracting archive: %v", err)
 	}
 
