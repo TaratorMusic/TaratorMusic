@@ -180,7 +180,7 @@ const LINETIME_WHISPER_VARIANTS = Object.freeze([
 ]);
 
 function getLinetimeFolder() {
-	return backendFolder;
+	return path.join(taratorFolder, "bin");
 }
 
 // Filenames come from the binary_check report so Go owns them. Existence is still

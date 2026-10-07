@@ -75,15 +75,10 @@ func main() {
 	}
 	appBin := os.Args[1]
 	userDataBin := os.Args[2]
-	// Linetime ships into the same bin folder as the compiled tools, so there is no
-	// separate folder to resolve.
-	linetimeFolder := appBin
 
 	comps := make([]appfiles.Component, 0, 16)
 
-	// Core tools, the ones with no existence guard in the renderer. They are
-	// spawned blind, so a missing one currently surfaces as a raw ENOENT the
-	// first time the user happens to trigger it.
+	// Core tools
 	for _, name := range appfiles.CoreBinaries() {
 		comps = append(comps, resolve(appfiles.NewComponent(name, "core", name, map[string]string{
 			"binary": filepath.Join(appBin, name),
@@ -95,13 +90,29 @@ func main() {
 		"bundled": filepath.Join(appBin, appfiles.YtdlpName()),
 	})))
 
-	linetime := appfiles.LinetimeComponents(linetimeFolder)
-	for _, c := range linetime {
+	// Linetime components: check userData first, then appBin, for each part.
+	linetimeApp := appfiles.LinetimeComponents(appBin)
+	linetimeUser := appfiles.LinetimeComponents(userDataBin)
+	for i, c := range linetimeApp {
+		user := linetimeUser[i]
+		mergedParts := make(map[string]string)
+		for part, appPath := range c.Parts {
+			userPath := user.Parts[part]
+			if exists(userPath) {
+				mergedParts[part] = userPath
+			} else if exists(appPath) {
+				mergedParts[part] = appPath
+			}
+		}
+		c.Parts = mergedParts
+		// Update Files to match merged parts for resolve()
+		c.Files = make([]string, 0, len(mergedParts))
+		for _, p := range mergedParts {
+			if p != "" {
+				c.Files = append(c.Files, p)
+			}
+		}
 		c = resolve(c)
-		// The aligner prints its version on the first line of --help. Reporting it
-		// lets the app show which build is installed, which matters because the
-		// released 1.2 bundle and a locally built 1.3 behave differently. Only the
-		// GPU bundle carries a lib folder, and Parts["lib"] is empty for the others.
 		if c.Group == "binary" && c.State == appfiles.StatePresent {
 			c.Version = probeVersion(c.Parts["binary"], c.Parts["lib"])
 		}
