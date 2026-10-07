@@ -223,11 +223,15 @@ function isLinetimeUsingGpuBinary() {
 	return linetimeSelectedBinary === "gpu" && isLinetimeBinaryInstalled("gpu");
 }
 
-// Shared library folder the active whisper-cli needs. The CUDA build links
-// against the GPU bundle's libraries, the CPU one against its own folder.
+// Library folders the active whisper-cli needs. The CUDA build needs its own
+// folder (libwhisper, libggml) as well as the GPU bundle's libraries (CUDA,
+// cuDNN). The GPU bundle's lib folder MUST come first in LD_LIBRARY_PATH so
+// the loader finds libcudart/libcublas there before falling through to the
+// CLI's own RUNPATH, which points at the dev checkout. The CPU CLI only needs
+// its own folder ($ORIGIN works).
 function getLinetimeWhisperCliLibDir() {
 	if (getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli")) {
-		return getAppFilePart("gpu", "lib");
+		return [getAppFilePart("gpu", "lib"), getLinetimeWhisperCliFolder()].filter(Boolean).join(":");
 	}
 	return getLinetimeWhisperCliFolder();
 }

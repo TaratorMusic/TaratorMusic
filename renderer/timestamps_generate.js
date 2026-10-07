@@ -49,16 +49,20 @@ let soundDetectCapsCache = new Map();
 
 // The probe has to run with the same library path as the real invocation. A GPU
 // bundle cannot start at all without it, so probing without it makes --help print
-// a loader error and every GPU build looks like an unrecognised CLI.
+// a loader error and every GPU build looks like an unrecognised CLI. Include
+// the GPU whisper-cli folder too when active, in case the binary links against
+// its libraries (it shouldn't, but this keeps the path identical to the run).
 function detectSoundDetectCaps() {
 	const binaryPath = getSoundDetectBinary();
 	if (!binaryPath) return Object.assign({}, LINETIME_RELEASE_CLI_CAPS);
 	if (soundDetectCapsCache.has(binaryPath)) return soundDetectCapsCache.get(binaryPath);
 
 	const env = Object.assign({}, process.env);
-	const libDir = getSoundDetectLibDir();
-	if (libDir && process.platform !== "win32") {
-		env.LD_LIBRARY_PATH = libDir + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
+	const alignerLibDir = getSoundDetectLibDir();
+	const cliLibDir = getLinetimeWhisperCliLibDir();
+	const libDirs = [alignerLibDir, cliLibDir].filter(Boolean).join(":");
+	if (libDirs && process.platform !== "win32") {
+		env.LD_LIBRARY_PATH = libDirs + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
 	}
 
 	const result = spawnSync(binaryPath, ["--help"], {
@@ -110,7 +114,12 @@ function soundDetectProviderUnavailable(error) {
 	return /refusing to fall back/i.test(error?.stderrTail || "");
 }
 
-// A GPU bundle built with -march=native on an AVX-512 machine takes SIGILL inside
+// cuDNN 9.27 fails the Conv node on some cards (a GTX 1070 here) while 9.0.0
+// runs the same model, so it is a bundle and card pairing, not a crash. It is
+// deterministic, reported plainly, and records nothing: the CPU binary works.
+function soundDetectCudnnFailed(error) {
+	return /CUDNN_STATUS_EXECUTION_FAILED/i.test(error?.stderrTail || "");
+}
 // the whisper backend when run on a CPU without those instructions. It is not a
 // CUDA problem: --provider cpu still crashes, because the code was compiled that
 // way. The signal cannot be predicted, so the first crash is remembered and later
@@ -267,6 +276,17 @@ async function runSoundDetect(args, env, task, method) {
 			throw new Error(reason + "\n\nNothing was retried, and no method will use this "
 				+ "bundle until it is replaced. Download the CPU binary in "
 				+ "Settings > Linetime Aligner and select it.");
+		}
+
+		if (soundDetectCudnnFailed(error)) {
+			const reason = "The GPU Linetime bundle's cuDNN version fails on this card. "
+				+ "The same model runs with cuDNN 9.0.x. Nothing was retried. "
+				+ "Download the CPU binary in Settings > Linetime Aligner and select it, "
+				+ "or use Method A, which does not load a Whisper model.";
+			logChange("warn", reason + "\nbinary: " + binaryPath
+				+ "\nmethod: " + method
+				+ "\n" + (error.stderrTail || ""));
+			throw new Error(reason);
 		}
 
 		if (!soundDetectCrashed(error)) throw error;
@@ -427,11 +447,16 @@ async function generateTimestampsForCurrentSong() {
 	const lyricsTmpPath = path.join(tmpDir, "sd_lyrics_" + tmpId + ".txt");
 	const outputLrcPath = path.join(tmpDir, "sd_output_" + tmpId + ".lrc");
 
-	const libDir = getSoundDetectLibDir();
-	const env = Object.assign({}, process.env);
-	if (libDir && process.platform !== "win32") {
-		env.LD_LIBRARY_PATH = libDir + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
-	}
+	// The aligner needs lib_gpu (CUDA, cuDNN). If the GPU whisper-cli is also
+// active, its folder must appear in LD_LIBRARY_PATH too, because its RUNPATH
+// points at the dev checkout and the app's lib_gpu lacks its ggml libs.
+const alignerLibDir = getSoundDetectLibDir();
+const cliLibDir = getLinetimeWhisperCliLibDir();
+const libDirs = [alignerLibDir, cliLibDir].filter(Boolean).join(":");
+const env = Object.assign({}, process.env);
+if (libDirs && process.platform !== "win32") {
+	env.LD_LIBRARY_PATH = libDirs + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
+}
 
 	const task = timestampsTask();
 	setTimestampsProgress(0);
