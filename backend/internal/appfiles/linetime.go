@@ -112,6 +112,7 @@ func LinetimeComponents(folder string) []Component {
 	fast := NewComponent("fast", "model", "Fast (UINT8)", map[string]string{
 		"model": LinetimeModelPath(folder, LinetimeModelFast),
 	})
+	fast.Optional = true
 
 	whisperFP16 := NewComponent("whisper-standard", "whisper", "Standard (fp16)", map[string]string{
 		"model": LinetimeModelPath(folder, LinetimeWhisperFP16),
@@ -129,14 +130,6 @@ func LinetimeComponents(folder string) []Component {
 	cli.Optional = true
 	cli.Unsupported = !WhisperCliSupported()
 
-	// Voice activity detection. Not an accelerator, but it needs its own model
-	// file, so it is a component like any other and the downloader owns it.
-	vad := NewComponent("vad", "model", "Voice activity (optional)", map[string]string{
-		"model": LinetimeModelPath(folder, LinetimeVadModel),
-	})
-	vad.Optional = true
-	vad.Unsupported = !WhisperCliSupported()
-
 	// The CUDA whisper-cli arrives with the GPU bundle rather than from its own
 	// download, so it is a separate optional component: reporting it apart keeps
 	// the GPU aligner present when a bundle predates this, instead of folding a
@@ -147,5 +140,5 @@ func LinetimeComponents(folder string) []Component {
 	gpuCli.Optional = true
 	gpuCli.Unsupported = !GPUSupported()
 
-	return []Component{cpu, gpu, tokenizer, standard, fast, whisperFP16, whisperQ5, cli, gpuCli, vad}
+	return []Component{cpu, gpu, tokenizer, standard, fast, whisperFP16, whisperQ5, cli, gpuCli}
 }

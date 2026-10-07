@@ -162,22 +162,21 @@ const LINETIME_BINARY_VARIANTS = Object.freeze([
 	{ id: "gpu", label: "GPU (CUDA 12)", gpu: true },
 ]);
 
-const LINETIME_BINARY_SIZES = Object.freeze({
-	linux: Object.freeze({ cpu: "~40 MB", gpu: "~805 MB" }),
-	win32: Object.freeze({ cpu: "~42 MB", gpu: null }),
-	darwin: Object.freeze({ cpu: "~16 MB", gpu: null }),
-});
+// Binary and model sizes are measured live from disk via linetimeFileSizeBytes.
+// No hard-coded fallbacks: when a component is not installed, its size text
+// is omitted (the Download button shows the release asset size from the
+// report if available). This avoids stale numbers when upstream sizes change.
 
 let linetimeDownloadInProgress = false;
 
 const LINETIME_MODEL_VARIANTS = Object.freeze([
-	{ id: "standard", label: "Standard (FP32)", sizeDesc: "~1.2 GB", requiresData: true },
-	{ id: "fast", label: "Fast (UINT8)", sizeDesc: "~289 MB", requiresData: false },
+	{ id: "standard", label: "Standard (FP32)", requiresData: true },
+	{ id: "fast", label: "Fast (UINT8)", requiresData: false },
 ]);
 
 const LINETIME_WHISPER_VARIANTS = Object.freeze([
-	{ id: "standard", label: "Standard (fp16)", reportId: "whisper-standard", sizeDesc: "~2.9 GB" },
-	{ id: "whisper-q5", label: "Balanced (q5_0)", reportId: "whisper-q5", sizeDesc: "~1 GB" },
+	{ id: "standard", label: "Standard (fp16)", reportId: "whisper-standard" },
+	{ id: "whisper-q5", label: "Balanced (q5_0)", reportId: "whisper-q5" },
 ]);
 
 function getLinetimeFolder() {
@@ -236,14 +235,6 @@ function getLinetimeWhisperCliLibDir() {
 	return getLinetimeWhisperCliFolder();
 }
 
-function getLinetimeWhisperCliSizeDesc() {
-	if (process.platform === "darwin") return null;
-	if (process.platform === "win32") {
-		return process.arch === "arm64" ? "~4.2 MB" : "~8.2 MB";
-	}
-	return process.arch === "arm64" ? "~4.4 MB" : "~9.3 MB";
-}
-
 function getLinetimeWhisperPath(id) {
 	const v = getLinetimeWhisperVariant(id);
 	if (!v) return null;
@@ -260,12 +251,6 @@ function getLinetimeFfmpegPath() {
 
 function getLinetimeBinaryVariant(id) {
 	return LINETIME_BINARY_VARIANTS.find(x => x.id === id);
-}
-
-function getLinetimeBinarySizeDesc(variantId) {
-	const sizes = LINETIME_BINARY_SIZES[process.platform];
-	if (!sizes) return null;
-	return sizes[variantId] ?? null;
 }
 
 function getLinetimeModelVariant(id) {
@@ -721,7 +706,7 @@ function refreshLinetimeStatus() {
 			label: v.label,
 			installed,
 			active: installed && effective.model === v.id,
-			sizeText: linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], v.sizeDesc),
+			sizeText: linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], ""),
 			useFn: "linetimeUseModel",
 			downloadFn: "linetimeDownloadModel",
 			deleteFn: "linetimeDeleteModel",
@@ -736,7 +721,7 @@ function refreshLinetimeStatus() {
 			label: v.label,
 			installed,
 			active: installed && effective.whisper === v.id,
-			sizeText: linetimeFileSizeText([getLinetimeWhisperPath(v.id)], v.sizeDesc),
+			sizeText: linetimeFileSizeText([getLinetimeWhisperPath(v.id)], ""),
 			useFn: "linetimeUseWhisper",
 			downloadFn: "linetimeDownloadWhisper",
 			deleteFn: "linetimeDeleteWhisper",
@@ -750,7 +735,7 @@ function refreshLinetimeStatus() {
 	// follows whichever CLI is active, which would report the GPU folder here.
 	const cliDir = path.dirname(getAppFilePart("whisper-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli"));
 	const cliSizeText = cliSupported
-		? (cliInstalled ? linetimeFileSizeText(dirFilePaths(cliDir), getLinetimeWhisperCliSizeDesc()) : getLinetimeWhisperCliSizeDesc())
+		? (cliInstalled ? linetimeFileSizeText(dirFilePaths(cliDir), "") : "")
 		: "N/A";
 
 	// The CUDA CLI has no download or delete of its own: it arrives and leaves
@@ -762,7 +747,7 @@ function refreshLinetimeStatus() {
 	const gpuCliActive = gpuCliInstalled && getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli");
 	const gpuCliSizeText = !gpuCliSupported
 		? "N/A"
-		: (gpuCliInstalled ? linetimeFileSizeText(dirFilePaths(gpuCliDir), "Installed") : "~100 MB");
+		: (gpuCliInstalled ? linetimeFileSizeText(dirFilePaths(gpuCliDir), "") : "");
 
 	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", [{
 		id: "whisper-cli",
@@ -866,12 +851,10 @@ async function downloadLinetimeVariant(component, variant) {
 		if (variant === "gpu") args.push("--gpu");
 		args.push("--skip-model", "--skip-tokenizer", "--skip-whisper", "--skip-whisper-cli");
 		label = getLinetimeBinaryVariant(variant)?.label ?? "binary";
-		sizeDesc = getLinetimeBinarySizeDesc(variant) ?? "";
 	} else if (component === "model") {
 		modelType = variant;
 		args.push("--skip-binary", "--skip-tokenizer", "--skip-whisper", "--skip-whisper-cli", "--model-" + modelType);
 		label = getLinetimeModelVariant(variant)?.label ?? "CTC model";
-		sizeDesc = getLinetimeModelVariant(variant)?.sizeDesc ?? "";
 	} else if (component === "tokenizer") {
 		args.push("--skip-binary", "--skip-model", "--skip-whisper", "--tokenizer-only");
 		label = "Tokenizer";
@@ -879,17 +862,14 @@ async function downloadLinetimeVariant(component, variant) {
 		const whisperMap = { standard: "whisper", "whisper-q5": "whisper-q5" };
 		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper-cli", "--model-" + (whisperMap[variant] || variant));
 		label = getLinetimeWhisperVariant(variant)?.label ?? "Whisper model";
-		sizeDesc = getLinetimeWhisperVariant(variant)?.sizeDesc ?? "";
 	} else if (component === "whisper-cli") {
 		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-only");
 		label = "Whisper CLI";
-		sizeDesc = getLinetimeWhisperCliSizeDesc() ?? "";
 	} else if (component === "gpu-cli") {
 		// The CUDA CLI is a Linetime release asset, so the fetch resolves it through
 		// the release rather than the upstream whisper.cpp URL the CPU one uses.
 		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-gpu-only");
 		label = "CUDA Whisper CLI";
-		sizeDesc = "~100 MB";
 	}
 
 	const sizeSuffix = sizeDesc ? ` (${sizeDesc})` : "";
