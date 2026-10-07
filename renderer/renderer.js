@@ -229,6 +229,11 @@ async function initialiseDatabases() {
 		query: "ALTER TABLE statistics ADD COLUMN linetime_selected_model TEXT DEFAULT ''",
 		fetch: false,
 	}).catch(() => {});
+	await callSqlite({
+		db: "settings",
+		query: "ALTER TABLE statistics ADD COLUMN linetime_sizes_json TEXT DEFAULT '{}'",
+		fetch: false,
+	}).catch(() => {});
 
 	const settingsRows = await callSqlite({
 		db: "settings",
@@ -313,12 +318,14 @@ async function initialiseDatabases() {
 	artistListenTimeFactor = settingsRow.artistListenTimeFactor;
 	randomFactor = settingsRow.randomFactor;
 
-	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_selected_whisper, linetime_selected_binary, linetime_selected_model FROM statistics LIMIT 1", fetch: true });
+	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_selected_whisper, linetime_selected_binary, linetime_selected_model, linetime_sizes_json FROM statistics LIMIT 1", fetch: true });
 	ytdlpLastUpdateDate = statsRows[0]?.ytdlp_last_update_date || 0;
 	ytdlpVersion = statsRows[0]?.ytdlp_version || "";
 	linetimeSelectedWhisper = statsRows[0]?.linetime_selected_whisper || "";
 	linetimeSelectedBinary = statsRows[0]?.linetime_selected_binary || "";
 	linetimeSelectedModel = statsRows[0]?.linetime_selected_model || "";
+	let linetimeSizes = {};
+	try { linetimeSizes = JSON.parse(statsRows[0]?.linetime_sizes_json || "{}"); } catch (_) {}
 
 	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
 	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
@@ -477,6 +484,8 @@ async function initialiseDatabases() {
 	// The Linetime tables rendered above before the report existed, so they showed
 	// everything as not installed. Redraw now that the real state is known.
 	refreshLinetimeStatus();
+	await fetchLinetimeReleaseSizes();
+	await loadLinetimeReleaseSizes();
 	setupLazyBackgrounds();
 }
 

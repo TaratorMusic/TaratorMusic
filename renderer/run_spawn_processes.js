@@ -11,6 +11,34 @@ function setSongInfoButtonBusy(busy) {
 	btn.textContent = busy ? SONG_INFO_BUTTON_BUSY_LABEL : SONG_INFO_BUTTON_LABEL;
 }
 
+// Cached Linetime release asset sizes from GitHub API.
+let linetimeReleaseSizes = {};
+
+async function loadLinetimeReleaseSizes() {
+	try {
+		const rows = await callSqlite({ db: "settings", query: "SELECT linetime_sizes_json FROM statistics LIMIT 1", fetch: true });
+		linetimeReleaseSizes = JSON.parse(rows[0]?.linetime_sizes_json || "{}");
+	} catch (_) { linetimeReleaseSizes = {}; }
+}
+
+function getLinetimeReleaseSize(assetName) {
+	return linetimeReleaseSizes[assetName] || "";
+}
+
+// Map component id -> release asset name for size lookup
+const LINETIME_ASSET_NAMES = Object.freeze({
+	"cpu": "linetime-linux-x64-cpu.tar.gz",
+	"gpu": "linetime-linux-x64-gpu.tar.gz",
+	"tokenizer": null,
+	"standard": null,
+	"fast": null,
+	"whisper-standard": "ggml-large-v3.bin",
+	"whisper-q5": "ggml-large-v3-q5_0.bin",
+	"whisper-cli": "whisper-bin-ubuntu-x64.tar.gz",
+	"gpu-cli": "linetime-whisper-cli-cuda-x64.tar.gz",
+	"vad": null
+});
+
 async function fetchSongInfoFromModal() {
 	if (isFetchingSongInfo) return;
 
@@ -615,6 +643,39 @@ function renderLinetimeTable(containerId, title, items) {
 	el.innerHTML = header + rows;
 }
 
+// Fetch Linetime release asset sizes from GitHub and cache in settings DB.
+// Called once at startup and whenever the Settings > Linetime tab is opened.
+async function fetchLinetimeReleaseSizes() {
+	try {
+		const resp = await fetch("https://api.github.com/repos/Victiniiiii/Linetime/releases/latest", {
+			headers: { "Accept": "application/vnd.github+json", "User-Agent": "TaratorMusic" }
+		});
+		if (!resp.ok) throw new Error("HTTP " + resp.status);
+		const rel = await resp.json();
+		const sizes = {};
+		for (const asset of rel.assets || []) {
+			const name = asset.name;
+			const sizeMB = (asset.size / 1024 / 1024).toFixed(1);
+			if (name.startsWith("linetime-linux-x64-cpu") || name.startsWith("linetime-linux-x64-gpu") ||
+			    name.startsWith("linetime-macos-universal") || name.startsWith("linetime-windows-x64-cpu") ||
+			    name.startsWith("linetime-windows-x64-gpu") ||
+			    name.startsWith("linetime-whisper-cli-cuda")) {
+				sizes[name] = sizeMB + " MB";
+			}
+		}
+		await callSqlite({
+			db: "settings",
+			query: "UPDATE statistics SET linetime_sizes_json = ?",
+			args: [JSON.stringify(sizes)],
+			fetch: false,
+		});
+		return sizes;
+	} catch (e) {
+		logChange("warn", "Linetime release size fetch failed: " + e.message);
+		return {};
+	}
+}
+
 // After anything that changes what is on disk the boot report is stale, so it is
 // regenerated before the tables redraw. Selection changes do not need this.
 async function refreshLinetimeReport() {
@@ -662,16 +723,20 @@ function refreshLinetimeStatus() {
 	const effective = getEffectiveLinetimeSelection();
 
 	const binaryItems = LINETIME_BINARY_VARIANTS.map(v => {
-		// Platform support comes from the report, not a table duplicated here, so
-		// the UI cannot disagree with the check about what is possible.
 		const supported = getAppFileState(v.id) !== "unsupported";
 		const installed = supported && isLinetimeBinaryInstalled(v.id);
 		const gpuLibPath = v.gpu ? getAppFilePart("gpu", "lib") : null;
 		const gpuLibBytes = gpuLibPath ? dirSizeBytes(gpuLibPath) : 0;
 		const binBytes = linetimeFileSizeBytes([getLinetimeBinaryPath(v.id)]);
-		const sizeText = supported
-			? ((binBytes + gpuLibBytes) > 0 ? linetimeBytesText(binBytes + gpuLibBytes) : getLinetimeBinarySizeDesc(v.id))
-			: "N/A";
+		let sizeText = "N/A";
+		if (supported) {
+			if (binBytes + gpuLibBytes > 0) {
+				sizeText = linetimeBytesText(binBytes + gpuLibBytes);
+			} else {
+				const asset = LINETIME_ASSET_NAMES[v.id];
+				sizeText = asset ? getLinetimeReleaseSize(asset) : "";
+			}
+		}
 		return {
 			id: v.id,
 			label: v.label,
@@ -693,7 +758,7 @@ function refreshLinetimeStatus() {
 		label: "Tokenizer (required)",
 		installed: tokenizerInstalled,
 		active: false,
-		sizeText: tokenizerInstalled ? linetimeFileSizeText([getLinetimeTokenizerPath()], "~1 KB") : "~1 KB",
+		sizeText: tokenizerInstalled ? linetimeFileSizeText([getLinetimeTokenizerPath()], "") : "",
 		useFn: null,
 		downloadFn: "linetimeDownloadTokenizer",
 		deleteFn: "linetimeDeleteTokenizer",
@@ -706,7 +771,7 @@ function refreshLinetimeStatus() {
 			label: v.label,
 			installed,
 			active: installed && effective.model === v.id,
-			sizeText: linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], ""),
+			sizeText: installed ? linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], "") : "",
 			useFn: "linetimeUseModel",
 			downloadFn: "linetimeDownloadModel",
 			deleteFn: "linetimeDeleteModel",
@@ -721,7 +786,7 @@ function refreshLinetimeStatus() {
 			label: v.label,
 			installed,
 			active: installed && effective.whisper === v.id,
-			sizeText: linetimeFileSizeText([getLinetimeWhisperPath(v.id)], ""),
+			sizeText: installed ? linetimeFileSizeText([getLinetimeWhisperPath(v.id)], "") : "",
 			useFn: "linetimeUseWhisper",
 			downloadFn: "linetimeDownloadWhisper",
 			deleteFn: "linetimeDeleteWhisper",
@@ -731,23 +796,20 @@ function refreshLinetimeStatus() {
 
 	const cliSupported = getAppFileState("whisper-cli") !== "unsupported";
 	const cliInstalled = isLinetimeWhisperCliInstalled();
-	// The CPU row always measures the CPU folder. getLinetimeWhisperCliFolder()
-	// follows whichever CLI is active, which would report the GPU folder here.
 	const cliDir = path.dirname(getAppFilePart("whisper-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli"));
+	const cliBytes = dirSizeBytes(cliDir);
 	const cliSizeText = cliSupported
-		? (cliInstalled ? linetimeFileSizeText(dirFilePaths(cliDir), "") : "")
+		? (cliBytes > 0 ? linetimeBytesText(cliBytes) : getLinetimeReleaseSize(LINETIME_ASSET_NAMES["whisper-cli"]))
 		: "N/A";
 
-	// The CUDA CLI has no download or delete of its own: it arrives and leaves
-	// with the GPU bundle, and it is picked automatically. It is listed so the
-	// GPU path is visible rather than a silent speed difference.
 	const gpuCliSupported = getAppFileState("gpu-cli") !== "unsupported";
 	const gpuCliInstalled = gpuCliSupported && linetimePartExists("gpu-cli", "cli");
 	const gpuCliDir = path.dirname(getAppFilePart("gpu-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli_gpu"));
+	const gpuCliBytes = dirSizeBytes(gpuCliDir);
 	const gpuCliActive = gpuCliInstalled && getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli");
 	const gpuCliSizeText = !gpuCliSupported
 		? "N/A"
-		: (gpuCliInstalled ? linetimeFileSizeText(dirFilePaths(gpuCliDir), "") : "");
+		: (gpuCliBytes > 0 ? linetimeBytesText(gpuCliBytes) : getLinetimeReleaseSize(LINETIME_ASSET_NAMES["gpu-cli"]));
 
 	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", [{
 		id: "whisper-cli",
