@@ -131,7 +131,6 @@ let artistListenTimeFactor;
 let randomFactor;
 let ytdlpLastUpdateDate;
 let ytdlpVersion;
-let linetimeVersion;
 let linetimeSelectedWhisper;
 let linetimeSelectedBinary;
 let linetimeSelectedModel;
@@ -314,10 +313,9 @@ async function initialiseDatabases() {
 	artistListenTimeFactor = settingsRow.artistListenTimeFactor;
 	randomFactor = settingsRow.randomFactor;
 
-	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_version, linetime_selected_whisper, linetime_selected_binary, linetime_selected_model FROM statistics LIMIT 1", fetch: true });
+	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_selected_whisper, linetime_selected_binary, linetime_selected_model FROM statistics LIMIT 1", fetch: true });
 	ytdlpLastUpdateDate = statsRows[0]?.ytdlp_last_update_date || 0;
 	ytdlpVersion = statsRows[0]?.ytdlp_version || "";
-	linetimeVersion = statsRows[0]?.linetime_version || "";
 	linetimeSelectedWhisper = statsRows[0]?.linetime_selected_whisper || "";
 	linetimeSelectedBinary = statsRows[0]?.linetime_selected_binary || "";
 	linetimeSelectedModel = statsRows[0]?.linetime_selected_model || "";
