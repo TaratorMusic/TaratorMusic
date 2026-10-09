@@ -410,9 +410,22 @@ void stream_url(const char *url) {
         is_loaded = 0;
     }
 
+    /* Require a genuine http(s) URL. This blocks values such as
+       "--exec=..." or "-o=..." that would otherwise be accepted by the
+       character whitelist below and could be interpreted as extra
+       command-line options/flags by yt-dlp or the shell. */
+    if (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0) {
+        fprintf(stderr, "Invalid URL scheme\n");
+        printf("EV_ERROR Invalid URL scheme\n");
+        fflush(stdout);
+        return;
+    }
+
     /* Reject URLs containing shell metacharacters before embedding them in
        the popen() command line below. Only allow a conservative whitelist
-       of characters that are valid in URLs. */
+       of characters that are valid in URLs. Explicitly excludes '"', '\\',
+       '$' and '`', which could otherwise break out of the double-quoted
+       argument in the shell command constructed below. */
     for (const unsigned char *p = (const unsigned char *)url; *p; p++) {
         if (!isalnum(*p) && strchr(":/.?=&_-%~,@#+", *p) == NULL) {
             fprintf(stderr, "Invalid character in URL\n");
