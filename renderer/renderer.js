@@ -486,6 +486,7 @@ async function initialiseDatabases() {
 	refreshLinetimeStatus();
 	await fetchLinetimeReleaseSizes();
 	await loadLinetimeReleaseSizes();
+	refreshLinetimeStatus();
 	setupLazyBackgrounds();
 }
 

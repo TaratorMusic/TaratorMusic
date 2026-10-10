@@ -25,19 +25,53 @@ function getLinetimeReleaseSize(assetName) {
 	return linetimeReleaseSizes[assetName] || "";
 }
 
-// Map component id -> release asset name for size lookup
-const LINETIME_ASSET_NAMES = Object.freeze({
-	"cpu": "linetime-linux-x64-cpu.tar.gz",
-	"gpu": "linetime-linux-x64-gpu.tar.gz",
-	"tokenizer": null,
-	"standard": null,
-	"fast": null,
-	"whisper-standard": "ggml-large-v3.bin",
-	"whisper-q5": "ggml-large-v3-q5_0.bin",
-	"whisper-cli": "whisper-bin-ubuntu-x64.tar.gz",
-	"gpu-cli": "linetime-whisper-cli-cuda-x64.tar.gz",
-	"vad": null
+// Release asset name for a binary component on this platform. Mirrors the
+// naming in backend/linetime_fetch/main.go and backend whisper.cpp handling.
+function linetimePlatformAsset(id) {
+	if (id === "cpu") {
+		if (process.platform === "darwin") return "linetime-macos-universal.tar.gz";
+		if (process.platform === "win32") return "linetime-windows-x64-cpu.tar.gz";
+		return "linetime-linux-x64-cpu.tar.gz";
+	}
+	if (id === "gpu") {
+		if (process.platform === "win32") return "linetime-windows-x64-gpu.zip";
+		return "linetime-linux-x64-gpu.tar.gz";
+	}
+	if (id === "whisper-cli") {
+		if (process.platform === "win32") return process.arch === "ia32" ? "whisper-bin-Win32.zip" : "whisper-bin-x64.zip";
+		if (process.arch === "arm64") return "whisper-bin-ubuntu-arm64.tar.gz";
+		return "whisper-bin-ubuntu-x64.tar.gz";
+	}
+	if (id === "gpu-cli") {
+		if (process.platform === "win32") return "linetime-whisper-cli-cuda-x64-windows.zip";
+		return "linetime-whisper-cli-cuda-x64.tar.gz";
+	}
+	return null;
+}
+
+// HuggingFace files linetime_fetch downloads, mirrored from
+// backend/linetime_fetch/main.go. Only URLs are mirrored here, sizes are
+// measured live with HEAD requests so nothing goes stale.
+const LINETIME_HF_FILES = Object.freeze({
+	"tokenizer": ["https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/tokenizer.json"],
+	"standard": [
+		"https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa.onnx",
+		"https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa.onnx.data",
+	],
+	"fast": ["https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa_uint8.onnx"],
+	"whisper-standard": ["https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"],
+	"whisper-q5": ["https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin"],
 });
+
+function linetimeDownloadSizeText(id) {
+	const asset = linetimePlatformAsset(id);
+	if (asset) return getLinetimeReleaseSize(asset);
+	return "";
+}
+
+function linetimeHfSizeText(id) {
+	return getLinetimeReleaseSize("hf-" + id);
+}
 
 async function fetchSongInfoFromModal() {
 	if (isFetchingSongInfo) return;
@@ -593,7 +627,7 @@ function renderLinetimeTable(containerId, title, items) {
 	const busy = linetimeDownloadInProgress;
 
 	const header = `
-		<div style="font-weight:bold;margin-bottom:6px;">${title}</div>
+		<div class="linetime-table-title">${title}</div>
 		<div style="display:grid;grid-template-columns:${LINETIME_TABLE_COLUMNS};gap:8px;font-weight:bold;color:#ccc;margin-bottom:4px;">
 			<div>Variant</div><div>Size</div><div>Status</div><div>Action</div>
 		</div>`;
@@ -643,37 +677,65 @@ function renderLinetimeTable(containerId, title, items) {
 	el.innerHTML = header + rows;
 }
 
-// Fetch Linetime release asset sizes from GitHub and cache in settings DB.
-// Called once at startup and whenever the Settings > Linetime tab is opened.
+// Fetch Linetime and whisper.cpp release asset sizes and cache them in the
+// settings DB. Called once at startup. The HuggingFace-hosted models have no
+// release to query, so their sizes are measured live with HEAD requests.
 async function fetchLinetimeReleaseSizes() {
+	const sizes = {};
 	try {
 		const resp = await fetch("https://api.github.com/repos/Victiniiiii/Linetime/releases/latest", {
 			headers: { "Accept": "application/vnd.github+json", "User-Agent": "TaratorMusic" }
 		});
 		if (!resp.ok) throw new Error("HTTP " + resp.status);
 		const rel = await resp.json();
-		const sizes = {};
 		for (const asset of rel.assets || []) {
-			const name = asset.name;
-			const sizeMB = (asset.size / 1024 / 1024).toFixed(1);
-			if (name.startsWith("linetime-linux-x64-cpu") || name.startsWith("linetime-linux-x64-gpu") ||
-			    name.startsWith("linetime-macos-universal") || name.startsWith("linetime-windows-x64-cpu") ||
-			    name.startsWith("linetime-windows-x64-gpu") ||
-			    name.startsWith("linetime-whisper-cli-cuda")) {
-				sizes[name] = sizeMB + " MB";
+			if (asset.name && asset.size) sizes[asset.name] = linetimeBytesText(asset.size);
+		}
+	} catch (e) {
+		logChange("warn", "Linetime release size fetch failed: " + e.message);
+	}
+	try {
+		// Tag mirrors whisperCppTag in backend/linetime_fetch/main.go, which is
+		// what linetime_fetch actually downloads.
+		const resp = await fetch("https://api.github.com/repos/ggml-org/whisper.cpp/releases/tags/b5130", {
+			headers: { "Accept": "application/vnd.github+json", "User-Agent": "TaratorMusic" }
+		});
+		if (!resp.ok) throw new Error("HTTP " + resp.status);
+		const rel = await resp.json();
+		for (const asset of rel.assets || []) {
+			if (asset.name && asset.size) sizes[asset.name] = linetimeBytesText(asset.size);
+		}
+	} catch (e) {
+		logChange("warn", "Whisper CLI release size fetch failed: " + e.message);
+	}
+	await Promise.all(Object.entries(LINETIME_HF_FILES).map(async ([id, urls]) => {
+		let total = 0;
+		for (const url of urls) {
+			try {
+				const resp = await fetch(url, { method: "HEAD" });
+				const len = Number(resp.headers.get("content-length"));
+				if (!resp.ok || !Number.isFinite(len) || len <= 0) throw new Error("HTTP " + resp.status);
+				total += len;
+			} catch (e) {
+				logChange("warn", "Linetime size HEAD failed for " + url + ": " + e.message);
+				return;
 			}
 		}
+		if (total > 0) sizes["hf-" + id] = linetimeBytesText(total);
+	}));
+	if (Object.keys(sizes).length === 0) return linetimeReleaseSizes;
+	linetimeReleaseSizes = { ...linetimeReleaseSizes, ...sizes };
+	try {
 		await callSqlite({
 			db: "settings",
 			query: "UPDATE statistics SET linetime_sizes_json = ?",
-			args: [JSON.stringify(sizes)],
+			args: [JSON.stringify(linetimeReleaseSizes)],
 			fetch: false,
 		});
-		return sizes;
 	} catch (e) {
-		logChange("warn", "Linetime release size fetch failed: " + e.message);
-		return {};
+		logChange("warn", "Linetime size cache save failed: " + e.message);
 	}
+	return linetimeReleaseSizes;
 }
 
 // After anything that changes what is on disk the boot report is stale, so it is
@@ -733,8 +795,7 @@ function refreshLinetimeStatus() {
 			if (binBytes + gpuLibBytes > 0) {
 				sizeText = linetimeBytesText(binBytes + gpuLibBytes);
 			} else {
-				const asset = LINETIME_ASSET_NAMES[v.id];
-				sizeText = asset ? getLinetimeReleaseSize(asset) : "";
+				sizeText = linetimeDownloadSizeText(v.id);
 			}
 		}
 		return {
@@ -758,7 +819,7 @@ function refreshLinetimeStatus() {
 		label: "Tokenizer (required)",
 		installed: tokenizerInstalled,
 		active: false,
-		sizeText: tokenizerInstalled ? linetimeFileSizeText([getLinetimeTokenizerPath()], "") : "",
+		sizeText: tokenizerInstalled ? linetimeFileSizeText([getLinetimeTokenizerPath()], "") : linetimeHfSizeText("tokenizer"),
 		useFn: null,
 		downloadFn: "linetimeDownloadTokenizer",
 		deleteFn: "linetimeDeleteTokenizer",
@@ -771,7 +832,7 @@ function refreshLinetimeStatus() {
 			label: v.label,
 			installed,
 			active: installed && effective.model === v.id,
-			sizeText: installed ? linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], "") : "",
+			sizeText: installed ? linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], "") : linetimeHfSizeText(v.id),
 			useFn: "linetimeUseModel",
 			downloadFn: "linetimeDownloadModel",
 			deleteFn: "linetimeDeleteModel",
@@ -786,7 +847,7 @@ function refreshLinetimeStatus() {
 			label: v.label,
 			installed,
 			active: installed && effective.whisper === v.id,
-			sizeText: installed ? linetimeFileSizeText([getLinetimeWhisperPath(v.id)], "") : "",
+			sizeText: installed ? linetimeFileSizeText([getLinetimeWhisperPath(v.id)], "") : linetimeHfSizeText(v.reportId || v.id),
 			useFn: "linetimeUseWhisper",
 			downloadFn: "linetimeDownloadWhisper",
 			deleteFn: "linetimeDeleteWhisper",
@@ -799,7 +860,7 @@ function refreshLinetimeStatus() {
 	const cliDir = path.dirname(getAppFilePart("whisper-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli"));
 	const cliBytes = dirSizeBytes(cliDir);
 	const cliSizeText = cliSupported
-		? (cliBytes > 0 ? linetimeBytesText(cliBytes) : getLinetimeReleaseSize(LINETIME_ASSET_NAMES["whisper-cli"]))
+		? (cliBytes > 0 ? linetimeBytesText(cliBytes) : linetimeDownloadSizeText("whisper-cli"))
 		: "N/A";
 
 	const gpuCliSupported = getAppFileState("gpu-cli") !== "unsupported";
@@ -809,7 +870,7 @@ function refreshLinetimeStatus() {
 	const gpuCliActive = gpuCliInstalled && getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli");
 	const gpuCliSizeText = !gpuCliSupported
 		? "N/A"
-		: (gpuCliBytes > 0 ? linetimeBytesText(gpuCliBytes) : getLinetimeReleaseSize(LINETIME_ASSET_NAMES["gpu-cli"]));
+		: (gpuCliBytes > 0 ? linetimeBytesText(gpuCliBytes) : linetimeDownloadSizeText("gpu-cli"));
 
 	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", [{
 		id: "whisper-cli",
