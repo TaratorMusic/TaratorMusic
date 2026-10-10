@@ -620,7 +620,7 @@ function dirSizeBytes(dir) {
 	return total;
 }
 
-function renderLinetimeTable(containerId, title, items) {
+function renderLinetimeTable(containerId, title, desc, items) {
 	const el = document.getElementById(containerId);
 	if (!el) return;
 
@@ -628,6 +628,7 @@ function renderLinetimeTable(containerId, title, items) {
 
 	const header = `
 		<div class="linetime-table-title">${title}</div>
+		<div class="linetime-table-desc">${desc}</div>
 		<div style="display:grid;grid-template-columns:${LINETIME_TABLE_COLUMNS};gap:8px;font-weight:bold;color:#ccc;margin-bottom:4px;">
 			<div>Variant</div><div>Size</div><div>Status</div><div>Action</div>
 		</div>`;
@@ -811,7 +812,7 @@ function refreshLinetimeStatus() {
 			deleteFn: "linetimeDeleteBinary",
 		};
 	});
-	renderLinetimeTable("linetimeBinaryTable", "Binary", binaryItems);
+	renderLinetimeTable("linetimeBinaryTable", "Binary", "The aligner program itself. CPU runs everywhere, GPU needs an NVIDIA card with CUDA 12.", binaryItems);
 
 	const tokenizerInstalled = isLinetimeTokenizerInstalled();
 	const modelItems = [{
@@ -838,7 +839,7 @@ function refreshLinetimeStatus() {
 			deleteFn: "linetimeDeleteModel",
 		});
 	});
-	renderLinetimeTable("linetimeModelTable", "Alignment models", modelItems);
+	renderLinetimeTable("linetimeModelTable", "Alignment models", "Acoustic models that place each lyric line in time. The tokenizer is required for any of them to work.", modelItems);
 
 	const whisperItems = LINETIME_WHISPER_VARIANTS.map(v => {
 		const installed = isLinetimeWhisperInstalled(v.id);
@@ -853,7 +854,7 @@ function refreshLinetimeStatus() {
 			deleteFn: "linetimeDeleteWhisper",
 		};
 	});
-	renderLinetimeTable("linetimeWhisperTable", "Whisper models (optional)", whisperItems);
+	renderLinetimeTable("linetimeWhisperTable", "Whisper models (optional)", "Turn audio into lyric text. Only needed for Auto-generate, so pick one or skip this.", whisperItems);
 
 	const cliSupported = getAppFileState("whisper-cli") !== "unsupported";
 	const cliInstalled = isLinetimeWhisperCliInstalled();
@@ -872,7 +873,7 @@ function refreshLinetimeStatus() {
 		? "N/A"
 		: (gpuCliBytes > 0 ? linetimeBytesText(gpuCliBytes) : linetimeDownloadSizeText("gpu-cli"));
 
-	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", [{
+	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", "Runs the transcription that makes Auto-generate work. whisper.cpp publishes no macOS build, so it is unavailable there.", [{
 		id: "whisper-cli",
 		label: "Whisper CLI",
 		installed: cliInstalled,

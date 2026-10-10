@@ -659,15 +659,25 @@ audio {
 	font-size: 15px;
 	font-weight: bold;
 	color: #fff;
-	margin: 14px 0 6px;
+	margin: 22px 0 8px;
 	height: auto !important;
 }
 
-#settings-content .linetime-cli-note {
+#settings-content.packages-active {
+	overflow-y: hidden !important;
+}
+
+#settings-tab-packages {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+#settings-content .linetime-table-desc {
 	font-size: 12px;
 	color: #aaa;
 	line-height: 1.5;
-	margin: 2px 0 6px;
+	margin: 0 0 6px;
 	height: auto !important;
 }
 
@@ -782,24 +792,28 @@ audio {
 	overflow-y: scroll !important;
 }
 
-.scrollArea::-webkit-scrollbar {
+.scrollArea::-webkit-scrollbar,
+.packages-content::-webkit-scrollbar {
 	display: block;
 	width: 12px;
 }
 
-.scrollArea::-webkit-scrollbar-track {
+.scrollArea::-webkit-scrollbar-track,
+.packages-content::-webkit-scrollbar-track {
 	background: rgba(255, 255, 255, 0.07);
 	border-radius: 10px;
 }
 
-.scrollArea::-webkit-scrollbar-thumb {
+.scrollArea::-webkit-scrollbar-thumb,
+.packages-content::-webkit-scrollbar-thumb {
 	background: #ffcc00;
 	border-radius: 10px;
 	border: 3px solid transparent;
 	background-clip: content-box;
 }
 
-.scrollArea::-webkit-scrollbar-thumb:hover {
+.scrollArea::-webkit-scrollbar-thumb:hover,
+.packages-content::-webkit-scrollbar-thumb:hover {
 	background: #ffd633;
 	transition: all 400ms ease;
 }
@@ -1398,6 +1412,8 @@ input:checked + .slider:before {
 	align-items: flex-start;
 	width: 100%;
 	margin-top: 12px;
+	flex: 1;
+	min-height: 0;
 }
 
 .packages-sidebar {
@@ -1444,6 +1460,10 @@ input:checked + .slider:before {
 .packages-content {
 	flex: 1;
 	min-width: 0;
+	align-self: stretch;
+	min-height: 0;
+	overflow-y: auto;
+	padding-right: 6px;
 }
 
 .package-panel {

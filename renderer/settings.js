@@ -264,6 +264,7 @@ function switchSettingsTab(name) {
 		else panel.classList.add("hidden");
 	});
 	document.getElementById("settings-content").scrollTop = 0;
+	document.getElementById("settings-content").classList.toggle("packages-active", name == "packages");
 }
 
 function switchPackageTab(name) {

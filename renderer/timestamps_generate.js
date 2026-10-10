@@ -250,10 +250,10 @@ async function runSoundDetect(args, env, task, method) {
 		const message = linetimeGpuBundleBrokenReason() === "provider"
 			? "The GPU Linetime bundle cannot load CUDA, so it will not run any method on the "
 				+ "GPU. Its libraries are incomplete, most often a missing cuDNN, and nothing was "
-				+ "retried. Download the CPU binary in Settings > Linetime Aligner and select it."
+				+ "retried. Download the CPU binary in Settings > Packages > Linetime and select it."
 			: "The GPU Linetime bundle is not compatible with this CPU and is already "
 				+ "recorded as broken. Nothing was retried. Download the CPU binary in "
-				+ "Settings > Linetime Aligner and select it, or use Method A, which does not "
+				+ "Settings > Packages > Linetime and select it, or use Method A, which does not "
 				+ "load a Whisper model.";
 		logChange("warn", "Linetime run refused before starting.\n" + message
 			+ "\nbinary: " + binaryPath + "\nmethod: " + method);
@@ -275,13 +275,13 @@ async function runSoundDetect(args, env, task, method) {
 				+ "\n" + (error.stderrTail || ""));
 			throw new Error(reason + "\n\nNothing was retried, and no method will use this "
 				+ "bundle until it is replaced. Download the CPU binary in "
-				+ "Settings > Linetime Aligner and select it.");
+				+ "Settings > Packages > Linetime and select it.");
 		}
 
 		if (soundDetectCudnnFailed(error)) {
 			const reason = "The GPU Linetime bundle's cuDNN version fails on this card. "
 				+ "The same model runs with cuDNN 9.0.x. Nothing was retried. "
-				+ "Download the CPU binary in Settings > Linetime Aligner and select it, "
+				+ "Download the CPU binary in Settings > Packages > Linetime and select it, "
 				+ "or use Method A, which does not load a Whisper model.";
 			logChange("warn", reason + "\nbinary: " + binaryPath
 				+ "\nmethod: " + method
@@ -300,7 +300,7 @@ async function runSoundDetect(args, env, task, method) {
 			+ "\nmethod: " + method
 			+ "\n" + (error.stderrTail || ""));
 		throw new Error(reason + "\n\nNothing was retried. Download the CPU binary in "
-			+ "Settings > Linetime Aligner and select it, or use Method A, which does not "
+			+ "Settings > Packages > Linetime and select it, or use Method A, which does not "
 			+ "load a Whisper model.");
 	}
 }
@@ -347,16 +347,16 @@ function parseSrtLyrics(srtPath) {
 async function transcribeLyrics(wavPath, language, onProgress) {
 	const cliPath = getLinetimeWhisperCliPath();
 	if (!fs.existsSync(cliPath)) {
-		throw new Error("Whisper CLI not found. Download it in Settings > Linetime Aligner.");
+		throw new Error("Whisper CLI not found. Download it in Settings > Packages > Linetime.");
 	}
 
 	const effective = getEffectiveLinetimeSelection();
 	if (!effective.whisper) {
-		throw new Error("No Whisper model installed. Download one in Settings > Linetime Aligner.");
+		throw new Error("No Whisper model installed. Download one in Settings > Packages > Linetime.");
 	}
 	const modelPath = getLinetimeWhisperPath(effective.whisper);
 	if (!fs.existsSync(modelPath)) {
-		throw new Error("Whisper model file not found. Re-download it in Settings > Linetime Aligner.");
+		throw new Error("Whisper model file not found. Re-download it in Settings > Packages > Linetime.");
 	}
 
 	const outPrefix = path.join(os.tmpdir(), "tarator_transcribe_" + Date.now());
@@ -415,17 +415,17 @@ async function generateTimestampsForCurrentSong() {
 
 	const effective = getEffectiveLinetimeSelection();
 	if (!isLinetimeBinaryInstalled(effective.binary)) {
-		return await alertModal("Linetime is not installed. Go to Settings > Linetime Aligner to download it.");
+		return await alertModal("Linetime is not installed. Go to Settings > Packages > Linetime to download it.");
 	}
 
 	const modelPath = getLinetimeModelPath(effective.model);
 	if (!isLinetimeModelInstalled(effective.model)) {
-		return await alertModal("Alignment model not found. Go to Settings > Linetime Aligner to download it.");
+		return await alertModal("Alignment model not found. Go to Settings > Packages > Linetime to download it.");
 	}
 
 	const tokenizerPath = getLinetimeTokenizerPath();
 	if (!fs.existsSync(tokenizerPath)) {
-		return await alertModal("Tokenizer not found. Go to Settings > Linetime Aligner to download it.");
+		return await alertModal("Tokenizer not found. Go to Settings > Packages > Linetime to download it.");
 	}
 
 	const whisperPath = effective.whisper ? getLinetimeWhisperPath(effective.whisper) : null;
@@ -512,12 +512,12 @@ if (libDirs && process.platform !== "win32") {
 		args.push("--method", alignerMethod);
 		if (alignerUsesWhisper) {
 			if (!whisperPath || !fs.existsSync(whisperPath)) {
-				return await bail(`Whisper model not found for Method ${method.toUpperCase()}. Download it in Settings > Linetime Aligner.`);
+				return await bail(`Whisper model not found for Method ${method.toUpperCase()}. Download it in Settings > Packages > Linetime.`);
 			}
 			args.push(caps.newCli ? "--model-c" : "--model-b", whisperPath);
 			if (caps.newCli) {
 				if (!cliInstalled) {
-					return await bail("Whisper CLI not found. Go to Settings > Linetime Aligner to download it.");
+					return await bail("Whisper CLI not found. Go to Settings > Packages > Linetime to download it.");
 				}
 				args.push("--whisper-cli", getLinetimeWhisperCliPath());
 			}
@@ -638,8 +638,8 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel, hasWhisperCli) {
 				disabledReason: hasLyrics
 					? "Auto-generate is only available when no lyrics exist. Use the hybrid option to fix existing lyrics."
 					: (!hasWhisperModel
-						? "Download Whisper model in Settings > Linetime Aligner"
-						: (!hasWhisperCli ? "Download Whisper CLI in Settings > Linetime Aligner" : null)),
+						? "Download Whisper model in Settings > Packages > Linetime"
+						: (!hasWhisperCli ? "Download Whisper CLI in Settings > Packages > Linetime" : null)),
 				available: !hasLyrics && hasWhisperModel && hasWhisperCli
 			},
 			{ 
@@ -648,7 +648,7 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel, hasWhisperCli) {
 				desc: "Runs Whisper and CTC alignment together, then merges the best result. Fixes typos and restores missing parts. Needs a Whisper model and the alignment model.",
 				needsLang: true,
 				disabledReason: hasLyrics 
-					? (hasWhisperModel ? null : "Download Whisper model in Settings > Linetime Aligner")
+					? (hasWhisperModel ? null : "Download Whisper model in Settings > Packages > Linetime")
 					: "Add lyrics in the customisation modal first",
 				available: hasLyrics && hasWhisperModel 
 			},
