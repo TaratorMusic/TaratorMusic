@@ -16,6 +16,10 @@
 		<div id="pauseplay-button" class="no-drag"></div>
 		<div id="next-button" class="no-drag"></div>
 		<div id="song-progress"></div>
+		<div id="sound-wrap" class="no-drag">
+			<div id="sound-button"></div>
+			<div id="volume-container"><input type="range" id="volume-slider" min="0" max="100" value="100" /></div>
+		</div>
 	</div>
 </main>
 
@@ -39,6 +43,7 @@
 		height: 100vh;
 		border-radius: 4px;
 		overflow: hidden;
+		position: relative;
 	}
 
 	.drag-area {
@@ -103,11 +108,67 @@
 	}
 
 	#song-progress {
-		width: 70vw;
+		width: 60vw;
 		height: 10vw;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	#sound-wrap {
+		width: 10vw;
+		height: 10vw;
+		position: relative;
+	}
+
+	#sound-button {
+		width: 10vw;
+		height: 10vw;
+		background-size: 60%;
+		background-repeat: no-repeat;
+		background-position: center;
+	}
+
+	#volume-container {
+		display: flex;
+		visibility: hidden;
+		opacity: 0;
+		transform: translateY(0.5vw);
+		transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s 0.25s;
+		position: absolute;
+		z-index: 999;
+		right: 0;
+		bottom: 9vw;
+		max-height: calc(100vh - 12vw);
+		background: rgba(0, 0, 0, 0.85);
+		border-radius: 2vw;
+		padding: 2vw 2vw;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.controls {
+		position: relative;
+		z-index: 1000;
+	}
+
+	main:has(#sound-wrap:hover) #thumbnail {
+		-webkit-app-region: no-drag;
+	}
+
+	#sound-wrap:hover #volume-container {
+		visibility: visible;
+		opacity: 1;
+		transform: translateY(0);
+		transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s 0s;
+	}
+
+	#volume-slider {
+		width: 10vw;
+		height: 38vw;
+		max-height: calc(100vh - 17vw);
+		writing-mode: vertical-lr;
+		direction: rtl;
 	}
 
 	#lyrics-container {
@@ -177,6 +238,7 @@
 	let currentLyricIndex = -1;
 	let keybinds = null;
 	let currentSongName = "";
+	let currentVolume = 100;
 
 	function loadImage(elementId, url) {
 		try {
@@ -258,8 +320,21 @@
 		return index;
 	}
 
-	function updateSize() {
-		const hasContent = currentSyncedLyrics.length > 0 || currentLyrics.trim().length > 0;
+	function renderVolumeIcon() {
+		if (!assetsFolder) return;
+		const icon = currentVolume == 0 ? "mute.svg" : "sound.svg";
+		loadImage("sound-button", `url("file://${path.join(assetsFolder, icon).replace(/\\/g, "/")}")`);
+	}
+
+	function setVolume(value) {
+		const clamped = Math.max(0, Math.min(100, Number(value)));
+		if (!Number.isFinite(clamped)) return;
+		currentVolume = clamped;
+		document.getElementById("volume-slider").value = clamped;
+		renderVolumeIcon();
+	}
+
+	function updateSize() {		const hasContent = currentSyncedLyrics.length > 0 || currentLyrics.trim().length > 0;
 		const shouldExtend = showLyrics && hasContent;
 		let height;
 		if (shouldExtend) height = showThumbnail ? 732 : 375;
@@ -281,7 +356,9 @@
 				loadImage("previous-button", `url("file://${path.join(assetsFolder, "previous.svg").replace(/\\/g, "/")}")`);
 				loadImage("next-button", `url("file://${path.join(assetsFolder, "next.svg").replace(/\\/g, "/")}")`);
 				loadImage("pauseplay-button", `url("file://${path.join(assetsFolder, "play.svg").replace(/\\/g, "/")}")`);
+				renderVolumeIcon();
 			}
+			if (data.volume != undefined) setVolume(data.volume);
 
 			if (data.songName != undefined) {
 				const songChanged = data.songName != currentSongName;
@@ -364,6 +441,12 @@
 	document.getElementById("previous-button").onclick = () => ipcRenderer.send("miniplayer-previous");
 	document.getElementById("pauseplay-button").onclick = () => ipcRenderer.send("miniplayer-playpause");
 	document.getElementById("next-button").onclick = () => ipcRenderer.send("miniplayer-next");
+	document.getElementById("sound-button").onclick = () => ipcRenderer.send("miniplayer-action", "mute");
+	document.getElementById("volume-slider").addEventListener("input", event => {
+		currentVolume = Number(event.target.value);
+		renderVolumeIcon();
+		ipcRenderer.send("miniplayer-volume", { volume: currentVolume });
+	});
 	document.getElementById("close-button").onclick = () => ipcRenderer.send("miniplayer-close");
 	document.getElementById("minimise-button").onclick = () => ipcRenderer.send("miniplayer-minimize");
 </script>

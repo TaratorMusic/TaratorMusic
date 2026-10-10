@@ -412,6 +412,13 @@ app.whenReady().then(() => {
 	ipcMain.on("miniplayer-previous", () => mainWindow.webContents.send("player-previous"));
 	ipcMain.on("miniplayer-playpause", () => mainWindow.webContents.send("player-playpause"));
 	ipcMain.on("miniplayer-next", () => mainWindow.webContents.send("player-next"));
+	ipcMain.on("miniplayer-volume", (_, data) => {
+		try {
+			mainWindow.webContents.send("pip-volume", data);
+		} catch (err) {
+			console.error("Error forwarding volume to main window:", err);
+		}
+	});
 	ipcMain.on("miniplayer-action", (_, action) => mainWindow.webContents.send("pip-action", action));
 	ipcMain.on("open-miniplayer", (_, data) => {
 		try {

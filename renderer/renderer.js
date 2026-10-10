@@ -306,7 +306,7 @@ async function initialiseDatabases() {
 
 	if (pictureInPicture == 1) {
 		lastPipLyricsSongId = "";
-		ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics });
+		ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics, volume: Number(settingsRow.volume) });
 		sendKeybindsToPiP();
 		if (pipShowLyrics == 1 && playingSongsID) {
 			const cachedRows = songLyricsCache.get(playingSongsID) || [];
@@ -1870,6 +1870,23 @@ function toggleLoop() {
 	}
 }
 
+function applyVolume() {
+	volume = volumeControl.value / 100 / dividevolume;
+	if (audioPlayer) audioPlayer.stdin.write(`volume ${volume}\n`);
+	document.getElementById("muteButton").innerHTML = `<img src="${path.join(appThumbnailFolder, `mute_o${volume == 0 ? "ff" : "n"}.svg`)}" alt="Mute ${volume == 0 ? "A" : "Dea"}ctive">`;
+	callSqlite({
+		db: "settings",
+		query: "UPDATE settings SET volume = ?",
+		args: [volumeControl.value],
+		fetch: false,
+	});
+	sendVolumeToPip();
+}
+
+function sendVolumeToPip() {
+	updateMiniPlayer({ volume: Number(volumeControl.value) });
+}
+
 function mute() {
 	if (volumeControl.value != 0) {
 		previousVolume = volumeControl.value;
@@ -1889,6 +1906,7 @@ function mute() {
 		args: [volumeControl.value],
 		fetch: false,
 	});
+	sendVolumeToPip();
 }
 
 function speed() {
@@ -2735,7 +2753,7 @@ document.addEventListener("keydown", event => {
 		pictureInPicture = pictureInPicture == 1 ? 0 : 1;
 		callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
 		lastPipLyricsSongId = "";
-		pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics }) : ipcRenderer.send("miniplayer-close");
+		pictureInPicture == 1 ? ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics, volume: Number(volumeControl.value) }) : ipcRenderer.send("miniplayer-close");
 		if (pictureInPicture == 1) sendKeybindsToPiP();
 	}
 
@@ -2804,6 +2822,7 @@ function handleDropdownChange(option, selectElement) {
 	});
 	dividevolume = selectedValue;
 	if (audioPlayer) audioPlayer.stdin.write(`volume ${volumeControl.value / 100 / dividevolume}\n`);
+	sendVolumeToPip();
 }
 
 function getSongNameById(songId) {
@@ -3649,8 +3668,14 @@ document.addEventListener("DOMContentLoaded", async function () {
 		loadPatchNotes();
 	});
 
-	ipcRenderer.on("close-pip", async () => {
-		pictureInPicture = 0;
+	ipcRenderer.on("pip-volume", (_, data) => {
+		const value = Math.max(0, Math.min(100, Number(data && data.volume)));
+		if (!Number.isFinite(value)) return;
+		volumeControl.value = value;
+		applyVolume();
+	});
+
+	ipcRenderer.on("close-pip", async () => {		pictureInPicture = 0;
 		await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
 		document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1 ? true : false;
 	});
@@ -3767,17 +3792,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 	scheduleTick();
 
-	volumeControl.addEventListener("input", () => {
-		volume = volumeControl.value / 100 / dividevolume;
-		if (audioPlayer) audioPlayer.stdin.write(`volume ${volume}\n`);
-		document.getElementById("muteButton").innerHTML = `<img src="${path.join(appThumbnailFolder, `mute_o${volume == 0 ? "ff" : "n"}.svg`)}" alt="Mute ${volume == 0 ? "A" : "Dea"}ctive">`;
-		callSqlite({
-			db: "settings",
-			query: "UPDATE settings SET volume = ?",
-			args: [volumeControl.value],
-			fetch: false,
-		});
-	});
+	volumeControl.addEventListener("input", applyVolume);
 
 	videoProgress.addEventListener("mousedown", () => {
 		isUserSeeking = true;
