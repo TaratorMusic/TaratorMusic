@@ -487,6 +487,7 @@ async function initialiseDatabases() {
 	await fetchLinetimeReleaseSizes();
 	await loadLinetimeReleaseSizes();
 	refreshLinetimeStatus();
+	if (typeof refreshStabiliseCount == "function") refreshStabiliseCount();
 	setupLazyBackgrounds();
 }
 
@@ -531,6 +532,7 @@ tabs.forEach(tab => {
 					document.getElementById("settings-content").style.display = "flex";
 					if (typeof switchSettingsTab == "function") switchSettingsTab("keybinds");
 					if (ytdlpVersion) document.getElementById("ytdlpCurrentVersion").innerText = `Current version: ${ytdlpVersion}`;
+					if (typeof refreshStabiliseCount == "function") refreshStabiliseCount();
 					refreshLinetimeStatus();
 				} else if (content.id == "statistics-content") {
 					loadNewPage("statistics");
@@ -3231,6 +3233,7 @@ async function stabiliseThisSong(songId) {
 
 	songData.stabilised = 1;
 
+	if (typeof refreshStabiliseCount == "function") refreshStabiliseCount();
 	await alertModal(`Song "${songData.song_name}" successfully stabilised.`);
 	document.getElementById("stabiliseSongButton").disabled = false;
 }

@@ -39,6 +39,7 @@ async function normalizeAudio(filePath) {
 }
 
 async function processAllFiles() {
+	isStabilisingAll = true;
 	const rows = Array.from(songNameCache.entries())
 		.filter(([_, data]) => data.stabilised != 1)
 		.map(([song_id, data]) => ({
@@ -82,4 +83,16 @@ async function processAllFiles() {
 	}
 
 	document.getElementById("stabiliseProgress").innerText = `Song stabilisation complete. ${processedCount} songs processed.`;
+	isStabilisingAll = false;
+}
+
+let isStabilisingAll = false;
+
+function refreshStabiliseCount() {
+	if (isStabilisingAll) return;
+	const el = document.getElementById("stabiliseProgress");
+	if (!el) return;
+	const total = songNameCache.size;
+	const done = Array.from(songNameCache.values()).filter(v => v.stabilised == 1).length;
+	el.innerText = `Stabilised: ${done} of ${total} songs`;
 }
