@@ -629,6 +629,7 @@ function renderLinetimeTable(containerId, title, desc, items) {
 	const header = `
 		<div class="linetime-table-title">${title}</div>
 		<div class="linetime-table-desc">${desc}</div>
+		<div class="linetime-box">
 		<div style="display:grid;grid-template-columns:${LINETIME_TABLE_COLUMNS};gap:8px;font-weight:bold;color:#ccc;margin-bottom:4px;">
 			<div>Variant</div><div>Size</div><div>Status</div><div>Action</div>
 		</div>`;
@@ -675,7 +676,7 @@ function renderLinetimeTable(containerId, title, desc, items) {
 			</div>`;
 	}).join("");
 
-	el.innerHTML = header + rows;
+	el.innerHTML = header + rows + `</div>`;
 }
 
 // Fetch Linetime and whisper.cpp release asset sizes and cache them in the
@@ -898,10 +899,26 @@ function refreshLinetimeStatus() {
 	renderAppFileNotice();
 }
 
+function refreshYtdlpStatus() {
+	const installed = isYtdlpInstalled();
+	const btn = document.getElementById("updateYtdlpButton");
+	const versionEl = document.getElementById("ytdlpCurrentVersion");
+	const descEl = document.getElementById("ytdlpLastUpdateText");
+	const titleEl = document.getElementById("ytdlpCardTitle");
+	if (!btn || !versionEl || !descEl) return;
+	btn.innerText = installed ? "Update" : "Install";
+	if (titleEl) titleEl.innerText = installed ? "Update yt-dlp" : "Install yt-dlp";
+	versionEl.innerText = installed ? `Current version: ${ytdlpVersion || "unknown"}` : "Not installed";
+	descEl.innerText = installed
+		? "Updates yt-dlp to the latest version. Useful if downloads keep failing."
+		: "Downloads yt-dlp. Needed for downloading songs, streaming and recommendations.";
+}
+
 async function updateYtdlp() {
 	const btn = document.getElementById("updateYtdlpButton");
+	const wasInstalled = isYtdlpInstalled();
 	btn.disabled = true;
-	btn.innerText = "Updating...";
+	btn.innerText = wasInstalled ? "Updating..." : "Installing...";
 
 	try {
 		const bin = path.join(backendFolder, process.platform === "win32" ? "ytdlp_fetch.exe" : "ytdlp_fetch");
@@ -938,18 +955,18 @@ async function updateYtdlp() {
 			args: [ytdlpLastUpdateDate, ytdlpVersion],
 			fetch: false,
 		});
-		btn.innerText = "Updated!";
+		btn.innerText = wasInstalled ? "Updated!" : "Installed!";
 
-		document.getElementById("ytdlpCurrentVersion").innerText = `Current version: ${ytdlpVersion}`;
-		await alertModal(`yt-dlp updated to ${result.version}!`);
+		refreshYtdlpStatus();
+		await alertModal(wasInstalled ? `yt-dlp updated to ${result.version}!` : `yt-dlp ${result.version} installed!`);
 	} catch (error) {
 		btn.innerText = "Failed";
-		await alertModal(`Failed to update yt-dlp: ${error.message ?? String(error)}`);
+		await alertModal(`Failed to ${wasInstalled ? "update" : "install"} yt-dlp: ${error.message ?? String(error)}`);
 	}
 
 	btn.disabled = false;
 	setTimeout(() => {
-		btn.innerText = "Update";
+		refreshYtdlpStatus();
 	}, 2000);
 }
 
@@ -1087,7 +1104,7 @@ async function downloadLinetimeVariant(component, variant) {
 async function linetimeUseBinary(variant) {
 	const v = getLinetimeBinaryVariant(variant);
 	if (!isLinetimeBinaryInstalled(variant)) {
-		await alertModal(`${v?.label ?? variant} binary is not installed. Download it first.`);
+		await requireLinetimeComponent(`${v?.label ?? variant} binary is not installed.`);
 		return;
 	}
 	linetimeSelectedBinary = variant;
@@ -1103,7 +1120,7 @@ async function linetimeUseBinary(variant) {
 async function linetimeUseModel(variant) {
 	const v = getLinetimeModelVariant(variant);
 	if (!isLinetimeModelInstalled(variant)) {
-		await alertModal(`${v?.label ?? variant} is not installed. Download it first.`);
+		await requireLinetimeComponent(`${v?.label ?? variant} is not installed.`);
 		return;
 	}
 	linetimeSelectedModel = variant;
@@ -1119,7 +1136,7 @@ async function linetimeUseModel(variant) {
 async function linetimeUseWhisper(variant) {
 	const v = getLinetimeWhisperVariant(variant);
 	if (!isLinetimeWhisperInstalled(variant)) {
-		await alertModal(`${v?.label ?? variant} is not installed. Download it first.`);
+		await requireLinetimeComponent(`${v?.label ?? variant} is not installed.`);
 		return;
 	}
 	linetimeSelectedWhisper = variant;

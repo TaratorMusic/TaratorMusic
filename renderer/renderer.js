@@ -283,6 +283,10 @@ async function initialiseDatabases() {
 	dividevolume = settingsRow.dividevolume;
 	displayPage = settingsRow.displayPage;
 	musicMode = settingsRow.musicMode;
+	if (musicMode == "stream" && !isYtdlpInstalled()) {
+		musicMode = "offline";
+		callSqlite({ db: "settings", query: "UPDATE settings SET musicMode = ?", args: [musicMode], fetch: false });
+	}
 	stabiliseVolumeToggle = settingsRow.stabiliseVolumeToggle;
 	current_version = settingsRow.current_version;
 	recommendationsAfterDownload = settingsRow.recommendationsAfterDownload;
@@ -531,7 +535,7 @@ tabs.forEach(tab => {
 				} else if (content.id == "settings-content") {
 					document.getElementById("settings-content").style.display = "flex";
 					if (typeof switchSettingsTab == "function") switchSettingsTab("keybinds");
-					if (ytdlpVersion) document.getElementById("ytdlpCurrentVersion").innerText = `Current version: ${ytdlpVersion}`;
+					if (typeof refreshYtdlpStatus == "function") refreshYtdlpStatus();
 					if (typeof refreshStabiliseCount == "function") refreshStabiliseCount();
 					refreshLinetimeStatus();
 				} else if (content.id == "statistics-content") {
@@ -687,8 +691,12 @@ async function myMusicOnClick() {
 		musicModeSelect.appendChild(optionElement);
 	});
 
-	musicModeSelect.onchange = () => {
+	musicModeSelect.onchange = async () => {
 		const selectedValue = musicModeSelect.value;
+		if (selectedValue == "stream" && !(await requireYtdlp())) {
+			musicModeSelect.value = musicMode;
+			return;
+		}
 		callSqlite({
 			db: "settings",
 			query: "UPDATE settings SET musicMode = ?",
@@ -1446,6 +1454,13 @@ function playMusic(songId, playlistId) {
 
 		const songData = offlineMode ? songNameCache.get(songId) : getStreamedSongData(songId);
 		if (!songData) return logChange("warn", `Song not found in cache or stream map: ${songId}`);
+
+		if (!offlineMode && !isYtdlpInstalled()) {
+			playingSongsID = "";
+			songNameEl.textContent = "No song is being played.";
+			requireYtdlp();
+			return;
+		}
 
 		const songName = songData.song_name;
 		songNameEl.setAttribute("data-file-name", playingSongsID);

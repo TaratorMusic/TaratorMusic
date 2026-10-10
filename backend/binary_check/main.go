@@ -85,10 +85,14 @@ func main() {
 		})))
 	}
 
-	comps = append(comps, firstPresent(appfiles.NewComponent("ytdlp", "core", "yt-dlp", map[string]string{
+	// yt-dlp is installed on request from Settings > Packages, never
+	// automatically, so a missing copy is expected and not an error.
+	ytdlpComponent := appfiles.NewComponent("ytdlp", "core", "yt-dlp", map[string]string{
 		"updated": filepath.Join(userDataBin, appfiles.YtdlpName()),
 		"bundled": filepath.Join(appBin, appfiles.YtdlpName()),
-	})))
+	})
+	ytdlpComponent.Optional = true
+	comps = append(comps, firstPresent(ytdlpComponent))
 
 	// Linetime components: check userData first, then appBin, for each part.
 	linetimeApp := appfiles.LinetimeComponents(appBin)

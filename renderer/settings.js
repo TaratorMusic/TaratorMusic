@@ -77,6 +77,7 @@ function changeBackground(color) {
 }
 
 async function redownloadAllSongs() {
+	if (!(await requireYtdlp())) return;
 	const rows = [...songNameCache.entries()].map(([song_id, song]) => ({
 		song_id,
 		song_name: song.song_name,

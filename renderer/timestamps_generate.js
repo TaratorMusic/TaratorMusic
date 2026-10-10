@@ -415,17 +415,17 @@ async function generateTimestampsForCurrentSong() {
 
 	const effective = getEffectiveLinetimeSelection();
 	if (!isLinetimeBinaryInstalled(effective.binary)) {
-		return await alertModal("Linetime is not installed. Go to Settings > Packages > Linetime to download it.");
+		return await requireLinetimeComponent("Linetime is not installed.");
 	}
 
 	const modelPath = getLinetimeModelPath(effective.model);
 	if (!isLinetimeModelInstalled(effective.model)) {
-		return await alertModal("Alignment model not found. Go to Settings > Packages > Linetime to download it.");
+		return await requireLinetimeComponent("Alignment model not found.");
 	}
 
 	const tokenizerPath = getLinetimeTokenizerPath();
 	if (!fs.existsSync(tokenizerPath)) {
-		return await alertModal("Tokenizer not found. Go to Settings > Packages > Linetime to download it.");
+		return await requireLinetimeComponent("Tokenizer not found.");
 	}
 
 	const whisperPath = effective.whisper ? getLinetimeWhisperPath(effective.whisper) : null;
@@ -460,9 +460,10 @@ if (libDirs && process.platform !== "win32") {
 
 	const task = timestampsTask();
 	setTimestampsProgress(0);
-	const bail = async message => {
+	const bail = async (message, missing = false) => {
 		btn.textContent = "Failed";
 		logChange("warn", "Timestamp generation stopped: " + message);
+		if (missing) return await requireLinetimeComponent(message);
 		return await alertModal(message);
 	};
 
@@ -512,12 +513,12 @@ if (libDirs && process.platform !== "win32") {
 		args.push("--method", alignerMethod);
 		if (alignerUsesWhisper) {
 			if (!whisperPath || !fs.existsSync(whisperPath)) {
-				return await bail(`Whisper model not found for Method ${method.toUpperCase()}. Download it in Settings > Packages > Linetime.`);
+				return await bail(`Whisper model not found for Method ${method.toUpperCase()}.`, true);
 			}
 			args.push(caps.newCli ? "--model-c" : "--model-b", whisperPath);
 			if (caps.newCli) {
 				if (!cliInstalled) {
-					return await bail("Whisper CLI not found. Go to Settings > Packages > Linetime to download it.");
+					return await bail("Whisper CLI not found.", true);
 				}
 				args.push("--whisper-cli", getLinetimeWhisperCliPath());
 			}

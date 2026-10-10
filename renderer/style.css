@@ -655,6 +655,14 @@ audio {
 	height: auto !important;
 }
 
+#settings-content .linetime-box {
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 12px;
+	background: rgba(0, 0, 0, 0.32);
+	padding: 10px 14px 10px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
 #settings-content .linetime-table-title {
 	font-size: 15px;
 	font-weight: bold;

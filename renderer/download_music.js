@@ -4,13 +4,13 @@ function formatYtdlpError(stderr) {
 	if (!stderr) return "Unknown error";
 	if (/HTTP Error 50[0-9]/.test(stderr)) {
 		const match = stderr.match(/HTTP Error \d+/);
-		return `${match ? match[0] : "Server error"}. This often happens with an outdated yt-dlp. Try updating it in Settings > Update yt-dlp.`;
+		return `${match ? match[0] : "Server error"}. This often happens with an outdated yt-dlp. Try updating it in Settings > Packages > yt-dlp.`;
 	}
 	if (/HTTP Error 403/.test(stderr)) {
-		return "HTTP Error 403: Forbidden. YouTube may be blocking the request. Try updating yt-dlp in Settings > Update yt-dlp.";
+		return "HTTP Error 403: Forbidden. YouTube may be blocking the request. Try updating yt-dlp in Settings > Packages > yt-dlp.";
 	}
 	if (/Sign in to confirm/.test(stderr)) {
-		return "YouTube is asking to sign in to confirm you are not a bot. Try updating yt-dlp in Settings > Update yt-dlp.";
+		return "YouTube is asking to sign in to confirm you are not a bot. Try updating yt-dlp in Settings > Packages > yt-dlp.";
 	}
 	if (/This video is unavailable/.test(stderr)) {
 		return "This video is unavailable or has been removed.";
@@ -25,7 +25,7 @@ function formatYtdlpError(stderr) {
 		return "This is a live stream and cannot be downloaded.";
 	}
 	if (/No video format/.test(stderr) || /No format/.test(stderr)) {
-		return "No downloadable format found. Try updating yt-dlp in Settings > Update yt-dlp.";
+		return "No downloadable format found. Try updating yt-dlp in Settings > Packages > yt-dlp.";
 	}
 	const cleaned = stderr.replace(/ERROR:\s*/g, "").trim();
 	return cleaned || "Unknown error";
@@ -1149,6 +1149,10 @@ async function commitStagedPlaylistAdds() {
 
 function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 	return new Promise((resolve, reject) => {
+		if (!isYtdlpInstalled()) {
+			requireYtdlp();
+			return reject(new Error("yt-dlp is not installed."));
+		}
 		const args = ["-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5"];
 		const yt = spawn(getYtDlpPath(), [...args, url]);
 		let data = "";

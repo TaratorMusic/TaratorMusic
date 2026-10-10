@@ -53,6 +53,18 @@ function ytdlpFetch() {
 	run(`"${bin}"`);
 }
 
+// yt-dlp is downloaded on request from Settings, never bundled, so a stale
+// copy from an earlier fetch must not ship inside installers.
+function cleanYtdlp() {
+	for (const name of ["yt-dlp.exe", "yt-dlp_macos", "yt-dlp_linux"]) {
+		for (const suffix of ["", ".part"]) {
+			try {
+				fs.unlinkSync(path.join(__dirname, "bin", name + suffix));
+			} catch (_) {}
+		}
+	}
+}
+
 const cmd = process.argv[2];
 
 if (cmd == "gobuild") {
@@ -64,7 +76,7 @@ if (cmd == "gobuild") {
 } else if (cmd == "build") {
 	goBuild();
 	cBuild();
-	ytdlpFetch();
+	cleanYtdlp();
 } else {
 	console.error("Unknown command");
 	process.exit(1);

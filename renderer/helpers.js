@@ -248,15 +248,18 @@ async function loadJSFile(filename) {
 
 async function loadNewPage(query, info) {
 	if (query == "download") {
+		if (!(await requireYtdlp())) return;
 		await loadJSFile("download_music");
 		checkNameThumbnail(false);
 	} else if (query == "statistics") {
 		await loadJSFile("statistics");
 		if (typeof renderStatistics == "function") renderStatistics(); // "typeof" fixes a console error
 	} else if (query == "downloadModal") {
+		if (!(await requireYtdlp())) return;
 		document.getElementById("downloadModal").style.display = "block";
 		document.getElementById("downloadFirstInput").focus();
 	} else if (query == "downloadStreamedSong") {
+		if (!(await requireYtdlp())) return;
 		await loadJSFile("download_music");
 		await processVideoLink(null, info);
 	}
@@ -282,6 +285,33 @@ function getYtDlpPath() {
 	const updatedPath = path.join(taratorFolder, "bin", ytdlpName);
 	if (fs.existsSync(updatedPath)) return updatedPath;
 	return path.join(backendFolder, ytdlpName);
+}
+
+function isYtdlpInstalled() {
+	try {
+		return fs.existsSync(getYtDlpPath());
+	} catch (_) {
+		return false;
+	}
+}
+
+async function openPackagesTab(sub) {
+	await loadJSFile("settings");
+	document.getElementById("settings").click();
+	if (typeof switchSettingsTab == "function") switchSettingsTab("packages");
+	if (typeof switchPackageTab == "function") switchPackageTab(sub);
+}
+
+async function requireYtdlp() {
+	if (isYtdlpInstalled()) return true;
+	const open = await confirmModal("You need yt-dlp to do this. Go to Settings > Packages and download it.", "Open Settings", "OK");
+	if (open) await openPackagesTab("ytdlp");
+	return false;
+}
+
+async function requireLinetimeComponent(message) {
+	const open = await confirmModal(message + " Go to Settings > Packages > Linetime to download it.", "Open Settings", "OK");
+	if (open) await openPackagesTab("linetime");
 }
 
 async function generateId() {
