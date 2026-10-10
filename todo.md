@@ -1,10 +1,14 @@
 ### Version 1.9.x Planned Features
 
 -   Sidebar revamp
+-   queue svg is bugged
+-   Aligner doesnt work, bugged
+-   Ability to queue downloads
 
 -   Reports of slow app launch in Windows, convert Golang logic to Rust and add debug while launching.
--   Make ytdlp installable later like Linetime. Dont make it installed on launch.
+-   Race condition while startup after this update.
 
+-   Staleness check on recommendations table rows
 -   add translations to the pip lyrics --> just the current lyric OR all lyrics
 -   Add volume bar that expands upwards to PiP
 -   Add translations to the PiP which will be toggleable
