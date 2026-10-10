@@ -1150,7 +1150,7 @@ async function commitStagedPlaylistAdds() {
 function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
 	return new Promise((resolve, reject) => {
 		if (!isYtdlpInstalled()) {
-			requireYtdlp();
+			requireYtdlp().catch(() => {});
 			return reject(new Error("yt-dlp is not installed."));
 		}
 		const args = ["-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5"];

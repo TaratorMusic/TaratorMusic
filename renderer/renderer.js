@@ -234,6 +234,12 @@ async function initialiseDatabases() {
 		query: "ALTER TABLE statistics ADD COLUMN linetime_sizes_json TEXT DEFAULT '{}'",
 		fetch: false,
 	}).catch(() => {});
+	await callSqlite({
+		db: "settings",
+		query: "ALTER TABLE statistics ADD COLUMN external_paths_json TEXT DEFAULT '{}'",
+		fetch: false,
+	}).catch(() => {});
+	if (typeof loadExternalPaths == "function") await loadExternalPaths();
 
 	const settingsRows = await callSqlite({
 		db: "settings",
@@ -1458,7 +1464,7 @@ function playMusic(songId, playlistId) {
 		if (!offlineMode && !isYtdlpInstalled()) {
 			playingSongsID = "";
 			songNameEl.textContent = "No song is being played.";
-			requireYtdlp();
+			requireYtdlp().catch(() => {});
 			return;
 		}
 
@@ -3554,8 +3560,93 @@ document.addEventListener("DOMContentLoaded", async function () {
 		ipcRenderer.send("debug-mode");
 	});
 
+	window.patchNotesLoaded = false;
+
+	function renderPatchMarkdown(text) {
+		const escaped = text.replace(/\r/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		const inline = s => s
+			.replace(/`([^`]+)`/g, "<code>$1</code>")
+			.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+			.replace(/(^|[^*\w])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+			.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+		const lines = escaped.split("\n");
+		let html = "";
+		let inList = false;
+		let inCode = false;
+		const closeList = () => {
+			if (inList) {
+				html += "</ul>";
+				inList = false;
+			}
+		};
+		for (const line of lines) {
+			if (line.trim().startsWith("```")) {
+				closeList();
+				html += inCode ? "</pre>" : "<pre>";
+				inCode = !inCode;
+				continue;
+			}
+			if (inCode) {
+				html += line + "\n";
+				continue;
+			}
+			const header = line.match(/^(#{1,3})\s+(.*)$/);
+			if (header) {
+				closeList();
+				const level = header[1].length + 2;
+				html += `<h${level}>${inline(header[2])}</h${level}>`;
+				continue;
+			}
+			if (/^\s*([-*]|\d+\.)\s+/.test(line)) {
+				if (!inList) {
+					html += "<ul>";
+					inList = true;
+				}
+				html += `<li>${inline(line.replace(/^\s*([-*]|\d+\.)\s+/, ""))}</li>`;
+				continue;
+			}
+			closeList();
+			if (line.trim()) html += inline(line) + "<br>";
+		}
+		closeList();
+		if (inCode) html += "</pre>";
+		return html;
+	}
+
+	async function loadPatchNotes() {
+		if (window.patchNotesLoaded) return;
+		window.patchNotesLoaded = true;
+		const el = document.getElementById("patchNotes");
+		try {
+			const resp = await fetch("https://api.github.com/repos/Victiniiiii/TaratorMusic/releases?per_page=5", {
+				headers: { "Accept": "application/vnd.github+json", "User-Agent": "TaratorMusic" },
+			});
+			if (!resp.ok) throw new Error("HTTP " + resp.status);
+			const releases = await resp.json();
+			if (!Array.isArray(releases) || releases.length == 0) throw new Error("No releases found");
+			el.innerHTML = "";
+			for (const rel of releases) {
+				const wrap = document.createElement("div");
+				wrap.className = "patch-release";
+				const version = document.createElement("div");
+				version.className = "patch-version";
+				version.textContent = rel.name || rel.tag_name || "Untitled";
+				const body = document.createElement("div");
+				body.innerHTML = rel.body ? renderPatchMarkdown(rel.body) : "No patch notes.";
+				wrap.appendChild(version);
+				wrap.appendChild(body);
+				el.appendChild(wrap);
+			}
+		} catch (e) {
+			window.patchNotesLoaded = false;
+			el.innerText = "Could not load patch notes.";
+			logChange("warn", "Patch notes fetch failed: " + e.message);
+		}
+	}
+
 	document.getElementById("version").addEventListener("click", () => {
 		document.getElementById("updateModal").style.display = "block";
+		loadPatchNotes();
 	});
 
 	ipcRenderer.on("close-pip", async () => {

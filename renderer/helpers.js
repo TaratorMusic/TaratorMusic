@@ -281,6 +281,8 @@ function removeExtensions(input) {
 }
 
 function getYtDlpPath() {
+	const external = getExternalPath("ytdlp");
+	if (external) return external;
 	const ytdlpName = platform === "win32" ? "yt-dlp.exe" : platform === "darwin" ? "yt-dlp_macos" : "yt-dlp_linux";
 	const updatedPath = path.join(taratorFolder, "bin", ytdlpName);
 	if (fs.existsSync(updatedPath)) return updatedPath;
@@ -304,7 +306,7 @@ async function openPackagesTab(sub) {
 
 async function requireYtdlp() {
 	if (isYtdlpInstalled()) return true;
-	const open = await confirmModal("You need yt-dlp to do this. Go to Settings > Packages and download it.", "Open Settings", "OK");
+	const open = await confirmModal("You need yt-dlp to do this. Go to Settings > Packages to download it or link an existing binary.", "Open Settings", "OK");
 	if (open) await openPackagesTab("ytdlp");
 	return false;
 }

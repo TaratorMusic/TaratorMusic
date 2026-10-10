@@ -13,7 +13,7 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 ipcRenderer.on("update-available", (event, releaseNotes) => {
-	document.getElementById("patchNotes").innerHTML = releaseNotes;
+	if (!window.patchNotesLoaded) document.getElementById("patchNotes").innerHTML = releaseNotes;
 	document.getElementById("version").classList.add("no-animation");
 	document.getElementById("installBtn").disabled = false;
 	if (process.platform == "win32" || process.platform == "darwin") {

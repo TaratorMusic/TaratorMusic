@@ -95,13 +95,15 @@
 						<div class="modalTitle">Update TaratorMusic</div>
 						<span class="close" onclick="closeModal()">&times;</span>
 					</div>
-					<div style="display: flex; flex-direction: column; height: 77vh; overflow-y: auto">
+					<div class="update-body">
 						<div id="patchNotes">You are using the latest version of TaratorMusic.</div>
-						<div style="color: yellow">Please don't close the app while updating, as it can break. If the update breaks, you can install the latest version from Github Releases.</div>
 						<div id="progressContainer" style="width: 100%; background: #ccc; display: none">
 							<div id="downloadProgress" style="width: 0%; background: #4caf50; color: white; text-align: center"></div>
 						</div>
-						<button disabled id="installBtn">Install Update</button>
+						<div class="update-bottom-row">
+							<div class="update-warning">Please don't close the app while updating, as it can break. If the update breaks, you can install the latest version from Github Releases.</div>
+							<button disabled id="installBtn">Install Update</button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -534,8 +536,11 @@
 								<div class="settingsflexrow">
 									<h2 id="ytdlpCardTitle">Update yt-dlp</h2>
 									<button id="updateYtdlpButton" onclick="updateYtdlp()">Update</button>
+									<button id="linkYtdlpButton" onclick="linkYtdlp()">Use existing</button>
+									<button id="unlinkYtdlpButton" class="linetime-btn-delete" style="display: none" onclick="unlinkYtdlp()">Unlink</button>
 									<h5 id="ytdlpCurrentVersion">Current version: unknown</h5>
 								</div>
+								<h5 id="ytdlpExternalPath" style="display: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h5>
 								<h5 id="ytdlpLastUpdateText">Updates yt-dlp to the latest version. Useful if downloads keep failing.</h5>
 								</div>
 							</div>
@@ -600,6 +605,7 @@
 			<div onclick="addContextSongToQueue()">Add to Queue</div>
 		</div>
 		<div id="tooltip"></div>
+		<input type="file" id="externalFilePicker" hidden />
 		<div id="settingsMenu">
 			<div id="addToPlaylistButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('addToPlaylist')">Add to Playlist</div>
 			<div id="addToFavoritesButtonBottomRight" class="settingsMenuButtons" onclick="bottomRightFunctions('addToFavorites')">Add to Favorites</div>

@@ -571,6 +571,51 @@ audio {
 	color: black !important;
 }
 
+.update-body {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+#updateModal .flexrow {
+	margin-bottom: 1vh;
+}
+
+.update-body #patchNotes {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.patch-release {
+	margin-bottom: 14px;
+}
+
+.patch-version {
+	font-weight: bold;
+	font-size: 1.1rem;
+	margin-bottom: 4px;
+}
+
+.update-bottom-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 12px;
+	height: 3vh;
+	padding-top: 10px;
+}
+
+.update-bottom-row .update-warning {
+	flex: 1;
+	color: yellow;
+}
+
+.update-bottom-row #installBtn {
+	flex-shrink: 0;
+}
+
 .close {
 	width: 3vw;
 	height: 3vw;
@@ -733,6 +778,19 @@ audio {
 	font-weight: bold;
 }
 
+.linetime-status-external {
+	color: #8fd0ff;
+}
+
+.linetime-external-path {
+	font-size: 11px;
+	color: #8fd0ff;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 140px;
+}
+
 .linetime-status-ok {
 	color: #8fe388;
 }
@@ -801,19 +859,22 @@ audio {
 }
 
 .scrollArea::-webkit-scrollbar,
-.packages-content::-webkit-scrollbar {
+.packages-content::-webkit-scrollbar,
+.update-body #patchNotes::-webkit-scrollbar {
 	display: block;
 	width: 12px;
 }
 
 .scrollArea::-webkit-scrollbar-track,
-.packages-content::-webkit-scrollbar-track {
+.packages-content::-webkit-scrollbar-track,
+.update-body #patchNotes::-webkit-scrollbar-track {
 	background: rgba(255, 255, 255, 0.07);
 	border-radius: 10px;
 }
 
 .scrollArea::-webkit-scrollbar-thumb,
-.packages-content::-webkit-scrollbar-thumb {
+.packages-content::-webkit-scrollbar-thumb,
+.update-body #patchNotes::-webkit-scrollbar-thumb {
 	background: #ffcc00;
 	border-radius: 10px;
 	border: 3px solid transparent;
@@ -821,7 +882,8 @@ audio {
 }
 
 .scrollArea::-webkit-scrollbar-thumb:hover,
-.packages-content::-webkit-scrollbar-thumb:hover {
+.packages-content::-webkit-scrollbar-thumb:hover,
+.update-body #patchNotes::-webkit-scrollbar-thumb:hover {
 	background: #ffd633;
 	transition: all 400ms ease;
 }

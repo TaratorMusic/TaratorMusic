@@ -245,23 +245,69 @@ function getLinetimeFolder() {
 	return path.join(taratorFolder, "bin");
 }
 
+// User-linked files outside the app bin, persisted in statistics as
+// external_paths_json. A linked file wins over a downloaded copy for its slot,
+// and the app never deletes it: unlinking only drops the override.
+let externalPaths = {};
+
+async function loadExternalPaths() {
+	try {
+		const rows = await callSqlite({ db: "settings", query: "SELECT external_paths_json FROM statistics LIMIT 1", fetch: true });
+		externalPaths = JSON.parse(rows[0]?.external_paths_json || "{}");
+		if (!externalPaths || typeof externalPaths !== "object") externalPaths = {};
+	} catch (_) { externalPaths = {}; }
+}
+
+async function saveExternalPaths() {
+	externalPaths = externalPaths && typeof externalPaths === "object" ? externalPaths : {};
+	await callSqlite({
+		db: "settings",
+		query: "UPDATE statistics SET external_paths_json = ?",
+		args: [JSON.stringify(externalPaths)],
+		fetch: false,
+	});
+	refreshLinetimeStatus();
+	if (typeof refreshYtdlpStatus == "function") refreshYtdlpStatus();
+}
+
+function getExternalPath(key) {
+	const p = externalPaths[key];
+	if (!p || typeof p !== "string") return null;
+	try {
+		if (fs.statSync(p).size > 0) return p;
+	} catch (_) {}
+	return null;
+}
+
+// The standard model references its weights as mms_fa.onnx.data next to the
+// graph, mirroring appfiles.LinetimeModelStandard/Dta, so a linked copy only
+// loads under the upstream names with its sibling present.
+const LINETIME_STANDARD_ONNX = "mms_fa.onnx";
+const LINETIME_STANDARD_DATA = "mms_fa.onnx.data";
+
+function linetimeStandardDataSibling(onnxPath) {
+	return path.join(path.dirname(onnxPath), LINETIME_STANDARD_DATA);
+}
+
 // Filenames come from the binary_check report so Go owns them. Existence is still
 // verified live wherever it matters, because the report is only a boot snapshot and
 // the user can delete a file at any time.
 function getLinetimeBinaryPath(id) {
 	if (!getLinetimeBinaryVariant(id)) return null;
-	return getAppFilePart(id, "binary");
+	return getExternalPath(id + ":binary") || getAppFilePart(id, "binary");
 }
 
 function getLinetimeModelPath(id) {
 	const v = getLinetimeModelVariant(id);
 	if (!v) return null;
-	return getAppFilePart(id, "model");
+	return getExternalPath(id + ":model") || getAppFilePart(id, "model");
 }
 
 function getLinetimeModelDataPath(id) {
 	const v = getLinetimeModelVariant(id);
 	if (!v || !v.requiresData) return null;
+	const external = getExternalPath(id + ":model");
+	if (external) return linetimeStandardDataSibling(external);
 	return getAppFilePart(id, "data");
 }
 
@@ -270,10 +316,11 @@ function getLinetimeModelDataPath(id) {
 // otherwise the CPU one is used, which is why the two are kept in separate
 // folders rather than overwriting one another.
 function getLinetimeWhisperCliPath() {
-	if (isLinetimeUsingGpuBinary() && linetimePartExists("gpu-cli", "cli")) {
-		return getAppFilePart("gpu-cli", "cli");
+	const gpuCli = getExternalPath("gpu-cli:cli") || getAppFilePart("gpu-cli", "cli");
+	if (isLinetimeUsingGpuBinary() && gpuCli && fs.existsSync(gpuCli)) {
+		return gpuCli;
 	}
-	return getAppFilePart("whisper-cli", "cli");
+	return getExternalPath("whisper-cli:cli") || getAppFilePart("whisper-cli", "cli");
 }
 
 function getLinetimeWhisperCliFolder() {
@@ -291,7 +338,9 @@ function isLinetimeUsingGpuBinary() {
 // CLI's own RUNPATH, which points at the dev checkout. The CPU CLI only needs
 // its own folder ($ORIGIN works).
 function getLinetimeWhisperCliLibDir() {
-	if (getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli")) {
+	const activeCli = getLinetimeWhisperCliPath();
+	const gpuCli = getExternalPath("gpu-cli:cli") || getAppFilePart("gpu-cli", "cli");
+	if (activeCli && gpuCli && activeCli === gpuCli) {
 		return [getAppFilePart("gpu", "lib"), getLinetimeWhisperCliFolder()].filter(Boolean).join(":");
 	}
 	return getLinetimeWhisperCliFolder();
@@ -300,11 +349,12 @@ function getLinetimeWhisperCliLibDir() {
 function getLinetimeWhisperPath(id) {
 	const v = getLinetimeWhisperVariant(id);
 	if (!v) return null;
-	return getAppFilePart(v.reportId || v.id, "model");
+	const key = v.reportId || v.id;
+	return getExternalPath(key + ":model") || getAppFilePart(key, "model");
 }
 
 function getLinetimeTokenizerPath() {
-	return getAppFilePart("tokenizer", "tokenizer");
+	return getExternalPath("tokenizer:tokenizer") || getAppFilePart("tokenizer", "tokenizer");
 }
 
 function getLinetimeFfmpegPath() {
@@ -327,6 +377,11 @@ function getLinetimeWhisperVariant(id) {
 // is a boot snapshot. A null path means the report never arrived, which counts as
 // not installed rather than throwing.
 function linetimePartExists(id, part) {
+	const p = getExternalPath(id + ":" + part) || getAppFilePart(id, part);
+	return !!p && fs.existsSync(p);
+}
+
+function linetimeDownloadedPartExists(id, part) {
 	const p = getAppFilePart(id, part);
 	return !!p && fs.existsSync(p);
 }
@@ -644,11 +699,19 @@ function renderLinetimeTable(containerId, title, desc, items) {
 		} else if (item.active) {
 			statusClass = "linetime-status-active";
 			statusText = "Active";
+		} else if (item.external) {
+			statusClass = "linetime-status-external";
+			statusText = "External";
 		} else if (item.installed) {
 			statusClass = "linetime-status-ok";
 			statusText = "Installed";
 		}
 		if (item.version) statusText += " \u00b7 v" + item.version;
+
+		let labelHtml = item.label;
+		if (item.external) {
+			labelHtml += `<div class="linetime-external-path" title="${item.external}">${item.external.split(/[\\/]/).pop()}</div>`;
+		}
 
 		let actionBtns = "";
 		if (supported) {
@@ -661,15 +724,25 @@ function renderLinetimeTable(containerId, title, desc, items) {
 			if (!item.installed && item.downloadFn) {
 				const dlClick = busy ? "disabled" : `onclick="${item.downloadFn}('${item.id}')"`;
 				actionBtns += `<button class="linetime-action-btn" ${dlClick}>Download</button>`;
-			} else if (item.deleteFn) {
+			} else if (item.downloaded && item.deleteFn) {
 				const delClick = busy ? "disabled" : `onclick="${item.deleteFn}('${item.id}')"`;
 				actionBtns += `<button class="linetime-action-btn linetime-btn-delete" ${delClick}>Delete</button>`;
+			}
+
+			if (item.linkKey) {
+				if (item.external) {
+					const unlinkClick = busy ? "disabled" : `onclick="linetimeUnlinkExternal('${item.linkKey}')"`;
+					actionBtns += `<button class="linetime-action-btn" ${unlinkClick}>Unlink</button>`;
+				} else {
+					const linkClick = busy ? "disabled" : `onclick="linetimeLinkExternal('${item.linkKey}')"`;
+					actionBtns += `<button class="linetime-action-btn" ${linkClick}>Link</button>`;
+				}
 			}
 		}
 
 		return `
 			<div style="display:grid;grid-template-columns:${LINETIME_TABLE_COLUMNS};gap:8px;margin:4px 0;align-items:center;padding:4px 0;border-bottom:1px solid #333;">
-				<div>${item.label}</div>
+				<div>${labelHtml}</div>
 				<div>${item.sizeText}</div>
 				<div><span class="${statusClass}">${statusText}</span></div>
 				<div>${actionBtns}</div>
@@ -783,12 +856,22 @@ function renderAppFileNotice() {
 	el.style.display = "block";
 }
 
+function linetimeBinaryDownloaded(id) {
+	if (!getLinetimeBinaryVariant(id)) return false;
+	if (!linetimeDownloadedPartExists(id, "binary")) return false;
+	if (!linetimeDownloadedPartExists("cpu", "ffmpeg")) return false;
+	if (getLinetimeBinaryVariant(id).gpu && !linetimeDownloadedPartExists("gpu", "lib")) return false;
+	return true;
+}
+
 function refreshLinetimeStatus() {
 	const effective = getEffectiveLinetimeSelection();
 
 	const binaryItems = LINETIME_BINARY_VARIANTS.map(v => {
 		const supported = getAppFileState(v.id) !== "unsupported";
 		const installed = supported && isLinetimeBinaryInstalled(v.id);
+		const downloaded = supported && linetimeBinaryDownloaded(v.id);
+		const external = supported ? getExternalPath(v.id + ":binary") : null;
 		const gpuLibPath = v.gpu ? getAppFilePart("gpu", "lib") : null;
 		const gpuLibBytes = gpuLibPath ? dirSizeBytes(gpuLibPath) : 0;
 		const binBytes = linetimeFileSizeBytes([getLinetimeBinaryPath(v.id)]);
@@ -804,6 +887,9 @@ function refreshLinetimeStatus() {
 			id: v.id,
 			label: v.label,
 			installed,
+			downloaded,
+			external,
+			linkKey: v.id,
 			active: supported && installed && effective.binary === v.id,
 			supported,
 			version: getAppFileVersion(v.id),
@@ -820,6 +906,9 @@ function refreshLinetimeStatus() {
 		id: "tokenizer",
 		label: "Tokenizer (required)",
 		installed: tokenizerInstalled,
+		downloaded: linetimeDownloadedPartExists("tokenizer", "tokenizer"),
+		external: getExternalPath("tokenizer:tokenizer"),
+		linkKey: "tokenizer",
 		active: false,
 		sizeText: tokenizerInstalled ? linetimeFileSizeText([getLinetimeTokenizerPath()], "") : linetimeHfSizeText("tokenizer"),
 		useFn: null,
@@ -833,6 +922,9 @@ function refreshLinetimeStatus() {
 			id: v.id,
 			label: v.label,
 			installed,
+			downloaded: linetimeDownloadedPartExists(v.id, "model") && (!v.requiresData || linetimeDownloadedPartExists(v.id, "data")),
+			external: getExternalPath(v.id + ":model"),
+			linkKey: v.id,
 			active: installed && effective.model === v.id,
 			sizeText: installed ? linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], "") : linetimeHfSizeText(v.id),
 			useFn: "linetimeUseModel",
@@ -843,13 +935,17 @@ function refreshLinetimeStatus() {
 	renderLinetimeTable("linetimeModelTable", "Alignment models", "Acoustic models that place each lyric line in time. The tokenizer is required for any of them to work.", modelItems);
 
 	const whisperItems = LINETIME_WHISPER_VARIANTS.map(v => {
+		const key = v.reportId || v.id;
 		const installed = isLinetimeWhisperInstalled(v.id);
 		return {
 			id: v.id,
 			label: v.label,
 			installed,
+			downloaded: linetimeDownloadedPartExists(key, "model"),
+			external: getExternalPath(key + ":model"),
+			linkKey: key,
 			active: installed && effective.whisper === v.id,
-			sizeText: installed ? linetimeFileSizeText([getLinetimeWhisperPath(v.id)], "") : linetimeHfSizeText(v.reportId || v.id),
+			sizeText: installed ? linetimeFileSizeText([getLinetimeWhisperPath(v.id)], "") : linetimeHfSizeText(key),
 			useFn: "linetimeUseWhisper",
 			downloadFn: "linetimeDownloadWhisper",
 			deleteFn: "linetimeDeleteWhisper",
@@ -857,19 +953,21 @@ function refreshLinetimeStatus() {
 	});
 	renderLinetimeTable("linetimeWhisperTable", "Whisper models (optional)", "Turn audio into lyric text. Only needed for Auto-generate, so pick one or skip this.", whisperItems);
 
+	const cliExternal = getExternalPath("whisper-cli:cli");
 	const cliSupported = getAppFileState("whisper-cli") !== "unsupported";
 	const cliInstalled = isLinetimeWhisperCliInstalled();
 	const cliDir = path.dirname(getAppFilePart("whisper-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli"));
-	const cliBytes = dirSizeBytes(cliDir);
+	const cliBytes = cliExternal ? linetimeFileSizeBytes([cliExternal]) : dirSizeBytes(cliDir);
 	const cliSizeText = cliSupported
 		? (cliBytes > 0 ? linetimeBytesText(cliBytes) : linetimeDownloadSizeText("whisper-cli"))
 		: "N/A";
 
+	const gpuCliExternal = getExternalPath("gpu-cli:cli");
 	const gpuCliSupported = getAppFileState("gpu-cli") !== "unsupported";
 	const gpuCliInstalled = gpuCliSupported && linetimePartExists("gpu-cli", "cli");
-	const gpuCliDir = path.dirname(getAppFilePart("gpu-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli_gpu"));
-	const gpuCliBytes = dirSizeBytes(gpuCliDir);
-	const gpuCliActive = gpuCliInstalled && getLinetimeWhisperCliPath() === getAppFilePart("gpu-cli", "cli");
+	const gpuCliPath = gpuCliExternal || getAppFilePart("gpu-cli", "cli");
+	const gpuCliBytes = gpuCliExternal ? linetimeFileSizeBytes([gpuCliExternal]) : dirSizeBytes(path.dirname(gpuCliPath || path.join(getLinetimeFolder(), "whisper_cli_gpu")));
+	const gpuCliActive = gpuCliInstalled && gpuCliPath && getLinetimeWhisperCliPath() === gpuCliPath;
 	const gpuCliSizeText = !gpuCliSupported
 		? "N/A"
 		: (gpuCliBytes > 0 ? linetimeBytesText(gpuCliBytes) : linetimeDownloadSizeText("gpu-cli"));
@@ -878,6 +976,9 @@ function refreshLinetimeStatus() {
 		id: "whisper-cli",
 		label: "Whisper CLI",
 		installed: cliInstalled,
+		downloaded: linetimeDownloadedPartExists("whisper-cli", "cli"),
+		external: cliExternal,
+		linkKey: "whisper-cli",
 		active: cliInstalled && !gpuCliActive,
 		supported: cliSupported,
 		sizeText: cliSizeText,
@@ -888,6 +989,9 @@ function refreshLinetimeStatus() {
 		id: "gpu-cli",
 		label: "Whisper CLI (CUDA)",
 		installed: gpuCliInstalled,
+		downloaded: linetimeDownloadedPartExists("gpu-cli", "cli"),
+		external: gpuCliExternal,
+		linkKey: "gpu-cli",
 		active: gpuCliActive,
 		supported: gpuCliSupported,
 		sizeText: gpuCliSizeText,
@@ -899,16 +1003,56 @@ function refreshLinetimeStatus() {
 	renderAppFileNotice();
 }
 
+async function linkYtdlp() {
+	const picked = await pickExternalFile("");
+	if (!picked) return;
+	if (externalFileBytes(picked) <= 0) {
+		await alertModal("That file is empty or unreadable.");
+		return;
+	}
+	try {
+		await probeExternalBinary(picked, ["--version"], "yt-dlp");
+	} catch (e) {
+		await alertModal(e.message);
+		return;
+	}
+	externalPaths["ytdlp"] = picked;
+	await saveExternalPaths();
+}
+
+async function unlinkYtdlp() {
+	if (!externalPaths["ytdlp"]) return;
+	const confirm = await confirmModal(`Stop using the linked yt-dlp at ${externalPaths["ytdlp"]}? The file itself is left alone.`, "Unlink", "Cancel");
+	if (!confirm) return;
+	delete externalPaths["ytdlp"];
+	await saveExternalPaths();
+}
+
 function refreshYtdlpStatus() {
 	const installed = isYtdlpInstalled();
+	const external = getExternalPath("ytdlp");
 	const btn = document.getElementById("updateYtdlpButton");
 	const versionEl = document.getElementById("ytdlpCurrentVersion");
 	const descEl = document.getElementById("ytdlpLastUpdateText");
 	const titleEl = document.getElementById("ytdlpCardTitle");
+	const linkBtn = document.getElementById("linkYtdlpButton");
+	const unlinkBtn = document.getElementById("unlinkYtdlpButton");
+	const pathEl = document.getElementById("ytdlpExternalPath");
 	if (!btn || !versionEl || !descEl) return;
 	btn.innerText = installed ? "Update" : "Install";
 	if (titleEl) titleEl.innerText = installed ? "Update yt-dlp" : "Install yt-dlp";
 	versionEl.innerText = installed ? `Current version: ${ytdlpVersion || "unknown"}` : "Not installed";
+	if (linkBtn) linkBtn.style.display = external ? "none" : "";
+	if (unlinkBtn) unlinkBtn.style.display = external ? "" : "none";
+	if (pathEl) {
+		if (external) {
+			pathEl.style.display = "";
+			pathEl.textContent = external;
+			pathEl.title = external;
+		} else {
+			pathEl.style.display = "none";
+		}
+	}
 	descEl.innerText = installed
 		? "Updates yt-dlp to the latest version. Useful if downloads keep failing."
 		: "Downloads yt-dlp. Needed for downloading songs, streaming and recommendations.";
@@ -970,6 +1114,135 @@ async function updateYtdlp() {
 	}, 2000);
 }
 
+
+// One row in the Linetime tables that accepts a user-linked file. key is the
+// externalPaths slot, trial is the probe args for executables, pair constrains
+// a slot whose files only load together.
+const EXTERNAL_LINKABLE = Object.freeze({
+	"cpu": { key: "cpu:binary", part: "binary", accept: "", trial: ["--help"], label: "CPU binary" },
+	"gpu": { key: "gpu:binary", part: "binary", accept: "", trial: ["--help"], label: "GPU binary" },
+	"tokenizer": { key: "tokenizer:tokenizer", part: "tokenizer", accept: ".json", trial: null, label: "Tokenizer" },
+	"standard": { key: "standard:model", part: "model", accept: ".onnx", trial: null, label: "Standard model", pair: { basename: LINETIME_STANDARD_ONNX, sibling: LINETIME_STANDARD_DATA } },
+	"fast": { key: "fast:model", part: "model", accept: ".onnx", trial: null, label: "Fast model" },
+	"whisper-standard": { key: "whisper-standard:model", part: "model", accept: ".bin", trial: null, label: "Whisper model" },
+	"whisper-q5": { key: "whisper-q5:model", part: "model", accept: ".bin", trial: null, label: "Whisper model" },
+	"whisper-cli": { key: "whisper-cli:cli", part: "cli", accept: "", trial: ["--help"], label: "Whisper CLI" },
+	"gpu-cli": { key: "gpu-cli:cli", part: "cli", accept: "", trial: ["--help"], label: "CUDA Whisper CLI" },
+});
+
+function pickExternalFile(accept) {
+	return new Promise(resolve => {
+		let done = false;
+		const finish = value => {
+			if (done) return;
+			done = true;
+			window.removeEventListener("focus", onFocus);
+			resolve(value);
+		};
+		const onFocus = () => setTimeout(() => {
+			const input = document.getElementById("externalFilePicker");
+			if (input && !input.files.length) finish(null);
+		}, 500);
+		const input = document.getElementById("externalFilePicker");
+		if (!input) return finish(null);
+		input.accept = accept || "";
+		input.onchange = () => {
+			const picked = input.files.length > 0 ? input.files[0].path : null;
+			input.value = "";
+			finish(picked);
+		};
+		window.addEventListener("focus", onFocus);
+		input.click();
+	});
+}
+
+// Trial-runs a linked executable so a broken pick is rejected up front.
+// Light on purpose: --version/--help exit before any model loads, and the
+// aligner already runs the same probe at every launch.
+function probeExternalBinary(picked, args, label) {
+	return new Promise((resolve, reject) => {
+		let out = "";
+		let settled = false;
+		let proc;
+		try {
+			proc = spawn(picked, args, { windowsHide: true });
+		} catch (e) {
+			return reject(new Error(`${label} could not start: ${e.message}`));
+		}
+		const timer = setTimeout(() => {
+			if (!settled) {
+				settled = true;
+				try { proc.kill(); } catch (_) {}
+				reject(new Error(`${label} did not respond within 20 seconds.`));
+			}
+		}, 20000);
+		proc.stdout.on("data", d => (out += d.toString()));
+		proc.stderr.on("data", d => (out += d.toString()));
+		proc.on("error", e => {
+			if (!settled) {
+				settled = true;
+				clearTimeout(timer);
+				reject(new Error(`${label} could not start: ${e.message}`));
+			}
+		});
+		proc.on("close", code => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			if (code === 127) return reject(new Error(`${label} is missing libraries it needs to start.`));
+			if (code !== 0 && !out.trim()) return reject(new Error(`${label} exited with code ${code}.`));
+			resolve();
+		});
+	});
+}
+
+function externalFileBytes(picked) {
+	try {
+		return fs.statSync(picked).size;
+	} catch (_) {
+		return 0;
+	}
+}
+
+async function linetimeLinkExternal(rowId) {
+	const cfg = EXTERNAL_LINKABLE[rowId];
+	if (!cfg) return;
+	const picked = await pickExternalFile(cfg.accept);
+	if (!picked) return;
+	if (externalFileBytes(picked) <= 0) {
+		await alertModal("That file is empty or unreadable.");
+		return;
+	}
+	if (cfg.pair) {
+		if (path.basename(picked) !== cfg.pair.basename) {
+			await alertModal(`That model only loads as ${cfg.pair.basename} with ${cfg.pair.sibling} beside it.`);
+			return;
+		}
+		if (externalFileBytes(path.join(path.dirname(picked), cfg.pair.sibling)) <= 0) {
+			await alertModal(`${cfg.pair.sibling} was not found next to the picked file.`);
+			return;
+		}
+	}
+	if (cfg.trial) {
+		try {
+			await probeExternalBinary(picked, cfg.trial, cfg.label);
+		} catch (e) {
+			await alertModal(e.message);
+			return;
+		}
+	}
+	externalPaths[cfg.key] = picked;
+	await saveExternalPaths();
+}
+
+async function linetimeUnlinkExternal(rowId) {
+	const cfg = EXTERNAL_LINKABLE[rowId];
+	if (!cfg || !externalPaths[cfg.key]) return;
+	const confirm = await confirmModal(`Stop using the linked ${cfg.label} at ${externalPaths[cfg.key]}? The file itself is left alone.`, "Unlink", "Cancel");
+	if (!confirm) return;
+	delete externalPaths[cfg.key];
+	await saveExternalPaths();
+}
 
 async function downloadLinetimeVariant(component, variant) {
 	if (linetimeDownloadInProgress) {
@@ -1154,7 +1427,11 @@ async function linetimeDeleteBinary(variant) {
 	const confirm = await confirmModal(`Delete the ${label} binary?`, "Delete", "Cancel");
 	if (!confirm) return;
 
-	const binPath = getLinetimeBinaryPath(variant);
+	const binPath = getAppFilePart(variant, "binary");
+	if (!binPath) {
+		await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
+		return;
+	}
 	try {
 		fs.unlinkSync(binPath);
 		if (variant === "gpu") {
@@ -1177,12 +1454,16 @@ async function linetimeDeleteModel(variant) {
 	const confirm = await confirmModal(`Delete the ${label} CTC model?`, "Delete", "Cancel");
 	if (!confirm) return;
 
-	const modelPath = getLinetimeModelPath(variant);
+	const modelPath = getAppFilePart(variant, "model");
 	const v = getLinetimeModelVariant(variant);
+	if (!modelPath) {
+		await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
+		return;
+	}
 	try {
 		fs.unlinkSync(modelPath);
 		if (v && v.requiresData) {
-			const dataPath = getLinetimeModelDataPath(variant);
+			const dataPath = getAppFilePart(variant, "data");
 			if (dataPath && fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
 		}
 		await refreshLinetimeReport();
@@ -1197,7 +1478,11 @@ async function linetimeDeleteWhisper(variant) {
 	const confirm = await confirmModal(`Delete the ${label} Whisper model?`, "Delete", "Cancel");
 	if (!confirm) return;
 
-	const whisperPath = getLinetimeWhisperPath(variant);
+	const whisperPath = getAppFilePart(getLinetimeWhisperVariant(variant)?.reportId || variant, "model");
+	if (!whisperPath) {
+		await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
+		return;
+	}
 	try {
 		fs.unlinkSync(whisperPath);
 		await refreshLinetimeReport();
@@ -1212,7 +1497,12 @@ async function linetimeDeleteTokenizer() {
 	if (!confirm) return;
 
 	try {
-		fs.unlinkSync(getLinetimeTokenizerPath());
+		const tokenizerPath = getAppFilePart("tokenizer", "tokenizer");
+		if (!tokenizerPath) {
+			await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
+			return;
+		}
+		fs.unlinkSync(tokenizerPath);
 		await refreshLinetimeReport();
 		await alertModal("Tokenizer deleted");
 	} catch (e) {
