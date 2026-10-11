@@ -46,8 +46,8 @@ const platform = process.platform;
 let audioPlayer;
 let player = null;
 let playingSongsID = "";
-let currentPlaylist = null; // Currently playing playlist's ID
-let currentPlaylistElement = null; // The order of the currently playing song in the playlist its in
+let currentPlaylist = null;
+let currentPlaylistElement = null;
 let playlistPlayedSongs = [];
 let playedSongs = [];
 let isShuffleActive = false;
@@ -131,9 +131,6 @@ let artistListenTimeFactor;
 let randomFactor;
 let ytdlpLastUpdateDate;
 let ytdlpVersion;
-let linetimeSelectedWhisper;
-let linetimeSelectedBinary;
-let linetimeSelectedModel;
 let lastPipLyricsSongId = "";
 
 const LOG_LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
@@ -218,54 +215,29 @@ async function initialiseDatabases() {
 		}
 	});
 
-	// Ensure new linetime columns exist (for migration from older versions)
-	await callSqlite({
-		db: "settings",
-		query: "ALTER TABLE statistics ADD COLUMN linetime_selected_binary TEXT DEFAULT ''",
-		fetch: false,
-	}).catch(() => {});
-	await callSqlite({
-		db: "settings",
-		query: "ALTER TABLE statistics ADD COLUMN linetime_selected_model TEXT DEFAULT ''",
-		fetch: false,
-	}).catch(() => {});
-	await callSqlite({
-		db: "settings",
-		query: "ALTER TABLE statistics ADD COLUMN linetime_sizes_json TEXT DEFAULT '{}'",
-		fetch: false,
-	}).catch(() => {});
-	await callSqlite({
-		db: "settings",
-		query: "ALTER TABLE statistics ADD COLUMN external_paths_json TEXT DEFAULT '{}'",
-		fetch: false,
-	}).catch(() => {});
-	if (typeof loadExternalPaths == "function") await loadExternalPaths();
+	await Promise.all(
+		[
+			["linetime_selected_binary", "TEXT DEFAULT ''"],
+			["linetime_selected_model", "TEXT DEFAULT ''"],
+			["linetime_sizes_json", "TEXT DEFAULT '{}'"],
+			["external_paths_json", "TEXT DEFAULT '{}'"],
+		].map(([column, definition]) => callSqlite({ db: "settings", query: `ALTER TABLE statistics ADD COLUMN ${column} ${definition}` }).catch(() => {})),
+	);
 
-	const settingsRows = await callSqlite({
+	const [stats] = await callSqlite({
 		db: "settings",
-		query: "SELECT * FROM settings LIMIT 1",
+		query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_selected_whisper, linetime_selected_binary, linetime_selected_model, linetime_sizes_json, external_paths_json FROM statistics LIMIT 1",
 		fetch: true,
 	});
-	const settingsRow = settingsRows[0];
+	ytdlpLastUpdateDate = stats?.ytdlp_last_update_date || 0;
+	ytdlpVersion = stats?.ytdlp_version || "";
+	linetimeSelected.binary = stats?.linetime_selected_binary || "";
+	linetimeSelected.model = stats?.linetime_selected_model || "";
+	linetimeSelected.whisper = stats?.linetime_selected_whisper || "";
+	linetimeReleaseSizes = parseJsonObject(stats?.linetime_sizes_json);
+	externalPaths = parseJsonObject(stats?.external_paths_json);
 
-	document.getElementById("settingsRewind").innerHTML = settingsRow.key_Rewind;
-	document.getElementById("settingsPrevious").innerHTML = settingsRow.key_Previous;
-	document.getElementById("settingsPlayPause").innerHTML = settingsRow.key_PlayPause;
-	document.getElementById("settingsNext").innerHTML = settingsRow.key_Next;
-	document.getElementById("settingsSkip").innerHTML = settingsRow.key_Skip;
-	document.getElementById("settingsAutoplay").innerHTML = settingsRow.key_Autoplay;
-	document.getElementById("settingsShuffle").innerHTML = settingsRow.key_Shuffle;
-	document.getElementById("settingsMute").innerHTML = settingsRow.key_Mute;
-	document.getElementById("settingsSpeed").innerHTML = settingsRow.key_Speed;
-	document.getElementById("settingsLoop").innerHTML = settingsRow.key_Loop;
-	document.getElementById("settingsSearchSong").innerHTML = settingsRow.key_searchSong;
-	document.getElementById("settingsRandomSong").innerHTML = settingsRow.key_randomSong;
-	document.getElementById("settingsRandomPlaylist").innerHTML = settingsRow.key_randomPlaylist;
-	document.getElementById("settingsLastPlaylist").innerHTML = settingsRow.key_lastPlaylist;
-	document.getElementById("settingsSearchPlaylist").innerHTML = settingsRow.key_searchPlaylist;
-	document.getElementById("settingsSearchShuffle").innerHTML = settingsRow.key_searchShuffle;
-	document.getElementById("settingsOpenLyrics").innerHTML = settingsRow.key_lyrics;
-	document.getElementById("settingsPiP").innerHTML = settingsRow.key_PiP;
+	const [settingsRow] = await callSqlite({ db: "settings", query: "SELECT * FROM settings LIMIT 1", fetch: true });
 
 	key_Rewind = settingsRow.key_Rewind;
 	key_Previous = settingsRow.key_Previous;
@@ -281,6 +253,10 @@ async function initialiseDatabases() {
 	key_randomSong = settingsRow.key_randomSong;
 	key_randomPlaylist = settingsRow.key_randomPlaylist;
 	key_lastPlaylist = settingsRow.key_lastPlaylist;
+	key_searchPlaylist = settingsRow.key_searchPlaylist;
+	key_searchShuffle = settingsRow.key_searchShuffle;
+	key_lyrics = settingsRow.key_lyrics;
+	key_PiP = settingsRow.key_PiP;
 	rememberautoplay = settingsRow.rememberautoplay;
 	remembershuffle = settingsRow.remembershuffle;
 	rememberloop = settingsRow.rememberloop;
@@ -299,20 +275,116 @@ async function initialiseDatabases() {
 	pictureInPicture = settingsRow.pictureInPicture;
 	pipShowThumbnail = settingsRow.pipShowThumbnail;
 	pipShowLyrics = settingsRow.pipShowLyrics;
-	key_searchPlaylist = settingsRow.key_searchPlaylist;
-	key_searchShuffle = settingsRow.key_searchShuffle;
-	key_lyrics = settingsRow.key_lyrics;
-	key_PiP = settingsRow.key_PiP;
+	popularityFactor = settingsRow.popularityFactor;
+	artistStrengthFactor = settingsRow.artistStrengthFactor;
+	similarArtistsFactor = settingsRow.similarArtistsFactor;
+	userPreferenceFactor = settingsRow.userPreferenceFactor;
+	artistListenTimeFactor = settingsRow.artistListenTimeFactor;
+	randomFactor = settingsRow.randomFactor;
+	discordRPCstatus = settingsRow.dc_rpc == 1;
 
-	if (pictureInPicture == 1) {
-		lastPipLyricsSongId = "";
-		ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics, volume: Number(settingsRow.volume) });
-		sendKeybindsToPiP();
-		if (pipShowLyrics == 1 && playingSongsID) {
-			const cachedRows = songLyricsCache.get(playingSongsID) || [];
-			const originalRow = cachedRows.find(r => !r.language);
-			updateMiniPlayer({ lyrics: originalRow?.lyrics || "", syncedLyrics: parseLrc(originalRow?.synced_lyrics || "") });
+	return settingsRow;
+}
+
+function startAudioPlayer() {
+	audioPlayer = spawn(path.join(backendFolder, "player"), [], {
+		stdio: ["pipe", "pipe", "pipe"],
+		env: { ...process.env, YTDLP_PATH: getYtDlpPath(), FFMPEG_PATH: ffmpegPath },
+	});
+
+	audioPlayer.stderr.on("data", data => {
+		const msg = data.toString().trim();
+		const isError = msg.includes("Failed") || msg.includes("error") || msg.includes("Error");
+		logChange(isError ? "error" : "debug", `player: ${msg}`);
+	});
+	audioPlayer.on("error", err => {
+		logChange("error", `Player process error: ${err.message}`);
+	});
+	audioPlayer.on("exit", (code, signal) => {
+		if (code !== null && code !== 0) {
+			logChange("error", `Player process exited with code ${code}`);
+		} else if (signal) {
+			logChange("error", `Player process killed by signal ${signal}`);
 		}
+	});
+
+	const showStopped = () => {
+		isInterpolating = false;
+		playButton.style.display = "inline-block";
+		pauseButton.style.display = "none";
+		if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
+		if (player) player.playbackStatus = "Paused";
+		playing = false;
+		updateProgressPaused();
+	};
+
+	audioPlayer.stdout.on("data", data => {
+		for (const line of data.toString().split("\n")) {
+			const trimmed = line.trim();
+			if (!trimmed) continue;
+
+			if (trimmed.startsWith("EV_POSITION ")) {
+				const pos = parseFloat(trimmed.slice(12));
+				if (!Number.isNaN(pos) && !isUserSeeking) {
+					lastAuthoritativePosition = pos;
+					lastSyncTimestamp = performance.now();
+					isInterpolating = true;
+				}
+			} else if (trimmed == "EV_ENDED") {
+				if (songQueue.length > 0 || isAutoplayActive) {
+					isInterpolating = false;
+					playNextSong();
+				} else {
+					showStopped();
+				}
+			} else if (trimmed.startsWith("EV_ERROR")) {
+				logChange("error", `Player stream error: ${trimmed.slice(9)}`);
+				showStopped();
+				alertModal(trimmed.slice(9));
+			} else if (trimmed == "EV_PAUSED") {
+				isInterpolating = false;
+				playButton.style.display = "inline-block";
+				pauseButton.style.display = "none";
+				playing = false;
+				updateProgressPaused();
+			} else if (trimmed == "EV_RESUMED") {
+				lastSyncTimestamp = performance.now();
+				isInterpolating = true;
+				playButton.style.display = "none";
+				pauseButton.style.display = "inline-block";
+				playing = true;
+				scheduleTick();
+				updateProgressPaused();
+			}
+		}
+	});
+
+	scheduleTick();
+}
+
+function applySettingsToUi(settingsRow) {
+	const keybindLabels = {
+		settingsRewind: "key_Rewind",
+		settingsPrevious: "key_Previous",
+		settingsPlayPause: "key_PlayPause",
+		settingsNext: "key_Next",
+		settingsSkip: "key_Skip",
+		settingsAutoplay: "key_Autoplay",
+		settingsShuffle: "key_Shuffle",
+		settingsMute: "key_Mute",
+		settingsSpeed: "key_Speed",
+		settingsLoop: "key_Loop",
+		settingsSearchSong: "key_searchSong",
+		settingsRandomSong: "key_randomSong",
+		settingsRandomPlaylist: "key_randomPlaylist",
+		settingsLastPlaylist: "key_lastPlaylist",
+		settingsSearchPlaylist: "key_searchPlaylist",
+		settingsSearchShuffle: "key_searchShuffle",
+		settingsOpenLyrics: "key_lyrics",
+		settingsPiP: "key_PiP",
+	};
+	for (const [id, key] of Object.entries(keybindLabels)) {
+		document.getElementById(id).innerHTML = settingsRow[key];
 	}
 
 	if (settingsRow.background.includes("#")) {
@@ -320,26 +392,6 @@ async function initialiseDatabases() {
 	} else {
 		document.body.className = `bg-gradient-${settingsRow.background}`;
 	}
-
-	popularityFactor = settingsRow.popularityFactor;
-	artistStrengthFactor = settingsRow.artistStrengthFactor;
-	similarArtistsFactor = settingsRow.similarArtistsFactor;
-	userPreferenceFactor = settingsRow.userPreferenceFactor;
-	artistListenTimeFactor = settingsRow.artistListenTimeFactor;
-	randomFactor = settingsRow.randomFactor;
-
-	const statsRows = await callSqlite({ db: "settings", query: "SELECT ytdlp_last_update_date, ytdlp_version, linetime_selected_whisper, linetime_selected_binary, linetime_selected_model, linetime_sizes_json FROM statistics LIMIT 1", fetch: true });
-	ytdlpLastUpdateDate = statsRows[0]?.ytdlp_last_update_date || 0;
-	ytdlpVersion = statsRows[0]?.ytdlp_version || "";
-	linetimeSelectedWhisper = statsRows[0]?.linetime_selected_whisper || "";
-	linetimeSelectedBinary = statsRows[0]?.linetime_selected_binary || "";
-	linetimeSelectedModel = statsRows[0]?.linetime_selected_model || "";
-	let linetimeSizes = {};
-	try { linetimeSizes = JSON.parse(statsRows[0]?.linetime_sizes_json || "{}"); } catch (_) {}
-
-	discordRPCstatus = settingsRow.dc_rpc == 1 ? true : false;
-	discordRPCstatus ? sendCommandToDaemon("create") : updateDiscordStatus("disabled");
-	document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
 
 	const icons = {
 		backwardButton: "backward.svg",
@@ -355,91 +407,54 @@ async function initialiseDatabases() {
 		loopButton: "redLoop.svg",
 		songSettingsButton: "adjustments.svg",
 	};
-
 	for (const [id, file] of Object.entries(icons)) {
 		const el = document.getElementById(id);
-		if (el) {
-			el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
-		}
+		if (el) el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
 	}
 	volumeControl.value = volume * 100 * dividevolume;
 
-	rememberautoplay && toggleAutoplay();
-	remembershuffle && toggleShuffle();
-	rememberloop && toggleLoop();
-
-	document.getElementById("main-menu").click();
-	ipcRenderer.send("renderer-domready");
-	refreshLinetimeStatus();
+	if (rememberautoplay) toggleAutoplay();
+	if (remembershuffle) toggleShuffle();
+	if (rememberloop) toggleLoop();
 	updateProgressPaused();
 
-	document.getElementById("weight1").value = popularityFactor;
-	document.getElementById("weight2").value = artistStrengthFactor;
-	document.getElementById("weight3").value = similarArtistsFactor;
-	document.getElementById("weight4").value = userPreferenceFactor;
-	document.getElementById("weight5").value = artistListenTimeFactor;
-	document.getElementById("weight6").value = randomFactor;
+	[popularityFactor, artistStrengthFactor, similarArtistsFactor, userPreferenceFactor, artistListenTimeFactor, randomFactor].forEach((value, i) => {
+		document.getElementById(`weight${i + 1}`).value = value;
+	});
 
 	const divideVolumeSelect = document.getElementById("dividevolume");
-	for (let i = 0; i < divideVolumeSelect.options.length; i++) {
-		if (divideVolumeSelect.options[i].value == dividevolume) {
-			divideVolumeSelect.selectedIndex = i;
-			break;
-		}
-	}
+	const divideVolumeIndex = [...divideVolumeSelect.options].findIndex(option => option.value == dividevolume);
+	if (divideVolumeIndex >= 0) divideVolumeSelect.selectedIndex = divideVolumeIndex;
 
-	document.getElementById("picker").addEventListener("input", color => {
-		changeBackground(color.target.value);
-	});
-
-	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1 ? true : false;
-	document.getElementById("recommendationsToggle").checked = recommendationsAfterDownload == 1 ? true : false;
-	document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1 ? true : false;
-	document.getElementById("pipThumbnailToggle").checked = pipShowThumbnail == 1 ? true : false;
-	document.getElementById("pipLyricsToggle").checked = pipShowLyrics == 1 ? true : false;
+	document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
+	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1;
+	document.getElementById("recommendationsToggle").checked = recommendationsAfterDownload == 1;
+	document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1;
+	document.getElementById("pipThumbnailToggle").checked = pipShowThumbnail == 1;
+	document.getElementById("pipLyricsToggle").checked = pipShowLyrics == 1;
 	document.getElementById("logLevelSelect").value = localStorage.getItem("logLevel") || "info";
-	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
-	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
-	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
-	document.getElementById("notInterestedToggle").addEventListener("click", e => {
-		if (!!notInterestedSongs.map(song => song.song_id).includes(e.currentTarget.dataset.songId)) {
-			notInterestedSongs = notInterestedSongs.filter(s => s.song_id != e.currentTarget.dataset.songId);
-		} else {
-			notInterestedSongs.push({ song_id: e.currentTarget.dataset.songId });
-			callSqlite({
-				db: "musics",
-				query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
-				args: [e.currentTarget.dataset.songId, document.getElementById("customiseSongName").value],
-				fetch: false,
-			});
-		}
-		updateNotInterestedButton();
-	});
 
-	ipcRenderer.invoke("get-app-version").then(async version => {
-		const willUpdate = version != current_version;
-		current_version = version;
-		document.getElementById("version").textContent = `Version: ${version}`;
+	if (pictureInPicture == 1) {
+		ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics, volume: Number(settingsRow.volume) });
+		sendKeybindsToPiP();
+	}
+}
 
-		await callSqlite({
-			db: "settings",
-			query: "UPDATE settings SET current_version = ?",
-			args: [current_version],
-			fetch: false,
-		});
-	});
+async function loadCaches() {
+	notInterestedSongs = await callSqlite({ db: "musics", query: "SELECT song_id FROM not_interested", fetch: true });
 
-	notInterestedSongs = await callSqlite({
-		db: "musics",
-		query: "SELECT song_id FROM not_interested",
-		fetch: true,
-	});
-
-	const songsRows = await callSqlite({
-		db: "musics",
-		query: "SELECT song_id, song_length, song_url, song_name, song_extension, stabilised, size, thumbnail_extension, genre, artist, language FROM songs",
-		fetch: true,
-	});
+	const [songsRows, streamsRows] = await Promise.all([
+		callSqlite({
+			db: "musics",
+			query: "SELECT song_id, song_length, song_url, song_name, song_extension, stabilised, size, thumbnail_extension, genre, artist, language FROM songs",
+			fetch: true,
+		}),
+		callSqlite({
+			db: "musics",
+			query: "SELECT song_id, song_name, thumbnail_url, length, artist, genre, language FROM streams",
+			fetch: true,
+		}),
+	]);
 
 	for (const row of songsRows) {
 		songNameCache.set(row.song_id, {
@@ -456,24 +471,6 @@ async function initialiseDatabases() {
 		});
 	}
 
-	const lyricsRows = await callSqlite({
-		db: "musics",
-		query: "SELECT song_id, lyrics, language, synced_lyrics FROM lyrics",
-		fetch: true,
-	});
-
-	for (const row of lyricsRows) {
-		const existing = songLyricsCache.get(row.song_id) || [];
-		existing.push({ lyrics: row.lyrics, language: row.language ?? null, synced_lyrics: row.synced_lyrics || "" });
-		songLyricsCache.set(row.song_id, existing);
-	}
-
-	const streamsRows = await callSqlite({
-		db: "musics",
-		query: "SELECT song_id, song_name, thumbnail_url, length, artist, genre, language FROM streams",
-		fetch: true,
-	});
-
 	for (const row of streamsRows) {
 		streamedSongsCache.set(row.song_id, {
 			song_name: row.song_name,
@@ -486,19 +483,6 @@ async function initialiseDatabases() {
 	}
 
 	await getPlaylists(false);
-	// Awaited so the report is in hand before the Settings tab can ask for it.
-	// Separate from startupCheck on purpose: that tool's output is a song map whose
-	// key count is compared against the song count, so folding a health report into
-	// it would make the app think new songs appeared and insert a junk row.
-	await Promise.all([startupCheck(), runBinaryCheck()]);
-	// The Linetime tables rendered above before the report existed, so they showed
-	// everything as not installed. Redraw now that the real state is known.
-	refreshLinetimeStatus();
-	await fetchLinetimeReleaseSizes();
-	await loadLinetimeReleaseSizes();
-	refreshLinetimeStatus();
-	if (typeof refreshStabiliseCount == "function") refreshStabiliseCount();
-	setupLazyBackgrounds();
 }
 
 setInterval(async () => {
@@ -541,7 +525,7 @@ tabs.forEach(tab => {
 				} else if (content.id == "settings-content") {
 					document.getElementById("settings-content").style.display = "flex";
 					if (typeof switchSettingsTab == "function") switchSettingsTab("keybinds");
-					if (typeof refreshYtdlpStatus == "function") refreshYtdlpStatus();
+					refreshYtdlpStatus();
 					if (typeof refreshStabiliseCount == "function") refreshStabiliseCount();
 					refreshLinetimeStatus();
 				} else if (content.id == "statistics-content") {
@@ -1099,7 +1083,9 @@ function showSearchHelpModal() {
 	overlay.appendChild(modal);
 	document.body.appendChild(overlay);
 
-	overlay.addEventListener("click", e => { if (e.target == overlay) overlay.remove(); });
+	overlay.addEventListener("click", e => {
+		if (e.target == overlay) overlay.remove();
+	});
 }
 
 function renderMusics(skipScrollSave = false) {
@@ -1966,7 +1952,9 @@ function formatLrcTimestamp(seconds) {
 }
 
 function parseLrcTimestamp(text) {
-	const match = String(text).replace(/\s+/g, "").match(/^(\d{1,2}):(\d{1,2})(?:[.:,](\d{1,3}))?$/);
+	const match = String(text)
+		.replace(/\s+/g, "")
+		.match(/^(\d{1,2}):(\d{1,2})(?:[.:,](\d{1,3}))?$/);
 	if (!match) return null;
 	const minutes = parseInt(match[1], 10);
 	const seconds = parseInt(match[2], 10);
@@ -2283,7 +2271,9 @@ function isCustomiseModalDirty() {
 		document.getElementById("customiseSongLanguage").value != div.dataset.origLanguage ||
 		document.getElementById("lyricsArea").value != div.dataset.origLyrics ||
 		document.getElementById("lyricsTranslationArea").value != div.dataset.origTranslation ||
-		Array.from(document.getElementById("lyricsTimestampCol").children).map(input => input.value).join("\n") != div.dataset.origSyncedLyrics ||
+		Array.from(document.getElementById("lyricsTimestampCol").children)
+			.map(input => input.value)
+			.join("\n") != div.dataset.origSyncedLyrics ||
 		document.getElementById("customiseThumbnail").files.length > 0
 	);
 }
@@ -2589,9 +2579,7 @@ async function searchSong(typed) {
 		searchModalInput.value = "";
 		playMusic(row.song_id, null);
 		document.getElementById("searchModal").style.display = "none";
-	} catch {
-		// To prevent console errors
-	}
+	} catch {}
 }
 
 function searchPlaylist(typed) {
@@ -2609,9 +2597,7 @@ function searchPlaylist(typed) {
 		if (!match) return;
 		document.getElementById("searchModal").style.display = "none";
 		playPlaylist(match.id, 0);
-	} catch {
-		// To prevent console errors
-	}
+	} catch {}
 }
 
 function searchShuffle() {
@@ -2647,9 +2633,7 @@ function searchShuffle() {
 		const randomIndex = Math.floor(Math.random() * songIds.length);
 		if (!isShuffleActive) toggleShuffle();
 		playPlaylist("SEARCH_SHUFFLE", randomIndex);
-	} catch {
-		// To prevent console errors
-	}
+	} catch {}
 }
 
 function playLastPlaylist() {
@@ -3300,7 +3284,6 @@ function tick() {
 			const pipProgress = songDuration > 10 ? Math.min(1, Math.max(0, (clamped - 5) / (songDuration - 10))) : 0;
 
 			if (playingSongsID.length != 11) {
-				// Local song. Youtube link ID's consist of 11 digits.
 				const row = songNameCache.get(playingSongsID);
 				if (!row) return playNextSong();
 
@@ -3313,7 +3296,6 @@ function tick() {
 					songTime: clamped,
 				});
 			} else {
-				// Youtube song
 				const row = getStreamedSongData(playingSongsID);
 				if (!row) return playNextSong();
 
@@ -3479,31 +3461,115 @@ function updateMainLyricsSync(currentTime) {
 	}
 }
 
-document.addEventListener("DOMContentLoaded", async function () {
-	try {
-		await pathsReady;
-	} catch (e) {
-		console.error("Failed to initialize paths:", e);
-		alertModal("Failed to initialize application paths: " + (e.message ?? String(e)));
-		return;
+function renderPatchMarkdown(text) {
+	const escaped = text.replace(/\r/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	const inline = s =>
+		s
+			.replace(/`([^`]+)`/g, "<code>$1</code>")
+			.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+			.replace(/(^|[^*\w])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+			.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+	let html = "";
+	let inList = false;
+	let inCode = false;
+	const closeList = () => {
+		if (inList) {
+			html += "</ul>";
+			inList = false;
+		}
+	};
+	for (const line of escaped.split("\n")) {
+		if (line.trim().startsWith("```")) {
+			closeList();
+			html += inCode ? "</pre>" : "<pre>";
+			inCode = !inCode;
+			continue;
+		}
+		if (inCode) {
+			html += line + "\n";
+			continue;
+		}
+		const header = line.match(/^(#{1,3})\s+(.*)$/);
+		if (header) {
+			closeList();
+			const level = header[1].length + 2;
+			html += `<h${level}>${inline(header[2])}</h${level}>`;
+			continue;
+		}
+		if (/^\s*([-*]|\d+\.)\s+/.test(line)) {
+			if (!inList) {
+				html += "<ul>";
+				inList = true;
+			}
+			html += `<li>${inline(line.replace(/^\s*([-*]|\d+\.)\s+/, ""))}</li>`;
+			continue;
+		}
+		closeList();
+		if (line.trim()) html += inline(line) + "<br>";
 	}
+	closeList();
+	if (inCode) html += "</pre>";
+	return html;
+}
 
-	document.querySelector("#mainmenulogo").style.backgroundImage = `url("file://${path.join(appThumbnailFolder, "tarator1024_icon.png").replace(/\\/g, "/")}")`;
+async function loadPatchNotes() {
+	if (window.patchNotesLoaded) return;
+	window.patchNotesLoaded = true;
+	const el = document.getElementById("patchNotes");
+	try {
+		const resp = await fetch("https://api.github.com/repos/Victiniiiii/TaratorMusic/releases?per_page=5", {
+			headers: { Accept: "application/vnd.github+json", "User-Agent": "TaratorMusic" },
+		});
+		if (!resp.ok) throw new Error("HTTP " + resp.status);
+		const releases = await resp.json();
+		if (!Array.isArray(releases) || releases.length == 0) throw new Error("No releases found");
+		el.innerHTML = "";
+		for (const rel of releases) {
+			const wrap = document.createElement("div");
+			wrap.className = "patch-release";
+			const version = document.createElement("div");
+			version.className = "patch-version";
+			version.textContent = rel.name || rel.tag_name || "Untitled";
+			const body = document.createElement("div");
+			body.innerHTML = rel.body ? renderPatchMarkdown(rel.body) : "No patch notes.";
+			wrap.appendChild(version);
+			wrap.appendChild(body);
+			el.appendChild(wrap);
+		}
+	} catch (e) {
+		window.patchNotesLoaded = false;
+		el.innerText = "Could not load patch notes.";
+		logChange("warn", "Patch notes fetch failed: " + e.message);
+	}
+}
+
+function bindUiEvents() {
+	window.patchNotesLoaded = false;
+
 	document.addEventListener("click", event => {
 		const menu = document.getElementById("songContextMenu");
 		if (!menu.contains(event.target)) menu.style.display = "none";
 	});
-	updateQueueDisplay();
 
-	try {
-		await initialiseDatabases();
-	} catch (e) {
-		console.error("Database initialization failed:", e);
-		alertModal("Database initialization failed: " + (e.message ?? String(e)));
-		return;
-	}
-
-	if (platform == "linux") loadJSFile("mpris");
+	document.getElementById("picker").addEventListener("input", color => changeBackground(color.target.value));
+	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
+	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
+	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
+	document.getElementById("notInterestedToggle").addEventListener("click", e => {
+		const songId = e.currentTarget.dataset.songId;
+		if (notInterestedSongs.some(song => song.song_id === songId)) {
+			notInterestedSongs = notInterestedSongs.filter(song => song.song_id != songId);
+		} else {
+			notInterestedSongs.push({ song_id: songId });
+			callSqlite({
+				db: "musics",
+				query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
+				args: [songId, document.getElementById("customiseSongName").value],
+				fetch: false,
+			});
+		}
+		updateNotInterestedButton();
+	});
 
 	document.querySelectorAll("[data-tooltip]").forEach(el => {
 		el.addEventListener("mouseenter", e => {
@@ -3524,7 +3590,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 		});
 	});
 
-	document.getElementById("searchModalInput").addEventListener("input", () => {
+	searchModalInput.addEventListener("input", () => {
 		const mode = document.getElementById("searchModal").dataset.mode;
 		const foundDiv = document.getElementById("searchModalFound");
 		if (mode == "playlist") searchPlaylist(true);
@@ -3575,93 +3641,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 	lyricsArea.addEventListener("input", syncLyricsTimestampColRowCount);
 
-	document.getElementById("debugButton").addEventListener("click", () => {
-		ipcRenderer.send("debug-mode");
-	});
-
-	window.patchNotesLoaded = false;
-
-	function renderPatchMarkdown(text) {
-		const escaped = text.replace(/\r/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-		const inline = s => s
-			.replace(/`([^`]+)`/g, "<code>$1</code>")
-			.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-			.replace(/(^|[^*\w])\*([^*\n]+)\*/g, "$1<em>$2</em>")
-			.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-		const lines = escaped.split("\n");
-		let html = "";
-		let inList = false;
-		let inCode = false;
-		const closeList = () => {
-			if (inList) {
-				html += "</ul>";
-				inList = false;
-			}
-		};
-		for (const line of lines) {
-			if (line.trim().startsWith("```")) {
-				closeList();
-				html += inCode ? "</pre>" : "<pre>";
-				inCode = !inCode;
-				continue;
-			}
-			if (inCode) {
-				html += line + "\n";
-				continue;
-			}
-			const header = line.match(/^(#{1,3})\s+(.*)$/);
-			if (header) {
-				closeList();
-				const level = header[1].length + 2;
-				html += `<h${level}>${inline(header[2])}</h${level}>`;
-				continue;
-			}
-			if (/^\s*([-*]|\d+\.)\s+/.test(line)) {
-				if (!inList) {
-					html += "<ul>";
-					inList = true;
-				}
-				html += `<li>${inline(line.replace(/^\s*([-*]|\d+\.)\s+/, ""))}</li>`;
-				continue;
-			}
-			closeList();
-			if (line.trim()) html += inline(line) + "<br>";
-		}
-		closeList();
-		if (inCode) html += "</pre>";
-		return html;
-	}
-
-	async function loadPatchNotes() {
-		if (window.patchNotesLoaded) return;
-		window.patchNotesLoaded = true;
-		const el = document.getElementById("patchNotes");
-		try {
-			const resp = await fetch("https://api.github.com/repos/Victiniiiii/TaratorMusic/releases?per_page=5", {
-				headers: { "Accept": "application/vnd.github+json", "User-Agent": "TaratorMusic" },
-			});
-			if (!resp.ok) throw new Error("HTTP " + resp.status);
-			const releases = await resp.json();
-			if (!Array.isArray(releases) || releases.length == 0) throw new Error("No releases found");
-			el.innerHTML = "";
-			for (const rel of releases) {
-				const wrap = document.createElement("div");
-				wrap.className = "patch-release";
-				const version = document.createElement("div");
-				version.className = "patch-version";
-				version.textContent = rel.name || rel.tag_name || "Untitled";
-				const body = document.createElement("div");
-				body.innerHTML = rel.body ? renderPatchMarkdown(rel.body) : "No patch notes.";
-				wrap.appendChild(version);
-				wrap.appendChild(body);
-				el.appendChild(wrap);
-			}
-		} catch (e) {
-			window.patchNotesLoaded = false;
-			el.innerText = "Could not load patch notes.";
-			logChange("warn", "Patch notes fetch failed: " + e.message);
-		}
-	}
+	document.getElementById("debugButton").addEventListener("click", () => ipcRenderer.send("debug-mode"));
 
 	document.getElementById("version").addEventListener("click", () => {
 		document.getElementById("updateModal").style.display = "block";
@@ -3675,9 +3655,10 @@ document.addEventListener("DOMContentLoaded", async function () {
 		applyVolume();
 	});
 
-	ipcRenderer.on("close-pip", async () => {		pictureInPicture = 0;
+	ipcRenderer.on("close-pip", async () => {
+		pictureInPicture = 0;
 		await callSqlite({ db: "settings", query: "UPDATE settings SET pictureInPicture = ?", args: [pictureInPicture] });
-		document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1 ? true : false;
+		document.getElementById("pictureInPictureToggle").checked = false;
 	});
 
 	ipcRenderer.on("player-previous", () => playPreviousSong());
@@ -3714,83 +3695,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 		document.getElementById("installBtn").disabled = true;
 		ipcRenderer.send("download-update");
 	});
-
-	audioPlayer = spawn(path.join(backendFolder, "player"), [], {
-		stdio: ["pipe", "pipe", "pipe"],
-		env: { ...process.env, YTDLP_PATH: getYtDlpPath(), FFMPEG_PATH: ffmpegPath },
-	});
-	audioPlayer.stderr.on("data", data => {
-		const msg = data.toString().trim();
-		if (msg.includes("Failed") || msg.includes("error") || msg.includes("Error")) {
-			logChange("error", `player: ${msg}`);
-		} else {
-			logChange("debug", `player: ${msg}`);
-		}
-	});
-	audioPlayer.on("error", err => {
-		logChange("error", `Player process error: ${err.message}`);
-	});
-	audioPlayer.on("exit", (code, signal) => {
-		if (code !== null && code !== 0) {
-			logChange("error", `Player process exited with code ${code}`);
-		} else if (signal) {
-			logChange("error", `Player process killed by signal ${signal}`);
-		}
-	});
-	audioPlayer.stdout.on("data", data => {
-		const lines = data.toString().split("\n");
-		for (const line of lines) {
-			const trimmed = line.trim();
-			if (!trimmed) continue;
-
-			if (trimmed.startsWith("EV_POSITION ")) {
-				const pos = parseFloat(trimmed.slice(12));
-				if (!Number.isNaN(pos) && !isUserSeeking) {
-					lastAuthoritativePosition = pos;
-					lastSyncTimestamp = performance.now();
-					isInterpolating = true;
-				}
-			} else if (trimmed == "EV_ENDED") {
-				isInterpolating = false;
-				if (songQueue.length > 0 || isAutoplayActive) {
-					playNextSong();
-				} else {
-					playButton.style.display = "inline-block";
-					pauseButton.style.display = "none";
-					if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
-					if (player) player.playbackStatus = "Paused";
-					playing = false;
-					updateProgressPaused();
-				}
-			} else if (trimmed.startsWith("EV_ERROR")) {
-				logChange("error", `Player stream error: ${trimmed.slice(9)}`);
-				isInterpolating = false;
-				playButton.style.display = "inline-block";
-				pauseButton.style.display = "none";
-				if (playingSongsID) songPauseStartTime = Math.floor(Date.now() / 1000);
-				if (player) player.playbackStatus = "Paused";
-				playing = false;
-				updateProgressPaused();
-				alertModal(trimmed.slice(9));
-			} else if (trimmed == "EV_PAUSED") {
-				isInterpolating = false;
-				playButton.style.display = "inline-block";
-				pauseButton.style.display = "none";
-				playing = false;
-				updateProgressPaused();
-			} else if (trimmed == "EV_RESUMED") {
-				lastSyncTimestamp = performance.now();
-				isInterpolating = true;
-				playButton.style.display = "none";
-				pauseButton.style.display = "inline-block";
-				playing = true;
-				scheduleTick();
-				updateProgressPaused();
-			}
-		}
-	});
-
-	scheduleTick();
 
 	volumeControl.addEventListener("input", applyVolume);
 
@@ -3834,27 +3738,100 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 	previousItemsPerRow = Math.floor((content.offsetWidth - 53) / 205);
 
-	document.getElementById("songSettingsButton").addEventListener("mouseenter", () => {
-		document.getElementById("settingsMenu").style.display = "block";
-	});
-
-	document.getElementById("songSettingsButton").addEventListener("mouseleave", () => {
+	const settingsMenu = document.getElementById("settingsMenu");
+	const songSettingsButton = document.getElementById("songSettingsButton");
+	const showSettingsMenu = () => {
+		settingsMenu.style.display = "block";
+	};
+	const hideSettingsMenu = () => {
 		setTimeout(() => {
-			if (!document.getElementById("settingsMenu").matches(":hover") && !document.getElementById("songSettingsButton").matches(":hover")) {
-				document.getElementById("settingsMenu").style.display = "none";
-			}
+			if (!settingsMenu.matches(":hover") && !songSettingsButton.matches(":hover")) settingsMenu.style.display = "none";
 		}, 50);
-	});
+	};
+	for (const el of [songSettingsButton, settingsMenu]) {
+		el.addEventListener("mouseenter", showSettingsMenu);
+		el.addEventListener("mouseleave", hideSettingsMenu);
+	}
+}
 
-	document.getElementById("settingsMenu").addEventListener("mouseenter", () => {
-		document.getElementById("settingsMenu").style.display = "block";
-	});
+async function startApp() {
+	const failWith = prefix => e => {
+		throw new Error(`${prefix}: ${e.message ?? String(e)}`);
+	};
 
-	document.getElementById("settingsMenu").addEventListener("mouseleave", () => {
-		setTimeout(() => {
-			if (!document.getElementById("settingsMenu").matches(":hover") && !document.getElementById("songSettingsButton").matches(":hover")) {
-				document.getElementById("settingsMenu").style.display = "none";
-			}
-		}, 50);
-	});
+	await pathsReady.catch(failWith("Failed to initialize application paths"));
+
+	document.querySelector("#mainmenulogo").style.backgroundImage = `url("file://${path.join(appThumbnailFolder, "tarator1024_icon.png").replace(/\\/g, "/")}")`;
+	updateQueueDisplay();
+
+	const settingsRow = await initialiseDatabases().catch(failWith("Database initialization failed"));
+	startAudioPlayer();
+	applySettingsToUi(settingsRow);
+	await loadCaches().catch(failWith("Database initialization failed"));
+
+	bindUiEvents();
+	document.getElementById("main-menu").click();
+	setupLazyBackgrounds();
+}
+
+async function runBackgroundStartup() {
+	const tasks = [
+		[
+			"lyrics cache",
+			async () => {
+				const rows = await callSqlite({ db: "musics", query: "SELECT song_id, lyrics, language, synced_lyrics FROM lyrics", fetch: true });
+				for (const row of rows) {
+					const existing = songLyricsCache.get(row.song_id) || [];
+					existing.push({ lyrics: row.lyrics, language: row.language ?? null, synced_lyrics: row.synced_lyrics || "" });
+					songLyricsCache.set(row.song_id, existing);
+				}
+			},
+		],
+		[
+			"app version",
+			async () => {
+				current_version = await ipcRenderer.invoke("get-app-version");
+				document.getElementById("version").textContent = `Version: ${current_version}`;
+				await callSqlite({ db: "settings", query: "UPDATE settings SET current_version = ?", args: [current_version], fetch: false });
+			},
+		],
+		[
+			"integrations",
+			async () => {
+				if (discordRPCstatus) sendCommandToDaemon("create");
+				else updateDiscordStatus("disabled");
+				if (platform == "linux") await loadJSFile("mpris");
+			},
+		],
+		["library check", startupCheck],
+		[
+			"stabilise count",
+			() => {
+				if (typeof refreshStabiliseCount == "function") refreshStabiliseCount();
+			},
+		],
+		["component check", runBinaryCheck],
+		["release sizes", fetchLinetimeReleaseSizes],
+	];
+
+	for (const [name, task] of tasks) {
+		try {
+			await task();
+		} catch (e) {
+			logChange("error", `Startup task "${name}" failed: ${e.message ?? String(e)}`);
+		}
+	}
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+	try {
+		await startApp();
+	} catch (e) {
+		console.error(e);
+		alertModal(e.message ?? String(e));
+		ipcRenderer.send("renderer-domready");
+		return;
+	}
+	ipcRenderer.send("renderer-domready");
+	runBackgroundStartup();
 });

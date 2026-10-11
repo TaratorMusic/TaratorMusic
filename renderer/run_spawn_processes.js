@@ -1,92 +1,23 @@
-const SONG_INFO_BUTTON_LABEL = "Fetch Song Info";
-const SONG_INFO_BUTTON_BUSY_LABEL = "Fetching...";
-
 let isFetchingSongInfo = false;
 
-function setSongInfoButtonBusy(busy) {
-	isFetchingSongInfo = busy;
-	const btn = document.getElementById("fetchSongInfoButton");
-	if (!btn) return;
-	btn.disabled = busy;
-	btn.textContent = busy ? SONG_INFO_BUTTON_BUSY_LABEL : SONG_INFO_BUTTON_LABEL;
-}
-
-// Cached Linetime release asset sizes from GitHub API.
-let linetimeReleaseSizes = {};
-
-async function loadLinetimeReleaseSizes() {
-	try {
-		const rows = await callSqlite({ db: "settings", query: "SELECT linetime_sizes_json FROM statistics LIMIT 1", fetch: true });
-		linetimeReleaseSizes = JSON.parse(rows[0]?.linetime_sizes_json || "{}");
-	} catch (_) { linetimeReleaseSizes = {}; }
-}
-
-function getLinetimeReleaseSize(assetName) {
-	return linetimeReleaseSizes[assetName] || "";
-}
-
-// Release asset name for a binary component on this platform. Mirrors the
-// naming in backend/linetime_fetch/main.go and backend whisper.cpp handling.
-function linetimePlatformAsset(id) {
-	if (id === "cpu") {
-		if (process.platform === "darwin") return "linetime-macos-universal.tar.gz";
-		if (process.platform === "win32") return "linetime-windows-x64-cpu.tar.gz";
-		return "linetime-linux-x64-cpu.tar.gz";
-	}
-	if (id === "gpu") {
-		if (process.platform === "win32") return "linetime-windows-x64-gpu.zip";
-		return "linetime-linux-x64-gpu.tar.gz";
-	}
-	if (id === "whisper-cli") {
-		if (process.platform === "win32") return process.arch === "ia32" ? "whisper-bin-Win32.zip" : "whisper-bin-x64.zip";
-		if (process.arch === "arm64") return "whisper-bin-ubuntu-arm64.tar.gz";
-		return "whisper-bin-ubuntu-x64.tar.gz";
-	}
-	if (id === "gpu-cli") {
-		if (process.platform === "win32") return "linetime-whisper-cli-cuda-x64-windows.zip";
-		return "linetime-whisper-cli-cuda-x64.tar.gz";
-	}
-	return null;
-}
-
-// HuggingFace files linetime_fetch downloads, mirrored from
-// backend/linetime_fetch/main.go. Only URLs are mirrored here, sizes are
-// measured live with HEAD requests so nothing goes stale.
-const LINETIME_HF_FILES = Object.freeze({
-	"tokenizer": ["https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/tokenizer.json"],
-	"standard": [
-		"https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa.onnx",
-		"https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa.onnx.data",
-	],
-	"fast": ["https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa_uint8.onnx"],
-	"whisper-standard": ["https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"],
-	"whisper-q5": ["https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin"],
-});
-
-function linetimeDownloadSizeText(id) {
-	const asset = linetimePlatformAsset(id);
-	if (asset) return getLinetimeReleaseSize(asset);
-	return "";
-}
-
-function linetimeHfSizeText(id) {
-	return getLinetimeReleaseSize("hf-" + id);
-}
-
 async function fetchSongInfoFromModal() {
-	if (isFetchingSongInfo) return;
+	const setBusy = busy => {
+		isFetchingSongInfo = busy;
+		const btn = document.getElementById("fetchSongInfoButton");
+		if (!btn) return;
+		btn.disabled = busy;
+		btn.textContent = busy ? "Fetching..." : "Fetch Song Info";
+	};
 
-	const btn = document.getElementById("fetchSongInfoButton");
-	if (btn && btn.disabled) return;
+	if (isFetchingSongInfo || document.getElementById("fetchSongInfoButton")?.disabled) return;
 
-	setSongInfoButtonBusy(true);
-
+	setBusy(true);
 	try {
 		await grabAndStoreSongInfo("html");
 	} catch (error) {
 		logChange("error", error.message ?? String(error));
 	} finally {
-		setSongInfoButtonBusy(false);
+		setBusy(false);
 	}
 }
 
@@ -165,9 +96,7 @@ async function grabAndStoreSongInfo(songId) {
 								language: meta.language || "",
 							};
 
-							const same = normalizeText(currentData.artist) == normalizeText(fetchedData.artist)
-								&& normalizeText(currentData.genre) == normalizeText(fetchedData.genre)
-								&& normalizeText(currentData.language) == normalizeText(fetchedData.language);
+							const same = normalizeText(currentData.artist) == normalizeText(fetchedData.artist) && normalizeText(currentData.genre) == normalizeText(fetchedData.genre) && normalizeText(currentData.language) == normalizeText(fetchedData.language);
 
 							if (!same) {
 								comparisonModal({
@@ -214,223 +143,6 @@ async function grabAndStoreSongInfo(songId) {
 	});
 }
 
-const LINETIME_RELEASE_TAG = "latest";
-
-// Presentation metadata only. Filenames live in the Go appfiles package and
-// arrive in the binary_check report, so a rename there cannot leave the renderer
-// looking for a file nothing writes any more.
-const LINETIME_BINARY_VARIANTS = Object.freeze([
-	{ id: "cpu", label: "CPU", gpu: false },
-	{ id: "gpu", label: "GPU (CUDA 12)", gpu: true },
-]);
-
-// Binary and model sizes are measured live from disk via linetimeFileSizeBytes.
-// No hard-coded fallbacks: when a component is not installed, its size text
-// is omitted (the Download button shows the release asset size from the
-// report if available). This avoids stale numbers when upstream sizes change.
-
-let linetimeDownloadInProgress = false;
-
-const LINETIME_MODEL_VARIANTS = Object.freeze([
-	{ id: "standard", label: "Standard (FP32)", requiresData: true },
-	{ id: "fast", label: "Fast (UINT8)", requiresData: false },
-]);
-
-const LINETIME_WHISPER_VARIANTS = Object.freeze([
-	{ id: "standard", label: "Standard (fp16)", reportId: "whisper-standard" },
-	{ id: "whisper-q5", label: "Balanced (q5_0)", reportId: "whisper-q5" },
-]);
-
-function getLinetimeFolder() {
-	return path.join(taratorFolder, "bin");
-}
-
-// User-linked files outside the app bin, persisted in statistics as
-// external_paths_json. A linked file wins over a downloaded copy for its slot,
-// and the app never deletes it: unlinking only drops the override.
-let externalPaths = {};
-
-async function loadExternalPaths() {
-	try {
-		const rows = await callSqlite({ db: "settings", query: "SELECT external_paths_json FROM statistics LIMIT 1", fetch: true });
-		externalPaths = JSON.parse(rows[0]?.external_paths_json || "{}");
-		if (!externalPaths || typeof externalPaths !== "object") externalPaths = {};
-	} catch (_) { externalPaths = {}; }
-}
-
-async function saveExternalPaths() {
-	externalPaths = externalPaths && typeof externalPaths === "object" ? externalPaths : {};
-	await callSqlite({
-		db: "settings",
-		query: "UPDATE statistics SET external_paths_json = ?",
-		args: [JSON.stringify(externalPaths)],
-		fetch: false,
-	});
-	refreshLinetimeStatus();
-	if (typeof refreshYtdlpStatus == "function") refreshYtdlpStatus();
-}
-
-function getExternalPath(key) {
-	const p = externalPaths[key];
-	if (!p || typeof p !== "string") return null;
-	try {
-		if (fs.statSync(p).size > 0) return p;
-	} catch (_) {}
-	return null;
-}
-
-// The standard model references its weights as mms_fa.onnx.data next to the
-// graph, mirroring appfiles.LinetimeModelStandard/Dta, so a linked copy only
-// loads under the upstream names with its sibling present.
-const LINETIME_STANDARD_ONNX = "mms_fa.onnx";
-const LINETIME_STANDARD_DATA = "mms_fa.onnx.data";
-
-function linetimeStandardDataSibling(onnxPath) {
-	return path.join(path.dirname(onnxPath), LINETIME_STANDARD_DATA);
-}
-
-// Filenames come from the binary_check report so Go owns them. Existence is still
-// verified live wherever it matters, because the report is only a boot snapshot and
-// the user can delete a file at any time.
-function getLinetimeBinaryPath(id) {
-	if (!getLinetimeBinaryVariant(id)) return null;
-	return getExternalPath(id + ":binary") || getAppFilePart(id, "binary");
-}
-
-function getLinetimeModelPath(id) {
-	const v = getLinetimeModelVariant(id);
-	if (!v) return null;
-	return getExternalPath(id + ":model") || getAppFilePart(id, "model");
-}
-
-function getLinetimeModelDataPath(id) {
-	const v = getLinetimeModelVariant(id);
-	if (!v || !v.requiresData) return null;
-	const external = getExternalPath(id + ":model");
-	if (external) return linetimeStandardDataSibling(external);
-	return getAppFilePart(id, "data");
-}
-
-// The CUDA whisper-cli ships inside the GPU bundle. While the GPU aligner is the
-// active binary and that CLI is present, transcription runs on the GPU too;
-// otherwise the CPU one is used, which is why the two are kept in separate
-// folders rather than overwriting one another.
-function getLinetimeWhisperCliPath() {
-	const gpuCli = getExternalPath("gpu-cli:cli") || getAppFilePart("gpu-cli", "cli");
-	if (isLinetimeUsingGpuBinary() && gpuCli && fs.existsSync(gpuCli)) {
-		return gpuCli;
-	}
-	return getExternalPath("whisper-cli:cli") || getAppFilePart("whisper-cli", "cli");
-}
-
-function getLinetimeWhisperCliFolder() {
-	return path.dirname(getLinetimeWhisperCliPath() || path.join(getLinetimeFolder(), "whisper_cli"));
-}
-
-function isLinetimeUsingGpuBinary() {
-	return linetimeSelectedBinary === "gpu" && isLinetimeBinaryInstalled("gpu");
-}
-
-// Library folders the active whisper-cli needs. The CUDA build needs its own
-// folder (libwhisper, libggml) as well as the GPU bundle's libraries (CUDA,
-// cuDNN). The GPU bundle's lib folder MUST come first in LD_LIBRARY_PATH so
-// the loader finds libcudart/libcublas there before falling through to the
-// CLI's own RUNPATH, which points at the dev checkout. The CPU CLI only needs
-// its own folder ($ORIGIN works).
-function getLinetimeWhisperCliLibDir() {
-	const activeCli = getLinetimeWhisperCliPath();
-	const gpuCli = getExternalPath("gpu-cli:cli") || getAppFilePart("gpu-cli", "cli");
-	if (activeCli && gpuCli && activeCli === gpuCli) {
-		return [getAppFilePart("gpu", "lib"), getLinetimeWhisperCliFolder()].filter(Boolean).join(":");
-	}
-	return getLinetimeWhisperCliFolder();
-}
-
-function getLinetimeWhisperPath(id) {
-	const v = getLinetimeWhisperVariant(id);
-	if (!v) return null;
-	const key = v.reportId || v.id;
-	return getExternalPath(key + ":model") || getAppFilePart(key, "model");
-}
-
-function getLinetimeTokenizerPath() {
-	return getExternalPath("tokenizer:tokenizer") || getAppFilePart("tokenizer", "tokenizer");
-}
-
-function getLinetimeFfmpegPath() {
-	return getAppFilePart("cpu", "ffmpeg");
-}
-
-function getLinetimeBinaryVariant(id) {
-	return LINETIME_BINARY_VARIANTS.find(x => x.id === id);
-}
-
-function getLinetimeModelVariant(id) {
-	return LINETIME_MODEL_VARIANTS.find(x => x.id === id);
-}
-
-function getLinetimeWhisperVariant(id) {
-	return LINETIME_WHISPER_VARIANTS.find(x => x.id === id);
-}
-
-// Existence is checked live, not taken from the report state, because the report
-// is a boot snapshot. A null path means the report never arrived, which counts as
-// not installed rather than throwing.
-function linetimePartExists(id, part) {
-	const p = getExternalPath(id + ":" + part) || getAppFilePart(id, part);
-	return !!p && fs.existsSync(p);
-}
-
-function linetimeDownloadedPartExists(id, part) {
-	const p = getAppFilePart(id, part);
-	return !!p && fs.existsSync(p);
-}
-
-function isLinetimeBinaryInstalled(id) {
-	if (!getLinetimeBinaryVariant(id)) return false;
-	if (getAppFileState(id) === "unsupported") return false;
-	if (!linetimePartExists(id, "binary")) return false;
-	if (!linetimePartExists("cpu", "ffmpeg")) return false;
-	if (getLinetimeBinaryVariant(id).gpu && !linetimePartExists("gpu", "lib")) return false;
-	return true;
-}
-
-function isLinetimeModelInstalled(id) {
-	const v = getLinetimeModelVariant(id);
-	if (!v) return false;
-	if (!linetimePartExists(id, "model")) return false;
-	if (v.requiresData && !linetimePartExists(id, "data")) return false;
-	return true;
-}
-
-function isLinetimeWhisperInstalled(id) {
-	const v = getLinetimeWhisperVariant(id);
-	if (!v) return false;
-	return linetimePartExists(v.reportId || v.id, "model");
-}
-
-function isLinetimeWhisperCliInstalled() {
-	if (getAppFileState("whisper-cli") === "unsupported") return false;
-	return linetimePartExists("whisper-cli", "cli");
-}
-
-function isLinetimeTokenizerInstalled() {
-	return linetimePartExists("tokenizer", "tokenizer");
-}
-
-function getEffectiveLinetimeSelection() {
-	const binary = (linetimeSelectedBinary && isLinetimeBinaryInstalled(linetimeSelectedBinary))
-		? linetimeSelectedBinary
-		: (LINETIME_BINARY_VARIANTS.find(v => isLinetimeBinaryInstalled(v.id))?.id ?? "cpu");
-	const model = (linetimeSelectedModel && isLinetimeModelInstalled(linetimeSelectedModel))
-		? linetimeSelectedModel
-		: (LINETIME_MODEL_VARIANTS.find(v => isLinetimeModelInstalled(v.id))?.id ?? "standard");
-	const whisper = (linetimeSelectedWhisper && isLinetimeWhisperInstalled(linetimeSelectedWhisper))
-		? linetimeSelectedWhisper
-		: (LINETIME_WHISPER_VARIANTS.find(v => isLinetimeWhisperInstalled(v.id))?.id ?? null);
-	return { binary, model, whisper };
-}
-
 function applyMetadata(songIdUsed, meta, unconditional = false) {
 	if (unconditional) {
 		callSqlite({
@@ -442,237 +154,444 @@ function applyMetadata(songIdUsed, meta, unconditional = false) {
 	} else {
 		callSqlite({
 			db: "musics",
-			query: "UPDATE songs SET artist = CASE WHEN artist IS NULL OR artist = '' THEN ? ELSE artist END, genre = CASE WHEN genre IS NULL OR genre = '' THEN ? ELSE genre END, language = CASE WHEN language IS NULL OR language = '' THEN ? ELSE language END WHERE song_id = ?",
+			query: "UPDATE songs SET artist = COALESCE(NULLIF(artist, ''), ?), genre = COALESCE(NULLIF(genre, ''), ?), language = COALESCE(NULLIF(language, ''), ?) WHERE song_id = ?",
 			args: [meta.artist, meta.genre, meta.language, songIdUsed],
 			fetch: false,
 		});
 	}
 
 	const cached = songNameCache.get(songIdUsed);
+	if (!cached) return;
 
-	if (cached) {
-		if (unconditional || cached.artist == null || cached.artist == "") cached.artist = meta.artist;
-		if (unconditional || cached.genre == null || cached.genre == "") cached.genre = meta.genre;
-		if (unconditional || cached.language == null || cached.language == "") cached.language = meta.language;
+	if (unconditional || cached.artist == null || cached.artist == "") cached.artist = meta.artist;
+	if (unconditional || cached.genre == null || cached.genre == "") cached.genre = meta.genre;
+	if (unconditional || cached.language == null || cached.language == "") cached.language = meta.language;
 
-		logChange("debug", `New song info added for ${(cached.song_name, ":", meta.artist, meta.genre, meta.language, songIdUsed)}`);
+	logChange("debug", `New song info added for ${cached.song_name}: ${meta.artist}, ${meta.genre}, ${meta.language}, ${songIdUsed}`);
 
-		if (document.getElementById("customiseModal").style.display == "block" && songIdUsed == document.getElementById("customiseModal").dataset.songID) {
-			document.getElementById("customiseSongGenre").value = meta.genre;
-			document.getElementById("customiseSongArtist").value = meta.artist;
-			document.getElementById("customiseSongLanguage").value = meta.language;
+	const modal = document.getElementById("customiseModal");
+	if (modal.style.display == "block" && songIdUsed == modal.dataset.songID) {
+		document.getElementById("customiseSongGenre").value = meta.genre;
+		document.getElementById("customiseSongArtist").value = meta.artist;
+		document.getElementById("customiseSongLanguage").value = meta.language;
 
-			const customiseDiv = document.getElementById("customiseModal");
-			customiseDiv.dataset.origGenre = meta.genre || "";
-			customiseDiv.dataset.origArtist = meta.artist || "";
-			customiseDiv.dataset.origLanguage = meta.language || "";
-		}
+		modal.dataset.origGenre = meta.genre || "";
+		modal.dataset.origArtist = meta.artist || "";
+		modal.dataset.origLanguage = meta.language || "";
 	}
 }
 
 async function startupCheck() {
-	return new Promise(async (resolve, reject) => {
-		const missingSongExts = [...songNameCache.entries()].filter(([, v]) => !v.song_extension);
-		const missingThumbExts = [...songNameCache.entries()].filter(([, v]) => !v.thumbnail_extension);
+	for (const [column, folder] of [
+		["song_extension", musicFolder],
+		["thumbnail_extension", thumbnailFolder],
+	]) {
+		const missing = [...songNameCache.entries()].filter(([, song]) => !song[column]);
+		if (missing.length == 0) continue;
 
-		if (missingSongExts.length > 0) {
-			const musicFiles = fs.readdirSync(musicFolder);
-			for (const [song_id, data] of missingSongExts) {
-				const file = musicFiles.find(f => path.parse(f).name == song_id);
-				if (file) {
-					const ext = path.extname(file).slice(1);
-					data.song_extension = ext;
-					callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = ? WHERE song_id = ?", args: [ext, song_id], fetch: false });
-				}
-			}
+		const filesByName = new Map();
+		for (const file of fs.readdirSync(folder)) {
+			const name = path.parse(file).name;
+			if (!filesByName.has(name)) filesByName.set(name, file);
 		}
 
-		if (missingThumbExts.length > 0) {
-			const thumbFiles = fs.readdirSync(thumbnailFolder);
-			for (const [song_id, data] of missingThumbExts) {
-				const file = thumbFiles.find(f => path.parse(f).name == song_id);
-				if (file) {
-					const ext = path.extname(file).slice(1);
-					data.thumbnail_extension = ext;
-					callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = ? WHERE song_id = ?", args: [ext, song_id], fetch: false });
-				}
-			}
+		for (const [songId, song] of missing) {
+			const file = filesByName.get(songId);
+			if (!file) continue;
+			const ext = path.extname(file).slice(1);
+			song[column] = ext;
+			callSqlite({ db: "musics", query: `UPDATE songs SET ${column} = ? WHERE song_id = ?`, args: [ext, songId], fetch: false });
 		}
+	}
 
-		const allMusics = [...songNameCache.entries()].map(([song_id, v]) => ({ song_id, ...v }));
-		const musicMap = Object.fromEntries(allMusics.map(({ song_id, ...rest }) => [song_id, rest]));
-
-		const streamedIds = await callSqlite({
-			db: "musics",
-			query: "SELECT song_id FROM streams",
-			fetch: true,
-		});
-
-		const validSongIds = new Set([...songNameCache.keys(), ...streamedIds.map(row => row.song_id)]);
-
-		for (const [playlistId, playlist] of playlistsMap.entries()) {
-			const filtered = playlist.songs.filter(id => validSongIds.has(id));
-			if (filtered.length != playlist.songs.length) {
-				playlist.songs = filtered;
-				callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(filtered), playlistId], fetch: false });
-			}
+	const validSongIds = new Set([...songNameCache.keys(), ...streamedSongsCache.keys()]);
+	for (const [playlistId, playlist] of playlistsMap.entries()) {
+		const filtered = playlist.songs.filter(id => validSongIds.has(id));
+		if (filtered.length != playlist.songs.length) {
+			playlist.songs = filtered;
+			callSqlite({ db: "playlists", query: "UPDATE playlists SET songs = ? WHERE id = ?", args: [JSON.stringify(filtered), playlistId], fetch: false });
 		}
+	}
 
-		const goBinary = path.join(backendFolder, "startup_check");
-		const proc = spawn(goBinary, [musicFolder, thumbnailFolder, JSON.stringify(playlistIdsForStartup)], { windowsHide: true, stdio: ["pipe", "pipe", "inherit"] });
+	for (const query of ["DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL", "UPDATE songs SET song_extension = LTRIM(song_extension, '.')", "UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')"]) {
+		callSqlite({ db: "musics", query, fetch: false });
+	}
+
+	const { output, code } = await new Promise((resolve, reject) => {
+		const proc = spawn(path.join(backendFolder, "startup_check"), [musicFolder, thumbnailFolder, JSON.stringify(playlistIdsForStartup)], { windowsHide: true, stdio: ["pipe", "pipe", "inherit"] });
 		let data = "";
-
 		proc.on("error", reject);
 		proc.stdout.on("data", chunk => (data += chunk));
-
-		proc.on("close", code => {
-			data = JSON.parse(data);
-			if (Object.keys(data).length != songNameCache.size) foundNewSongs(data, musicMap);
-			if (code != 0) return reject(new Error(`Go process exited with code ${code}`));
-			else resolve();
-		});
-
-		callSqlite({ db: "musics", query: "DELETE FROM songs WHERE song_length = 0 OR song_length IS NULL", fetch: false });
-		callSqlite({ db: "musics", query: "UPDATE songs SET song_extension = LTRIM(song_extension, '.')", fetch: false });
-		callSqlite({ db: "musics", query: "UPDATE songs SET thumbnail_extension = LTRIM(thumbnail_extension, '.')", fetch: false });
+		proc.on("close", exitCode => resolve({ output: data, code: exitCode }));
 	});
+
+	const folderSongs = JSON.parse(output);
+	if (Object.keys(folderSongs).length != songNameCache.size) {
+		foundNewSongs(folderSongs, Object.fromEntries(songNameCache)).catch(error => logChange("error", error.message ?? String(error)));
+	}
+	if (code != 0) throw new Error(`Go process exited with code ${code}`);
 }
 
-let appBinaryReport = null;
+async function foundNewSongs(folderSongs, databaseSongs) {
+	await alertModal("Found new songs in your folders.");
 
-// Reports which required files are actually on disk. Optional components that are
-// simply not downloaded yet are expected, so only genuinely required ones are
-// logged; the Settings tab shows the full picture either way.
-async function runBinaryCheck() {
-	const bin = path.join(backendFolder, process.platform === "win32" ? "binary_check.exe" : "binary_check");
-	const userDataBin = path.join(taratorFolder, "bin");
+	for (const fileName of Object.keys(folderSongs)) {
+		if (fileName in databaseSongs) continue;
 
-	const result = await new Promise(resolve => {
-		const proc = spawn(bin, [backendFolder, userDataBin], { windowsHide: true });
-		let out = "";
-		proc.stdout.on("data", d => (out += d.toString()));
-		proc.on("error", err => resolve({ error: err }));
-		proc.on("close", code => {
-			if (code !== 0 || !out.trim()) return resolve({ error: new Error("exited with code " + code) });
-			try {
-				resolve({ report: JSON.parse(out) });
-			} catch (e) {
-				resolve({ error: e });
+		let songName = fileName;
+		const songExt = folderSongs[fileName]?.song_extension ?? "";
+		const thumbExt = folderSongs[fileName]?.thumbnail_extension ?? "";
+
+		if (!fileName.includes("tarator")) {
+			songName = await generateId();
+
+			const originalMusicPath = path.join(musicFolder, fileName + songExt);
+			if (fs.existsSync(originalMusicPath)) fs.renameSync(originalMusicPath, path.join(musicFolder, songName + songExt));
+
+			if (thumbExt) {
+				const originalThumbPath = path.join(thumbnailFolder, fileName + thumbExt);
+				if (fs.existsSync(originalThumbPath)) fs.renameSync(originalThumbPath, path.join(thumbnailFolder, songName + thumbExt));
 			}
+		}
+
+		const fullPath = path.join(musicFolder, songName + songExt);
+		if (!fs.existsSync(fullPath)) continue;
+
+		const metadata = await new Promise(resolve => {
+			ffmpeg.ffprobe(fullPath, (err, meta) => resolve(err ? null : meta));
 		});
-	});
 
-	if (result.error) {
-		appBinaryReport = null;
-		// The whole Linetime panel reads its paths from this report, so without it
-		// every row would claim "Not installed" even when the file is on disk. Say so
-		// plainly instead of letting the tables lie.
-		logChange("warn", "Component inventory unavailable, binary_check did not run ("
-			+ (result.error.message ?? result.error)
-			+ "). Filenames come from it, so the Linetime rows cannot be verified. Run npm run gobuild.");
-		return;
+		const duration = metadata?.format?.duration ? Math.round(metadata.format.duration) : null;
+		const fileSize = fs.statSync(fullPath).size;
+		const songExtension = songExt.replace(".", "") || null;
+		const thumbnailExtension = thumbExt.replace(".", "") || null;
+
+		callSqlite({
+			db: "musics",
+			query: "INSERT INTO songs (song_id, song_name, song_url, song_length, seconds_played, times_listened, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			args: [songName, fileName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, songExtension, thumbnailExtension, null, null, null],
+			fetch: false,
+		});
+
+		songNameCache.set(songName, {
+			song_name: fileName,
+			song_length: duration,
+			song_extension: songExtension,
+			song_url: null,
+			thumbnail_extension: thumbnailExtension,
+			stabilised: 0,
+			size: fileSize,
+			genre: null,
+			artist: null,
+			language: null,
+		});
 	}
 
-	appBinaryReport = result.report;
-	const missing = result.report.components.filter(c => c.state === "missing" && !c.optional);
-	if (missing.length > 0) {
-		logChange("warn", "Missing required files: " + missing.map(c => c.label).join(", "));
+	const databaseOnly = Object.keys(databaseSongs).filter(key => !(key in folderSongs)).length;
+	const songs = [...songNameCache.values()];
+	const notStabilised = songs.filter(song => song.size == null).length;
+	const noArtist = songs.filter(song => song.artist == null).length;
+
+	let prompt = "";
+	if (databaseOnly > 0) prompt += `You have ${databaseOnly} songs not installed. `;
+	if (notStabilised != 0) prompt += `You have ${notStabilised} songs not stabilised. `;
+	if (noArtist != 0) prompt += `You have ${noArtist} songs with no artist + genre + language information. `;
+	if (prompt) await alertModal(prompt + "Complete your songs data using the options in the settings menu.");
+}
+
+const LINETIME_VARIANTS = Object.freeze({
+	binary: [
+		{ id: "cpu", label: "CPU", gpu: false },
+		{ id: "gpu", label: "GPU (CUDA 12)", gpu: true },
+	],
+	model: [
+		{ id: "standard", label: "Standard (FP32)", requiresData: true },
+		{ id: "fast", label: "Fast (UINT8)", requiresData: false },
+	],
+	whisper: [
+		{ id: "standard", label: "Standard (fp16)", reportId: "whisper-standard" },
+		{ id: "whisper-q5", label: "Balanced (q5_0)", reportId: "whisper-q5" },
+	],
+});
+
+const LINETIME_SINGLE_PARTS = Object.freeze({ tokenizer: "tokenizer", "whisper-cli": "cli", "gpu-cli": "cli" });
+const LINETIME_SELECTABLE = ["binary", "model", "whisper"];
+const LINETIME_STANDARD_ONNX = "mms_fa.onnx";
+const LINETIME_STANDARD_DATA = "mms_fa.onnx.data";
+
+// mirrors backend/linetime_fetch/main.go
+const LINETIME_HF_FILES = Object.freeze({
+	tokenizer: ["https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/tokenizer.json"],
+	standard: ["https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa.onnx", "https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa.onnx.data"],
+	fast: ["https://huggingface.co/xycld/lyric-align-mms-fa/resolve/main/mms_fa_uint8.onnx"],
+	"whisper-standard": ["https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"],
+	"whisper-q5": ["https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin"],
+});
+
+const LINETIME_FETCH = Object.freeze({
+	binary: {
+		label: id => linetimeVariant("binary", id)?.label ?? "binary",
+		args: id => [...(id == "gpu" ? ["--gpu"] : []), "--skip-model", "--skip-tokenizer", "--skip-whisper", "--skip-whisper-cli"],
+	},
+	model: {
+		label: id => linetimeVariant("model", id)?.label ?? "CTC model",
+		args: id => ["--skip-binary", "--skip-tokenizer", "--skip-whisper", "--skip-whisper-cli", "--model-" + id],
+	},
+	tokenizer: {
+		label: () => "Tokenizer",
+		args: () => ["--skip-binary", "--skip-model", "--skip-whisper", "--tokenizer-only"],
+	},
+	whisper: {
+		label: id => linetimeVariant("whisper", id)?.label ?? "Whisper model",
+		args: id => ["--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper-cli", "--model-" + (id == "standard" ? "whisper" : id)],
+	},
+	"whisper-cli": {
+		label: () => "Whisper CLI",
+		args: () => ["--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-only"],
+	},
+	"gpu-cli": {
+		label: () => "CUDA Whisper CLI",
+		args: () => ["--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-gpu-only"],
+	},
+});
+
+const LINETIME_PROGRESS_STEPS = [
+	["Downloading binary", 10],
+	["Downloading standard CTC", 30],
+	["Downloading fast CTC", 30],
+	["Downloading tokenizer", 30],
+	["Downloading Whisper large-v3 model", 30],
+	["Downloading Whisper CLI", 30],
+];
+
+const EXTERNAL_LINKABLE = Object.freeze({
+	ytdlp: { key: "ytdlp", accept: "", trial: ["--version"], label: "yt-dlp" },
+	cpu: { key: "cpu:binary", accept: "", trial: ["--help"], label: "CPU binary" },
+	gpu: { key: "gpu:binary", accept: "", trial: ["--help"], label: "GPU binary" },
+	tokenizer: { key: "tokenizer:tokenizer", accept: ".json", trial: null, label: "Tokenizer" },
+	standard: { key: "standard:model", accept: ".onnx", trial: null, label: "Standard model", pair: { basename: LINETIME_STANDARD_ONNX, sibling: LINETIME_STANDARD_DATA } },
+	fast: { key: "fast:model", accept: ".onnx", trial: null, label: "Fast model" },
+	"whisper-standard": { key: "whisper-standard:model", accept: ".bin", trial: null, label: "Whisper model" },
+	"whisper-q5": { key: "whisper-q5:model", accept: ".bin", trial: null, label: "Whisper model" },
+	"whisper-cli": { key: "whisper-cli:cli", accept: "", trial: ["--help"], label: "Whisper CLI" },
+	"gpu-cli": { key: "gpu-cli:cli", accept: "", trial: ["--help"], label: "CUDA Whisper CLI" },
+});
+
+const linetimeSelected = { binary: "", model: "", whisper: "" };
+let linetimeReleaseSizes = {};
+let linetimeDownloadInProgress = false;
+let externalPaths = {};
+let appBinaryReport = null;
+let binaryCheckRunning = false;
+
+function parseJsonObject(text) {
+	try {
+		const value = JSON.parse(text || "{}");
+		return value && typeof value == "object" ? value : {};
+	} catch (_) {
+		return {};
 	}
-	const unsupported = result.report.components.filter(c => c.state === "unsupported");
-	if (unsupported.length > 0) {
-		logChange("info", "Not available on " + process.platform + ": " + unsupported.map(c => c.label).join(", "));
+}
+
+function getLinetimeFolder() {
+	return path.join(taratorFolder, "bin");
+}
+
+function linetimePlatformAsset(id) {
+	if (id === "cpu") {
+		if (process.platform === "darwin") return "linetime-macos-universal.tar.gz";
+		if (process.platform === "win32") return "linetime-windows-x64-cpu.tar.gz";
+		return "linetime-linux-x64-cpu.tar.gz";
 	}
-}
-
-// State of a component from the boot report, or null when unknown. Lets the
-// settings tables stop hardcoding filenames that the Go tools also own.
-function getAppFileState(id) {
-	if (!appBinaryReport || !Array.isArray(appBinaryReport.components)) return null;
-	const c = appBinaryReport.components.find(x => x.id === id);
-	return c ? c.state : null;
-}
-
-// Resolves one named part of a component, e.g. the ffmpeg inside the cpu binary.
-function getAppFilePart(id, part) {
-	if (!appBinaryReport || !Array.isArray(appBinaryReport.components)) return null;
-	const c = appBinaryReport.components.find(x => x.id === id);
-	if (!c || !c.parts) return null;
-	return c.parts[part] ?? null;
-}
-
-// Version string the binary reported about itself, or "" when it could not be
-// read. The released 1.2 aligner and a locally built 1.3 differ in whether they
-// can drive the Whisper CLI, so it is worth surfacing.
-function getAppFileVersion(id) {
-	if (!appBinaryReport || !Array.isArray(appBinaryReport.components)) return "";
-	const c = appBinaryReport.components.find(x => x.id === id);
-	return c && typeof c.version === "string" ? c.version : "";
-}
-
-async function promptUserOnSongs(redownload) {
-	let thePrompt = "";
-
-	const stabilisedNull = [...songNameCache.values()].filter(v => v.size == null).length;
-	const artistNull = [...songNameCache.values()].filter(v => v.artist == null).length;
-
-	if (redownload > 0) thePrompt += `You have ${redownload} songs not installed. `;
-
-	if (stabilisedNull != 0 || artistNull != 0) {
-		if (stabilisedNull != 0) thePrompt += `You have ${stabilisedNull} songs not stabilised. `;
-		if (artistNull != 0) thePrompt += `You have ${artistNull} songs with no artist + genre + language information. `;
+	if (id === "gpu") {
+		if (process.platform === "win32") return "linetime-windows-x64-gpu.zip";
+		return "linetime-linux-x64-gpu.tar.gz";
 	}
-
-	if (thePrompt != "") thePrompt += "Complete your songs data using the options in the settings menu.";
-
-	return thePrompt;
+	if (id === "whisper-cli") {
+		if (process.platform === "win32") return process.arch === "ia32" ? "whisper-bin-Win32.zip" : "whisper-bin-x64.zip";
+		if (process.arch === "arm64") return "whisper-bin-ubuntu-arm64.tar.gz";
+		return "whisper-bin-ubuntu-x64.tar.gz";
+	}
+	if (id === "gpu-cli") {
+		if (process.platform === "win32") return "linetime-whisper-cli-cuda-x64-windows.zip";
+		return "linetime-whisper-cli-cuda-x64.tar.gz";
+	}
+	return null;
 }
-
-const LINETIME_TABLE_COLUMNS = "150px 80px 100px 1fr";
 
 function linetimeBytesText(total) {
 	if (total < 1048576) return Math.max(1, Math.round(total / 1024)) + " KB";
-	if (total < 1073741824) return (Math.round(total / 104857.6) / 10) + " MB";
-	return (Math.round(total / 107374182.4) / 10) + " GB";
+	if (total < 1073741824) return Math.round(total / 104857.6) / 10 + " MB";
+	return Math.round(total / 107374182.4) / 10 + " GB";
 }
 
-function linetimeFileSizeBytes(filePaths) {
-	let total = 0;
-	for (const filePath of filePaths) {
-		if (!filePath) continue;
-		try {
-			total += fs.statSync(filePath).size;
-		} catch (_) {}
-	}
-	return total;
-}
-
-function linetimeFileSizeText(filePaths, fallback) {
-	const total = linetimeFileSizeBytes(filePaths);
-	if (total <= 0) return fallback;
-	return linetimeBytesText(total);
-}
-
-function dirFilePaths(dir) {
+function pathBytes(target) {
 	try {
-		return fs.readdirSync(dir).map(f => path.join(dir, f));
-	} catch {
-		return [];
+		const stat = fs.statSync(target);
+		if (stat.isFile()) return stat.size;
+		if (!stat.isDirectory()) return 0;
+		return fs.readdirSync(target).reduce((sum, name) => sum + pathBytes(path.join(target, name)), 0);
+	} catch (_) {
+		return 0;
 	}
 }
 
-// The GPU bundle is mostly shared libraries, so its real footprint is the
-// lib_gpu tree. Summing only the executable reported 2.7 MB for a 1.5 GB
-// install and made a complete download look truncated.
-function dirSizeBytes(dir) {
+function getAppFile(id) {
+	if (!Array.isArray(appBinaryReport?.components)) return null;
+	return appBinaryReport.components.find(c => c.id === id) ?? null;
+}
+
+function getAppFilePart(id, part) {
+	return getAppFile(id)?.parts?.[part] ?? null;
+}
+
+function getExternalPath(key) {
+	const p = externalPaths[key];
+	if (!p || typeof p !== "string") return null;
+	return pathBytes(p) > 0 ? p : null;
+}
+
+async function saveExternalPaths() {
+	await callSqlite({
+		db: "settings",
+		query: "UPDATE statistics SET external_paths_json = ?",
+		args: [JSON.stringify(externalPaths)],
+		fetch: false,
+	});
+	refreshLinetimeStatus();
+	refreshYtdlpStatus();
+}
+
+function linetimeVariant(kind, id) {
+	return (LINETIME_VARIANTS[kind] || []).find(v => v.id === id);
+}
+
+function linetimeReportId(kind, id) {
+	if (!LINETIME_VARIANTS[kind]) return kind;
+	return linetimeVariant(kind, id)?.reportId || id;
+}
+
+function linetimeParts(kind, id) {
+	if (!LINETIME_VARIANTS[kind]) return [[kind, LINETIME_SINGLE_PARTS[kind]]];
+
+	const variant = linetimeVariant(kind, id);
+	if (!variant) return null;
+
+	const reportId = linetimeReportId(kind, id);
+	if (kind == "binary") {
+		const parts = [
+			[reportId, "binary"],
+			["cpu", "ffmpeg"],
+		];
+		if (variant.gpu) parts.push(["gpu", "lib"]);
+		return parts;
+	}
+	if (kind == "model") {
+		const parts = [[reportId, "model"]];
+		if (variant.requiresData) parts.push([reportId, "data"]);
+		return parts;
+	}
+	return [[reportId, "model"]];
+}
+
+function linetimeFile(reportId, part, downloadedOnly = false) {
+	if (!downloadedOnly) {
+		const external = getExternalPath(reportId + ":" + (part == "data" ? "model" : part));
+		if (external) return part == "data" ? path.join(path.dirname(external), LINETIME_STANDARD_DATA) : external;
+	}
+	return getAppFilePart(reportId, part);
+}
+
+function getLinetimePath(kind, id) {
+	const parts = linetimeParts(kind, id);
+	return parts ? linetimeFile(...parts[0]) : null;
+}
+
+function linetimePartsExist(kind, id, downloadedOnly) {
+	const parts = linetimeParts(kind, id);
+	if (!parts) return false;
+	return parts.every(([reportId, part]) => {
+		const file = linetimeFile(reportId, part, downloadedOnly);
+		return !!file && fs.existsSync(file);
+	});
+}
+
+function isLinetimeInstalled(kind, id) {
+	if (getAppFile(linetimeReportId(kind, id))?.state === "unsupported") return false;
+	return linetimePartsExist(kind, id, false);
+}
+
+function isLinetimeDownloaded(kind, id) {
+	return linetimePartsExist(kind, id, true);
+}
+
+function isLinetimeUsingGpuBinary() {
+	return linetimeSelected.binary === "gpu" && isLinetimeInstalled("binary", "gpu");
+}
+
+function getLinetimeWhisperCli() {
+	const gpuCli = linetimeFile("gpu-cli", "cli");
+	const gpu = isLinetimeUsingGpuBinary() && !!gpuCli && fs.existsSync(gpuCli);
+	const cliPath = gpu ? gpuCli : linetimeFile("whisper-cli", "cli");
+	const dir = cliPath ? path.dirname(cliPath) : path.join(getLinetimeFolder(), "whisper_cli");
+	// the GPU bundle lib folder must come first so libcudart and libcublas resolve there before the CLI's own RUNPATH
+	const libDir = gpu ? [getAppFilePart("gpu", "lib"), dir].filter(Boolean).join(":") : dir;
+	return { path: cliPath, dir, libDir, gpu };
+}
+
+function getEffectiveLinetimeSelection() {
+	const effective = {};
+	for (const kind of LINETIME_SELECTABLE) {
+		const variants = LINETIME_VARIANTS[kind];
+		const chosen = linetimeSelected[kind];
+		const fallback = variants.find(v => isLinetimeInstalled(kind, v.id))?.id ?? (kind == "whisper" ? null : variants[0].id);
+		effective[kind] = chosen && isLinetimeInstalled(kind, chosen) ? chosen : fallback;
+	}
+	return effective;
+}
+
+function linetimeBytes(kind, id) {
 	let total = 0;
-	for (const entry of dirFilePaths(dir)) {
-		try {
-			const stat = fs.statSync(entry);
-			if (stat.isDirectory()) total += dirSizeBytes(entry);
-			else if (stat.isFile()) total += stat.size;
-		} catch (_) {}
+	for (const [reportId, part] of linetimeParts(kind, id) || []) {
+		if (part == "ffmpeg") continue;
+		const file = linetimeFile(reportId, part);
+		if (!file) continue;
+		const isOwnCliFolder = part == "cli" && !getExternalPath(reportId + ":cli");
+		total += pathBytes(isOwnCliFolder ? path.dirname(file) : file);
 	}
 	return total;
+}
+
+function linetimeRow(kind, id, label, effective, gpuCliActive) {
+	const reportId = linetimeReportId(kind, id);
+	const supported = getAppFile(reportId)?.state !== "unsupported";
+	const installed = isLinetimeInstalled(kind, id);
+	const [, firstPart] = linetimeParts(kind, id)[0];
+
+	let sizeText = "N/A";
+	if (supported) {
+		const bytes = installed ? linetimeBytes(kind, id) : 0;
+		sizeText = bytes > 0 ? linetimeBytesText(bytes) : linetimeReleaseSizes[linetimePlatformAsset(reportId) || "hf-" + reportId] || "";
+	}
+
+	let active = false;
+	if (kind == "whisper-cli") active = installed && !gpuCliActive;
+	else if (kind == "gpu-cli") active = gpuCliActive;
+	else if (LINETIME_SELECTABLE.includes(kind)) active = installed && effective[kind] === id;
+
+	return {
+		kind,
+		id,
+		label,
+		supported,
+		installed,
+		downloaded: isLinetimeDownloaded(kind, id),
+		external: supported ? getExternalPath(reportId + ":" + firstPart) : null,
+		linkKey: reportId,
+		active,
+		version: kind == "binary" ? (typeof getAppFile(reportId)?.version === "string" ? getAppFile(reportId).version : "") : "",
+		sizeText,
+	};
 }
 
 function renderLinetimeTable(containerId, title, desc, items) {
@@ -680,157 +599,106 @@ function renderLinetimeTable(containerId, title, desc, items) {
 	if (!el) return;
 
 	const busy = linetimeDownloadInProgress;
+	const columns = "150px 80px 100px 1fr";
+	const button = (text, action, extraClass = "") => `<button class="linetime-action-btn ${extraClass}" ${busy || !action ? "disabled" : `onclick="${action}"`}>${text}</button>`;
 
-	const header = `
+	const rows = items
+		.map(item => {
+			let statusClass = "linetime-status-missing";
+			let statusText = "Not installed";
+			if (!item.supported) {
+				statusText = "Not available on this OS";
+			} else if (item.active) {
+				statusClass = "linetime-status-active";
+				statusText = "Active";
+			} else if (item.external) {
+				statusClass = "linetime-status-external";
+				statusText = "External";
+			} else if (item.installed) {
+				statusClass = "linetime-status-ok";
+				statusText = "Installed";
+			}
+			if (item.version) statusText += " · v" + item.version;
+
+			let labelHtml = item.label;
+			if (item.external) {
+				labelHtml += `<div class="linetime-external-path" title="${item.external}">${item.external.split(/[\\/]/).pop()}</div>`;
+			}
+
+			let actionBtns = "";
+			if (item.supported) {
+				const ref = `'${item.kind}','${item.id}'`;
+
+				if (LINETIME_SELECTABLE.includes(item.kind)) {
+					const pickable = item.installed && !item.active && !busy;
+					actionBtns += `<button class="linetime-action-btn linetime-btn-pick" ${pickable ? `onclick="linetimeAction('use',${ref})"` : "disabled"}>${item.active ? "Active" : "Pick"}</button>`;
+				}
+
+				if (!item.installed) {
+					actionBtns += button("Download", `linetimeAction('download',${ref})`);
+				} else if (item.downloaded) {
+					actionBtns += button("Delete", `linetimeAction('delete',${ref})`, "linetime-btn-delete");
+				}
+
+				if (item.external) {
+					actionBtns += button("Unlink", `unlinkExternal('${item.linkKey}')`);
+				} else {
+					actionBtns += button("Link", `linkExternal('${item.linkKey}')`);
+				}
+			}
+
+			return `
+				<div style="display:grid;grid-template-columns:${columns};gap:8px;margin:4px 0;align-items:center;padding:4px 0;border-bottom:1px solid #333;">
+					<div>${labelHtml}</div>
+					<div>${item.sizeText}</div>
+					<div><span class="${statusClass}">${statusText}</span></div>
+					<div>${actionBtns}</div>
+				</div>`;
+		})
+		.join("");
+
+	el.innerHTML = `
 		<div class="linetime-table-title">${title}</div>
 		<div class="linetime-table-desc">${desc}</div>
 		<div class="linetime-box">
-		<div style="display:grid;grid-template-columns:${LINETIME_TABLE_COLUMNS};gap:8px;font-weight:bold;color:#ccc;margin-bottom:4px;">
+		<div style="display:grid;grid-template-columns:${columns};gap:8px;font-weight:bold;color:#ccc;margin-bottom:4px;">
 			<div>Variant</div><div>Size</div><div>Status</div><div>Action</div>
-		</div>`;
-
-	const rows = items.map(item => {
-		const supported = item.supported !== false;
-
-		let statusClass = "linetime-status-missing";
-		let statusText = "Not installed";
-		if (!supported) {
-			statusText = "Not available on this OS";
-		} else if (item.active) {
-			statusClass = "linetime-status-active";
-			statusText = "Active";
-		} else if (item.external) {
-			statusClass = "linetime-status-external";
-			statusText = "External";
-		} else if (item.installed) {
-			statusClass = "linetime-status-ok";
-			statusText = "Installed";
-		}
-		if (item.version) statusText += " \u00b7 v" + item.version;
-
-		let labelHtml = item.label;
-		if (item.external) {
-			labelHtml += `<div class="linetime-external-path" title="${item.external}">${item.external.split(/[\\/]/).pop()}</div>`;
-		}
-
-		let actionBtns = "";
-		if (supported) {
-			if (item.useFn) {
-				const pickEnabled = item.installed && !item.active && !busy;
-				const pickClick = pickEnabled ? `onclick="${item.useFn}('${item.id}')"` : "disabled";
-				actionBtns += `<button class="linetime-action-btn linetime-btn-pick" ${pickClick}>${item.active ? "Active" : "Pick"}</button>`;
-			}
-
-			if (!item.installed && item.downloadFn) {
-				const dlClick = busy ? "disabled" : `onclick="${item.downloadFn}('${item.id}')"`;
-				actionBtns += `<button class="linetime-action-btn" ${dlClick}>Download</button>`;
-			} else if (item.downloaded && item.deleteFn) {
-				const delClick = busy ? "disabled" : `onclick="${item.deleteFn}('${item.id}')"`;
-				actionBtns += `<button class="linetime-action-btn linetime-btn-delete" ${delClick}>Delete</button>`;
-			}
-
-			if (item.linkKey) {
-				if (item.external) {
-					const unlinkClick = busy ? "disabled" : `onclick="linetimeUnlinkExternal('${item.linkKey}')"`;
-					actionBtns += `<button class="linetime-action-btn" ${unlinkClick}>Unlink</button>`;
-				} else {
-					const linkClick = busy ? "disabled" : `onclick="linetimeLinkExternal('${item.linkKey}')"`;
-					actionBtns += `<button class="linetime-action-btn" ${linkClick}>Link</button>`;
-				}
-			}
-		}
-
-		return `
-			<div style="display:grid;grid-template-columns:${LINETIME_TABLE_COLUMNS};gap:8px;margin:4px 0;align-items:center;padding:4px 0;border-bottom:1px solid #333;">
-				<div>${labelHtml}</div>
-				<div>${item.sizeText}</div>
-				<div><span class="${statusClass}">${statusText}</span></div>
-				<div>${actionBtns}</div>
-			</div>`;
-	}).join("");
-
-	el.innerHTML = header + rows + `</div>`;
+		</div>${rows}</div>`;
 }
 
-// Fetch Linetime and whisper.cpp release asset sizes and cache them in the
-// settings DB. Called once at startup. The HuggingFace-hosted models have no
-// release to query, so their sizes are measured live with HEAD requests.
-async function fetchLinetimeReleaseSizes() {
-	const sizes = {};
-	try {
-		const resp = await fetch("https://api.github.com/repos/Victiniiiii/Linetime/releases/latest", {
-			headers: { "Accept": "application/vnd.github+json", "User-Agent": "TaratorMusic" }
-		});
-		if (!resp.ok) throw new Error("HTTP " + resp.status);
-		const rel = await resp.json();
-		for (const asset of rel.assets || []) {
-			if (asset.name && asset.size) sizes[asset.name] = linetimeBytesText(asset.size);
-		}
-	} catch (e) {
-		logChange("warn", "Linetime release size fetch failed: " + e.message);
-	}
-	try {
-		// Tag mirrors whisperCppTag in backend/linetime_fetch/main.go, which is
-		// what linetime_fetch actually downloads.
-		const resp = await fetch("https://api.github.com/repos/ggml-org/whisper.cpp/releases/tags/b5130", {
-			headers: { "Accept": "application/vnd.github+json", "User-Agent": "TaratorMusic" }
-		});
-		if (!resp.ok) throw new Error("HTTP " + resp.status);
-		const rel = await resp.json();
-		for (const asset of rel.assets || []) {
-			if (asset.name && asset.size) sizes[asset.name] = linetimeBytesText(asset.size);
-		}
-	} catch (e) {
-		logChange("warn", "Whisper CLI release size fetch failed: " + e.message);
-	}
-	await Promise.all(Object.entries(LINETIME_HF_FILES).map(async ([id, urls]) => {
-		let total = 0;
-		for (const url of urls) {
-			try {
-				const resp = await fetch(url, { method: "HEAD" });
-				const len = Number(resp.headers.get("content-length"));
-				if (!resp.ok || !Number.isFinite(len) || len <= 0) throw new Error("HTTP " + resp.status);
-				total += len;
-			} catch (e) {
-				logChange("warn", "Linetime size HEAD failed for " + url + ": " + e.message);
-				return;
-			}
-		}
-		if (total > 0) sizes["hf-" + id] = linetimeBytesText(total);
-	}));
-	if (Object.keys(sizes).length === 0) return linetimeReleaseSizes;
-	linetimeReleaseSizes = { ...linetimeReleaseSizes, ...sizes };
-	try {
-		await callSqlite({
-			db: "settings",
-			query: "UPDATE statistics SET linetime_sizes_json = ?",
-			args: [JSON.stringify(linetimeReleaseSizes)],
-			fetch: false,
-		});
-	} catch (e) {
-		logChange("warn", "Linetime size cache save failed: " + e.message);
-	}
-	return linetimeReleaseSizes;
+function refreshLinetimeStatus() {
+	const effective = getEffectiveLinetimeSelection();
+	const gpuCliActive = isLinetimeInstalled("gpu-cli") && getLinetimeWhisperCli().gpu;
+	const row = (kind, id, label) => linetimeRow(kind, id, label, effective, gpuCliActive);
+
+	renderLinetimeTable(
+		"linetimeBinaryTable",
+		"Binary",
+		"The aligner program itself. CPU runs everywhere, GPU needs an NVIDIA card with CUDA 12.",
+		LINETIME_VARIANTS.binary.map(v => row("binary", v.id, v.label)),
+	);
+
+	renderLinetimeTable("linetimeModelTable", "Alignment models", "Acoustic models that place each lyric line in time. The tokenizer is required for any of them to work.", [row("tokenizer", "tokenizer", "Tokenizer (required)"), ...LINETIME_VARIANTS.model.map(v => row("model", v.id, v.label))]);
+
+	renderLinetimeTable(
+		"linetimeWhisperTable",
+		"Whisper models (optional)",
+		"Turn audio into lyric text. Only needed for Auto-generate, so pick one or skip this.",
+		LINETIME_VARIANTS.whisper.map(v => row("whisper", v.id, v.label)),
+	);
+
+	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", "Runs the transcription that makes Auto-generate work. whisper.cpp publishes no macOS build, so it is unavailable there.", [row("whisper-cli", "whisper-cli", "Whisper CLI"), row("gpu-cli", "gpu-cli", "Whisper CLI (CUDA)")]);
+
+	renderAppFileNotice();
 }
 
-// After anything that changes what is on disk the boot report is stale, so it is
-// regenerated before the tables redraw. Selection changes do not need this.
-async function refreshLinetimeReport() {
-	await runBinaryCheck();
-	refreshLinetimeStatus();
-}
-
-// Non-modal on purpose. A modal on every cold boot for an optional feature is
-// hostile, so the report lives quietly in Settings and in the log.
 function renderAppFileNotice() {
 	const el = document.getElementById("appFileNotice");
 	if (!el) return;
 
-	if (!appBinaryReport || !Array.isArray(appBinaryReport.components)) {
-		// Do not fall through to "everything is missing": the rows cannot be
-		// trusted without the report, and saying so is more useful than a lie.
+	if (!Array.isArray(appBinaryReport?.components)) {
 		el.className = "app-file-notice";
-		el.textContent = "Component inventory unavailable: binary_check did not run, so these rows cannot be verified. Run npm run gobuild to build it. Downloads still work.";
+		el.textContent = binaryCheckRunning ? "Checking installed components..." : "Component inventory unavailable: binary_check did not run, so these rows cannot be verified. Run npm run gobuild to build it. Downloads still work.";
 		el.style.display = "block";
 		return;
 	}
@@ -844,188 +712,388 @@ function renderAppFileNotice() {
 	const required = missing.filter(c => !c.optional);
 	const optional = missing.filter(c => c.optional);
 	const parts = [];
-	if (required.length > 0) {
-		parts.push("Missing: " + required.map(c => c.label).join(", ") + ".");
-	}
-	if (optional.length > 0) {
-		parts.push("Optional, not downloaded yet: " + optional.map(c => c.label).join(", ") + ".");
-	}
+	if (required.length > 0) parts.push("Missing: " + required.map(c => c.label).join(", ") + ".");
+	if (optional.length > 0) parts.push("Optional, not downloaded yet: " + optional.map(c => c.label).join(", ") + ".");
 
 	el.className = required.length > 0 ? "app-file-notice" : "app-file-notice optional";
 	el.textContent = parts.join(" ");
 	el.style.display = "block";
 }
 
-function linetimeBinaryDownloaded(id) {
-	if (!getLinetimeBinaryVariant(id)) return false;
-	if (!linetimeDownloadedPartExists(id, "binary")) return false;
-	if (!linetimeDownloadedPartExists("cpu", "ffmpeg")) return false;
-	if (getLinetimeBinaryVariant(id).gpu && !linetimeDownloadedPartExists("gpu", "lib")) return false;
-	return true;
-}
+async function runBinaryCheck() {
+	binaryCheckRunning = true;
+	const bin = path.join(backendFolder, process.platform === "win32" ? "binary_check.exe" : "binary_check");
 
-function refreshLinetimeStatus() {
-	const effective = getEffectiveLinetimeSelection();
-
-	const binaryItems = LINETIME_BINARY_VARIANTS.map(v => {
-		const supported = getAppFileState(v.id) !== "unsupported";
-		const installed = supported && isLinetimeBinaryInstalled(v.id);
-		const downloaded = supported && linetimeBinaryDownloaded(v.id);
-		const external = supported ? getExternalPath(v.id + ":binary") : null;
-		const gpuLibPath = v.gpu ? getAppFilePart("gpu", "lib") : null;
-		const gpuLibBytes = gpuLibPath ? dirSizeBytes(gpuLibPath) : 0;
-		const binBytes = linetimeFileSizeBytes([getLinetimeBinaryPath(v.id)]);
-		let sizeText = "N/A";
-		if (supported) {
-			if (binBytes + gpuLibBytes > 0) {
-				sizeText = linetimeBytesText(binBytes + gpuLibBytes);
-			} else {
-				sizeText = linetimeDownloadSizeText(v.id);
+	const result = await new Promise(resolve => {
+		const proc = spawn(bin, [backendFolder, getLinetimeFolder()], { windowsHide: true });
+		let out = "";
+		proc.stdout.on("data", d => (out += d.toString()));
+		proc.on("error", error => resolve({ error }));
+		proc.on("close", code => {
+			if (code !== 0 || !out.trim()) return resolve({ error: new Error("exited with code " + code) });
+			try {
+				resolve({ report: JSON.parse(out) });
+			} catch (error) {
+				resolve({ error });
 			}
-		}
-		return {
-			id: v.id,
-			label: v.label,
-			installed,
-			downloaded,
-			external,
-			linkKey: v.id,
-			active: supported && installed && effective.binary === v.id,
-			supported,
-			version: getAppFileVersion(v.id),
-			sizeText,
-			useFn: "linetimeUseBinary",
-			downloadFn: "linetimeDownloadBinary",
-			deleteFn: "linetimeDeleteBinary",
-		};
-	});
-	renderLinetimeTable("linetimeBinaryTable", "Binary", "The aligner program itself. CPU runs everywhere, GPU needs an NVIDIA card with CUDA 12.", binaryItems);
-
-	const tokenizerInstalled = isLinetimeTokenizerInstalled();
-	const modelItems = [{
-		id: "tokenizer",
-		label: "Tokenizer (required)",
-		installed: tokenizerInstalled,
-		downloaded: linetimeDownloadedPartExists("tokenizer", "tokenizer"),
-		external: getExternalPath("tokenizer:tokenizer"),
-		linkKey: "tokenizer",
-		active: false,
-		sizeText: tokenizerInstalled ? linetimeFileSizeText([getLinetimeTokenizerPath()], "") : linetimeHfSizeText("tokenizer"),
-		useFn: null,
-		downloadFn: "linetimeDownloadTokenizer",
-		deleteFn: "linetimeDeleteTokenizer",
-	}];
-
-	LINETIME_MODEL_VARIANTS.forEach(v => {
-		const installed = isLinetimeModelInstalled(v.id);
-		modelItems.push({
-			id: v.id,
-			label: v.label,
-			installed,
-			downloaded: linetimeDownloadedPartExists(v.id, "model") && (!v.requiresData || linetimeDownloadedPartExists(v.id, "data")),
-			external: getExternalPath(v.id + ":model"),
-			linkKey: v.id,
-			active: installed && effective.model === v.id,
-			sizeText: installed ? linetimeFileSizeText([getLinetimeModelPath(v.id), getLinetimeModelDataPath(v.id)], "") : linetimeHfSizeText(v.id),
-			useFn: "linetimeUseModel",
-			downloadFn: "linetimeDownloadModel",
-			deleteFn: "linetimeDeleteModel",
 		});
 	});
-	renderLinetimeTable("linetimeModelTable", "Alignment models", "Acoustic models that place each lyric line in time. The tokenizer is required for any of them to work.", modelItems);
 
-	const whisperItems = LINETIME_WHISPER_VARIANTS.map(v => {
-		const key = v.reportId || v.id;
-		const installed = isLinetimeWhisperInstalled(v.id);
-		return {
-			id: v.id,
-			label: v.label,
-			installed,
-			downloaded: linetimeDownloadedPartExists(key, "model"),
-			external: getExternalPath(key + ":model"),
-			linkKey: key,
-			active: installed && effective.whisper === v.id,
-			sizeText: installed ? linetimeFileSizeText([getLinetimeWhisperPath(v.id)], "") : linetimeHfSizeText(key),
-			useFn: "linetimeUseWhisper",
-			downloadFn: "linetimeDownloadWhisper",
-			deleteFn: "linetimeDeleteWhisper",
-		};
-	});
-	renderLinetimeTable("linetimeWhisperTable", "Whisper models (optional)", "Turn audio into lyric text. Only needed for Auto-generate, so pick one or skip this.", whisperItems);
+	binaryCheckRunning = false;
 
-	const cliExternal = getExternalPath("whisper-cli:cli");
-	const cliSupported = getAppFileState("whisper-cli") !== "unsupported";
-	const cliInstalled = isLinetimeWhisperCliInstalled();
-	const cliDir = path.dirname(getAppFilePart("whisper-cli", "cli") || path.join(getLinetimeFolder(), "whisper_cli"));
-	const cliBytes = cliExternal ? linetimeFileSizeBytes([cliExternal]) : dirSizeBytes(cliDir);
-	const cliSizeText = cliSupported
-		? (cliBytes > 0 ? linetimeBytesText(cliBytes) : linetimeDownloadSizeText("whisper-cli"))
-		: "N/A";
+	if (result.error) {
+		appBinaryReport = null;
+		logChange("warn", "Component inventory unavailable, binary_check did not run (" + (result.error.message ?? result.error) + "). Filenames come from it, so the Linetime rows cannot be verified. Run npm run gobuild.");
+	} else {
+		appBinaryReport = result.report;
+		const missing = appBinaryReport.components.filter(c => c.state === "missing" && !c.optional);
+		if (missing.length > 0) logChange("warn", "Missing required files: " + missing.map(c => c.label).join(", "));
+		const unsupported = appBinaryReport.components.filter(c => c.state === "unsupported");
+		if (unsupported.length > 0) logChange("info", "Not available on " + process.platform + ": " + unsupported.map(c => c.label).join(", "));
+	}
 
-	const gpuCliExternal = getExternalPath("gpu-cli:cli");
-	const gpuCliSupported = getAppFileState("gpu-cli") !== "unsupported";
-	const gpuCliInstalled = gpuCliSupported && linetimePartExists("gpu-cli", "cli");
-	const gpuCliPath = gpuCliExternal || getAppFilePart("gpu-cli", "cli");
-	const gpuCliBytes = gpuCliExternal ? linetimeFileSizeBytes([gpuCliExternal]) : dirSizeBytes(path.dirname(gpuCliPath || path.join(getLinetimeFolder(), "whisper_cli_gpu")));
-	const gpuCliActive = gpuCliInstalled && gpuCliPath && getLinetimeWhisperCliPath() === gpuCliPath;
-	const gpuCliSizeText = !gpuCliSupported
-		? "N/A"
-		: (gpuCliBytes > 0 ? linetimeBytesText(gpuCliBytes) : linetimeDownloadSizeText("gpu-cli"));
-
-	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", "Runs the transcription that makes Auto-generate work. whisper.cpp publishes no macOS build, so it is unavailable there.", [{
-		id: "whisper-cli",
-		label: "Whisper CLI",
-		installed: cliInstalled,
-		downloaded: linetimeDownloadedPartExists("whisper-cli", "cli"),
-		external: cliExternal,
-		linkKey: "whisper-cli",
-		active: cliInstalled && !gpuCliActive,
-		supported: cliSupported,
-		sizeText: cliSizeText,
-		useFn: null,
-		downloadFn: "linetimeDownloadWhisperCli",
-		deleteFn: "linetimeDeleteWhisperCli",
-	}, {
-		id: "gpu-cli",
-		label: "Whisper CLI (CUDA)",
-		installed: gpuCliInstalled,
-		downloaded: linetimeDownloadedPartExists("gpu-cli", "cli"),
-		external: gpuCliExternal,
-		linkKey: "gpu-cli",
-		active: gpuCliActive,
-		supported: gpuCliSupported,
-		sizeText: gpuCliSizeText,
-		useFn: null,
-		downloadFn: "linetimeDownloadGpuWhisperCli",
-		deleteFn: gpuCliInstalled ? "linetimeDeleteGpuWhisperCli" : null,
-	}]);
-
-	renderAppFileNotice();
+	refreshLinetimeStatus();
 }
 
-async function linkYtdlp() {
-	const picked = await pickExternalFile("");
+async function fetchLinetimeReleaseSizes() {
+	const sizes = {};
+	const github = { headers: { Accept: "application/vnd.github+json", "User-Agent": "TaratorMusic" } };
+	// the whisper.cpp tag must match whisperCppTag in backend/linetime_fetch/main.go
+	const releases = [
+		["Linetime", "https://api.github.com/repos/Victiniiiii/Linetime/releases/latest"],
+		["Whisper CLI", "https://api.github.com/repos/ggml-org/whisper.cpp/releases/tags/b5130"],
+	];
+
+	await Promise.all([
+		...releases.map(async ([name, url]) => {
+			try {
+				const resp = await fetch(url, github);
+				if (!resp.ok) throw new Error("HTTP " + resp.status);
+				const release = await resp.json();
+				for (const asset of release.assets || []) {
+					if (asset.name && asset.size) sizes[asset.name] = linetimeBytesText(asset.size);
+				}
+			} catch (e) {
+				logChange("warn", `${name} release size fetch failed: ${e.message}`);
+			}
+		}),
+		...Object.entries(LINETIME_HF_FILES).map(async ([id, urls]) => {
+			let total = 0;
+			for (const url of urls) {
+				try {
+					const resp = await fetch(url, { method: "HEAD" });
+					const length = Number(resp.headers.get("content-length"));
+					if (!resp.ok || !Number.isFinite(length) || length <= 0) throw new Error("HTTP " + resp.status);
+					total += length;
+				} catch (e) {
+					logChange("warn", "Linetime size HEAD failed for " + url + ": " + e.message);
+					return;
+				}
+			}
+			if (total > 0) sizes["hf-" + id] = linetimeBytesText(total);
+		}),
+	]);
+
+	if (Object.keys(sizes).length === 0) return;
+	linetimeReleaseSizes = { ...linetimeReleaseSizes, ...sizes };
+	try {
+		await callSqlite({
+			db: "settings",
+			query: "UPDATE statistics SET linetime_sizes_json = ?",
+			args: [JSON.stringify(linetimeReleaseSizes)],
+			fetch: false,
+		});
+	} catch (e) {
+		logChange("warn", "Linetime size cache save failed: " + e.message);
+	}
+	refreshLinetimeStatus();
+}
+
+async function linetimeAction(action, kind, id) {
+	const label = linetimeVariant(kind, id)?.label ?? id;
+
+	if (action == "use") {
+		if (!isLinetimeInstalled(kind, id)) {
+			await requireLinetimeComponent(`${label}${kind == "binary" ? " binary" : ""} is not installed.`);
+			return;
+		}
+		linetimeSelected[kind] = id;
+		await callSqlite({ db: "settings", query: `UPDATE statistics SET linetime_selected_${kind} = ?`, args: [id], fetch: false });
+		refreshLinetimeStatus();
+	} else if (action == "download") {
+		if (kind == "gpu-cli") {
+			if (getAppFile("gpu-cli")?.state === "unsupported") {
+				await alertModal("The CUDA Whisper CLI needs an NVIDIA GPU with CUDA 12, which this app does not support on this system.");
+				return;
+			}
+			if (!(await confirmModal("Download the CUDA Whisper CLI? It is about 100 MB and is what makes transcription run on the GPU instead of the CPU.", "Download", "Cancel"))) return;
+		}
+		await downloadLinetimeComponent(kind, id);
+	} else if (action == "delete") {
+		await deleteLinetimeComponent(kind, id, label);
+	}
+}
+
+async function deleteLinetimeComponent(kind, id, label) {
+	let question;
+	let done;
+	if (kind == "binary") {
+		question = `Delete the ${label} binary?`;
+		done = `${label} binary deleted`;
+	} else if (kind == "model") {
+		question = `Delete the ${label} CTC model?`;
+		done = `${label} CTC model deleted`;
+	} else if (kind == "whisper") {
+		question = `Delete the ${label} Whisper model?`;
+		done = `${label} Whisper model deleted`;
+	} else if (kind == "tokenizer") {
+		question = "Delete the tokenizer? Alignment needs it, so you will have to download it again.";
+		done = "Tokenizer deleted";
+	} else if (kind == "whisper-cli") {
+		question = "Delete the Whisper CLI? Auto-generate needs it, so you will have to download it again.";
+		done = "Whisper CLI deleted";
+	} else {
+		question = "Delete the CUDA Whisper CLI? GPU transcription will stop working and fall back to the CPU CLI, which is much slower.";
+		done = "CUDA Whisper CLI deleted";
+	}
+	if (!(await confirmModal(question, "Delete", "Cancel"))) return;
+
+	const isCli = kind == "whisper-cli" || kind == "gpu-cli";
+	const reportId = linetimeReportId(kind, id);
+	const [[, partName]] = linetimeParts(kind, id);
+	const own = getAppFilePart(reportId, partName);
+
+	if (!own && !isCli) {
+		await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
+		return;
+	}
+
+	try {
+		const files = [];
+		const folders = [];
+		if (isCli) {
+			if (own) folders.push(path.dirname(own));
+		} else {
+			files.push(own);
+			if (kind == "binary" && id == "gpu") folders.push(getAppFilePart("gpu", "lib"));
+			if (kind == "model" && linetimeVariant("model", id).requiresData) files.push(getAppFilePart(id, "data"));
+		}
+		for (const file of files) {
+			if (file) fs.rmSync(file, { force: true });
+		}
+		for (const folder of folders) {
+			if (folder) fs.rmSync(folder, { recursive: true, force: true });
+		}
+		if (kind == "binary") {
+			if (id == "gpu") clearLinetimeGpuBundleBroken();
+			clearSoundDetectCapsCache();
+		}
+		await runBinaryCheck();
+		await alertModal(done);
+	} catch (e) {
+		await alertModal(`Failed to delete: ${e.message}`);
+	}
+}
+
+async function downloadLinetimeComponent(kind, id) {
+	if (linetimeDownloadInProgress) {
+		await alertModal("A download is already in progress. Please wait.");
+		return;
+	}
+	linetimeDownloadInProgress = true;
+	refreshLinetimeStatus();
+
+	const progressContainer = document.getElementById("linetimeProgressContainer");
+	const progressBar = document.getElementById("linetimeProgressBar");
+	const progressText = document.getElementById("linetimeProgressText");
+
+	const fetchSpec = LINETIME_FETCH[kind];
+	const label = fetchSpec.label(id);
+	const args = ["--force", "--asset-dir=" + getLinetimeFolder(), "--release=latest", ...fetchSpec.args(id)];
+
+	progressContainer.style.display = "block";
+	progressBar.style.width = "0%";
+	progressText.textContent = `Downloading ${label}...`;
+
+	let lastErrorLine = "";
+
+	try {
+		const bin = path.join(backendFolder, process.platform === "win32" ? "linetime_fetch.exe" : "linetime_fetch");
+		await new Promise((resolve, reject) => {
+			const proc = spawn(bin, args, { windowsHide: true, cwd: getLinetimeFolder() });
+			let reportedError = false;
+
+			proc.stdout.on("data", d => {
+				const msg = d.toString();
+				const percent = msg.match(/(\d+)%/);
+				const step = LINETIME_PROGRESS_STEPS.find(([text]) => msg.includes(text));
+
+				if (percent) {
+					progressBar.style.width = parseInt(percent[1]) + "%";
+				} else if (step) {
+					progressText.textContent = `Downloading ${label}...`;
+					progressBar.style.width = step[1] + "%";
+				} else if (msg.includes("Extracting")) {
+					progressText.textContent = "Extracting...";
+					progressBar.style.width = "90%";
+				} else if (msg.includes("Done")) {
+					progressBar.style.width = "100%";
+				}
+			});
+
+			proc.stderr.on("data", d => {
+				const firstLine = d
+					.toString()
+					.split("\n")
+					.map(l => l.trim())
+					.find(l => l);
+				if (!firstLine) return;
+				if (!reportedError) {
+					reportedError = true;
+					logChange("error", "[linetime_fetch] " + firstLine);
+				}
+				lastErrorLine = firstLine;
+				progressText.textContent = firstLine;
+			});
+
+			proc.on("error", reject);
+			proc.on("close", code => (code !== 0 ? reject(new Error(`linetime_fetch exited with code ${code}`)) : resolve()));
+		});
+
+		progressBar.style.width = "100%";
+		progressText.textContent = "Done!";
+
+		clearSoundDetectCapsCache();
+		if (kind == "binary" && id == "gpu") clearLinetimeGpuBundleBroken();
+
+		await alertModal(`${label} downloaded and installed successfully.`);
+	} catch (error) {
+		const reason = lastErrorLine || error.message || String(error);
+		progressText.textContent = reason;
+		progressBar.style.width = "0%";
+		await alertModal(`Failed to download ${label}: ${reason}`);
+	}
+
+	linetimeDownloadInProgress = false;
+	await runBinaryCheck();
+
+	setTimeout(() => {
+		progressContainer.style.display = "none";
+	}, 3000);
+}
+
+function pickExternalFile(accept) {
+	return new Promise(resolve => {
+		const input = document.getElementById("externalFilePicker");
+		if (!input) return resolve(null);
+
+		let done = false;
+		const finish = value => {
+			if (done) return;
+			done = true;
+			window.removeEventListener("focus", onFocus);
+			resolve(value);
+		};
+		const onFocus = () =>
+			setTimeout(() => {
+				if (!input.files.length) finish(null);
+			}, 500);
+
+		input.accept = accept || "";
+		input.onchange = () => {
+			const picked = input.files.length > 0 ? input.files[0].path : null;
+			input.value = "";
+			finish(picked);
+		};
+		window.addEventListener("focus", onFocus);
+		input.click();
+	});
+}
+
+function probeExternalBinary(picked, args, label) {
+	return new Promise((resolve, reject) => {
+		let out = "";
+		let settled = false;
+		let proc;
+
+		const settle = (error, kill) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			if (kill) {
+				try {
+					proc.kill();
+				} catch (_) {}
+			}
+			if (error) reject(new Error(error));
+			else resolve();
+		};
+
+		const timer = setTimeout(() => settle(`${label} did not respond within 20 seconds.`, true), 20000);
+
+		try {
+			proc = spawn(picked, args, { windowsHide: true });
+		} catch (e) {
+			return settle(`${label} could not start: ${e.message}`);
+		}
+
+		proc.stdout.on("data", d => (out += d.toString()));
+		proc.stderr.on("data", d => (out += d.toString()));
+		proc.on("error", e => settle(`${label} could not start: ${e.message}`));
+		proc.on("close", code => {
+			if (code === 127) return settle(`${label} is missing libraries it needs to start.`);
+			if (code !== 0 && !out.trim()) return settle(`${label} exited with code ${code}.`);
+			settle(null);
+		});
+	});
+}
+
+async function linkExternal(rowId) {
+	const cfg = EXTERNAL_LINKABLE[rowId];
+	if (!cfg) return;
+
+	const picked = await pickExternalFile(cfg.accept);
 	if (!picked) return;
-	if (externalFileBytes(picked) <= 0) {
+	if (pathBytes(picked) <= 0) {
 		await alertModal("That file is empty or unreadable.");
 		return;
 	}
-	try {
-		await probeExternalBinary(picked, ["--version"], "yt-dlp");
-	} catch (e) {
-		await alertModal(e.message);
-		return;
+	if (cfg.pair) {
+		if (path.basename(picked) !== cfg.pair.basename) {
+			await alertModal(`That model only loads as ${cfg.pair.basename} with ${cfg.pair.sibling} beside it.`);
+			return;
+		}
+		if (pathBytes(path.join(path.dirname(picked), cfg.pair.sibling)) <= 0) {
+			await alertModal(`${cfg.pair.sibling} was not found next to the picked file.`);
+			return;
+		}
 	}
-	externalPaths["ytdlp"] = picked;
+	if (cfg.trial) {
+		try {
+			await probeExternalBinary(picked, cfg.trial, cfg.label);
+		} catch (e) {
+			await alertModal(e.message);
+			return;
+		}
+	}
+	externalPaths[cfg.key] = picked;
 	await saveExternalPaths();
 }
 
-async function unlinkYtdlp() {
-	if (!externalPaths["ytdlp"]) return;
-	const confirm = await confirmModal(`Stop using the linked yt-dlp at ${externalPaths["ytdlp"]}? The file itself is left alone.`, "Unlink", "Cancel");
-	if (!confirm) return;
-	delete externalPaths["ytdlp"];
+async function unlinkExternal(rowId) {
+	const cfg = EXTERNAL_LINKABLE[rowId];
+	if (!cfg || !externalPaths[cfg.key]) return;
+	if (!(await confirmModal(`Stop using the linked ${cfg.label} at ${externalPaths[cfg.key]}? The file itself is left alone.`, "Unlink", "Cancel"))) return;
+	delete externalPaths[cfg.key];
 	await saveExternalPaths();
+}
+
+function linkYtdlp() {
+	return linkExternal("ytdlp");
+}
+
+function unlinkYtdlp() {
+	return unlinkExternal("ytdlp");
 }
 
 function refreshYtdlpStatus() {
@@ -1039,23 +1107,20 @@ function refreshYtdlpStatus() {
 	const unlinkBtn = document.getElementById("unlinkYtdlpButton");
 	const pathEl = document.getElementById("ytdlpExternalPath");
 	if (!btn || !versionEl || !descEl) return;
+
 	btn.innerText = installed ? "Update" : "Install";
 	if (titleEl) titleEl.innerText = installed ? "Update yt-dlp" : "Install yt-dlp";
 	versionEl.innerText = installed ? `Current version: ${ytdlpVersion || "unknown"}` : "Not installed";
 	if (linkBtn) linkBtn.style.display = external ? "none" : "";
 	if (unlinkBtn) unlinkBtn.style.display = external ? "" : "none";
 	if (pathEl) {
+		pathEl.style.display = external ? "" : "none";
 		if (external) {
-			pathEl.style.display = "";
 			pathEl.textContent = external;
 			pathEl.title = external;
-		} else {
-			pathEl.style.display = "none";
 		}
 	}
-	descEl.innerText = installed
-		? "Updates yt-dlp to the latest version. Useful if downloads keep failing."
-		: "Downloads yt-dlp. Needed for downloading songs, streaming and recommendations.";
+	descEl.innerText = installed ? "Updates yt-dlp to the latest version. Useful if downloads keep failing." : "Downloads yt-dlp. Needed for downloading songs, streaming and recommendations.";
 }
 
 async function updateYtdlp() {
@@ -1067,22 +1132,12 @@ async function updateYtdlp() {
 	try {
 		const bin = path.join(backendFolder, process.platform === "win32" ? "ytdlp_fetch.exe" : "ytdlp_fetch");
 		const result = await new Promise((resolve, reject) => {
-			// ytdlp_fetch writes a relative "bin/<name>", so the cwd decides the
-			// destination. It must be userData, not the install dir: on Windows and
-			// macOS processDir is the app bundle, which is not writable and, on macOS,
-			// would invalidate the code signature. taratorFolder is also what the
-			// readers in download_music.js prefer.
+			// ytdlp_fetch writes to a relative bin/<name>, so cwd must be the writable userData folder and not the app bundle
 			const proc = spawn(bin, ["--force"], { windowsHide: true, cwd: taratorFolder });
-		let stdout = "";
-		let stderr = "";
-		proc.stdout.on("data", d => {
-			stdout += d.toString();
-		});
-		// yt-dlp writes progress to stderr on a successful run, so logging it as an
-		// error would cry wolf. The accumulated text is reported by the close handler.
-		proc.stderr.on("data", d => {
-			stderr += d.toString();
-		});
+			let stdout = "";
+			let stderr = "";
+			proc.stdout.on("data", d => (stdout += d.toString()));
+			proc.stderr.on("data", d => (stderr += d.toString()));
 			proc.on("error", reject);
 			proc.on("close", code => {
 				if (code != 0) return reject(new Error(stderr || `ytdlp_fetch exited ${code}`));
@@ -1109,554 +1164,5 @@ async function updateYtdlp() {
 	}
 
 	btn.disabled = false;
-	setTimeout(() => {
-		refreshYtdlpStatus();
-	}, 2000);
-}
-
-
-// One row in the Linetime tables that accepts a user-linked file. key is the
-// externalPaths slot, trial is the probe args for executables, pair constrains
-// a slot whose files only load together.
-const EXTERNAL_LINKABLE = Object.freeze({
-	"cpu": { key: "cpu:binary", part: "binary", accept: "", trial: ["--help"], label: "CPU binary" },
-	"gpu": { key: "gpu:binary", part: "binary", accept: "", trial: ["--help"], label: "GPU binary" },
-	"tokenizer": { key: "tokenizer:tokenizer", part: "tokenizer", accept: ".json", trial: null, label: "Tokenizer" },
-	"standard": { key: "standard:model", part: "model", accept: ".onnx", trial: null, label: "Standard model", pair: { basename: LINETIME_STANDARD_ONNX, sibling: LINETIME_STANDARD_DATA } },
-	"fast": { key: "fast:model", part: "model", accept: ".onnx", trial: null, label: "Fast model" },
-	"whisper-standard": { key: "whisper-standard:model", part: "model", accept: ".bin", trial: null, label: "Whisper model" },
-	"whisper-q5": { key: "whisper-q5:model", part: "model", accept: ".bin", trial: null, label: "Whisper model" },
-	"whisper-cli": { key: "whisper-cli:cli", part: "cli", accept: "", trial: ["--help"], label: "Whisper CLI" },
-	"gpu-cli": { key: "gpu-cli:cli", part: "cli", accept: "", trial: ["--help"], label: "CUDA Whisper CLI" },
-});
-
-function pickExternalFile(accept) {
-	return new Promise(resolve => {
-		let done = false;
-		const finish = value => {
-			if (done) return;
-			done = true;
-			window.removeEventListener("focus", onFocus);
-			resolve(value);
-		};
-		const onFocus = () => setTimeout(() => {
-			const input = document.getElementById("externalFilePicker");
-			if (input && !input.files.length) finish(null);
-		}, 500);
-		const input = document.getElementById("externalFilePicker");
-		if (!input) return finish(null);
-		input.accept = accept || "";
-		input.onchange = () => {
-			const picked = input.files.length > 0 ? input.files[0].path : null;
-			input.value = "";
-			finish(picked);
-		};
-		window.addEventListener("focus", onFocus);
-		input.click();
-	});
-}
-
-// Trial-runs a linked executable so a broken pick is rejected up front.
-// Light on purpose: --version/--help exit before any model loads, and the
-// aligner already runs the same probe at every launch.
-function probeExternalBinary(picked, args, label) {
-	return new Promise((resolve, reject) => {
-		let out = "";
-		let settled = false;
-		let proc;
-		try {
-			proc = spawn(picked, args, { windowsHide: true });
-		} catch (e) {
-			return reject(new Error(`${label} could not start: ${e.message}`));
-		}
-		const timer = setTimeout(() => {
-			if (!settled) {
-				settled = true;
-				try { proc.kill(); } catch (_) {}
-				reject(new Error(`${label} did not respond within 20 seconds.`));
-			}
-		}, 20000);
-		proc.stdout.on("data", d => (out += d.toString()));
-		proc.stderr.on("data", d => (out += d.toString()));
-		proc.on("error", e => {
-			if (!settled) {
-				settled = true;
-				clearTimeout(timer);
-				reject(new Error(`${label} could not start: ${e.message}`));
-			}
-		});
-		proc.on("close", code => {
-			if (settled) return;
-			settled = true;
-			clearTimeout(timer);
-			if (code === 127) return reject(new Error(`${label} is missing libraries it needs to start.`));
-			if (code !== 0 && !out.trim()) return reject(new Error(`${label} exited with code ${code}.`));
-			resolve();
-		});
-	});
-}
-
-function externalFileBytes(picked) {
-	try {
-		return fs.statSync(picked).size;
-	} catch (_) {
-		return 0;
-	}
-}
-
-async function linetimeLinkExternal(rowId) {
-	const cfg = EXTERNAL_LINKABLE[rowId];
-	if (!cfg) return;
-	const picked = await pickExternalFile(cfg.accept);
-	if (!picked) return;
-	if (externalFileBytes(picked) <= 0) {
-		await alertModal("That file is empty or unreadable.");
-		return;
-	}
-	if (cfg.pair) {
-		if (path.basename(picked) !== cfg.pair.basename) {
-			await alertModal(`That model only loads as ${cfg.pair.basename} with ${cfg.pair.sibling} beside it.`);
-			return;
-		}
-		if (externalFileBytes(path.join(path.dirname(picked), cfg.pair.sibling)) <= 0) {
-			await alertModal(`${cfg.pair.sibling} was not found next to the picked file.`);
-			return;
-		}
-	}
-	if (cfg.trial) {
-		try {
-			await probeExternalBinary(picked, cfg.trial, cfg.label);
-		} catch (e) {
-			await alertModal(e.message);
-			return;
-		}
-	}
-	externalPaths[cfg.key] = picked;
-	await saveExternalPaths();
-}
-
-async function linetimeUnlinkExternal(rowId) {
-	const cfg = EXTERNAL_LINKABLE[rowId];
-	if (!cfg || !externalPaths[cfg.key]) return;
-	const confirm = await confirmModal(`Stop using the linked ${cfg.label} at ${externalPaths[cfg.key]}? The file itself is left alone.`, "Unlink", "Cancel");
-	if (!confirm) return;
-	delete externalPaths[cfg.key];
-	await saveExternalPaths();
-}
-
-async function downloadLinetimeVariant(component, variant) {
-	if (linetimeDownloadInProgress) {
-		await alertModal("A download is already in progress. Please wait.");
-		return;
-	}
-	linetimeDownloadInProgress = true;
-	refreshLinetimeStatus();
-
-	const progressContainer = document.getElementById("linetimeProgressContainer");
-	const progressBar = document.getElementById("linetimeProgressBar");
-	const progressText = document.getElementById("linetimeProgressText");
-
-	let args = ["--force", "--asset-dir=" + getLinetimeFolder(), "--release=" + LINETIME_RELEASE_TAG];
-	let modelType = "standard";
-	let label = "Linetime component";
-	let sizeDesc = "";
-
-	if (component === "binary") {
-		if (variant === "gpu") args.push("--gpu");
-		args.push("--skip-model", "--skip-tokenizer", "--skip-whisper", "--skip-whisper-cli");
-		label = getLinetimeBinaryVariant(variant)?.label ?? "binary";
-	} else if (component === "model") {
-		modelType = variant;
-		args.push("--skip-binary", "--skip-tokenizer", "--skip-whisper", "--skip-whisper-cli", "--model-" + modelType);
-		label = getLinetimeModelVariant(variant)?.label ?? "CTC model";
-	} else if (component === "tokenizer") {
-		args.push("--skip-binary", "--skip-model", "--skip-whisper", "--tokenizer-only");
-		label = "Tokenizer";
-	} else if (component === "whisper") {
-		const whisperMap = { standard: "whisper", "whisper-q5": "whisper-q5" };
-		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper-cli", "--model-" + (whisperMap[variant] || variant));
-		label = getLinetimeWhisperVariant(variant)?.label ?? "Whisper model";
-	} else if (component === "whisper-cli") {
-		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-only");
-		label = "Whisper CLI";
-	} else if (component === "gpu-cli") {
-		// The CUDA CLI is a Linetime release asset, so the fetch resolves it through
-		// the release rather than the upstream whisper.cpp URL the CPU one uses.
-		args.push("--skip-binary", "--skip-model", "--skip-tokenizer", "--skip-whisper", "--whisper-cli-gpu-only");
-		label = "CUDA Whisper CLI";
-	}
-
-	const sizeSuffix = sizeDesc ? ` (${sizeDesc})` : "";
-
-	progressContainer.style.display = "block";
-	progressBar.style.width = "0%";
-	progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
-
-	let lastErrorLine = "";
-
-	try {
-		const bin = path.join(backendFolder, process.platform === "win32" ? "linetime_fetch.exe" : "linetime_fetch");
-		await new Promise((resolve, reject) => {
-			const proc = spawn(bin, args, { windowsHide: true, cwd: getLinetimeFolder() });
-
-			let reportedError = false;
-			proc.stdout.on("data", d => {
-				const msg = d.toString();
-
-				const pctMatch = msg.match(/(\d+)%/);
-				if (pctMatch) {
-					progressBar.style.width = parseInt(pctMatch[1]) + "%";
-				} else if (msg.includes("Downloading binary")) {
-					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
-					progressBar.style.width = "10%";
-				} else if (msg.includes("Downloading standard CTC")) {
-					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Downloading fast CTC")) {
-					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Downloading tokenizer")) {
-					progressText.textContent = "Downloading tokenizer...";
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Downloading Whisper large-v3 model")) {
-					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Downloading Whisper CLI")) {
-					progressText.textContent = `Downloading ${label}${sizeSuffix}...`;
-					progressBar.style.width = "30%";
-				} else if (msg.includes("Extracting")) {
-					progressText.textContent = "Extracting...";
-					progressBar.style.width = "90%";
-				} else if (msg.includes("Done")) {
-					progressBar.style.width = "100%";
-				}
-			});
-
-			proc.stderr.on("data", d => {
-				const firstLine = d.toString().split("\n").map(l => l.trim()).find(l => l);
-				if (!firstLine) return;
-				if (!reportedError) {
-					reportedError = true;
-					logChange("error", "[linetime_fetch] " + firstLine);
-				}
-				lastErrorLine = firstLine;
-				progressText.textContent = firstLine;
-			});
-
-			proc.on("error", reject);
-			proc.on("close", code => {
-				if (code !== 0) return reject(new Error(`linetime_fetch exited with code ${code}`));
-				resolve();
-			});
-		});
-
-		progressBar.style.width = "100%";
-		progressText.textContent = "Done!";
-
-		// A fresh download may carry a different CLI than the one that was probed.
-		clearSoundDetectCapsCache();
-		// Only a new GPU bundle can fix a GPU bundle that crashed before.
-		if (component === "binary" && variant === "gpu") clearLinetimeGpuBundleBroken();
-
-		await alertModal(`${label} downloaded and installed successfully.`);
-	} catch (error) {
-		const reason = lastErrorLine || error.message || String(error);
-		progressText.textContent = reason;
-		progressBar.style.width = "0%";
-		await alertModal(`Failed to download ${label}: ${reason}`);
-	}
-
-	linetimeDownloadInProgress = false;
-	await refreshLinetimeReport();
-
-	setTimeout(() => {
-		progressContainer.style.display = "none";
-	}, 3000);
-}
-
-async function linetimeUseBinary(variant) {
-	const v = getLinetimeBinaryVariant(variant);
-	if (!isLinetimeBinaryInstalled(variant)) {
-		await requireLinetimeComponent(`${v?.label ?? variant} binary is not installed.`);
-		return;
-	}
-	linetimeSelectedBinary = variant;
-	await callSqlite({
-		db: "settings",
-		query: "UPDATE statistics SET linetime_selected_binary = ?",
-		args: [variant],
-		fetch: false,
-	});
-	refreshLinetimeStatus();
-}
-
-async function linetimeUseModel(variant) {
-	const v = getLinetimeModelVariant(variant);
-	if (!isLinetimeModelInstalled(variant)) {
-		await requireLinetimeComponent(`${v?.label ?? variant} is not installed.`);
-		return;
-	}
-	linetimeSelectedModel = variant;
-	await callSqlite({
-		db: "settings",
-		query: "UPDATE statistics SET linetime_selected_model = ?",
-		args: [variant],
-		fetch: false,
-	});
-	refreshLinetimeStatus();
-}
-
-async function linetimeUseWhisper(variant) {
-	const v = getLinetimeWhisperVariant(variant);
-	if (!isLinetimeWhisperInstalled(variant)) {
-		await requireLinetimeComponent(`${v?.label ?? variant} is not installed.`);
-		return;
-	}
-	linetimeSelectedWhisper = variant;
-	await callSqlite({
-		db: "settings",
-		query: "UPDATE statistics SET linetime_selected_whisper = ?",
-		args: [variant],
-		fetch: false,
-	});
-	refreshLinetimeStatus();
-}
-
-async function linetimeDeleteBinary(variant) {
-	const label = getLinetimeBinaryVariant(variant)?.label ?? variant;
-	const confirm = await confirmModal(`Delete the ${label} binary?`, "Delete", "Cancel");
-	if (!confirm) return;
-
-	const binPath = getAppFilePart(variant, "binary");
-	if (!binPath) {
-		await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
-		return;
-	}
-	try {
-		fs.unlinkSync(binPath);
-		if (variant === "gpu") {
-			const libDir = getAppFilePart("gpu", "lib");
-			if (libDir && fs.existsSync(libDir)) fs.rmSync(libDir, { recursive: true, force: true });
-			// A re-downloaded bundle should be given a clean chance, in case the
-			// previous one crashed for a reason that has since been fixed.
-			clearLinetimeGpuBundleBroken();
-		}
-		clearSoundDetectCapsCache();
-		await refreshLinetimeReport();
-		await alertModal(`${label} binary deleted`);
-	} catch (e) {
-		await alertModal(`Failed to delete: ${e.message}`);
-	}
-}
-
-async function linetimeDeleteModel(variant) {
-	const label = getLinetimeModelVariant(variant)?.label ?? variant;
-	const confirm = await confirmModal(`Delete the ${label} CTC model?`, "Delete", "Cancel");
-	if (!confirm) return;
-
-	const modelPath = getAppFilePart(variant, "model");
-	const v = getLinetimeModelVariant(variant);
-	if (!modelPath) {
-		await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
-		return;
-	}
-	try {
-		fs.unlinkSync(modelPath);
-		if (v && v.requiresData) {
-			const dataPath = getAppFilePart(variant, "data");
-			if (dataPath && fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
-		}
-		await refreshLinetimeReport();
-		await alertModal(`${label} CTC model deleted`);
-	} catch (e) {
-		await alertModal(`Failed to delete: ${e.message}`);
-	}
-}
-
-async function linetimeDeleteWhisper(variant) {
-	const label = getLinetimeWhisperVariant(variant)?.label ?? variant;
-	const confirm = await confirmModal(`Delete the ${label} Whisper model?`, "Delete", "Cancel");
-	if (!confirm) return;
-
-	const whisperPath = getAppFilePart(getLinetimeWhisperVariant(variant)?.reportId || variant, "model");
-	if (!whisperPath) {
-		await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
-		return;
-	}
-	try {
-		fs.unlinkSync(whisperPath);
-		await refreshLinetimeReport();
-		await alertModal(`${label} Whisper model deleted`);
-	} catch (e) {
-		await alertModal(`Failed to delete: ${e.message}`);
-	}
-}
-
-async function linetimeDeleteTokenizer() {
-	const confirm = await confirmModal("Delete the tokenizer? Alignment needs it, so you will have to download it again.", "Delete", "Cancel");
-	if (!confirm) return;
-
-	try {
-		const tokenizerPath = getAppFilePart("tokenizer", "tokenizer");
-		if (!tokenizerPath) {
-			await alertModal("No downloaded copy to delete. An external link is removed with Unlink, the file itself is left alone.");
-			return;
-		}
-		fs.unlinkSync(tokenizerPath);
-		await refreshLinetimeReport();
-		await alertModal("Tokenizer deleted");
-	} catch (e) {
-		await alertModal(`Failed to delete: ${e.message}`);
-	}
-}
-
-async function linetimeDeleteWhisperCli() {
-	const confirm = await confirmModal("Delete the Whisper CLI? Auto-generate needs it, so you will have to download it again.", "Delete", "Cancel");
-	if (!confirm) return;
-
-	try {
-		// Deliberately not getLinetimeWhisperCliPath(): that follows whichever CLI is
-		// active, so on a GPU setup this button would delete the CUDA one instead of
-		// the CPU one its row refers to.
-		const cliPath = getAppFilePart("whisper-cli", "cli");
-		if (cliPath) fs.rmSync(path.dirname(cliPath), { recursive: true, force: true });
-		await refreshLinetimeReport();
-		await alertModal("Whisper CLI deleted");
-	} catch (e) {
-		await alertModal(`Failed to delete: ${e.message}`);
-	}
-}
-
-async function linetimeDownloadGpuWhisperCli() {
-	// The report is the source of truth for whether a platform has a CUDA bundle.
-	// Asking the Go helper would mean a new preload bridge for one boolean.
-	if (getAppFileState("gpu-cli") === "unsupported") {
-		await alertModal("The CUDA Whisper CLI needs an NVIDIA GPU with CUDA 12, which this app does not support on this system.");
-		return;
-	}
-	const confirm = await confirmModal(
-		"Download the CUDA Whisper CLI? It is about 100 MB and is what makes transcription run on the GPU instead of the CPU.",
-		"Download", "Cancel");
-	if (!confirm) return;
-	await downloadLinetimeVariant("gpu-cli", "whisper-cli-gpu-only");
-}
-
-async function linetimeDeleteGpuWhisperCli() {
-	const confirm = await confirmModal(
-		"Delete the CUDA Whisper CLI? GPU transcription will stop working and fall back to the CPU CLI, which is much slower.",
-		"Delete", "Cancel");
-	if (!confirm) return;
-
-	try {
-		const cliPath = getAppFilePart("gpu-cli", "cli");
-		if (cliPath) fs.rmSync(path.dirname(cliPath), { recursive: true, force: true });
-		await refreshLinetimeReport();
-		await alertModal("CUDA Whisper CLI deleted");
-	} catch (e) {
-		await alertModal(`Failed to delete: ${e.message}`);
-	}
-}
-
-function linetimeDownloadBinary(variant) {
-	downloadLinetimeVariant("binary", variant);
-}
-
-function linetimeDownloadModel(variant) {
-	downloadLinetimeVariant("model", variant);
-}
-
-function linetimeDownloadWhisper(variant) {
-	downloadLinetimeVariant("whisper", variant);
-}
-
-function linetimeDownloadTokenizer() {
-	downloadLinetimeVariant("tokenizer", "standard");
-}
-
-function linetimeDownloadWhisperCli() {
-	downloadLinetimeVariant("whisper-cli", "whisper-cli");
-}
-
-
-async function foundNewSongs(folderSongs, databaseSongs) {
-	await alertModal("Found new songs in your folders.");
-
-	const folderOnly = {};
-	const databaseOnly = {};
-
-	for (const key of Object.keys(folderSongs)) {
-		if (!(key in databaseSongs)) folderOnly[key] = folderSongs[key];
-	}
-
-	for (const key of Object.keys(databaseSongs)) {
-		if (!(key in folderSongs)) databaseOnly[key] = databaseSongs[key];
-	}
-
-	const rowsToInsert = [];
-
-	for (const fileName of Object.keys(folderOnly)) {
-		let songName = fileName;
-		const songExt = folderOnly[fileName]?.song_extension ?? "";
-		const thumbExt = folderOnly[fileName]?.thumbnail_extension ?? "";
-
-		const originalMusicPath = path.join(musicFolder, fileName + songExt);
-
-		if (!fileName.includes("tarator")) {
-			songName = await generateId();
-
-			const newMusicPath = path.join(musicFolder, songName + songExt);
-			if (fs.existsSync(originalMusicPath)) fs.renameSync(originalMusicPath, newMusicPath);
-
-			if (thumbExt) {
-				const originalThumbPath = path.join(thumbnailFolder, fileName + thumbExt);
-				const newThumbPath = path.join(thumbnailFolder, songName + thumbExt);
-				if (fs.existsSync(originalThumbPath)) fs.renameSync(originalThumbPath, newThumbPath);
-			}
-		}
-
-		const fullPath = path.join(musicFolder, songName + songExt);
-		if (!fs.existsSync(fullPath)) continue;
-
-		const metadata = await new Promise(resolve => {
-			ffmpeg.ffprobe(fullPath, (err, meta) => resolve(err ? null : meta));
-		});
-
-		const duration = metadata?.format?.duration ? Math.round(metadata.format.duration) : null;
-		const stats = fs.statSync(fullPath);
-		const fileSize = stats.size;
-
-		rowsToInsert.push([songName, fileName, null, duration, 0, 0, 0, fileSize, 100, null, null, null, 100, songExt.replace(".", "") || null, thumbExt.replace(".", "") || null, null, null, null]);
-	}
-
-	if (rowsToInsert.length > 0) {
-		for (const row of rowsToInsert) {
-			callSqlite({
-				db: "musics",
-				query: `
-                    INSERT INTO songs (
-                        song_id, song_name, song_url, song_length, seconds_played,
-                        times_listened, stabilised, size, speed, bass, treble,
-                        midrange, volume, song_extension, thumbnail_extension, artist, genre, language
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `,
-				args: row,
-				fetch: false,
-			});
-
-			songNameCache.set(row[0], {
-				song_name: row[1],
-				song_length: row[3],
-				song_extension: row[13],
-				song_url: row[2],
-				thumbnail_extension: row[14],
-				stabilised: row[6],
-				size: row[7],
-				genre: row[16],
-				artist: row[15],
-				language: row[17],
-			});
-		}
-	}
-
-	await alertModal(await promptUserOnSongs(Object.keys(databaseOnly).length));
+	setTimeout(refreshYtdlpStatus, 2000);
 }
