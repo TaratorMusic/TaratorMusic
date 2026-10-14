@@ -155,6 +155,7 @@ function callSqlite({ db, query, args = [], fetch = false }) {
 async function initialiseDatabases() {
 	sqliteBinary = spawn(path.join(backendFolder, "./sqlite"), [databasesFolder], {
 		stdio: ["pipe", "pipe", "pipe"],
+		windowsHide: true,
 	});
 
 	sqliteBinary.stdout.on("data", chunk => {
@@ -289,6 +290,7 @@ async function initialiseDatabases() {
 function startAudioPlayer() {
 	audioPlayer = spawn(path.join(backendFolder, "player"), [], {
 		stdio: ["pipe", "pipe", "pipe"],
+		windowsHide: true,
 		env: { ...process.env, YTDLP_PATH: getYtDlpPath(), FFMPEG_PATH: ffmpegPath },
 	});
 
