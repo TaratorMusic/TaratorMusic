@@ -129,7 +129,7 @@ static FILE* open_stream_pipeline(const char* url) {
     wchar_t args[2048];
     if (!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, url, -1, wide_url, 1024)) return NULL;
     if (swprintf(args, sizeof(args) / sizeof(args[0]),
-        L"-f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%ls\" --no-playlist --no-cache-dir --geo-bypass --no-warnings --quiet --no-progress --no-mtime", wide_url) < 0) return NULL;
+        L"--js-runtimes node -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%ls\" --no-playlist --no-cache-dir --geo-bypass --quiet --no-progress --no-mtime", wide_url) < 0) return NULL;
 
     HANDLE encoded_read = NULL, encoded_write = NULL, pcm_read = NULL, pcm_write = NULL;
     HANDLE null_input = INVALID_HANDLE_VALUE;
@@ -587,17 +587,17 @@ void stream_url(const char *url) {
 
 #if defined(__APPLE__)
     snprintf(cmd, sizeof(cmd),
-        "%s -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
+        "%s --js-runtimes node -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
         "--no-playlist --no-cache-dir --geo-bypass "
-        "--no-warnings --quiet --no-progress --no-mtime | "
+        "--quiet --no-progress --no-mtime | "
         "%s -hide_banner -loglevel error -i pipe:0 "
         "-f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:1",
         yt_dlp, url, ffmpeg);
 #else
     snprintf(cmd, sizeof(cmd),
-        "%s -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
+        "%s --js-runtimes node -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
         "--no-playlist --no-cache-dir --geo-bypass "
-        "--no-warnings --quiet --no-progress --no-mtime | "
+        "--quiet --no-progress --no-mtime | "
         "stdbuf -oL -eL %s -hide_banner -loglevel error -i pipe:0 "
         "-f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:1",
         yt_dlp, url, ffmpeg);
