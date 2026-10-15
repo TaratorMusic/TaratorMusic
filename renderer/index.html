@@ -71,7 +71,10 @@
 						<div class="modalTitle">Queue</div>
 						<span class="close" onclick="closeModal()">&times;</span>
 					</div>
-					<button id="queueShuffleButton" onclick="toggleQueueShuffle()">Queue Shuffle: Off</button>
+					<div class="flexrow">
+						<button id="queueShuffleButton" onclick="toggleQueueShuffle()">Queue Shuffle: Off</button>
+						<button id="nextQueuedPlaylistButton" onclick="skipToNextQueuedPlaylist()" disabled>Skip to Next Playlist</button>
+					</div>
 					<div id="queueList" class="scrollArea"></div>
 				</div>
 			</div>

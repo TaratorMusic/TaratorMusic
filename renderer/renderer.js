@@ -77,6 +77,10 @@ let playlistIdsForStartup = []; // At app launch, makes all playlist ID's an arr
 let isLoadingRecommendations = false; // If the app is currently loading recommendations (prevents duplication)
 let tickTimer = null;
 let songQueue = [];
+let playlistQueue = [];
+let queuedPlaylist = null;
+let isQueuedPlaylistExpanded = false;
+let draggedQueueItem = null;
 let isQueueShuffleActive = false;
 let contextSongId = null;
 let nextQueueSongIndex = null;
@@ -333,10 +337,12 @@ function startAudioPlayer() {
 					isInterpolating = true;
 				}
 			} else if (trimmed == "EV_ENDED") {
-				if (songQueue.length > 0 || isAutoplayActive) {
+				if (songQueue.length > 0 || queuedPlaylist?.songs.length > 0 || playlistQueue.length > 0 || isAutoplayActive) {
 					isInterpolating = false;
 					playNextSong();
 				} else {
+					queuedPlaylist = null;
+					updateQueueDisplay();
 					showStopped();
 				}
 			} else if (trimmed.startsWith("EV_ERROR")) {
@@ -1383,20 +1389,99 @@ function addContextSongToQueue() {
 	updateQueueDisplay();
 }
 
+function addPlaylistToQueue(playlistId) {
+	const playlist = playlistsMap.get(playlistId);
+	if (!playlist?.songs?.length) return;
+	playlistQueue.push(playlistId);
+	updateQueueDisplay();
+}
+
+function loadNextQueuedPlaylist() {
+	while (playlistQueue.length > 0) {
+		const playlist = playlistsMap.get(playlistQueue.shift());
+		if (!playlist?.songs?.length) continue;
+		const songs = playlist.songs.filter(id => songNameCache.has(id) || streamedSongsCache.has(id) || streamedSongsHtmlMap.has(id));
+		if (songs.length == 0) continue;
+		for (let i = songs.length - 1; i > 0; i--) {
+			const randomIndex = Math.floor(Math.random() * (i + 1));
+			[songs[i], songs[randomIndex]] = [songs[randomIndex], songs[i]];
+		}
+		queuedPlaylist = { id: playlist.id, name: playlist.name, songs, playingSongId: null };
+		isQueuedPlaylistExpanded = false;
+		localStorage.setItem("lastPlaylist", playlist.id);
+		return true;
+	}
+	return false;
+}
+
+async function skipToNextQueuedPlaylist() {
+	if (!loadNextQueuedPlaylist()) return updateQueueDisplay();
+	songQueue.length = 0;
+	nextQueueSongIndex = null;
+	await playNextSong();
+}
+
 function getNextQueuedSongIndex() {
 	if (!isQueueShuffleActive) return 0;
 	if (nextQueueSongIndex == null || nextQueueSongIndex >= songQueue.length) nextQueueSongIndex = Math.floor(Math.random() * songQueue.length);
 	return nextQueueSongIndex;
 }
 
+function createQueueListItem(name, queueType, index) {
+	const item = document.createElement("div");
+	item.className = "queue-list-item";
+	item.textContent = name;
+	item.draggable = true;
+	item.title = "Drag to reorder";
+	item.addEventListener("dragstart", event => {
+		draggedQueueItem = { queueType, index };
+		event.dataTransfer.effectAllowed = "move";
+		event.dataTransfer.setData("text/plain", name);
+		item.classList.add("queue-dragging");
+	});
+	item.addEventListener("dragover", event => {
+		if (draggedQueueItem?.queueType != queueType) return;
+		event.preventDefault();
+		event.dataTransfer.dropEffect = "move";
+		document.querySelectorAll(".queue-drop-before, .queue-drop-after").forEach(el => el.classList.remove("queue-drop-before", "queue-drop-after"));
+		const bounds = item.getBoundingClientRect();
+		const insertAfter = event.clientY > bounds.top + bounds.height / 2;
+		item.classList.add(insertAfter ? "queue-drop-after" : "queue-drop-before");
+	});
+	item.addEventListener("dragleave", () => item.classList.remove("queue-drop-before", "queue-drop-after"));
+	item.addEventListener("dragend", () => {
+		draggedQueueItem = null;
+		item.classList.remove("queue-dragging");
+		document.querySelectorAll(".queue-drop-before, .queue-drop-after").forEach(el => el.classList.remove("queue-drop-before", "queue-drop-after"));
+	});
+	item.addEventListener("drop", event => {
+		if (draggedQueueItem?.queueType != queueType) return;
+		event.preventDefault();
+		const entries = queueType == "song" ? songQueue : queueType == "playlist" ? playlistQueue : queuedPlaylist?.songs;
+		if (!entries) return;
+		const bounds = item.getBoundingClientRect();
+		let targetIndex = index + (event.clientY > bounds.top + bounds.height / 2 ? 1 : 0);
+		if (draggedQueueItem.index < targetIndex) targetIndex--;
+		const movedEntry = entries.splice(draggedQueueItem.index, 1)[0];
+		entries.splice(targetIndex, 0, movedEntry);
+		if (queueType == "song") nextQueueSongIndex = null;
+		updateQueueDisplay();
+	});
+	return item;
+}
+
 function updateQueueDisplay() {
+	draggedQueueItem = null;
+	playlistQueue = playlistQueue.filter(id => playlistsMap.get(id)?.songs?.length > 0);
 	const preview = document.getElementById("queuePreviewText");
 	const list = document.getElementById("queueList");
-	const nextSong = songQueue.length > 0 ? songQueue[getNextQueuedSongIndex()] : null;
-	preview.textContent = nextSong ? `Next: ${getQueueSongName(nextSong)}` : "Next: None";
+	const nextSong = songQueue.length > 0 ? songQueue[getNextQueuedSongIndex()] : queuedPlaylist?.songs[0];
+	const nextPlaylist = playlistsMap.get(playlistQueue[0]);
+	preview.textContent = nextSong ? `Next: ${getQueueSongName(nextSong)}` : nextPlaylist ? `Next Playlist: ${nextPlaylist.name}` : "Next: None";
+	document.getElementById("nextQueuedPlaylistButton").disabled = playlistQueue.length == 0;
 	list.innerHTML = "";
 
-	if (songQueue.length == 0) {
+	if (songQueue.length == 0 && !queuedPlaylist && playlistQueue.length == 0) {
 		const empty = document.createElement("div");
 		empty.className = "queue-empty";
 		empty.textContent = "The queue is empty.";
@@ -1404,10 +1489,47 @@ function updateQueueDisplay() {
 		return;
 	}
 
-	for (const songId of songQueue) {
-		const item = document.createElement("div");
-		item.className = "queue-list-item";
-		item.textContent = getQueueSongName(songId);
+	for (let i = 0; i < songQueue.length; i++) {
+		list.appendChild(createQueueListItem(getQueueSongName(songQueue[i]), "song", i));
+	}
+
+	if (queuedPlaylist) {
+		const group = document.createElement("details");
+		group.className = "queue-playlist-group";
+		group.open = isQueuedPlaylistExpanded;
+		group.addEventListener("toggle", () => {
+			if (group.isConnected) isQueuedPlaylistExpanded = group.open;
+		});
+		const summary = document.createElement("summary");
+		const indicator = document.createElement("img");
+		indicator.className = "queue-playlist-indicator";
+		const playlistPlaying = playing && queuedPlaylist.playingSongId == playingSongsID;
+		indicator.src = path.join(appThumbnailFolder, playlistPlaying ? "play.svg" : "pause.svg");
+		indicator.alt = playlistPlaying ? "Playing" : "Paused";
+		summary.appendChild(indicator);
+		const name = document.createElement("span");
+		name.textContent = playlistsMap.get(queuedPlaylist.id)?.name || queuedPlaylist.name;
+		summary.appendChild(name);
+		group.appendChild(summary);
+		const songs = document.createElement("div");
+		songs.className = "queue-playlist-songs";
+		if (queuedPlaylist.playingSongId == playingSongsID) {
+			const currentSong = document.createElement("div");
+			currentSong.className = "queue-playing-song";
+			currentSong.textContent = `Current: ${getQueueSongName(playingSongsID)}`;
+			songs.appendChild(currentSong);
+		}
+		for (let i = 0; i < queuedPlaylist.songs.length; i++) {
+			songs.appendChild(createQueueListItem(getQueueSongName(queuedPlaylist.songs[i]), "playlistSong", i));
+		}
+		group.appendChild(songs);
+		list.appendChild(group);
+	}
+
+	for (let i = 0; i < playlistQueue.length; i++) {
+		const playlist = playlistsMap.get(playlistQueue[i]);
+		const item = createQueueListItem(`Playlist: ${playlist.name} (${playlist.songs.length} songs)`, "playlist", i);
+		item.classList.add("queue-playlist-item");
 		list.appendChild(item);
 	}
 }
@@ -1638,14 +1760,26 @@ async function playPreviousSong() {
 }
 
 async function playNextSong() {
-	if (!playingSongsID) return;
 	if (songQueue.length > 0) {
 		const queueIndex = getNextQueuedSongIndex();
 		const queuedSongId = songQueue.splice(queueIndex, 1)[0];
 		nextQueueSongIndex = null;
+		if (queuedPlaylist) queuedPlaylist.playingSongId = null;
+		playMusic(queuedSongId, currentPlaylist);
 		updateQueueDisplay();
-		return playMusic(queuedSongId, currentPlaylist);
+		return;
 	}
+	if (queuedPlaylist && queuedPlaylist.songs.length == 0) queuedPlaylist = null;
+	if (queuedPlaylist?.songs.length > 0 || loadNextQueuedPlaylist()) {
+		const songId = queuedPlaylist.songs.shift();
+		queuedPlaylist.playingSongId = songId;
+		currentPlaylistElement = playlistsMap.get(queuedPlaylist.id)?.songs.indexOf(songId) ?? 0;
+		playMusic(songId, queuedPlaylist.id);
+		updateQueueDisplay();
+		return;
+	}
+	updateQueueDisplay();
+	if (!playingSongsID) return;
 	if (isLooping) return playMusic(playingSongsID, null);
 
 	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
@@ -1744,6 +1878,12 @@ async function randomPlaylistFunctionMainMenu() {
 
 function updateProgressPaused() {
 	videoProgress.classList.toggle("is-paused", !playing);
+	const indicator = document.querySelector(".queue-playlist-indicator");
+	if (indicator && queuedPlaylist) {
+		const playlistPlaying = playing && queuedPlaylist.playingSongId == playingSongsID;
+		indicator.src = path.join(appThumbnailFolder, playlistPlaying ? "play.svg" : "pause.svg");
+		indicator.alt = playlistPlaying ? "Playing" : "Paused";
+	}
 }
 
 function updateNotInterestedButton() {
