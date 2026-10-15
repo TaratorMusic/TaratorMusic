@@ -981,6 +981,16 @@ audio {
 	align-items: center;
 }
 
+.playlist-queue-button {
+	flex-shrink: 0;
+	margin: 0 0.5vw;
+	padding: 0.2vw 0.5vw;
+	background-color: rgba(0, 0, 0, 0.8);
+	border: 1px solid white;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
 #customiseImage {
 	width: 160px;
 	height: 100px;
@@ -3252,10 +3262,21 @@ th {
 	width: 35vw;
 }
 
-#queueShuffleButton {
+#queueShuffleButton,
+#nextQueuedPlaylistButton {
 	width: fit-content;
 	margin: 1vh 0;
 	padding: 8px 12px;
+}
+
+#nextQueuedPlaylistButton {
+	margin-left: 8px;
+}
+
+#nextQueuedPlaylistButton:disabled,
+.playlist-queue-button:disabled {
+	opacity: 0.5;
+	cursor: default;
 }
 
 #queueList {
@@ -3263,6 +3284,7 @@ th {
 	flex-direction: column;
 	gap: 6px;
 	overflow-y: auto;
+	min-height: 0;
 }
 
 .queue-list-item,
@@ -3270,4 +3292,56 @@ th {
 	padding: 10px;
 	background-color: #333;
 	border-radius: 4px;
+}
+
+.queue-list-item {
+	cursor: grab;
+}
+
+.queue-playlist-item {
+	border: 1px solid #888;
+	font-weight: bold;
+}
+
+.queue-dragging {
+	opacity: 0.5;
+}
+
+.queue-drop-before {
+	box-shadow: inset 0 2px 0 turquoise;
+}
+
+.queue-drop-after {
+	box-shadow: inset 0 -2px 0 turquoise;
+}
+
+.queue-playlist-group {
+	background-color: #333;
+	border: 1px solid #888;
+	border-radius: 4px;
+}
+
+.queue-playlist-group summary {
+	padding: 10px;
+	cursor: pointer;
+	font-weight: bold;
+}
+
+.queue-playlist-indicator {
+	width: 20px;
+	height: 20px;
+	margin-right: 8px;
+	vertical-align: middle;
+}
+
+.queue-playlist-songs {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 0 10px 10px;
+}
+
+.queue-playing-song {
+	padding: 10px;
+	color: turquoise;
 }

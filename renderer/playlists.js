@@ -114,6 +114,15 @@ function displayPlaylists(playlists) {
 		playlistInfoandSongs.appendChild(playlistSongs);
 		playlistSongs.className = "scrollArea playlist-songs";
 
+		const playlistQueueButton = document.createElement("button");
+		playlistQueueButton.className = "playlist-queue-button";
+		playlistQueueButton.textContent = "Queue";
+		playlistQueueButton.title = "Add Playlist to Queue";
+		playlistQueueButton.setAttribute("aria-label", `Add ${playlist.name} to Queue`);
+		playlistQueueButton.disabled = playlist.songs.length == 0;
+		playlistQueueButton.addEventListener("click", () => addPlaylistToQueue(playlist.id));
+		playlistInfo.appendChild(playlistQueueButton);
+
 		if (playlist.id != "Favorites") {
 			const playlistRecommendButton = document.createElement("div");
 			playlistInfo.appendChild(playlistRecommendButton);

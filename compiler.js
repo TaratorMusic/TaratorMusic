@@ -40,6 +40,7 @@ function goBuild() {
 
 function cBuild() {
 	const out = path.join(__dirname, "bin", isWin ? "player.exe" : "player");
+	fs.mkdirSync(path.dirname(out), { recursive: true });
 
 	if (isWin) {
 		run(`gcc -O2 ./backend/miniaudio/player.c ./backend/miniaudio/miniaudio.c -o "${out}" -lpthread`);

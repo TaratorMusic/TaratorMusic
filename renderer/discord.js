@@ -1,7 +1,7 @@
 function startDaemon() {
 	if (discordDaemon) return;
 
-	discordDaemon = spawn(path.join(backendFolder, "dc_rich_presence"), ["daemon"]);
+	discordDaemon = spawn(path.join(backendFolder, "dc_rich_presence"), ["daemon"], { windowsHide: true });
 
 	discordDaemon.stdout.on("data", data => {
 		const lines = data

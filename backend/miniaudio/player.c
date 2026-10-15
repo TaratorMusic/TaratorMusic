@@ -7,8 +7,9 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#define popen _popen
-#define pclose _pclose
+#include <io.h>
+#include <fcntl.h>
+#include <wchar.h>
 #define THREAD_RETURN DWORD WINAPI
 #define THREAD_ARG LPVOID
 #else
@@ -40,17 +41,141 @@ static int is_streaming = 0;
 static float current_volume = 1.0f;
 static int stream_playing = 0;
 static ma_uint32 stream_sample_rate = 44100;
+static ma_mutex player_mutex;
 
 static int monitor_running = 0;
 static int was_paused = -1;
 
 #ifdef _WIN32
 static HANDLE monitor_thread;
+static HANDLE stream_job;
+static HANDLE stream_processes[2];
 #else
 static pthread_t monitor_thread;
 #endif
 
 static void stop_stream(void);
+
+#ifdef _WIN32
+static void terminate_stream_pipeline(void) {
+    if (stream_job) TerminateJobObject(stream_job, 0);
+    for (int i = 0; i < 2; i++) {
+        if (stream_processes[i]) {
+            WaitForSingleObject(stream_processes[i], INFINITE);
+            CloseHandle(stream_processes[i]);
+            stream_processes[i] = NULL;
+        }
+    }
+    if (stream_job) {
+        CloseHandle(stream_job);
+        stream_job = NULL;
+    }
+}
+
+static HANDLE start_stream_process(const wchar_t* executable, const wchar_t* args, HANDLE input, HANDLE output) {
+    wchar_t command[8192];
+    if (swprintf(command, sizeof(command) / sizeof(command[0]), L"\"%ls\" %ls", executable, args) < 0) return NULL;
+
+    HANDLE handles[3] = { NULL, NULL, NULL };
+    HANDLE source[3] = { input, output, GetStdHandle(STD_ERROR_HANDLE) };
+    STARTUPINFOEXW startup = {0};
+    PROCESS_INFORMATION process_info = {0};
+    SIZE_T size = 0;
+    int attributes_initialized = 0;
+    HANDLE result = NULL;
+
+    for (int i = 0; i < 3; i++) {
+        if (!DuplicateHandle(GetCurrentProcess(), source[i], GetCurrentProcess(), &handles[i], 0, TRUE, DUPLICATE_SAME_ACCESS)) goto cleanup;
+    }
+    InitializeProcThreadAttributeList(NULL, 1, 0, &size);
+    startup.lpAttributeList = malloc(size);
+    if (!startup.lpAttributeList || !InitializeProcThreadAttributeList(startup.lpAttributeList, 1, 0, &size)) goto cleanup;
+    attributes_initialized = 1;
+    if (!UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST, handles, sizeof(handles), NULL, NULL)) goto cleanup;
+    startup.StartupInfo.cb = sizeof(startup);
+    startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    startup.StartupInfo.hStdInput = handles[0];
+    startup.StartupInfo.hStdOutput = handles[1];
+    startup.StartupInfo.hStdError = handles[2];
+
+    if (!CreateProcessW(executable, command, NULL, NULL, TRUE,
+        CREATE_NO_WINDOW | CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
+        NULL, NULL, &startup.StartupInfo, &process_info)) goto cleanup;
+    if (!AssignProcessToJobObject(stream_job, process_info.hProcess) || ResumeThread(process_info.hThread) == (DWORD)-1) {
+        TerminateProcess(process_info.hProcess, 1);
+        WaitForSingleObject(process_info.hProcess, INFINITE);
+        CloseHandle(process_info.hProcess);
+    } else {
+        result = process_info.hProcess;
+    }
+    CloseHandle(process_info.hThread);
+
+cleanup:
+    if (attributes_initialized) DeleteProcThreadAttributeList(startup.lpAttributeList);
+    free(startup.lpAttributeList);
+    for (int i = 0; i < 3; i++) {
+        if (handles[i]) CloseHandle(handles[i]);
+    }
+    return result;
+}
+
+static FILE* open_stream_pipeline(const char* url) {
+    const wchar_t* yt_dlp = _wgetenv(L"YTDLP_PATH");
+    const wchar_t* ffmpeg = _wgetenv(L"FFMPEG_PATH");
+    if (!yt_dlp || !yt_dlp[0]) yt_dlp = L"./bin/yt-dlp.exe";
+    if (!ffmpeg || !ffmpeg[0]) ffmpeg = L"./node_modules/@ffmpeg-installer/win32-x64/ffmpeg.exe";
+
+    wchar_t wide_url[1024];
+    wchar_t args[2048];
+    if (!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, url, -1, wide_url, 1024)) return NULL;
+    if (swprintf(args, sizeof(args) / sizeof(args[0]),
+        L"--js-runtimes node -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%ls\" --no-playlist --no-cache-dir --geo-bypass --quiet --no-progress --no-mtime", wide_url) < 0) return NULL;
+
+    HANDLE encoded_read = NULL, encoded_write = NULL, pcm_read = NULL, pcm_write = NULL;
+    HANDLE null_input = INVALID_HANDLE_VALUE;
+    FILE* pipe = NULL;
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = {0};
+    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    stream_job = CreateJobObjectW(NULL, NULL);
+    if (!stream_job || !SetInformationJobObject(stream_job, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) goto cleanup;
+    if (!CreatePipe(&encoded_read, &encoded_write, NULL, 0) || !CreatePipe(&pcm_read, &pcm_write, NULL, 0)) goto cleanup;
+    null_input = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    if (null_input == INVALID_HANDLE_VALUE) goto cleanup;
+
+    stream_processes[0] = start_stream_process(yt_dlp, args, null_input, encoded_write);
+    if (!stream_processes[0]) goto cleanup;
+    stream_processes[1] = start_stream_process(ffmpeg,
+        L"-nostdin -hide_banner -loglevel error -i pipe:0 -f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:1",
+        encoded_read, pcm_write);
+    if (!stream_processes[1]) goto cleanup;
+
+    int fd = _open_osfhandle((intptr_t)pcm_read, _O_RDONLY | _O_BINARY);
+    if (fd < 0) goto cleanup;
+    pcm_read = NULL;
+    pipe = _fdopen(fd, "rb");
+    if (!pipe) _close(fd);
+
+cleanup:
+    if (!pipe) terminate_stream_pipeline();
+    if (encoded_read) CloseHandle(encoded_read);
+    if (encoded_write) CloseHandle(encoded_write);
+    if (pcm_read) CloseHandle(pcm_read);
+    if (pcm_write) CloseHandle(pcm_write);
+    if (null_input != INVALID_HANDLE_VALUE) CloseHandle(null_input);
+    return pipe;
+}
+#endif
+
+static void close_stream_pipe(void) {
+#ifdef _WIN32
+    terminate_stream_pipeline();
+    if (stream_pipe) fclose(stream_pipe);
+#else
+    if (stream_pipe) pclose(stream_pipe);
+#endif
+    stream_pipe = NULL;
+    stream_data.pipe = NULL;
+}
 
 static void stream_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
     StreamData* data = (StreamData*)pDevice->pUserData;
@@ -117,6 +242,7 @@ static THREAD_RETURN monitor_thread_func(THREAD_ARG arg) {
         usleep(500000);
 #endif
         if (!monitor_running) break;
+        ma_mutex_lock(&player_mutex);
 
         if (is_streaming) {
             if (stream_data.paused) {
@@ -125,6 +251,7 @@ static THREAD_RETURN monitor_thread_func(THREAD_ARG arg) {
                     fflush(stdout);
                     was_paused = 1;
                 }
+                ma_mutex_unlock(&player_mutex);
                 continue;
             }
 
@@ -136,14 +263,16 @@ static THREAD_RETURN monitor_thread_func(THREAD_ARG arg) {
 
             if (stream_data.pipe_eof &&
                 stream_data.frames_read == stream_data.prev_frames_read) {
-                if (stream_data.frames_read == 0) {
+                int failed = stream_data.frames_read == 0;
+                stop_stream();
+                if (failed) {
                     fprintf(stderr, "Stream failed: no audio data received\n");
                     printf("EV_ERROR Stream failed: no audio data received\n");
                 } else {
                     printf("EV_ENDED\n");
                 }
                 fflush(stdout);
-                stop_stream();
+                ma_mutex_unlock(&player_mutex);
                 continue;
             }
 
@@ -157,6 +286,7 @@ static THREAD_RETURN monitor_thread_func(THREAD_ARG arg) {
                 if (ma_sound_at_end(&sound)) {
                     printf("EV_ENDED\n");
                     fflush(stdout);
+                    ma_mutex_unlock(&player_mutex);
                     continue;
                 }
                 if (was_paused != 1) {
@@ -164,6 +294,7 @@ static THREAD_RETURN monitor_thread_func(THREAD_ARG arg) {
                     fflush(stdout);
                     was_paused = 1;
                 }
+                ma_mutex_unlock(&player_mutex);
                 continue;
             }
 
@@ -181,6 +312,7 @@ static THREAD_RETURN monitor_thread_func(THREAD_ARG arg) {
                 fflush(stdout);
             }
         }
+        ma_mutex_unlock(&player_mutex);
     }
 
 #ifdef _WIN32
@@ -204,7 +336,7 @@ static void stop_monitor(void) {
     if (!monitor_running) return;
     monitor_running = 0;
 #ifdef _WIN32
-    WaitForSingleObject(monitor_thread, 2000);
+    WaitForSingleObject(monitor_thread, INFINITE);
     CloseHandle(monitor_thread);
 #else
     pthread_join(monitor_thread, NULL);
@@ -435,6 +567,9 @@ void stream_url(const char *url) {
         }
     }
 
+#ifdef _WIN32
+    stream_pipe = open_stream_pipeline(url);
+#else
     char cmd[2048];
     /* Prefer explicit tool paths from the environment (set by the renderer for
        packaged apps), falling back to dev-relative defaults. */
@@ -442,10 +577,7 @@ void stream_url(const char *url) {
     const char* ffmpeg = getenv("FFMPEG_PATH");
     if (yt_dlp && !yt_dlp[0]) yt_dlp = NULL;
     if (ffmpeg && !ffmpeg[0]) ffmpeg = NULL;
-#ifdef _WIN32
-    if (yt_dlp == NULL) yt_dlp = "./bin/yt-dlp.exe";
-    if (ffmpeg == NULL) ffmpeg = "./node_modules\\@ffmpeg-installer\\win32-x64\\ffmpeg.exe";
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
     if (yt_dlp == NULL) yt_dlp = "./bin/yt-dlp_macos";
     if (ffmpeg == NULL) ffmpeg = "./node_modules/@ffmpeg-installer/darwin-x64/ffmpeg";
 #else
@@ -453,33 +585,26 @@ void stream_url(const char *url) {
     if (ffmpeg == NULL) ffmpeg = "./node_modules/@ffmpeg-installer/linux-x64/ffmpeg";
 #endif
 
-#ifdef _WIN32
+#if defined(__APPLE__)
     snprintf(cmd, sizeof(cmd),
-        "%s -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
+        "%s --js-runtimes node -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
         "--no-playlist --no-cache-dir --geo-bypass "
-        "--no-warnings --quiet --no-progress --no-mtime | "
-        "%s -hide_banner -loglevel error -i pipe: "
-        "-f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:",
-        yt_dlp, url, ffmpeg);
-#elif defined(__APPLE__)
-    snprintf(cmd, sizeof(cmd),
-        "%s -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
-        "--no-playlist --no-cache-dir --geo-bypass "
-        "--no-warnings --quiet --no-progress --no-mtime | "
+        "--quiet --no-progress --no-mtime | "
         "%s -hide_banner -loglevel error -i pipe:0 "
         "-f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:1",
         yt_dlp, url, ffmpeg);
 #else
     snprintf(cmd, sizeof(cmd),
-        "%s -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
+        "%s --js-runtimes node -f \"ba[ext=m4a]/ba/bestaudio\" -o - \"%s\" "
         "--no-playlist --no-cache-dir --geo-bypass "
-        "--no-warnings --quiet --no-progress --no-mtime | "
+        "--quiet --no-progress --no-mtime | "
         "stdbuf -oL -eL %s -hide_banner -loglevel error -i pipe:0 "
         "-f s16le -acodec pcm_s16le -ar 44100 -ac 2 pipe:1",
         yt_dlp, url, ffmpeg);
 #endif
 
     stream_pipe = popen(cmd, "r");
+#endif
     if (!stream_pipe) {
         fprintf(stderr, "Failed to start stream pipeline\n");
         printf("EV_ERROR Failed to start stream pipeline\n");
@@ -508,8 +633,7 @@ void stream_url(const char *url) {
         fprintf(stderr, "Failed to initialize stream device\n");
         printf("EV_ERROR Failed to initialize audio device\n");
         fflush(stdout);
-        pclose(stream_pipe);
-        stream_pipe = NULL;
+        close_stream_pipe();
         return;
     }
 
@@ -519,9 +643,11 @@ void stream_url(const char *url) {
         fprintf(stderr, "Failed to start stream device\n");
         printf("EV_ERROR Failed to start audio device\n");
         fflush(stdout);
+#ifdef _WIN32
+        terminate_stream_pipeline();
+#endif
         ma_device_uninit(&stream_device);
-        pclose(stream_pipe);
-        stream_pipe = NULL;
+        close_stream_pipe();
         return;
     }
 
@@ -532,12 +658,11 @@ void stream_url(const char *url) {
 static void stop_stream(void) {
     if (!is_streaming) return;
 
+#ifdef _WIN32
+    terminate_stream_pipeline();
+#endif
     ma_device_uninit(&stream_device);
-
-    if (stream_pipe) {
-        pclose(stream_pipe);
-        stream_pipe = NULL;
-    }
+    close_stream_pipe();
 
     stream_data.frames_read = 0;
     stream_data.prev_frames_read = 0;
@@ -553,6 +678,8 @@ static void stop_stream(void) {
 
 int main() {
     setbuf(stdout, NULL);
+    setbuf(stderr, NULL);
+    if (ma_mutex_init(&player_mutex) != MA_SUCCESS) return 1;
 
     fprintf(stderr, "Audio player starting...\n");
 
@@ -572,6 +699,7 @@ int main() {
         }
 
         fprintf(stderr, "Received command: '%s'\n", line);
+        ma_mutex_lock(&player_mutex);
 
         if (strncmp(line, "play ", 5) == 0) {
             play_song(line + 5);
@@ -592,12 +720,15 @@ int main() {
             show_status();
         } else if (strncmp(line, "quit", 4) == 0) {
             fprintf(stderr, "Quitting...\n");
+            ma_mutex_unlock(&player_mutex);
             break;
         } else {
             fprintf(stderr, "Unknown command: '%s'\n", line);
         }
+        ma_mutex_unlock(&player_mutex);
     }
 
     player_cleanup();
+    ma_mutex_uninit(&player_mutex);
     return 0;
 }

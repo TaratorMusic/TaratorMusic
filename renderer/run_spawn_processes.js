@@ -190,7 +190,7 @@ async function startupCheck() {
 		if (missing.length == 0) continue;
 
 		const filesByName = new Map();
-		for (const file of fs.readdirSync(folder)) {
+		for (const file of await fs.promises.readdir(folder)) {
 			const name = path.parse(file).name;
 			if (!filesByName.has(name)) filesByName.set(name, file);
 		}
@@ -425,12 +425,16 @@ function linetimeBytesText(total) {
 	return Math.round(total / 107374182.4) / 10 + " GB";
 }
 
-function pathBytes(target) {
+async function pathBytes(target) {
 	try {
-		const stat = fs.statSync(target);
+		const stat = await fs.promises.stat(target);
 		if (stat.isFile()) return stat.size;
 		if (!stat.isDirectory()) return 0;
-		return fs.readdirSync(target).reduce((sum, name) => sum + pathBytes(path.join(target, name)), 0);
+		let total = 0;
+		for (const name of await fs.promises.readdir(target)) {
+			total += await pathBytes(path.join(target, name));
+		}
+		return total;
 	} catch (_) {
 		return 0;
 	}
@@ -448,7 +452,12 @@ function getAppFilePart(id, part) {
 function getExternalPath(key) {
 	const p = externalPaths[key];
 	if (!p || typeof p !== "string") return null;
-	return pathBytes(p) > 0 ? p : null;
+	try {
+		const stat = fs.statSync(p);
+		return stat.isFile() && stat.size > 0 ? p : null;
+	} catch (_) {
+		return null;
+	}
 }
 
 async function saveExternalPaths() {
@@ -550,19 +559,19 @@ function getEffectiveLinetimeSelection() {
 	return effective;
 }
 
-function linetimeBytes(kind, id) {
+async function linetimeBytes(kind, id) {
 	let total = 0;
 	for (const [reportId, part] of linetimeParts(kind, id) || []) {
 		if (part == "ffmpeg") continue;
 		const file = linetimeFile(reportId, part);
 		if (!file) continue;
 		const isOwnCliFolder = part == "cli" && !getExternalPath(reportId + ":cli");
-		total += pathBytes(isOwnCliFolder ? path.dirname(file) : file);
+		total += await pathBytes(isOwnCliFolder ? path.dirname(file) : file);
 	}
 	return total;
 }
 
-function linetimeRow(kind, id, label, effective, gpuCliActive) {
+async function linetimeRow(kind, id, label, effective, gpuCliActive) {
 	const reportId = linetimeReportId(kind, id);
 	const supported = getAppFile(reportId)?.state !== "unsupported";
 	const installed = isLinetimeInstalled(kind, id);
@@ -570,7 +579,7 @@ function linetimeRow(kind, id, label, effective, gpuCliActive) {
 
 	let sizeText = "N/A";
 	if (supported) {
-		const bytes = installed ? linetimeBytes(kind, id) : 0;
+		const bytes = installed ? await linetimeBytes(kind, id) : 0;
 		sizeText = bytes > 0 ? linetimeBytesText(bytes) : linetimeReleaseSizes[linetimePlatformAsset(reportId) || "hf-" + reportId] || "";
 	}
 
@@ -666,28 +675,38 @@ function renderLinetimeTable(containerId, title, desc, items) {
 		</div>${rows}</div>`;
 }
 
-function refreshLinetimeStatus() {
+let linetimeStatusRevision = 0;
+
+async function refreshLinetimeStatus() {
+	const revision = ++linetimeStatusRevision;
 	const effective = getEffectiveLinetimeSelection();
 	const gpuCliActive = isLinetimeInstalled("gpu-cli") && getLinetimeWhisperCli().gpu;
 	const row = (kind, id, label) => linetimeRow(kind, id, label, effective, gpuCliActive);
+	const [binaries, models, whispers, clis] = await Promise.all([
+		Promise.all(LINETIME_VARIANTS.binary.map(v => row("binary", v.id, v.label))),
+		Promise.all([row("tokenizer", "tokenizer", "Tokenizer (required)"), ...LINETIME_VARIANTS.model.map(v => row("model", v.id, v.label))]),
+		Promise.all(LINETIME_VARIANTS.whisper.map(v => row("whisper", v.id, v.label))),
+		Promise.all([row("whisper-cli", "whisper-cli", "Whisper CLI"), row("gpu-cli", "gpu-cli", "Whisper CLI (CUDA)")]),
+	]);
+	if (revision !== linetimeStatusRevision) return;
 
 	renderLinetimeTable(
 		"linetimeBinaryTable",
 		"Binary",
 		"The aligner program itself. CPU runs everywhere, GPU needs an NVIDIA card with CUDA 12.",
-		LINETIME_VARIANTS.binary.map(v => row("binary", v.id, v.label)),
+		binaries,
 	);
 
-	renderLinetimeTable("linetimeModelTable", "Alignment models", "Acoustic models that place each lyric line in time. The tokenizer is required for any of them to work.", [row("tokenizer", "tokenizer", "Tokenizer (required)"), ...LINETIME_VARIANTS.model.map(v => row("model", v.id, v.label))]);
+	renderLinetimeTable("linetimeModelTable", "Alignment models", "Acoustic models that place each lyric line in time. The tokenizer is required for any of them to work.", models);
 
 	renderLinetimeTable(
 		"linetimeWhisperTable",
 		"Whisper models (optional)",
 		"Turn audio into lyric text. Only needed for Auto-generate, so pick one or skip this.",
-		LINETIME_VARIANTS.whisper.map(v => row("whisper", v.id, v.label)),
+		whispers,
 	);
 
-	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", "Runs the transcription that makes Auto-generate work. whisper.cpp publishes no macOS build, so it is unavailable there.", [row("whisper-cli", "whisper-cli", "Whisper CLI"), row("gpu-cli", "gpu-cli", "Whisper CLI (CUDA)")]);
+	renderLinetimeTable("linetimeCliTable", "Transcription (auto-generate lyrics)", "Runs the transcription that makes Auto-generate work. whisper.cpp publishes no macOS build, so it is unavailable there.", clis);
 
 	renderAppFileNotice();
 }
@@ -1054,7 +1073,7 @@ async function linkExternal(rowId) {
 
 	const picked = await pickExternalFile(cfg.accept);
 	if (!picked) return;
-	if (pathBytes(picked) <= 0) {
+	if (await pathBytes(picked) <= 0) {
 		await alertModal("That file is empty or unreadable.");
 		return;
 	}
@@ -1063,7 +1082,7 @@ async function linkExternal(rowId) {
 			await alertModal(`That model only loads as ${cfg.pair.basename} with ${cfg.pair.sibling} beside it.`);
 			return;
 		}
-		if (pathBytes(path.join(path.dirname(picked), cfg.pair.sibling)) <= 0) {
+		if (await pathBytes(path.join(path.dirname(picked), cfg.pair.sibling)) <= 0) {
 			await alertModal(`${cfg.pair.sibling} was not found next to the picked file.`);
 			return;
 		}
