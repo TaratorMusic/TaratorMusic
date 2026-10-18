@@ -1,16 +1,11 @@
 ### Version 1.9.x Planned Features
 
 -   Sidebar revamp
--   queue svg is bugged
 -   Aligner doesnt work, bugged
 -   Ability to queue downloads
 
--   Reports of slow app launch in Windows, convert Golang logic to Rust and add debug while launching.
--   Race condition while startup after this update.
-
 -   Staleness check on recommendations table rows
 -   add translations to the pip lyrics --> just the current lyric OR all lyrics
--   Add volume bar that expands upwards to PiP
 -   Add translations to the PiP which will be toggleable
 -   We can toggle PiP lyrics and lyrics translations with a new upwards expanding PiP settings button
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 

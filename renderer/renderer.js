@@ -415,10 +415,13 @@ function applySettingsToUi(settingsRow) {
 		loopButton: "redLoop.svg",
 		songSettingsButton: "adjustments.svg",
 	};
+    
 	for (const [id, file] of Object.entries(icons)) {
 		const el = document.getElementById(id);
 		if (el) el.innerHTML = `<img src="${path.join(appThumbnailFolder, file)}" alt="${file.split(".")[0]}">`;
 	}
+
+	document.getElementById("queuePreviewIcon").src = path.join(appThumbnailFolder, "next.svg");
 	volumeControl.value = volume * 100 * dividevolume;
 
 	if (rememberautoplay) toggleAutoplay();
