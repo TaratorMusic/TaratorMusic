@@ -876,6 +876,17 @@ async function searchYoutubeInMusics() {
 }
 
 function filterSongs(searchValue) {
+	const playlistsBySong = new Map();
+	for (const playlist of playlistsMap.values()) {
+		if (playlist.id == "SEARCH_SHUFFLE") continue;
+		const playlistName = normalizeText(playlist.name);
+		if (!playlistName) continue;
+		for (const song_id of playlist.songs || []) {
+			if (!playlistsBySong.has(song_id)) playlistsBySong.set(song_id, []);
+			playlistsBySong.get(song_id).push(playlistName);
+		}
+	}
+
 	const songs = Array.from(songNameCache.entries())
 		.map(([song_id, data]) => {
 			const lyricEntries = songLyricsCache.get(song_id) || [];
@@ -899,6 +910,7 @@ function filterSongs(searchValue) {
 				hasLyrics: !!lyricsText.trim(),
 				hasTimestampedLyrics: !!(original?.synced_lyrics || "").trim(),
 				hasTranslations: translations.length > 0,
+				playlists: playlistsBySong.get(song_id) || [],
 				lyricsText,
 				translationText,
 			};
@@ -911,7 +923,25 @@ function filterSongs(searchValue) {
 		const tokens = [];
 		let i = 0;
 		while (i < input.length) {
-			if (input[i] == '"') {
+			const playlistPrefix = input.slice(i, i + 9).toLowerCase();
+			if (playlistPrefix == "playlist:" || playlistPrefix == "playlist.") {
+				i += 9;
+				while (i < input.length && input[i] == " ") i++;
+				let value = "";
+				if (input[i] == '"') {
+					let j = i + 1;
+					while (j < input.length && input[j] != '"') j++;
+					value = input.slice(i + 1, j);
+					i = j + 1;
+				} else {
+					let j = i;
+					while (j < input.length && input[j] != " " && !'"!+,&|'.includes(input[j])) j++;
+					value = input.slice(i, j).trim();
+					i = j;
+				}
+				while (i < input.length && input[i] == " ") i++;
+				tokens.push({ type: "term", value: `playlist:${value}`, exact: false });
+			} else if (input[i] == '"') {
 				let j = i + 1;
 				while (j < input.length && input[j] != '"') j++;
 				tokens.push({ type: "term", value: input.slice(i + 1, j), exact: true });
@@ -952,6 +982,11 @@ function filterSongs(searchValue) {
 		const searchFields = [...coreFields, song.lyricsText, song.translationText];
 
 		const matchField = (field, value) => {
+			if (field == "playlist") {
+				const wanted = normalizeText(value);
+				if (!wanted) return false;
+				return song.playlists.some(playlistName => playlistName.includes(wanted));
+			}
 			const flag = ensureFlag(value);
 			if (field == "interested") return flag != null ? (flag ? song.interested : !song.interested) : false;
 			if (field == "stabilised") return flag != null ? (flag ? song.stabilised : !song.stabilised) : false;
@@ -1014,21 +1049,21 @@ function filterSongs(searchValue) {
 			return parseOr();
 		};
 
-		const raw = tokenize(searchValue);
-		if (!raw.length) return true;
-
-		const implicitAnded = [];
-		for (let i = 0; i < raw.length; i++) {
-			implicitAnded.push(raw[i]);
-			if (raw[i].type == "term" && i + 1 < raw.length && raw[i + 1].type == "term") {
-				implicitAnded.push({ type: "op", value: "&&" });
-			}
-		}
-
-		return parse(implicitAnded);
+		return parse(tokens);
 	};
 
-	return songs.filter(song => matchSong(song, tokenize(searchValue)));
+	const raw = tokenize(searchValue);
+	if (!raw.length) return songs;
+
+	const implicitAnded = [];
+	for (let i = 0; i < raw.length; i++) {
+		implicitAnded.push(raw[i]);
+		if (raw[i].type == "term" && i + 1 < raw.length && raw[i + 1].type == "term") {
+			implicitAnded.push({ type: "op", value: "&&" });
+		}
+	}
+
+	return songs.filter(song => matchSong(song, implicitAnded));
 }
 
 function showSearchHelpModal() {
@@ -1062,6 +1097,8 @@ function showSearchHelpModal() {
 		{ cmd: "lyrics:yes  /  lyrics:no", desc: "Songs that have lyrics saved, or do not have lyrics." },
 		{ cmd: "timestamped:yes  /  timestamped:no", desc: "Songs that have timestamped (synced) lyrics, or not." },
 		{ cmd: "translations:yes  /  translations:no", desc: "Songs that have at least one lyric translation, or none." },
+		{ cmd: 'playlist: Rock  /  playlist."two words"', desc: "Only songs in that playlist. The name is matched loosely, so part of it is enough." },
+		{ cmd: "playlist: Rock && lyrics:yes", desc: "Playlist names take AND, OR and NOT like any other term, so !playlist: Rock works too." },
 		{ cmd: "lyric words...", desc: "Plain terms also match lyric text and lyric translations." },
 	];
 
