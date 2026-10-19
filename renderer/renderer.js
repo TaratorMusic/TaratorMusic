@@ -1629,14 +1629,10 @@ function playMusic(songId, playlistId) {
 		videoProgress.value = 0;
 		videoLength.innerText = `00:00 / ${formatTime(songDuration)}`;
 
-		document.getElementById("addToFavoritesButtonBottomRight").style.color = "white";
 		document.getElementById("addToPlaylistButtonBottomRight").style.color = "white";
 		document.getElementById("customiseButtonBottomRight").style.color = "white";
 
-		const favPlaylist = playlistsMap.get("Favorites");
-		if (favPlaylist && favPlaylist.songs.includes(songId)) {
-			addToFavoritesButtonBottomRight.style.color = "red";
-		}
+		refreshFavoritesButtonColor();
 
 		if (songLyricsCache.has(songId)) {
 			const rows = songLyricsCache.get(songId);
@@ -2996,6 +2992,14 @@ function getSongNameById(songId) {
 	return row ? row.song_name : null;
 }
 
+function refreshFavoritesButtonColor() {
+	const button = document.getElementById("addToFavoritesButtonBottomRight");
+	if (!button) return;
+	const favPlaylist = playlistsMap.get("Favorites");
+	const inFavorites = !!favPlaylist && !!playingSongsID && favPlaylist.songs.includes(playingSongsID);
+	button.style.color = inFavorites ? "red" : "white";
+}
+
 function bottomRightFunctions(input) {
 	if (!playingSongsID) return;
 
@@ -3017,7 +3021,7 @@ function bottomRightFunctions(input) {
 
 			if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
 
-			addToFavoritesButtonBottomRight.style.color = "red";
+			refreshFavoritesButtonColor();
 		}
 	} else if (input == "customise") {
 		opencustomiseModal(playingSongsID);

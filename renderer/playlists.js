@@ -527,6 +527,8 @@ function addToSelectedPlaylists(songName) {
 		}
 	}
 
+	refreshFavoritesButtonColor();
+
 	closeModal();
 	getPlaylists(getComputedStyle(document.getElementById("playlists-content")).display == "grid");
 }
