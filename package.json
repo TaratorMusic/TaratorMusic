@@ -50,7 +50,9 @@
 				"from": "bin/",
 				"to": "bin",
 				"filter": [
-					"**/*"
+					"**/*",
+					"!**/ffmpeg",
+					"!**/ffmpeg.exe"
 				]
 			},
 			{
@@ -74,7 +76,12 @@
 		},
 		"mac": {
 			"target": "dmg",
-			"icon": "assets/tarator_icon.icns"
+			"icon": "assets/tarator_icon.icns",
+			"asar": true,
+			"asarUnpack": [
+				"node_modules/@ffmpeg-installer/**/*",
+				"node_modules/ffprobe-static/**/*"
+			]
 		},
 		"linux": {
 			"target": [

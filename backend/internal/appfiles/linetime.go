@@ -44,10 +44,6 @@ func LinetimeTokenizerPath(folder string) string {
 	return LinetimeModelPath(folder, LinetimeTokenizerName)
 }
 
-func LinetimeFfmpegPath(folder string) string {
-	return filepath.Join(folder, LinetimeFfmpegName())
-}
-
 func LinetimeGPULibPath(folder string) string {
 	return filepath.Join(folder, LinetimeGPULibDirName)
 }
@@ -81,7 +77,6 @@ func WhisperModelName(variant string) string {
 func LinetimeComponents(folder string) []Component {
 	cpu := NewComponent("cpu", "binary", "CPU", map[string]string{
 		"binary": filepath.Join(folder, LinetimeBinaryName(false)),
-		"ffmpeg": LinetimeFfmpegPath(folder),
 	})
 
 	// The lib part only exists on Linux. The Windows bundle keeps its CUDA DLLs

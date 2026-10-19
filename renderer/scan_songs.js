@@ -1,10 +1,3 @@
-const ffmpeg = require("fluent-ffmpeg");
-const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path.replace(/\.asar([\\/])/, ".asar.unpacked$1");
-const ffprobePath = require("ffprobe-static").path.replace(/\.asar([\\/])/, ".asar.unpacked$1");
-
-ffmpeg.setFfmpegPath(ffmpegPath);
-ffmpeg.setFfprobePath(ffprobePath);
-
 const CODEC_MAP = new Map([
 	["mp3", "libmp3lame"],
 	["wav", "pcm_s16le"],

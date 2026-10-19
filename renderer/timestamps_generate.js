@@ -3,7 +3,7 @@ const { spawnSync } = require("child_process");
 
 function getSoundDetectBinary() {
 	const effective = getEffectiveLinetimeSelection();
-	return getLinetimeBinaryPath(effective.binary);
+	return getLinetimePath("binary", effective.binary);
 }
 
 // Only the GPU build needs a library path. The CPU build is self contained and
@@ -11,16 +11,14 @@ function getSoundDetectBinary() {
 // comes from the binary_check report, not a table duplicated here.
 function getSoundDetectLibDir() {
 	const effective = getEffectiveLinetimeSelection();
-	const v = LINETIME_BINARY_VARIANTS.find(x => x.id === effective.binary);
+	const v = LINETIME_VARIANTS.binary.find(x => x.id === effective.binary);
 	if (!v || !v.gpu) return null;
 	return getAppFilePart("gpu", "lib");
 }
 
 function convertToWav16k(inputPath, outputPath) {
-	const ffmpegBin = getLinetimeFfmpegPath();
-
 	return new Promise((resolve, reject) => {
-		const proc = spawn(ffmpegBin, [
+		const proc = spawn(ffmpegPath, [
 			"-i", inputPath,
 			"-f", "wav",
 			"-ar", "16000",
@@ -59,7 +57,7 @@ function detectSoundDetectCaps() {
 
 	const env = Object.assign({}, process.env);
 	const alignerLibDir = getSoundDetectLibDir();
-	const cliLibDir = getLinetimeWhisperCliLibDir();
+	const cliLibDir = getLinetimeWhisperCli().libDir;
 	const libDirs = [alignerLibDir, cliLibDir].filter(Boolean).join(":");
 	if (libDirs && process.platform !== "win32") {
 		env.LD_LIBRARY_PATH = libDirs + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
@@ -131,7 +129,7 @@ const LINETIME_GPU_BUNDLE_BROKEN_KEY = "taratorLinetimeGpuBundleBroken";
 // bundle clears the flag by itself. Without this a fixed or rebuilt binary stays
 // permanently blocked by a verdict about the old one.
 function gpuBundleFingerprint() {
-	const p = getLinetimeBinaryPath("gpu");
+	const p = getLinetimePath("binary", "gpu");
 	if (!p) return "";
 	try {
 		const s = fs.statSync(p);
@@ -244,7 +242,7 @@ function runSoundDetectOnce(binaryPath, args, env, task) {
 // user's back.
 async function runSoundDetect(args, env, task, method) {
 	const effective = getEffectiveLinetimeSelection();
-	const binaryPath = getLinetimeBinaryPath(effective.binary);
+	const binaryPath = getLinetimePath("binary", effective.binary);
 
 	if (gpuBundleBlocksWhisper(effective.binary, method)) {
 		const message = linetimeGpuBundleBrokenReason() === "provider"
@@ -345,7 +343,8 @@ function parseSrtLyrics(srtPath) {
 }
 
 async function transcribeLyrics(wavPath, language, onProgress) {
-	const cliPath = getLinetimeWhisperCliPath();
+	const cli = getLinetimeWhisperCli();
+	const cliPath = cli.path;
 	if (!fs.existsSync(cliPath)) {
 		throw new Error("Whisper CLI not found. Download it in Settings > Packages > Linetime.");
 	}
@@ -354,7 +353,7 @@ async function transcribeLyrics(wavPath, language, onProgress) {
 	if (!effective.whisper) {
 		throw new Error("No Whisper model installed. Download one in Settings > Packages > Linetime.");
 	}
-	const modelPath = getLinetimeWhisperPath(effective.whisper);
+	const modelPath = getLinetimePath("whisper", effective.whisper);
 	if (!fs.existsSync(modelPath)) {
 		throw new Error("Whisper model file not found. Re-download it in Settings > Packages > Linetime.");
 	}
@@ -368,11 +367,11 @@ async function transcribeLyrics(wavPath, language, onProgress) {
 	try {
 		await new Promise((resolve, reject) => {
 			const env = Object.assign({}, process.env);
-			const libDir = getLinetimeWhisperCliLibDir();
+			const libDir = cli.libDir;
 			if (libDir && process.platform !== "win32") {
 				env.LD_LIBRARY_PATH = libDir + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : "");
 			}
-			const proc = spawn(cliPath, args, { windowsHide: true, cwd: getLinetimeWhisperCliFolder(), env });
+			const proc = spawn(cliPath, args, { windowsHide: true, cwd: cli.dir, env });
 
 			let stderr = "";
 			proc.stderr.on("data", chunk => { stderr += chunk.toString(); });
@@ -414,24 +413,23 @@ async function generateTimestampsForCurrentSong() {
 	const plainLyrics = originalRow && originalRow.lyrics ? originalRow.lyrics.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim() : "";
 
 	const effective = getEffectiveLinetimeSelection();
-	if (!isLinetimeBinaryInstalled(effective.binary)) {
+	if (!isLinetimeInstalled("binary", effective.binary)) {
 		return await requireLinetimeComponent("Linetime is not installed.");
 	}
 
-	const modelPath = getLinetimeModelPath(effective.model);
-	if (!isLinetimeModelInstalled(effective.model)) {
+	const modelPath = getLinetimePath("model", effective.model);
+	if (!isLinetimeInstalled("model", effective.model)) {
 		return await requireLinetimeComponent("Alignment model not found.");
 	}
 
-	const tokenizerPath = getLinetimeTokenizerPath();
+	const tokenizerPath = getLinetimePath("tokenizer", "tokenizer");
 	if (!fs.existsSync(tokenizerPath)) {
 		return await requireLinetimeComponent("Tokenizer not found.");
 	}
 
-	const whisperPath = effective.whisper ? getLinetimeWhisperPath(effective.whisper) : null;
-	const ffmpegPath = getLinetimeFfmpegPath();
+	const whisperPath = effective.whisper ? getLinetimePath("whisper", effective.whisper) : null;
 
-	const methodChoice = await showMethodSelectionModal(plainLyrics, !!whisperPath, isLinetimeWhisperCliInstalled());
+	const methodChoice = await showMethodSelectionModal(plainLyrics, !!whisperPath, isLinetimeInstalled("whisper-cli", "whisper-cli"));
 	if (!methodChoice) return;
 
 	const { method, language } = methodChoice;
@@ -451,7 +449,7 @@ async function generateTimestampsForCurrentSong() {
 // active, its folder must appear in LD_LIBRARY_PATH too, because its RUNPATH
 // points at the dev checkout and the app's lib_gpu lacks its ggml libs.
 const alignerLibDir = getSoundDetectLibDir();
-const cliLibDir = getLinetimeWhisperCliLibDir();
+const cliLibDir = getLinetimeWhisperCli().libDir;
 const libDirs = [alignerLibDir, cliLibDir].filter(Boolean).join(":");
 const env = Object.assign({}, process.env);
 if (libDirs && process.platform !== "win32") {
@@ -468,11 +466,8 @@ if (libDirs && process.platform !== "win32") {
 	};
 
 	try {
-		await convertToWav16k(audioPath, wavPath);
-		task.complete();
-
 		const caps = detectSoundDetectCaps();
-		const cliInstalled = isLinetimeWhisperCliInstalled();
+		const cliInstalled = isLinetimeInstalled("whisper-cli", "whisper-cli");
 
 		// The released binary's plain "b" is Whisper DTW only. It skips CTC, drifts
 		// across a track and eventually collapses several lines onto the same
@@ -495,8 +490,20 @@ if (libDirs && process.platform !== "win32") {
 		const cliTranscribes = caps.newCli && alignerMethod === "b";
 		const passesLyrics = !cliTranscribes;
 
+		// The 16 kHz WAV exists for whisper-cli, which needs it. When the lyrics are
+		// already known the aligner can read the original file, and it decodes that
+		// with ffmpeg itself, so building the WAV would only add a second run of
+		// the same conversion.
+		const needsTranscription = passesLyrics && (!plainLyrics || !plainLyrics.trim());
+		let alignerInput = audioPath;
+		if (needsTranscription) {
+			await convertToWav16k(audioPath, wavPath);
+			alignerInput = wavPath;
+		}
+		task.complete();
+
 		let lyricsForAligner = plainLyrics;
-		if (passesLyrics && (!lyricsForAligner || !lyricsForAligner.trim())) {
+		if (needsTranscription) {
 			try {
 				const transcribed = await transcribeLyrics(wavPath, language, n => {
 					task.creep(Math.min(0.9, n / 40));
@@ -509,7 +516,7 @@ if (libDirs && process.platform !== "win32") {
 		task.complete();
 		if (passesLyrics) fs.writeFileSync(lyricsTmpPath, lyricsForAligner, "utf8");
 
-		const args = passesLyrics ? [wavPath, lyricsTmpPath] : [wavPath];
+		const args = passesLyrics ? [alignerInput, lyricsTmpPath] : [alignerInput];
 		args.push("--method", alignerMethod);
 		if (alignerUsesWhisper) {
 			if (!whisperPath || !fs.existsSync(whisperPath)) {
@@ -520,7 +527,7 @@ if (libDirs && process.platform !== "win32") {
 				if (!cliInstalled) {
 					return await bail("Whisper CLI not found.", true);
 				}
-				args.push("--whisper-cli", getLinetimeWhisperCliPath());
+				args.push("--whisper-cli", getLinetimeWhisperCli().path);
 			}
 		}
 		if (alignerUsesCtc) {
@@ -530,7 +537,7 @@ if (libDirs && process.platform !== "win32") {
 		if (language) args.push("--language", language);
 		args.push("--ffmpeg", ffmpegPath);
 		const provider = pickLinetimeProvider(effective.binary, method, caps);
-		logChange("info", "Linetime run: binary=" + getLinetimeBinaryPath(effective.binary)
+		logChange("info", "Linetime run: binary=" + getLinetimePath("binary", effective.binary)
 			+ "\nmethod=" + method + " aligner=" + alignerMethod + " provider=" + provider
 			+ " cli=" + (caps.newCli ? "source" : "release"));
 		args.push("--provider", provider, "-o", outputLrcPath);

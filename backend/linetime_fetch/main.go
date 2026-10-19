@@ -130,7 +130,6 @@ type platformConfig struct {
 	legacyAssetName  string
 	binaryName       string
 	legacyBinaryName string
-	ffmpegName       string
 	whisperCliName   string
 	gpuSupported     bool
 }
@@ -138,9 +137,8 @@ type platformConfig struct {
 func getPlatformConfig(useGPU bool) (platformConfig, error) {
 	var cfg platformConfig
 	cfg.gpuSupported = useGPU && GPUSupportedOS()
-	cfg.ffmpegName = appfiles.LinetimeFfmpegName()
 	// The release archives name this file without a platform suffix on every
-	// platform, unlike the binary and ffmpeg.
+	// platform, unlike the binary.
 	cfg.whisperCliName = "whisper-cli"
 
 	switch runtime.GOOS {
@@ -368,15 +366,6 @@ func downloadBinary(useGPU, force bool) error {
 		return fmt.Errorf("error moving binary: %v", err)
 	}
 
-	// Move ffmpeg if present
-	ffmpegSrc := filepath.Join(stagingDir, cfg.ffmpegName)
-	ffmpegDst := filepath.Join(binDir, cfg.ffmpegName)
-	if _, err := os.Stat(ffmpegSrc); err == nil {
-		if err := os.Rename(ffmpegSrc, ffmpegDst); err != nil {
-			return fmt.Errorf("error moving ffmpeg: %v", err)
-		}
-	}
-
 	// Move lib directory for GPU
 	if useGPU {
 		// On Windows the CUDA DLLs are flat in the archive and have to stay flat:
@@ -437,9 +426,6 @@ func downloadBinary(useGPU, force bool) error {
 	if runtime.GOOS != "windows" {
 		if err := os.Chmod(binaryPath, 0755); err != nil {
 			return fmt.Errorf("error setting executable permission: %v", err)
-		}
-		if err := os.Chmod(ffmpegDst, 0755); err != nil {
-			// Ignore error if ffmpeg doesn't exist
 		}
 	}
 

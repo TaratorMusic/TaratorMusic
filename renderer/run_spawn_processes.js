@@ -490,7 +490,6 @@ function linetimeParts(kind, id) {
 	if (kind == "binary") {
 		const parts = [
 			[reportId, "binary"],
-			["cpu", "ffmpeg"],
 		];
 		if (variant.gpu) parts.push(["gpu", "lib"]);
 		return parts;
@@ -562,7 +561,6 @@ function getEffectiveLinetimeSelection() {
 async function linetimeBytes(kind, id) {
 	let total = 0;
 	for (const [reportId, part] of linetimeParts(kind, id) || []) {
-		if (part == "ffmpeg") continue;
 		const file = linetimeFile(reportId, part);
 		if (!file) continue;
 		const isOwnCliFolder = part == "cli" && !getExternalPath(reportId + ":cli");

@@ -107,13 +107,3 @@ func YtdlpName() string {
 	}
 	return "yt-dlp_linux"
 }
-
-// LinetimeFfmpegName is the ffmpeg the Linetime release ships and we store on
-// disk. It is the name inside the release tarball, so it is not appfiles' to
-// invent, but both the writer and the checker need to agree on it.
-func LinetimeFfmpegName() string {
-	if runtime.GOOS == "windows" {
-		return "ffmpeg.exe"
-	}
-	return "ffmpeg"
-}
