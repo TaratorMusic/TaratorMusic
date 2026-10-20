@@ -157,26 +157,18 @@ function displayPlaylists(playlists) {
 			const playlistButtons = [playlistCustomiseButton, playlistRecommendButton];
 
 			playlistButtons.forEach(el => {
-				let timeoutId;
+				let tooltipTimeoutId;
 
 				el.addEventListener("mouseenter", e => {
-					timeoutId = setTimeout(() => {
-						if (!el.dataset.tooltip) return;
-						tooltip.textContent = el.dataset.tooltip;
-						tooltip.style.display = "block";
-						tooltip.style.left = e.pageX + 5 + "px";
-						tooltip.style.top = e.pageY + 5 + "px";
-					}, 1000);
+					trackPointerPosition(e);
+					tooltipTimeoutId = setTimeout(() => showTooltip(el), 1000);
 				});
 
-				el.addEventListener("mousemove", e => {
-					tooltip.style.left = e.pageX + 5 + "px";
-					tooltip.style.top = e.pageY + 5 + "px";
-				});
+				el.addEventListener("mousemove", () => positionTooltip());
 
 				el.addEventListener("mouseleave", () => {
-					clearTimeout(timeoutId);
-					tooltip.style.display = "none";
+					clearTimeout(tooltipTimeoutId);
+					hideTooltip();
 				});
 			});
 		}

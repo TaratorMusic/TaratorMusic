@@ -3,7 +3,6 @@
 -   Sidebar revamp
 -   Aligner doesnt work, bugged
 -   Ability to queue downloads
--   tooltip spawns wrongly then gets fixed afterwards
 
 -   add translations to the pip lyrics --> just the current lyric OR all lyrics
 -   Add translations to the PiP which will be toggleable

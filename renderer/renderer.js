@@ -34,7 +34,6 @@ let pathsReady = (async () => {
 const tabs = document.querySelectorAll(".sidebar div");
 const playButton = document.getElementById("playButton");
 const pauseButton = document.getElementById("pauseButton");
-const tooltip = document.getElementById("tooltip");
 const volumeControl = document.getElementById("volume");
 const videoLength = document.getElementById("video-length");
 const videoProgress = document.getElementById("video-progress");
@@ -62,7 +61,6 @@ let songStartTime = null;
 let songPauseStartTime = 0;
 let totalPausedTime = 0;
 let previousVolume = null;
-let timeoutId = null;
 let searchedSongsUrl;
 let downloadingStyle;
 let discordRPCstatus;
@@ -607,26 +605,18 @@ async function myMusicOnClick() {
 	const tooltipElements = [musicSearchInput, musicSearchInputAmount, musicSearchEnterButton, musicSearchRefreshButton, musicSearchHelpButton];
 
 	tooltipElements.forEach(el => {
-		let timeoutId;
+		let tooltipTimeoutId;
 
 		el.addEventListener("mouseenter", e => {
-			timeoutId = setTimeout(() => {
-				if (!el.dataset.tooltip) return;
-				tooltip.textContent = el.dataset.tooltip;
-				tooltip.style.display = "block";
-				tooltip.style.left = e.pageX + 5 + "px";
-				tooltip.style.top = e.pageY + 5 + "px";
-			}, 1000);
+			trackPointerPosition(e);
+			tooltipTimeoutId = setTimeout(() => showTooltip(el), 1000);
 		});
 
-		el.addEventListener("mousemove", e => {
-			tooltip.style.left = e.pageX + 5 + "px";
-			tooltip.style.top = e.pageY + 5 + "px";
-		});
+		el.addEventListener("mousemove", () => positionTooltip());
 
 		el.addEventListener("mouseleave", () => {
-			clearTimeout(timeoutId);
-			tooltip.style.display = "none";
+			clearTimeout(tooltipTimeoutId);
+			hideTooltip();
 		});
 	});
 
@@ -3966,21 +3956,18 @@ function bindUiEvents() {
 	});
 
 	document.querySelectorAll("[data-tooltip]").forEach(el => {
+		let tooltipTimeoutId;
+
 		el.addEventListener("mouseenter", e => {
-			timeoutId = setTimeout(() => {
-				tooltip.textContent = el.dataset.tooltip;
-				tooltip.style.display = "block";
-				tooltip.style.left = e.pageX + "px";
-				tooltip.style.top = e.pageY + "px";
-			}, 1000);
+			trackPointerPosition(e);
+			tooltipTimeoutId = setTimeout(() => showTooltip(el), 1000);
 		});
-		el.addEventListener("mousemove", e => {
-			tooltip.style.left = e.pageX + 5 + "px";
-			tooltip.style.top = e.pageY + 5 + "px";
-		});
+
+		el.addEventListener("mousemove", () => positionTooltip());
+
 		el.addEventListener("mouseleave", () => {
-			clearTimeout(timeoutId);
-			tooltip.style.display = "none";
+			clearTimeout(tooltipTimeoutId);
+			hideTooltip();
 		});
 	});
 

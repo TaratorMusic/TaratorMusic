@@ -139,6 +139,57 @@ async function alertModal(message) {
 	return confirmModal(message, "Okay", null).then(() => {});
 }
 
+let tooltipElement = null;
+let pointerPosition = { pageX: 0, pageY: 0 };
+
+function trackPointerPosition(event) {
+	pointerPosition.pageX = event.pageX;
+	pointerPosition.pageY = event.pageY;
+}
+
+document.addEventListener("mousemove", trackPointerPosition, true);
+
+function getTooltipElement() {
+	if (!tooltipElement) tooltipElement = document.getElementById("tooltip");
+	return tooltipElement;
+}
+
+function positionTooltip() {
+	const element = getTooltipElement();
+	if (!element) return;
+
+	const rect = element.getBoundingClientRect();
+	const margin = 10;
+	let left = pointerPosition.pageX + 5;
+	let top = pointerPosition.pageY + 5;
+
+	const minLeft = window.scrollX + margin;
+	const maxLeft = window.scrollX + window.innerWidth - rect.width - margin;
+	const minTop = window.scrollY + margin;
+	const maxTop = window.scrollY + window.innerHeight - rect.height - margin;
+
+	if (left > maxLeft) left = maxLeft;
+	if (left < minLeft) left = minLeft;
+	if (top > maxTop) top = maxTop;
+	if (top < minTop) top = minTop;
+
+	element.style.left = left + "px";
+	element.style.top = top + "px";
+}
+
+function showTooltip(element) {
+	const tooltip = getTooltipElement();
+	if (!tooltip || !element?.dataset?.tooltip) return;
+	tooltip.textContent = element.dataset.tooltip;
+	tooltip.style.display = "block";
+	positionTooltip();
+}
+
+function hideTooltip() {
+	const tooltip = getTooltipElement();
+	if (tooltip) tooltip.style.display = "none";
+}
+
 function lyricCopyPickerModal() {
 	return new Promise(resolve => {
 		const overlay = document.createElement("div");
