@@ -981,14 +981,9 @@ audio {
 	align-items: center;
 }
 
-.playlist-queue-button {
-	flex-shrink: 0;
-	margin: 0 0.5vw;
-	padding: 0.2vw 0.5vw;
-	background-color: rgba(0, 0, 0, 0.8);
-	border: 1px solid white;
-	border-radius: 4px;
-	cursor: pointer;
+.playlist-button.disabled {
+	opacity: 0.5;
+	pointer-events: none;
 }
 
 #customiseImage {
@@ -3330,11 +3325,11 @@ th {
 	margin-left: 8px;
 }
 
-#nextQueuedPlaylistButton:disabled,
-.playlist-queue-button:disabled {
+#nextQueuedPlaylistButton:disabled {
 	opacity: 0.5;
 	cursor: default;
 }
+
 
 #queueList {
 	display: flex;

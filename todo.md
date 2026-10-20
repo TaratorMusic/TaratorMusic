@@ -2,7 +2,6 @@
 
 -   Sidebar revamp
 -   Aligner doesnt work, bugged
--   Playlist queue button needs icon and tooltip
 
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
 

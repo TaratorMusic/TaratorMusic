@@ -114,14 +114,19 @@ function displayPlaylists(playlists) {
 		playlistInfoandSongs.appendChild(playlistSongs);
 		playlistSongs.className = "scrollArea playlist-songs";
 
-		const playlistQueueButton = document.createElement("button");
-		playlistQueueButton.className = "playlist-queue-button";
-		playlistQueueButton.textContent = "Queue";
-		playlistQueueButton.title = "Add Playlist to Queue";
+		const playlistQueueButton = document.createElement("div");
+		playlistQueueButton.className = "playlist-button";
+		playlistQueueButton.innerHTML = `<img style="width: 60%; height: 60%;" src="${path.join(appThumbnailFolder, "queue.svg")}" alt="Add to Queue">`;
+		playlistQueueButton.dataset.tooltip = "Add Playlist to Queue";
 		playlistQueueButton.setAttribute("aria-label", `Add ${playlist.name} to Queue`);
-		playlistQueueButton.disabled = playlist.songs.length == 0;
-		playlistQueueButton.addEventListener("click", () => addPlaylistToQueue(playlist.id));
+		if (playlist.songs.length == 0) playlistQueueButton.classList.add("disabled");
+		playlistQueueButton.addEventListener("click", () => {
+			if (playlist.songs.length == 0) return;
+			addPlaylistToQueue(playlist.id);
+		});
 		playlistInfo.appendChild(playlistQueueButton);
+
+		const playlistButtons = [playlistQueueButton];
 
 		if (playlist.id != "Favorites") {
 			const playlistRecommendButton = document.createElement("div");
@@ -154,24 +159,24 @@ function displayPlaylists(playlists) {
 				document.getElementById("editInvisibleExtension").src = playlist.thumbnail_extension;
 			});
 
-			const playlistButtons = [playlistCustomiseButton, playlistRecommendButton];
-
-			playlistButtons.forEach(el => {
-				let tooltipTimeoutId;
-
-				el.addEventListener("mouseenter", e => {
-					trackPointerPosition(e);
-					tooltipTimeoutId = setTimeout(() => showTooltip(el), 1000);
-				});
-
-				el.addEventListener("mousemove", () => positionTooltip());
-
-				el.addEventListener("mouseleave", () => {
-					clearTimeout(tooltipTimeoutId);
-					hideTooltip();
-				});
-			});
+			playlistButtons.push(playlistCustomiseButton, playlistRecommendButton);
 		}
+
+		playlistButtons.forEach(el => {
+			let tooltipTimeoutId;
+
+			el.addEventListener("mouseenter", e => {
+				trackPointerPosition(e);
+				tooltipTimeoutId = setTimeout(() => showTooltip(el), 1000);
+			});
+
+			el.addEventListener("mousemove", () => positionTooltip());
+
+			el.addEventListener("mouseleave", () => {
+				clearTimeout(tooltipTimeoutId);
+				hideTooltip();
+			});
+		});
 
 		for (let i = 0; i < playlist.songs.length; i++) {
 			const playlistSong = document.createElement("div");
