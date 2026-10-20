@@ -2000,6 +2000,7 @@ input:checked + .slider:before {
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
+	overflow: visible;
 	z-index: 132131312312931739172931793127391739;
 }
 
@@ -2008,11 +2009,59 @@ input:checked + .slider:before {
 	padding: 0 4.5vw 0 0;
 }
 
+#searchModalInputWrap {
+	position: relative;
+	display: flex;
+	width: 100%;
+	margin-top: 2vh;
+}
+
 #searchModalInput {
 	width: 100%;
 	height: 4vh;
 	font-size: 2.5vh;
-	margin-top: 2vh;
+}
+
+#searchModalResults {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	display: none;
+	flex-direction: column;
+	background-color: rgba(15, 15, 15, 0.97);
+	border: 1px solid #888;
+	border-radius: 8px;
+	overflow: hidden;
+	z-index: 2;
+}
+
+.search-result {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 1vh;
+	padding: 0.8vh 1vh;
+	cursor: pointer;
+}
+
+.search-result.selected {
+	background-color: rgba(110, 110, 200, 0.4);
+}
+
+.search-result-thumbnail {
+	width: 5vh;
+	height: 5vh;
+	object-fit: cover;
+	border-radius: 4px;
+	background-color: #222;
+}
+
+.search-result-name {
+	font-size: 2.2vh;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 #searchModalFound {

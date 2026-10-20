@@ -25,7 +25,6 @@
 -   Fix streaming in windows --> Check logs
 -   Add song progress bar to PiP
 -   Customise Dc Rich Presence box in the settings
--   If search song finds a small amount of songs, it should be pickable with the arrow keys
 -   auto form playlist from artist-genre-language
 -   Search code for TODO'S
 
@@ -41,7 +40,6 @@
 
 -   Add sorting to the music tab. But each category will have a blob background with different color
 -   PiP bugs out when main process is minimised
--   refresh recommendations table each month (Needs to re-do all rows)
 -   The "x" button in modals should close that modal, not the modal with the highest z-index
 -   A key + right click to do stuff with songs (add to favorites, delete, etc.)
 -   Add a window, where in the left side you can see your songs and you can filter them via a search bar and sort them, on the right side there will be the playlists, and the users will be able to drag and drop all the songs to the playlists they desire.
