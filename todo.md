@@ -3,6 +3,7 @@
 -   Sidebar revamp
 -   Aligner doesnt work, bugged
 -   Ability to queue downloads
+-   tooltip spawns wrongly then gets fixed afterwards
 
 -   Staleness check on recommendations table rows
 -   add translations to the pip lyrics --> just the current lyric OR all lyrics
@@ -20,18 +21,13 @@
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
--   recommendations just for a song or playlist
+-   recommendations just for a song
 -   Fix streaming in windows --> Check logs
--   Maybe add song progress bar or volume bar or both to PiP whatevers most wanted
--   Customisable queue list with drag and drop (similar to youtube)
--   Some streamed songs dont have thumbnails in menus
--   tooltip spawns wrongly then gets fixed afterwards
+-   Add song progress bar to PiP
 -   Customise Dc Rich Presence box in the settings
 -   If search song finds a small amount of songs, it should be pickable with the arrow keys
 -   auto form playlist from artist-genre-language
--   Add a progress bar in the lyrics page. Maybe use soundwaves?
 -   Search code for TODO'S
--   Allow users to use their own global packages
 
 ### Big updates remaining:
 

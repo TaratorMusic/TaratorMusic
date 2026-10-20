@@ -201,6 +201,35 @@ function pickLinetimeProvider(binaryId, method, caps) {
 	return "cuda";
 }
 
+// The aligner prints the confidence of every line it places. That is the only
+// signal it gives that it placed the lyrics rather than spread them evenly and
+// hoped for, so it is read instead of being thrown away with the rest of its
+// stderr.
+const LINETIME_CTC_CONFIDENCE_PATTERN = /\[ctc\] Line (\d+): \[[\d.]+ - [\d.]+\] conf=([\d.]+)/;
+
+// A forced alignment whose lines sit at or below this confidence was not
+// placed, it was spread. Measured against the reference timings on the test
+// set, the songs that land within a second of them score 0.40 and up, the ones
+// that do not score 0.35 and below.
+const LINETIME_MIN_CTC_CONFIDENCE = 0.35;
+
+function parseCtcConfidences(stderr) {
+	const out = [];
+	if (!stderr) return out;
+	for (const line of stderr.split("\n")) {
+		const match = line.match(LINETIME_CTC_CONFIDENCE_PATTERN);
+		if (match) out.push(Number(match[2]));
+	}
+	return out;
+}
+
+function medianCtcConfidence(stderr) {
+	const values = parseCtcConfidences(stderr).sort((a, b) => a - b);
+	if (!values.length) return null;
+	const mid = Math.floor(values.length / 2);
+	return values.length % 2 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
+}
+
 function runSoundDetectOnce(binaryPath, args, env, task) {
 	return new Promise((resolve, reject) => {
 		const proc = spawn(binaryPath, args, {
@@ -224,7 +253,7 @@ function runSoundDetectOnce(binaryPath, args, env, task) {
 		proc.stdout.on("data", () => {});
 
 		proc.on("close", (code, signal) => {
-			if (code === 0) return resolve();
+			if (code === 0) return resolve(stderr);
 			// A null code means the process died on a signal. SIGILL in particular
 			// means the bundle was compiled with instructions this CPU does not have.
 			const cause = signal ? "killed by " + signal : "exited with code " + code;
@@ -259,7 +288,7 @@ async function runSoundDetect(args, env, task, method) {
 	}
 
 	try {
-		await runSoundDetectOnce(binaryPath, args, env, task);
+		return await runSoundDetectOnce(binaryPath, args, env, task);
 	} catch (error) {
 		if (effective.binary !== "gpu") throw error;
 
@@ -542,8 +571,26 @@ if (libDirs && process.platform !== "win32") {
 			+ " cli=" + (caps.newCli ? "source" : "release"));
 		args.push("--provider", provider, "-o", outputLrcPath);
 
-		await runSoundDetect(args, env, task, method);
+		const stderr = await runSoundDetect(args, env, task, method);
 		task.complete();
+
+		// Method A's timestamps are the forced alignment's own, so a low
+		// confidence means the times are a spread rather than a placement and
+		// staging them would put every line seconds or minutes out. Method C
+		// keeps the Whisper timing for the lines the alignment was unsure about,
+		// so there a low confidence is expected and the result is still good.
+		const confidence = medianCtcConfidence(stderr);
+		if (alignerMethod === "a" && confidence !== null && confidence < LINETIME_MIN_CTC_CONFIDENCE) {
+			logChange("warn", "Linetime run refused: the alignment was not confident.\n"
+				+ "median confidence " + confidence.toFixed(2) + "\n"
+				+ "binary: " + getLinetimePath("binary", effective.binary)
+				+ "\nmethod: " + method);
+			return await bail("The aligner could not place these lyrics confidently (median "
+				+ "confidence " + confidence.toFixed(2) + "). That usually means the song has a "
+				+ "long instrumental intro, or the lyrics do not match what is sung. Nothing was "
+				+ "saved. Use \"Auto-generate + fix my lyrics\" instead, which times the song with "
+				+ "Whisper and only uses the alignment where it is sure.");
+		}
 
 		if (!fs.existsSync(outputLrcPath)) {
 			return await bail("Generation completed but no output file was created.");
@@ -629,18 +676,32 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel, hasWhisperCli) {
 		const hasLyrics = plainLyrics && plainLyrics.trim().length > 0;
 		const songLang = getSelectedLanguage();
 
+		// Method C is listed first because it is the one that holds up: it times
+		// the song with Whisper and only uses the forced alignment where the
+		// alignment is sure of itself. Method A is faster but has no way to know
+		// when the singing starts.
 		const methods = [
-			{ 
-				id: "a", 
-				name: "Align my lyrics", 
-				desc: "Matches your existing lyrics to the audio. Fast and accurate if you already have correct lyrics.", 
+			{
+				id: "c",
+				name: "Auto-generate + fix my lyrics",
+				desc: "Runs Whisper and CTC alignment together, then merges the best result. The most accurate option: it fixes typos, restores missing parts, and keeps Whisper's timing wherever the alignment is unsure of itself. Needs a Whisper model and the alignment model.",
+				needsLang: true,
+				disabledReason: hasLyrics
+					? (hasWhisperModel ? null : "Download Whisper model in Settings > Packages > Linetime")
+					: "Add lyrics in the customisation modal first",
+				available: hasLyrics && hasWhisperModel
+			},
+			{
+				id: "a",
+				name: "Align my lyrics",
+				desc: "Matches your existing lyrics to the audio with forced alignment. Fast, and it never invents or changes a word, but it has no way to know when the singing starts, so a long instrumental intro can throw the timing off.",
 				needsLang: true,
 				disabledReason: hasLyrics ? null : "Add lyrics in the customisation modal first",
-				available: hasLyrics 
+				available: hasLyrics
 			},
-			{ 
-				id: "b", 
-				name: "Auto-generate (no lyrics needed)", 
+			{
+				id: "b",
+				name: "Auto-generate (no lyrics needed)",
 				desc: "Transcribes the audio from scratch with the Whisper CLI, then times it. Use when you don't have lyrics. Slow, and needs both a Whisper model and the Whisper CLI.",
 				needsLang: true,
 				disabledReason: hasLyrics
@@ -650,21 +711,12 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel, hasWhisperCli) {
 						: (!hasWhisperCli ? "Download Whisper CLI in Settings > Packages > Linetime" : null)),
 				available: !hasLyrics && hasWhisperModel && hasWhisperCli
 			},
-			{ 
-				id: "c", 
-				name: "Auto-generate + fix my lyrics", 
-				desc: "Runs Whisper and CTC alignment together, then merges the best result. Fixes typos and restores missing parts. Needs a Whisper model and the alignment model.",
-				needsLang: true,
-				disabledReason: hasLyrics 
-					? (hasWhisperModel ? null : "Download Whisper model in Settings > Packages > Linetime")
-					: "Add lyrics in the customisation modal first",
-				available: hasLyrics && hasWhisperModel 
-			},
 		];
 
 		const methodRadios = {};
 		const methodContainer = document.createElement("div");
 		methodContainer.style.marginBottom = "16px";
+		let preselected = false;
 
 		methods.forEach(m => {
 			const row = document.createElement("label");
@@ -688,6 +740,10 @@ function showMethodSelectionModal(plainLyrics, hasWhisperModel, hasWhisperCli) {
 			input.name = "timestampMethod";
 			input.value = m.id;
 			input.disabled = !m.available;
+			if (m.available && !preselected) {
+				input.checked = true;
+				preselected = true;
+			}
 			methodRadios[m.id] = input;
 			row.appendChild(input);
 
