@@ -16,7 +16,6 @@
 -   - Download modal should have a search section and a download section, download section should have the thumbnail & song name/info
 -   search at the same time while downloading, uses same text bar
 -   Remodel customisation modal to fit better
--   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
 -   Add song progress bar to PiP
 -   auto form playlist from artist-genre-language

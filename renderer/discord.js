@@ -111,6 +111,16 @@ function updateDiscordPresence() {
 	sendCommandToDaemon("update", [songData, currentSec.toString(), totalSec.toString(), paused, isIdle]);
 }
 
+let discordPresenceDebounceTimer = null;
+
+function updateDiscordPresenceDebounced(delay = 1000) {
+	if (discordPresenceDebounceTimer) clearTimeout(discordPresenceDebounceTimer);
+	discordPresenceDebounceTimer = setTimeout(() => {
+		discordPresenceDebounceTimer = null;
+		updateDiscordPresence();
+	}, delay);
+}
+
 function stopDaemon() {
 	if (discordDaemon) {
 		sendCommandToDaemon("quit");

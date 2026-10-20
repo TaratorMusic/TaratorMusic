@@ -1779,6 +1779,7 @@ async function playPreviousSong() {
 		if (audioPlayer) audioPlayer.stdin.write("seek 0\n");
 		lastAuthoritativePosition = 0;
 		lastSyncTimestamp = performance.now();
+		updateDiscordPresence();
 		return;
 	}
 
@@ -2141,6 +2142,7 @@ function skipForward() {
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 	lastAuthoritativePosition = newTime;
 	lastSyncTimestamp = performance.now();
+	updateDiscordPresenceDebounced();
 }
 
 function skipBackward() {
@@ -2150,6 +2152,7 @@ function skipBackward() {
 	if (audioPlayer) audioPlayer.stdin.write(`seek ${newTime}\n`);
 	lastAuthoritativePosition = newTime;
 	lastSyncTimestamp = performance.now();
+	updateDiscordPresenceDebounced();
 }
 
 function formatLrcTimestamp(seconds) {
@@ -4110,6 +4113,7 @@ function bindUiEvents() {
 		if (!Number.isNaN(seekPercent) && songDuration > 0) {
 			lastAuthoritativePosition = (songDuration * seekPercent) / 100;
 			lastSyncTimestamp = performance.now();
+			updateDiscordPresenceDebounced();
 		}
 	});
 
