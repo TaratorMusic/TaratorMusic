@@ -419,6 +419,27 @@ app.whenReady().then(() => {
 		}
 	});
 	ipcMain.on("miniplayer-action", (_, action) => mainWindow.webContents.send("pip-action", action));
+	ipcMain.on("miniplayer-translation", (_, data) => {
+		try {
+			mainWindow.webContents.send("pip-translation", data);
+		} catch (err) {
+			console.error("Error forwarding translation pick to main window:", err);
+		}
+	});
+	ipcMain.on("miniplayer-lyrics-toggle", (_, data) => {
+		try {
+			mainWindow.webContents.send("pip-lyrics-toggle", data);
+		} catch (err) {
+			console.error("Error forwarding lyrics toggle to main window:", err);
+		}
+	});
+	ipcMain.on("miniplayer-translate-current-only", (_, data) => {
+		try {
+			mainWindow.webContents.send("pip-translate-current-only", data);
+		} catch (err) {
+			console.error("Error forwarding translate current only to main window:", err);
+		}
+	});
 	ipcMain.on("open-miniplayer", (_, data) => {
 		try {
 			createMiniPlayer(data);
@@ -466,8 +487,10 @@ app.whenReady().then(() => {
 
 	ipcMain.on("miniplayer-resize", (_, data) => {
 		try {
+			const height = Number(data?.height);
+			if (!Number.isFinite(height)) return;
 			if (miniPlayer && !miniPlayer.isDestroyed()) {
-				miniPlayer.setSize(miniPlayer.getSize()[0], data.height);
+				miniPlayer.setSize(miniPlayer.getSize()[0], Math.round(height));
 			}
 		} catch (err) {
 			console.error("Error handling miniplayer-resize:", err);

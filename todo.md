@@ -3,10 +3,8 @@
 -   Sidebar revamp
 -   Aligner doesnt work, bugged
 -   Ability to queue downloads
+-   Playlist queue button needs icon and tooltip
 
--   add translations to the pip lyrics --> just the current lyric OR all lyrics
--   Add translations to the PiP which will be toggleable
--   We can toggle PiP lyrics and lyrics translations with a new upwards expanding PiP settings button
 -   Add settings modal to the my music search bar. Toggle searching by artist, genre, language, file name, and add lyrics. Add amount of songs to search there too. Move the enter button to the left of the amount of songs to search div. Move page mode scroll mode toggler to that div. 
 -   What happens when you close the download modal by the X button while downloading?
 -   - Just add a cancel button instead.

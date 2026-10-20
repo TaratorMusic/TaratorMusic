@@ -240,7 +240,7 @@ async function pipLyricsTogglerFunction() {
 		pipShowLyrics = pipShowLyrics == 1 ? 0 : 1;
 		await callSqlite({ db: "settings", query: "UPDATE settings SET pipShowLyrics = ?", args: [pipShowLyrics] });
 		ipcRenderer.send("pip-settings-update", { pipShowThumbnail, pipShowLyrics });
-		if (pipShowLyrics == 1 && playingSongsID) {
+		if (playingSongsID) {
 			const cachedRows = songLyricsCache.get(playingSongsID) || [];
 			const originalRow = cachedRows.find(r => !r.language);
 			updateMiniPlayer(buildMiniPlayerLyrics(playingSongsID, originalRow?.lyrics || "", parseLrc(originalRow?.synced_lyrics || "")));

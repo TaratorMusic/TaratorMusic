@@ -49,6 +49,8 @@ var settingsColumns = []Column{
 	{Name: "pictureInPicture", Type: "INTEGER", Default: "0"},
 	{Name: "pipShowThumbnail", Type: "INTEGER", Default: "1"},
 	{Name: "pipShowLyrics", Type: "INTEGER", Default: "0"},
+	{Name: "pipTranslateCurrentOnly", Type: "INTEGER", Default: "0"},
+	{Name: "pipTranslationLanguages", Type: "TEXT", Default: "NULL"},
 	{Name: "key_searchPlaylist", Type: "TEXT", Default: "x"},
 	{Name: "key_searchShuffle", Type: "TEXT", Default: "c"},
 	{Name: "key_lyrics", Type: "TEXT", Default: "v"},

@@ -20,6 +20,27 @@
 			<div id="sound-button"></div>
 			<div id="volume-container"><input type="range" id="volume-slider" min="0" max="100" value="100" /></div>
 		</div>
+		<div id="settings-button" class="no-drag"></div>
+	</div>
+
+	<div id="pip-settings">
+		<div class="pip-settings-row">
+			<label class="pip-settings-label" for="pip-disable-lyrics">
+				<input type="checkbox" id="pip-disable-lyrics" />
+				<span>Disable Lyrics</span>
+			</label>
+		</div>
+		<div class="pip-settings-row">
+			<label class="pip-settings-label" for="pip-translate-current-only">
+				<input type="checkbox" id="pip-translate-current-only" />
+				<span>Only translate the current line</span>
+			</label>
+		</div>
+		<div class="pip-settings-row">
+			<label class="pip-settings-label" for="pip-translation-select">Translation:</label>
+			<select id="pip-translation-select"></select>
+			<span id="pip-translation-warning" title="This translation has a different number of lines than the lyrics, so it cannot be shown.">!</span>
+		</div>
 	</div>
 </main>
 
@@ -48,6 +69,7 @@
 
 	.drag-area {
 		-webkit-app-region: drag;
+		flex: none;
 	}
 
 	.no-drag {
@@ -64,6 +86,83 @@
 		font-size: 5.6vw;
 		line-height: 10vw;
 		padding: 0 2vw;
+	}
+
+	#settings-button {
+		width: 10vw;
+		height: 10vw;
+		background-size: 55%;
+		background-repeat: no-repeat;
+		background-position: center;
+	}
+
+	#settings-button:hover {
+		filter: brightness(1.2);
+	}
+
+	#pip-settings {
+		display: none;
+		flex: none;
+		flex-direction: column;
+		gap: 1.4vw;
+		padding: 1.6vw 4vw;
+		background-color: rgba(0, 0, 0, 0.4);
+		border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+		font-size: 4.8vw;
+		text-align: left;
+		opacity: 0;
+		transition: opacity 0.12s ease;
+	}
+
+	#pip-settings.open {
+		display: flex;
+	}
+
+	#pip-settings.open.shown {
+		opacity: 1;
+	}
+
+	.pip-settings-row {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 1.6vw;
+	}
+
+	.pip-settings-label {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 1.2vw;
+	}
+
+	#pip-disable-lyrics {
+		width: 4.4vw;
+		height: 4.4vw;
+		margin: 0;
+		accent-color: #7aa2f7;
+	}
+
+	#pip-translation-select {
+		font-size: 4.5vw;
+		color: white;
+		background-color: rgba(0, 0, 0, 0.6);
+		border: 1px solid rgba(255, 255, 255, 0.25);
+		border-radius: 0.6vw;
+		padding: 0.4vw 0.8vw;
+	}
+
+	#pip-translation-warning {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		width: 3.8vw;
+		height: 3.8vw;
+		border-radius: 50%;
+		background-color: #b3261e;
+		color: white !important;
+		font-size: 2.8vw;
+		font-weight: bold;
 	}
 
 	#content-area {
@@ -108,7 +207,7 @@
 	}
 
 	#song-progress {
-		width: 60vw;
+		width: 50vw;
 		height: 10vw;
 		display: flex;
 		align-items: center;
@@ -133,11 +232,11 @@
 		display: flex;
 		visibility: hidden;
 		opacity: 0;
-		transform: translateY(0.5vw);
+		transform: translate(-50%, 0.5vw);
 		transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s 0.25s;
 		position: absolute;
 		z-index: 999;
-		right: 0;
+		left: 50%;
 		bottom: 9vw;
 		max-height: calc(100vh - 12vw);
 		background: rgba(0, 0, 0, 0.85);
@@ -150,6 +249,7 @@
 	.controls {
 		position: relative;
 		z-index: 1000;
+		flex: none;
 	}
 
 	main:has(#sound-wrap:hover) #thumbnail {
@@ -159,7 +259,7 @@
 	#sound-wrap:hover #volume-container {
 		visibility: visible;
 		opacity: 1;
-		transform: translateY(0);
+		transform: translate(-50%, 0);
 		transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s 0s;
 	}
 
@@ -247,6 +347,11 @@
 	let keybinds = null;
 	let currentSongName = "";
 	let currentSongId = "";
+	let settingsOpen = false;
+	let settingsRevealPending = false;
+	let settingsRevealTimer = null;
+	let pendingSettingsHeight = 0;
+	let translateCurrentOnly = false;
 	let currentVolume = 100;
 
 	function loadImage(elementId, url) {
@@ -276,6 +381,7 @@
 			if (!translationText) return;
 			const translation = document.createElement("div");
 			translation.className = "lyric-translation";
+			translation.dataset.lineIndex = index;
 			translation.textContent = translationText;
 			container.appendChild(translation);
 		}
@@ -288,6 +394,15 @@
 			currentLyrics = plainText;
 			const lines = plainText.split("\n");
 			for (let i = 0; i < lines.length; i++) appendLine(lines[i], i);
+		}
+	}
+
+	function updateTranslationVisibility() {
+		const container = document.getElementById("lyrics-container");
+		const translations = container.querySelectorAll(".lyric-translation");
+		for (const element of translations) {
+			const index = Number(element.dataset.lineIndex);
+			element.style.display = !translateCurrentOnly || index == currentLyricIndex ? "block" : "none";
 		}
 	}
 
@@ -323,6 +438,7 @@
 
 		const container = document.getElementById("lyrics-container");
 		const lines = applyLineClasses(index);
+		updateTranslationVisibility();
 
 		if (index >= 0 && index < lines.length) {
 			const line = lines[index];
@@ -370,12 +486,89 @@
 		renderVolumeIcon();
 	}
 
-	function updateSize() {		const hasContent = currentSyncedLyrics.length > 0 || currentLyrics.trim().length > 0;
+	function revealSettingsPanel() {
+		if (!settingsRevealPending) return;
+		settingsRevealPending = false;
+		const settingsEl = document.getElementById("pip-settings");
+		settingsEl.classList.add("open");
+		settingsEl.classList.add("shown");
+	}
+
+	function measureSettingsPanel() {
+		const settingsEl = document.getElementById("pip-settings");
+		settingsEl.classList.add("open");
+		settingsEl.style.position = "absolute";
+		settingsEl.style.left = "0";
+		settingsEl.style.right = "0";
+		settingsEl.style.bottom = "0";
+		const height = settingsEl.getBoundingClientRect().height;
+		settingsEl.style.position = "";
+		settingsEl.style.left = "";
+		settingsEl.style.right = "";
+		settingsEl.style.bottom = "";
+		settingsEl.classList.remove("open");
+		return Number.isFinite(height) ? height : 0;
+	}
+
+	function setSettingsOpen(open) {
+		const settingsEl = document.getElementById("pip-settings");
+		clearTimeout(settingsRevealTimer);
+		settingsRevealPending = false;
+
+		if (open) {
+			settingsOpen = true;
+			pendingSettingsHeight = measureSettingsPanel();
+			settingsEl.classList.remove("shown");
+			settingsRevealPending = true;
+			updateSize();
+			settingsRevealTimer = setTimeout(revealSettingsPanel, 250);
+			return;
+		}
+
+		settingsOpen = false;
+		settingsEl.classList.remove("shown");
+		settingsRevealTimer = setTimeout(() => {
+			settingsEl.classList.remove("open");
+			updateSize();
+		}, 130);
+	}
+
+	function updateTranslationOptions(languages, selected, mismatch) {
+		const select = document.getElementById("pip-translation-select");
+		select.innerHTML = "";
+
+		const noneOption = document.createElement("option");
+		noneOption.value = "";
+		noneOption.textContent = "None";
+		select.appendChild(noneOption);
+
+		for (const language of languages || []) {
+			const option = document.createElement("option");
+			option.value = language;
+			option.textContent = language;
+			select.appendChild(option);
+		}
+
+		select.value = selected || "";
+
+		const warning = document.getElementById("pip-translation-warning");
+		if (warning) warning.style.display = mismatch ? "inline-flex" : "none";
+	}
+
+	function updateSize() {
+		const hasContent = currentSyncedLyrics.length > 0 || currentLyrics.trim().length > 0;
 		const shouldExtend = showLyrics && hasContent;
 		let height;
 		if (shouldExtend) height = showThumbnail ? 732 : 375;
 		else height = showThumbnail ? 244 : 100;
-		ipcRenderer.send("miniplayer-resize", { height });
+
+		const settingsEl = document.getElementById("pip-settings");
+		if (settingsOpen && settingsEl) {
+			const panelHeight = settingsRevealPending ? pendingSettingsHeight : settingsEl.getBoundingClientRect().height;
+			if (Number.isFinite(panelHeight)) height += panelHeight;
+		}
+
+		ipcRenderer.send("miniplayer-resize", { height: Math.round(height) });
 
 		const lyricsEl = document.getElementById("lyrics-container");
 		shouldExtend ? lyricsEl.classList.add("visible") : lyricsEl.classList.remove("visible");
@@ -392,6 +585,7 @@
 				loadImage("previous-button", `url("file://${path.join(assetsFolder, "previous.svg").replace(/\\/g, "/")}")`);
 				loadImage("next-button", `url("file://${path.join(assetsFolder, "next.svg").replace(/\\/g, "/")}")`);
 				loadImage("pauseplay-button", `url("file://${path.join(assetsFolder, "play.svg").replace(/\\/g, "/")}")`);
+				loadImage("settings-button", `url("file://${path.join(assetsFolder, "settings.svg").replace(/\\/g, "/")}")`);
 				renderVolumeIcon();
 			}
 			if (data.volume != undefined) setVolume(data.volume);
@@ -419,12 +613,16 @@
 				currentSyncedLyrics = data.syncedLyrics || [];
 				currentTranslationLines = data.translationLines || [];
 				renderLyrics(currentLyrics, currentSyncedLyrics, currentTranslationLines);
+				updateTranslationOptions(data.translationLanguages, data.translationLanguage, data.translationMismatch);
+				translateCurrentOnly = data.translateCurrentOnly === true;
+				document.getElementById("pip-translate-current-only").checked = translateCurrentOnly;
 				if (songChanged) {
 					currentLyricIndex = -1;
 					document.getElementById("lyrics-container").scrollTop = 0;
 				} else {
 					restoreLyricView();
 				}
+				updateTranslationVisibility();
 				updateSize();
 			}
 			if (data.songProgress != undefined && showLyrics && (currentSyncedLyrics.length > 0 || currentLyrics.trim().length > 0)) {
@@ -449,11 +647,16 @@
 			}
 			if (data.pipShowLyrics != undefined) {
 				showLyrics = data.pipShowLyrics == 1;
+				document.getElementById("pip-disable-lyrics").checked = !showLyrics;
 			}
 			updateSize();
 		} catch (err) {
 			console.error("Error handling pip-settings-update:", err);
 		}
+	});
+
+	window.addEventListener("resize", () => {
+		revealSettingsPanel();
 	});
 
 	document.addEventListener("keydown", event => {
@@ -493,4 +696,16 @@
 	});
 	document.getElementById("close-button").onclick = () => ipcRenderer.send("miniplayer-close");
 	document.getElementById("minimise-button").onclick = () => ipcRenderer.send("miniplayer-minimize");
+	document.getElementById("settings-button").onclick = () => setSettingsOpen(!settingsOpen);
+	document.getElementById("pip-disable-lyrics").addEventListener("change", event => {
+		ipcRenderer.send("miniplayer-lyrics-toggle", { disabled: event.target.checked });
+	});
+	document.getElementById("pip-translation-select").addEventListener("change", event => {
+		ipcRenderer.send("miniplayer-translation", { songId: currentSongId, language: event.target.value });
+	});
+	document.getElementById("pip-translate-current-only").addEventListener("change", event => {
+		translateCurrentOnly = event.target.checked;
+		updateTranslationVisibility();
+		ipcRenderer.send("miniplayer-translate-current-only", { enabled: translateCurrentOnly });
+	});
 </script>

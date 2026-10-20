@@ -141,11 +141,13 @@ let ytdlpLastUpdateDate;
 let ytdlpVersion;
 let lastPipLyricsSongId = "";
 let pipTranslationBySong = new Map();
-const PIP_TRANSLATION_STORAGE_KEY = "pipTranslationLanguages";
+let pipTranslateCurrentOnly = false;
 
-function loadPipTranslationPicks() {
+function loadPipTranslationPicks(settingsRow) {
+	pipTranslateCurrentOnly = settingsRow?.pipTranslateCurrentOnly == 1;
+	pipTranslationBySong = new Map();
 	try {
-		const stored = JSON.parse(localStorage.getItem(PIP_TRANSLATION_STORAGE_KEY) || "{}");
+		const stored = JSON.parse(settingsRow?.pipTranslationLanguages || "{}");
 		pipTranslationBySong = new Map(Object.entries(stored));
 	} catch {
 		pipTranslationBySong = new Map();
@@ -153,27 +155,42 @@ function loadPipTranslationPicks() {
 }
 
 function savePipTranslationPicks() {
-	try {
-		localStorage.setItem(PIP_TRANSLATION_STORAGE_KEY, JSON.stringify(Object.fromEntries(pipTranslationBySong)));
-	} catch {}
+	callSqlite({
+		db: "settings",
+		query: "UPDATE settings SET pipTranslationLanguages = ?",
+		args: [JSON.stringify(Object.fromEntries(pipTranslationBySong))],
+		fetch: false,
+	}).catch(() => {});
 }
 
 function setPipTranslation(songId, language) {
 	if (!songId) return;
-	if (language) pipTranslationBySong.set(songId, language);
-	else pipTranslationBySong.delete(songId);
+	pipTranslationBySong.set(songId, language || "");
+	savePipTranslationPicks();
+}
+
+function clearPipTranslation(songId) {
+	if (!songId) return;
+	pipTranslationBySong.delete(songId);
 	savePipTranslationPicks();
 }
 
 function getPipTranslationLanguage(songId) {
-	const picked = pipTranslationBySong.get(songId);
-	if (picked) return picked;
+	if (pipTranslationBySong.has(songId)) return pipTranslationBySong.get(songId);
 	const cachedRows = songLyricsCache.get(songId) || [];
 	const languages = cachedRows
 		.filter(r => r.language)
 		.map(r => r.language)
 		.sort((a, b) => a.localeCompare(b));
 	return languages[0] || "";
+}
+
+function getSongTranslationLanguages(songId) {
+	const cachedRows = songLyricsCache.get(songId) || [];
+	return cachedRows
+		.filter(r => r.language)
+		.map(r => r.language)
+		.sort((a, b) => a.localeCompare(b));
 }
 
 const LOG_LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
@@ -484,6 +501,8 @@ function applySettingsToUi(settingsRow) {
 	document.getElementById("pipLyricsToggle").checked = pipShowLyrics == 1;
 	document.getElementById("logLevelSelect").value = localStorage.getItem("logLevel") || "info";
 
+	loadPipTranslationPicks(settingsRow);
+
 	if (pictureInPicture == 1) {
 		ipcRenderer.send("open-miniplayer", { assetsFolder: appThumbnailFolder, pipShowThumbnail, pipShowLyrics, volume: Number(settingsRow.volume) });
 		sendKeybindsToPiP();
@@ -492,7 +511,6 @@ function applySettingsToUi(settingsRow) {
 
 async function loadCaches() {
 	notInterestedSongs = await callSqlite({ db: "musics", query: "SELECT song_id FROM not_interested", fetch: true });
-	loadPipTranslationPicks();
 
 	const [songsRows, streamsRows] = await Promise.all([
 		callSqlite({
@@ -1741,12 +1759,10 @@ function playMusic(songId, playlistId) {
 		updateDiscordPresence();
 		updateProgressPaused();
 
-		if (pipShowLyrics == 1) {
-			const cachedRows = songLyricsCache.get(songId) || [];
-			const originalRow = cachedRows.find(r => !r.language);
-			updateMiniPlayer(buildMiniPlayerLyrics(songId, originalRow?.lyrics || "", parseLrc(originalRow?.synced_lyrics || "")));
-			lastPipLyricsSongId = songId;
-		}
+		const cachedRows = songLyricsCache.get(songId) || [];
+		const originalRow = cachedRows.find(r => !r.language);
+		updateMiniPlayer(buildMiniPlayerLyrics(songId, originalRow?.lyrics || "", parseLrc(originalRow?.synced_lyrics || "")));
+		lastPipLyricsSongId = songId;
 
 		if (lyricsPanelVisible) renderMainLyrics();
 
@@ -2453,7 +2469,8 @@ async function opencustomiseModal(songsId) {
 	renderLyricsTimestampCol(originalRow?.synced_lyrics || "");
 
 	const picker = document.getElementById("translatedLyricInput");
-	const currentLang = pipTranslationBySong.get(songsId) || picker.value;
+	const songPick = pipTranslationBySong.get(songsId);
+	const currentLang = songPick ? songPick : picker.value;
 	picker.innerHTML = '<option value="none">None</option><option value="new">New</option>';
 	const translationLangs = cachedRows
 		.filter(r => r.language)
@@ -2473,8 +2490,7 @@ async function opencustomiseModal(songsId) {
 		picker.value = "none";
 	}
 	document.getElementById("lyricsTranslationArea").value = picker.value != "none" && picker.value != "new" ? cachedRows.find(r => r.language == picker.value)?.lyrics || "" : "";
-	if (picker.value != "none" && picker.value != "new") setPipTranslation(songsId, picker.value);
-	else setPipTranslation(songsId, "");
+	if (!pipTranslationBySong.has(songsId) && picker.value != "none" && picker.value != "new") setPipTranslation(songsId, picker.value);
 	refreshMiniPlayerLyrics();
 	document.getElementById("lyricsArea").scrollTop = 0;
 	document.getElementById("lyricsTranslationArea").scrollTop = 0;
@@ -2664,7 +2680,7 @@ async function saveEditedSong(translationOnly = false) {
 			.map(input => input.value)
 			.join("\n");
 
-		if (playingSongsID == savedSongId && pipShowLyrics == 1) {
+		if (playingSongsID == savedSongId) {
 			updateMiniPlayer(buildMiniPlayerLyrics(savedSongId, lyricsValue, parseLrc(syncedLyricsValue)));
 			lastPipLyricsSongId = "";
 		}
@@ -3401,7 +3417,7 @@ async function deleteCurrentTranslation() {
 	document.getElementById("lyricsTranslationArea").value = "";
 	div.dataset.origTranslation = "";
 	div.dataset.origTranslationLang = "none";
-	if (pipTranslationBySong.get(songId) == selected) setPipTranslation(songId, "");
+	if (pipTranslationBySong.get(songId) == selected) clearPipTranslation(songId);
 	refreshMiniPlayerLyrics();
 }
 
@@ -3623,7 +3639,7 @@ async function fetchLrclibForCurrentSong() {
 		const hasLyrics = !!saved.plainLyrics.trim();
 		document.getElementById("customiseButtonBottomRight").style.color = hasLyrics ? "lime" : "white";
 
-		if (playingSongsID == songId && pipShowLyrics == 1) {
+		if (playingSongsID == songId) {
 			updateMiniPlayer(buildMiniPlayerLyrics(songId, saved.plainLyrics, saved.parsedSyncedLyrics));
 			lastPipLyricsSongId = "";
 		}
@@ -3736,7 +3752,7 @@ function tick() {
 
 			if (player && playingSongsID) player.getPosition = () => Math.floor(clamped * 1e6);
 
-			if (pipShowLyrics == 1 && playingSongsID && playingSongsID != lastPipLyricsSongId) {
+			if (playingSongsID && playingSongsID != lastPipLyricsSongId) {
 				try {
 					const cachedRows = songLyricsCache.get(playingSongsID) || [];
 					const originalRow = cachedRows.find(r => !r.language);
@@ -3761,12 +3777,13 @@ function updateMiniPlayer(state) {
 	ipcRenderer.send("renderer-miniplayer-update", state);
 }
 
-function getPipTranslationLines(songId, originalLineCount, originalIsSynced) {
+function getPipTranslationData(songId, originalLineCount, originalIsSynced) {
 	const language = getPipTranslationLanguage(songId);
-	if (!language) return [];
+	if (!language) return { lines: [], mismatch: false };
+
 	const cachedRows = songLyricsCache.get(songId) || [];
 	const row = cachedRows.find(r => r.language == language);
-	if (!row?.lyrics) return [];
+	if (!row?.lyrics) return { lines: [], mismatch: false };
 
 	const translationSynced = parseLrc(row.synced_lyrics || "");
 	let lines;
@@ -3774,23 +3791,28 @@ function getPipTranslationLines(songId, originalLineCount, originalIsSynced) {
 	else if (originalIsSynced) lines = row.lyrics.split("\n").filter(line => line.trim().length > 0);
 	else lines = row.lyrics.split("\n");
 
-	if (lines.length != originalLineCount) return [];
-	return lines;
+	if (lines.length != originalLineCount) return { lines: [], mismatch: true };
+	return { lines: lines, mismatch: false };
 }
 
 function buildMiniPlayerLyrics(songId, plainLyrics, syncedLyrics) {
 	const originalIsSynced = syncedLyrics.length > 0;
 	const originalLineCount = originalIsSynced ? syncedLyrics.length : plainLyrics.split("\n").length;
+	const translation = getPipTranslationData(songId, originalLineCount, originalIsSynced);
 	return {
 		songId: songId,
 		lyrics: plainLyrics,
 		syncedLyrics: syncedLyrics,
-		translationLines: getPipTranslationLines(songId, originalLineCount, originalIsSynced),
+		translationLines: translation.lines,
+		translationMismatch: translation.mismatch,
+		translationLanguages: getSongTranslationLanguages(songId),
+		translationLanguage: getPipTranslationLanguage(songId),
+		translateCurrentOnly: pipTranslateCurrentOnly,
 	};
 }
 
 function refreshMiniPlayerLyrics() {
-	if (pipShowLyrics != 1 || !playingSongsID) return;
+	if (!playingSongsID) return;
 	const cachedRows = songLyricsCache.get(playingSongsID) || [];
 	const originalRow = cachedRows.find(r => !r.language);
 	updateMiniPlayer(buildMiniPlayerLyrics(playingSongsID, originalRow?.lyrics || "", parseLrc(originalRow?.synced_lyrics || "")));
@@ -4140,6 +4162,24 @@ function bindUiEvents() {
 	ipcRenderer.on("player-previous", () => playPreviousSong());
 	ipcRenderer.on("player-playpause", () => playPause());
 	ipcRenderer.on("player-next", () => playNextSong());
+	ipcRenderer.on("pip-translation", (_, data) => {
+		if (!data?.songId) return;
+		setPipTranslation(data.songId, data.language || "");
+		refreshMiniPlayerLyrics();
+	});
+	ipcRenderer.on("pip-lyrics-toggle", (_, data) => {
+		pipShowLyrics = data?.disabled ? 0 : 1;
+		callSqlite({ db: "settings", query: "UPDATE settings SET pipShowLyrics = ?", args: [pipShowLyrics], fetch: false });
+		const toggle = document.getElementById("pipLyricsToggle");
+		if (toggle) toggle.checked = pipShowLyrics == 1;
+		ipcRenderer.send("pip-settings-update", { pipShowThumbnail, pipShowLyrics });
+		refreshMiniPlayerLyrics();
+	});
+	ipcRenderer.on("pip-translate-current-only", (_, data) => {
+		pipTranslateCurrentOnly = !!data?.enabled;
+		callSqlite({ db: "settings", query: "UPDATE settings SET pipTranslateCurrentOnly = ?", args: [pipTranslateCurrentOnly ? 1 : 0], fetch: false });
+		refreshMiniPlayerLyrics();
+	});
 	ipcRenderer.on("pip-action", (_, action) => {
 		if (action == "previous") playPreviousSong();
 		else if (action == "playPause") playPause();

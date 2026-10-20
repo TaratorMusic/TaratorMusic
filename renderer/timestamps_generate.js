@@ -613,7 +613,7 @@ if (libDirs && process.platform !== "win32") {
 
 		// The baseline datasets are left untouched on purpose so isCustomiseModalDirty
 		// reports the staged result as unsaved and closing the modal offers to save.
-		if (playingSongsID == songId && pipShowLyrics == 1) {
+		if (playingSongsID == songId) {
 			updateMiniPlayer(
 				buildMiniPlayerLyrics(songId, document.getElementById("lyricsArea").value, parseLrc(syncedText)),
 			);
