@@ -223,6 +223,13 @@
 	#lyrics-container .lyric-line.past {
 		color: #999;
 	}
+
+	#lyrics-container .lyric-translation {
+		font-size: 4.2vw;
+		line-height: 1.3;
+		color: #8a9bb5;
+		padding: 0 0 0.4vw;
+	}
 </style>
 
 <script>
@@ -235,9 +242,11 @@
 	let showLyrics = false;
 	let currentLyrics = "";
 	let currentSyncedLyrics = [];
+	let currentTranslationLines = [];
 	let currentLyricIndex = -1;
 	let keybinds = null;
 	let currentSongName = "";
+	let currentSongId = "";
 	let currentVolume = 100;
 
 	function loadImage(elementId, url) {
@@ -249,36 +258,40 @@
 		}
 	}
 
-	function renderLyrics(plainText, syncedLyrics) {
+	function renderLyrics(plainText, syncedLyrics, translationLines) {
 		const container = document.getElementById("lyrics-container");
 		container.innerHTML = "";
 
+		const translations = translationLines || [];
+		currentTranslationLines = translations;
+
+		function appendLine(lineText, index, dataIndex) {
+			const div = document.createElement("div");
+			div.className = "lyric-line";
+			if (dataIndex !== undefined) div.dataset.index = dataIndex;
+			div.textContent = lineText || "\u00A0";
+			container.appendChild(div);
+
+			const translationText = translations[index];
+			if (!translationText) return;
+			const translation = document.createElement("div");
+			translation.className = "lyric-translation";
+			translation.textContent = translationText;
+			container.appendChild(translation);
+		}
+
 		if (syncedLyrics && syncedLyrics.length > 0) {
 			currentSyncedLyrics = syncedLyrics;
-			for (let i = 0; i < syncedLyrics.length; i++) {
-				const div = document.createElement("div");
-				div.className = "lyric-line";
-				div.dataset.index = i;
-				div.textContent = syncedLyrics[i].text || "\u00A0";
-				container.appendChild(div);
-			}
+			for (let i = 0; i < syncedLyrics.length; i++) appendLine(syncedLyrics[i].text, i, i);
 		} else {
 			currentSyncedLyrics = [];
 			currentLyrics = plainText;
 			const lines = plainText.split("\n");
-			for (const line of lines) {
-				const div = document.createElement("div");
-				div.className = "lyric-line";
-				div.textContent = line || "\u00A0";
-				container.appendChild(div);
-			}
+			for (let i = 0; i < lines.length; i++) appendLine(lines[i], i);
 		}
 	}
 
-	function scrollToLine(index) {
-		if (index == currentLyricIndex) return;
-		currentLyricIndex = index;
-
+	function applyLineClasses(index) {
 		const container = document.getElementById("lyrics-container");
 		const lines = container.querySelectorAll(".lyric-line");
 
@@ -287,6 +300,29 @@
 			if (i == index) lines[i].classList.add("current");
 			else if (i < index) lines[i].classList.add("past");
 		}
+
+		return lines;
+	}
+
+	function restoreLyricView() {
+		if (currentLyricIndex < 0) return;
+		const container = document.getElementById("lyrics-container");
+		const lines = applyLineClasses(currentLyricIndex);
+		if (currentLyricIndex >= lines.length) return;
+
+		const line = lines[currentLyricIndex];
+		const containerRect = container.getBoundingClientRect();
+		const lineRect = line.getBoundingClientRect();
+		const offset = lineRect.top - containerRect.top - containerRect.height / 2 + lineRect.height / 2;
+		container.scrollTop += offset;
+	}
+
+	function scrollToLine(index) {
+		if (index == currentLyricIndex) return;
+		currentLyricIndex = index;
+
+		const container = document.getElementById("lyrics-container");
+		const lines = applyLineClasses(index);
 
 		if (index >= 0 && index < lines.length) {
 			const line = lines[index];
@@ -376,11 +412,19 @@
 				const url = currentThumbnail.startsWith("http") ? `url("${currentThumbnail}")` : `url("file://${currentThumbnail.replace(/\\/g, "/")}")`;
 				loadImage("thumbnail", url);
 			}
-			if (data.lyrics != undefined || data.syncedLyrics != undefined) {
+			if (data.lyrics != undefined || data.syncedLyrics != undefined || data.translationLines != undefined) {
+				const songChanged = data.songId != undefined && data.songId != currentSongId;
+				if (data.songId != undefined) currentSongId = data.songId;
 				currentLyrics = data.lyrics != undefined ? data.lyrics : currentLyrics;
 				currentSyncedLyrics = data.syncedLyrics || [];
-				currentLyricIndex = -1;
-				renderLyrics(currentLyrics, currentSyncedLyrics);
+				currentTranslationLines = data.translationLines || [];
+				renderLyrics(currentLyrics, currentSyncedLyrics, currentTranslationLines);
+				if (songChanged) {
+					currentLyricIndex = -1;
+					document.getElementById("lyrics-container").scrollTop = 0;
+				} else {
+					restoreLyricView();
+				}
 				updateSize();
 			}
 			if (data.songProgress != undefined && showLyrics && (currentSyncedLyrics.length > 0 || currentLyrics.trim().length > 0)) {
