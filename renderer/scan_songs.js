@@ -8,7 +8,16 @@ const CODEC_MAP = new Map([
 	["opus", "libopus"],
 ]);
 
-async function normalizeAudio(filePath) {
+function timemarkToSeconds(timemark) {
+	if (!timemark) return 0;
+	const parts = String(timemark)
+		.split(":")
+		.map(part => Number(part));
+	if (parts.some(part => !Number.isFinite(part))) return 0;
+	return parts.reduce((total, part) => total * 60 + part, 0);
+}
+
+async function normalizeAudio(filePath, onProgress) {
 	const ext = path.extname(filePath).toLowerCase().slice(1);
 	const codec = CODEC_MAP.get(ext);
 	if (!codec) throw new Error(`Unsupported file extension: .${ext}`);
@@ -16,9 +25,39 @@ async function normalizeAudio(filePath) {
 	const dir = path.dirname(filePath);
 	const base = path.basename(filePath, "." + ext);
 	const tmpPath = path.join(dir, `${base}.!${Date.now()}.${ext}`);
+	const startedAt = Date.now();
+	const rateSamples = [];
 
 	await new Promise((resolve, reject) => {
-		ffmpeg(filePath).audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11").audioCodec(codec).on("error", reject).on("end", resolve).save(tmpPath);
+		ffmpeg(filePath)
+			.audioFilter("loudnorm=I=-16:TP=-1.5:LRA=11")
+			.audioCodec(codec)
+			.on("progress", progress => {
+				if (!onProgress) return;
+				const percent = progress.percent;
+				if (percent == null || !Number.isFinite(percent)) return;
+
+				const processedSeconds = timemarkToSeconds(progress.timemark);
+				const elapsedSeconds = (Date.now() - startedAt) / 1000;
+				if (processedSeconds <= 0 || elapsedSeconds <= 0) return;
+
+				rateSamples.push({ processed: processedSeconds, elapsed: elapsedSeconds });
+				if (rateSamples.length > 4) rateSamples.shift();
+				if (rateSamples.length < 2) return;
+
+				const first = rateSamples[0];
+				const last = rateSamples[rateSamples.length - 1];
+				const windowSeconds = last.elapsed - first.elapsed;
+				const rate = windowSeconds > 0 ? (last.processed - first.processed) / windowSeconds : processedSeconds / elapsedSeconds;
+				if (rate <= 0) return;
+
+				const totalSeconds = percent > 0 ? processedSeconds / (percent / 100) : 0;
+				const secondsLeft = Math.max(0, (totalSeconds - processedSeconds) / rate);
+				onProgress({ percent: percent, secondsLeft: secondsLeft });
+			})
+			.on("error", reject)
+			.on("end", resolve)
+			.save(tmpPath);
 	});
 
 	await new Promise((resolve, reject) => {

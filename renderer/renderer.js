@@ -3686,8 +3686,13 @@ async function stabiliseThisSong(songId) {
 
 	if (songData.stabilised == 1) return await alertModal("You have this song already stabilised.");
 
-	document.getElementById("stabiliseSongButton").disabled = true;
-	await normalizeAudio(path.join(musicFolder, songId + "." + songData.song_extension));
+	const stabiliseButton = document.getElementById("stabiliseSongButton");
+	const stabiliseLabel = stabiliseButton.textContent;
+	stabiliseButton.disabled = true;
+	await normalizeAudio(path.join(musicFolder, songId + "." + songData.song_extension), progress => {
+		stabiliseButton.textContent = `${stabiliseLabel} (${Math.ceil(progress.secondsLeft)}s left)`;
+	});
+	stabiliseButton.textContent = stabiliseLabel;
 
 	await callSqlite({
 		db: "musics",

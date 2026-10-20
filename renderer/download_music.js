@@ -665,7 +665,9 @@ async function actuallyDownloadTheSong() {
 			if (stabiliseVolumeToggle == 1) {
 				try {
 					document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
-					await normalizeAudio(outputFilePath);
+					await normalizeAudio(outputFilePath, progress => {
+						document.getElementById("downloadModalText").innerText = `Song downloaded successfully! Stabilising volume, about ${Math.ceil(progress.secondsLeft)} seconds remaining.`;
+					});
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
 				} catch (error) {
 					logChange("error", `Audio normalisation failed: ${error.message ?? String(error)}`);
@@ -873,7 +875,9 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 				if (stabiliseVolumeToggle == 1) {
 					try {
 						document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}`;
-						await normalizeAudio(outputPath);
+						await normalizeAudio(outputPath, progress => {
+							document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}, about ${Math.ceil(progress.secondsLeft)} seconds remaining.`;
+						});
 					} catch (error) {
 						stabiliseVolumeToggle = 0;
 						logChange("error", `Audio normalization failed for ${songTitle}: ${error.message ?? String(error)}`);
