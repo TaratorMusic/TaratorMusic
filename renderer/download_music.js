@@ -1,7 +1,49 @@
 let pendingPlaylistAddsWithIds = new Map();
+const MAX_CONCURRENT_DOWNLOADS = 3;
+const YTDLP_START_INTERVAL_MS = 5000;
+const YTDLP_RATE_LIMIT_RETRIES = 2;
+let ytdlpStartQueue = Promise.resolve();
+let ytdlpNextStart = 0;
+let ytdlpCooldownUntil = 0;
+let ytdlpLastRateLimit = 0;
+let ytdlpRateLimitCount = 0;
+
+async function waitForYtdlp(onProgress) {
+	const previousStart = ytdlpStartQueue;
+	let releaseStart;
+	ytdlpStartQueue = new Promise(resolve => {
+		releaseStart = resolve;
+	});
+	await previousStart;
+	try {
+		let delay = Math.max(ytdlpNextStart, ytdlpCooldownUntil) - Date.now();
+		while (delay > 0) {
+			if (onProgress) onProgress(`Waiting ${Math.ceil(delay / 1000)}s before the next YouTube request...`);
+			await new Promise(resolve => setTimeout(resolve, Math.min(delay, 1000)));
+			delay = Math.max(ytdlpNextStart, ytdlpCooldownUntil) - Date.now();
+		}
+		ytdlpNextStart = Date.now() + YTDLP_START_INTERVAL_MS;
+	} finally {
+		releaseStart();
+	}
+}
+
+function isYtdlpRateLimited(stderr) {
+	return /HTTP(?: Error)?\s*:?\s*429\b|Too Many Requests|rate[- ]limit exceeded|This content (?:isn't|is not) available, try again later/i.test(stderr);
+}
+
+function registerYtdlpRateLimit() {
+	const now = Date.now();
+	if (now - ytdlpLastRateLimit > 300000) ytdlpRateLimitCount = 0;
+	const delay = Math.min(300000, 60000 * 2 ** ytdlpRateLimitCount);
+	ytdlpRateLimitCount = Math.min(ytdlpRateLimitCount + 1, 3);
+	ytdlpLastRateLimit = now;
+	ytdlpCooldownUntil = Math.max(ytdlpCooldownUntil, now + delay);
+}
 
 function formatYtdlpError(stderr) {
 	if (!stderr) return "Unknown error";
+	if (isYtdlpRateLimited(stderr)) return "YouTube is limiting requests. Wait a few minutes before trying again.";
 	if (/HTTP Error 50[0-9]/.test(stderr)) {
 		const match = stderr.match(/HTTP Error \d+/);
 		return `${match ? match[0] : "Server error"}. This often happens with an outdated yt-dlp. Try updating it in Settings > Packages > yt-dlp.`;
@@ -99,13 +141,13 @@ function getCachedVideoIds() {
 	return ids;
 }
 
-async function searchInYoutube(songName) {
+async function searchInYoutube(songName, returnInfo = false) {
 	try {
 		const result = await getVideoInfo(`ytsearch1:${songName}`);
 		const entry = result.entries ? result.entries[0] : result;
 		if (!entry) throw new Error("No results found");
 		searchedSongsUrl = entry.webpage_url || entry.url;
-		return searchedSongsUrl;
+		return returnInfo ? entry : searchedSongsUrl;
 	} catch (error) {
 		return logChange("error", error?.message ?? String(error));
 	}
@@ -162,7 +204,12 @@ async function checkNameThumbnail(predetermined) {
 	} else if (linkType == "spotify_album") {
 		getPlaylistSongsAndArtists(cleanedUrl, true);
 	} else {
-		const resolvedUrl = await searchInYoutube(userInput);
+		const info = await searchInYoutube(userInput, true);
+		if (!info) {
+			document.getElementById("downloadFirstButton").disabled = false;
+			return;
+		}
+		const resolvedUrl = info.webpage_url || info.url;
 		const cachedIds = getCachedVideoIds();
 		const vid = extractYoutubeVideoId(resolvedUrl);
 		if (vid && cachedIds.has(vid)) {
@@ -173,11 +220,11 @@ async function checkNameThumbnail(predetermined) {
 				return;
 			}
 		}
-		processVideoLink(resolvedUrl);
+		processVideoLink(resolvedUrl, null, info);
 	}
 }
 
-async function processVideoLink(videoUrl, songId = null) {
+async function processVideoLink(videoUrl, songId = null, videoInfo = null) {
 	try {
 		if (songId) {
 			document.getElementById("downloadModal").style.display = "block";
@@ -205,7 +252,7 @@ async function processVideoLink(videoUrl, songId = null) {
 			videoTitle = streamedSongsHtmlMap.get(songId)?.name;
 			thumbnailUrl = streamedSongsHtmlMap.get(songId)?.thumbnail || "";
 		} else {
-			const info = await getVideoInfo(videoUrl);
+			const info = videoInfo || await getVideoInfo(videoUrl);
 			videoTitle = info.title;
 			const thumbnails = info.thumbnails || [];
 			const bestThumbnail = thumbnails.reduce((max, thumb) => {
@@ -625,7 +672,7 @@ async function processThumbnail(imageUrl, songId, songIndex = null) {
 
 async function actuallyDownloadTheSong() {
 	document.getElementById("finalDownloadButton").disabled = true;
-	const firstInput = downloadingStyle == "search" ? searchedSongsUrl : document.getElementById("downloadFirstInput").value.trim();
+	const firstInput = downloadingStyle == "search" || downloadingStyle == "spotify_track" ? searchedSongsUrl : document.getElementById("downloadFirstInput").value.trim();
 
 	if (downloadingStyle == "youtube_video" || downloadingStyle == "spotify_track" || downloadingStyle == "search") {
 		const secondInput = document.getElementById("downloadSecondInput").value.trim();
@@ -654,15 +701,16 @@ async function actuallyDownloadTheSong() {
 		try {
 			let lastUpdate = 0;
 
-			await downloadAudio(firstInput, outputFilePath, progressMsg => {
+			let stabilised = stabiliseVolumeToggle == 1 ? 1 : 0;
+			const result = await downloadAudio(firstInput, outputFilePath, progressMsg => {
 				const now = Date.now();
 				if (now - lastUpdate > 200) {
 					document.getElementById("downloadModalText").innerText = `Downloading: ${progressMsg}`;
 					lastUpdate = now;
 				}
-			});
+			}, stabilised == 1);
 
-			if (stabiliseVolumeToggle == 1) {
+			if (stabilised == 1 && !result.stabilised) {
 				try {
 					document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Stabilising volume...";
 					await normalizeAudio(outputFilePath, progress => {
@@ -671,9 +719,9 @@ async function actuallyDownloadTheSong() {
 					document.getElementById("downloadModalText").innerText = "Audio normalized! Processing thumbnail...";
 				} catch (error) {
 					logChange("error", `Audio normalisation failed: ${error.message ?? String(error)}`);
-					stabiliseVolumeToggle = 0;
+					stabilised = 0;
 					document.getElementById("downloadModalText").innerText = "Audio normalization failed, but continuing...";
-				document.getElementById("downloadModalText").classList.remove("error-text");
+					document.getElementById("downloadModalText").classList.remove("error-text");
 				}
 			} else {
 				document.getElementById("downloadModalText").innerText = "Song downloaded successfully! Processing thumbnail...";
@@ -723,10 +771,10 @@ async function actuallyDownloadTheSong() {
 			}
 
 			try {
-				callSqlite({
+				await callSqlite({
 					db: "musics",
 					query: `INSERT INTO songs (song_id, song_name, song_url, song_length, seconds_played, times_listened, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					args: [songID, secondInput, firstInput, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", artist, genre, language],
+					args: [songID, secondInput, firstInput, duration, 0, 0, stabilised, fileSize, 100, null, null, null, 100, "mp3", "jpg", artist, genre, language],
 					fetch: false,
 				});
 
@@ -822,8 +870,6 @@ async function actuallyDownloadTheSong() {
 }
 
 async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, playlistID, playlistThumbnailUrl) {
-	const fetch = require("node-fetch");
-
 	for (const [key, _] of pendingPlaylistAddsWithIds) {
 		const element = document.getElementById(key);
 		if (!element) continue;
@@ -836,106 +882,114 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 
 		const songId = songIds[index];
 		pendingPlaylistAddsWithIds.set(songId, _);
+		pendingPlaylistAddsWithIds.delete(key);
 	}
 
 	const totalSongs = songLinks.length;
+	const downloadedSongIds = new Array(totalSongs);
+	const downloadIndices = new Map();
+	const songElementsByLink = new Map(Array.from(document.querySelectorAll(".songAndThumbnail"), element => [element.dataset.link, element]));
 	let completedDownloads = 0;
+	let nextSongIndex = 0;
+	let lastUpdate = 0;
+	let lastRender = 0;
+
+	function refreshDownloadedSongs() {
+		const now = Date.now();
+		if (now - lastRender < 500) return;
+		lastRender = now;
+		if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
+	}
 
 	try {
-		let artists = [];
-		let genres = [];
-		let languages = [];
+		const artists = [];
+		const genres = [];
+		const languages = [];
 
-		for (let i = 0; i < totalSongs; i++) {
-			const songTitle = songTitles[i];
-			const songLink = songLinks[i];
-			const songId = songIds[i];
+		async function downloadNextSongs() {
+			while (nextSongIndex < totalSongs) {
+				const i = nextSongIndex++;
+				const songTitle = songTitles[i];
+				const songLink = songLinks[i];
+				const songId = songIds[i];
 
-			artists[i] = document.getElementById(`artistInput${i + 1}`)?.value ?? "";
-			genres[i] = document.getElementById(`genreInput${i + 1}`)?.value ?? "";
-			languages[i] = document.getElementById(`languageInput${i + 1}`)?.value ?? "";
+				const songElement = songElementsByLink.get(songLink);
+				artists[i] = songElement?.querySelector('input[id^="artistInput"]')?.value ?? "";
+				genres[i] = songElement?.querySelector('input[id^="genreInput"]')?.value ?? "";
+				languages[i] = songElement?.querySelector('input[id^="languageInput"]')?.value ?? "";
 
-			if (!songTitle || !songLink || !songId) {
-				logChange("warn", `Skipping index ${i}: missing title/link/id`);
-				continue;
-			}
-
-			const outputPath = path.join(musicFolder, `${songId}.mp3`);
-
-			try {
-				const result = await downloadAudio(songLink, outputPath, progressMsg => {
-					document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Downloading: ${progressMsg}`;
-				});
-
-				if (result == "AGE_RESTRICTED") {
-					await alertModal("This song requires age confirmation. Skipping...");
+				if (!songTitle || !songLink || !songId) {
+					logChange("warn", `Skipping index ${i}: missing title/link/id`);
+					completedDownloads++;
 					continue;
 				}
+				if (downloadIndices.has(songId)) {
+					completedDownloads++;
+					continue;
+				}
+				downloadIndices.set(songId, i);
 
-				if (stabiliseVolumeToggle == 1) {
+				const outputPath = path.join(musicFolder, `${songId}.mp3`);
+
+				try {
+					let stabilised = stabiliseVolumeToggle == 1 ? 1 : 0;
+					const result = await downloadAudio(songLink, outputPath, progressMsg => {
+						const now = Date.now();
+						if (now - lastUpdate < 200) return;
+						lastUpdate = now;
+						document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] ${songTitle}: ${progressMsg}`;
+					}, stabilised == 1);
+
+					if (stabilised == 1 && !result.stabilised) {
+						try {
+							document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}`;
+							await normalizeAudio(outputPath, progress => {
+								document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}, about ${Math.ceil(progress.secondsLeft)} seconds remaining.`;
+							});
+						} catch (error) {
+							stabilised = 0;
+							logChange("error", `Audio normalization failed for ${songTitle}: ${error.message ?? String(error)}`);
+						}
+					} else {
+						document.getElementById("downloadModalText").innerText = "Song downloaded! Processing metadata...";
+					}
+
+					let duration = 0;
 					try {
-						document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}`;
-						await normalizeAudio(outputPath, progress => {
-							document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Stabilising volume: ${songTitle}, about ${Math.ceil(progress.secondsLeft)} seconds remaining.`;
+						const metadata = await new Promise((resolve, reject) => {
+							ffmpeg.ffprobe(outputPath, (err, meta) => {
+								if (err) return reject(err);
+								resolve(meta);
+							});
 						});
+
+						if (metadata.format && metadata.format.duration) {
+							duration = Math.round(metadata.format.duration);
+						}
 					} catch (error) {
-						stabiliseVolumeToggle = 0;
-						logChange("error", `Audio normalization failed for ${songTitle}: ${error.message ?? String(error)}`);
+						logChange("error", `Metadata failed for ${songTitle}: ${error.message ?? String(error)}`);
 					}
-				} else {
-					document.getElementById("downloadModalText").innerText = `Song downloaded! Volume stabilisation is disabled.`;
-				}
 
-				let duration = 0;
-				try {
-					const metadata = await new Promise((resolve, reject) => {
-						ffmpeg.ffprobe(outputPath, (err, meta) => {
-							if (err) return reject(err);
-							resolve(meta);
-						});
-					});
+					const fileSize = fs.statSync(outputPath).size;
 
-					if (metadata.format && metadata.format.duration) {
-						duration = Math.round(metadata.format.duration);
+					let thumbnailUrl = songElement?.dataset.thumbnail || null;
+					const thumbnailElement = songElement?.querySelector(".thumbnailImage");
+
+				if (!thumbnailUrl && thumbnailElement) {
+					if (thumbnailElement.style && thumbnailElement.style.backgroundImage) {
+						const bgImage = thumbnailElement.style.backgroundImage;
+						thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
+					} else if (thumbnailElement.src) {
+						thumbnailUrl = thumbnailElement.src;
 					}
-				} catch (error) {
-					logChange("error", `Metadata failed for ${songTitle}: ${error.message ?? String(error)}`);
 				}
 
-				const fileSize = fs.statSync(outputPath).size;
+					await processThumbnail(thumbnailUrl, songId, thumbnailElement?.id?.slice("thumbnailImage".length));
 
-			const songElements = document.querySelectorAll(".songAndThumbnail");
-			let thumbnailUrl = null;
-			let thumbnailElement = null;
-
-			for (let j = 1; j < songElements.length; j++) {
-				const element = songElements[j];
-				if (element.dataset.link == songLink) {
-					thumbnailElement = element.querySelector(".thumbnailImage");
-					if (element.dataset.thumbnail) {
-						thumbnailUrl = element.dataset.thumbnail;
-					}
-					break;
-				}
-			}
-
-			if (!thumbnailUrl && thumbnailElement) {
-				if (thumbnailElement.style && thumbnailElement.style.backgroundImage) {
-					const bgImage = thumbnailElement.style.backgroundImage;
-					thumbnailUrl = bgImage.replace(/^url\(['"](.+)['"]\)$/, "$1");
-				} else if (thumbnailElement.src) {
-					thumbnailUrl = thumbnailElement.src;
-				}
-			}
-
-			await processThumbnail(thumbnailUrl, songId);
-
-			if (songId && songTitle && songLink && duration != null) {
-				try {
-					callSqlite({
+					await callSqlite({
 						db: "musics",
 						query: `INSERT INTO songs (song_id, song_name, song_url, song_length, seconds_played, times_listened, stabilised, size, speed, bass, treble, midrange, volume, song_extension, thumbnail_extension, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-						args: [songId, songTitle, songLink, duration, 0, 0, stabiliseVolumeToggle, fileSize, 100, null, null, null, 100, "mp3", "jpg", artists[i], genres[i], languages[i]],
+						args: [songId, songTitle, songLink, duration, 0, 0, stabilised, fileSize, 100, null, null, null, 100, "mp3", "jpg", artists[i], genres[i], languages[i]],
 						fetch: false,
 					});
 
@@ -949,43 +1003,45 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 						artist: artists[i],
 						language: languages[i],
 					});
+
+					downloadedSongIds[i] = songId;
+					completedDownloads++;
+					document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Processed: ${songTitle}`;
+					refreshDownloadedSongs();
 				} catch (error) {
-					logChange("error", `DB insert failed for ${songTitle}: ${error.message ?? String(error)}`);
+					completedDownloads++;
+					logChange("error", `Failed to download "${songTitle}": ${error.message ?? String(error)}`);
+					const modalText = document.getElementById("downloadModalText");
+					modalText.classList.add("error-text");
+					modalText.innerText = `[${completedDownloads}/${totalSongs}] Failed: ${songTitle} - ${error.message ?? String(error)}`;
+					refreshDownloadedSongs();
 				}
-			} else {
-				logChange("error", `Data undefined at index ${i}:`, { songId, songTitle, songLink, duration });
-			}
-
-			completedDownloads++;
-			document.getElementById("downloadModalText").innerText = `[${completedDownloads}/${totalSongs}] Processed: ${songTitle}`;
-			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
-
-			await sleep(500);
-			} catch (error) {
-				completedDownloads++;
-				logChange("error", `Failed to download "${songTitle}": ${error.message ?? String(error)}`);
-				const modalText = document.getElementById("downloadModalText");
-				modalText.classList.add("error-text");
-				modalText.innerText = `[${completedDownloads}/${totalSongs}] Failed: ${songTitle} - ${error.message ?? String(error)}`;
-				if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
-				await sleep(500);
 			}
 		}
 
-		callSqlite({
+		await Promise.all(Array.from({ length: Math.min(MAX_CONCURRENT_DOWNLOADS, totalSongs) }, () => downloadNextSongs()));
+		for (let i = 0; i < songIds.length; i++) {
+			const index = downloadIndices.get(songIds[i]);
+			if (index != null) downloadedSongIds[i] = downloadedSongIds[index];
+		}
+		const successfulSongIds = downloadedSongIds.filter(Boolean);
+		for (const songId of songIds) {
+			if (!successfulSongIds.includes(songId)) pendingPlaylistAddsWithIds.delete(songId);
+		}
+
+		await callSqlite({
 			db: "settings",
-			query: `UPDATE statistics SET ${["spotify_track", "spotify_playlist", "spotify_album"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} = ${["spotify_track", "spotify_playlist", "spotify_album"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${totalSongs}`,
+			query: `UPDATE statistics SET ${["spotify_track", "spotify_playlist", "spotify_album"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} = ${["spotify_track", "spotify_playlist", "spotify_album"].includes(downloadingStyle) ? "songs_downloaded_spotify" : "songs_downloaded_youtube"} + ${successfulSongIds.length}`,
 			args: [],
 			fetch: false,
 		});
 
-		if (window.isSaveAsPlaylistActive) {
-			const thumbnailPath = path.join(thumbnailFolder, `${playlistID}.jpg`);
+		if (window.isSaveAsPlaylistActive && successfulSongIds.length > 0) {
 			await processThumbnail(playlistThumbnailUrl, playlistID);
-			const songsJson = JSON.stringify(songIds.map(id => id.trim()));
+			const songsJson = JSON.stringify(successfulSongIds.map(id => id.trim()));
 
 			try {
-				callSqlite({
+				await callSqlite({
 					db: "playlists",
 					query: `
                         INSERT INTO playlists (id, name, songs, thumbnail_extension)
@@ -1014,20 +1070,21 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 			}
 		}
 
-		document.getElementById("downloadModalText").innerText = "All songs downloaded successfully!";
-		document.getElementById("downloadModalText").classList.remove("error-text");
+		const modalText = document.getElementById("downloadModalText");
+		modalText.innerText = successfulSongIds.length == totalSongs ? "All songs downloaded successfully!" : `Downloaded ${successfulSongIds.length} of ${totalSongs} songs. Some songs could not be downloaded.`;
+		modalText.classList.toggle("error-text", successfulSongIds.length != totalSongs);
 		await commitStagedPlaylistAdds();
 		const idsNeedingInfo = [];
 
 		for (let i = 0; i < songIds.length; i++) {
-			if (!artists[i] || !genres[i] || !languages[i]) idsNeedingInfo.push(songIds[i]);
+			if (downloadedSongIds[i] && (!artists[i] || !genres[i] || !languages[i])) idsNeedingInfo.push(songIds[i]);
 		}
 
 		if (idsNeedingInfo.length > 0) grabAndStoreSongInfo(idsNeedingInfo);
 		if (recommendationsAfterDownload == 1) await fetchRecommendationsData();
 
 		const playAfterCheckbox = document.getElementById("playAfterDownloadCheckbox");
-		if (playAfterCheckbox && playAfterCheckbox.checked && songIds.length > 0) playMusic(songIds[0], null);
+		if (playAfterCheckbox && playAfterCheckbox.checked && successfulSongIds.length > 0) playMusic(successfulSongIds[0], null);
 	} catch (error) {
 		const modalText = document.getElementById("downloadModalText");
 		modalText.classList.add("error-text");
@@ -1038,45 +1095,71 @@ async function downloadPlaylist(songLinks, songTitles, songIds, playlistName, pl
 	if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
 }
 
-async function downloadAudio(videoUrl, outputFilePath, onProgress) {
+async function downloadAudio(videoUrl, outputFilePath, onProgress, stabiliseVolume = false, rateLimitRetryCount = 0, overwrite = false) {
+	if (!videoUrl || typeof videoUrl != "string") throw new Error("Invalid YouTube URL");
+	await waitForYtdlp(onProgress);
 	return new Promise((resolve, reject) => {
-		if (!videoUrl || typeof videoUrl != "string") {
-			return reject(new Error("Invalid YouTube URL"));
+		let stderrBuffer = "";
+		let stdoutBuffer = "";
+		let lastLine = "";
+		let audioConverted = false;
+		let rateLimited = false;
+
+		const args = ["--js-runtimes", "node", "--no-playlist", "--newline", "--sleep-requests", "1", "--retry-sleep", "http:exp=1:20", "--retry-sleep", "extractor:exp=1:20", "-f", "bestaudio/best", "--concurrent-fragments", "4", "-x", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath];
+		if (overwrite) args.push("--force-overwrites");
+		if (stabiliseVolume) args.push("--postprocessor-args", "ExtractAudio+ffmpeg_o:-af loudnorm=I=-16:TP=-1.5:LRA=11");
+		args.push(videoUrl.split("&")[0]);
+		const yt = spawn(getYtDlpPath(), args);
+
+		function processLine(msg) {
+			if (msg.includes("[ExtractAudio] Destination:")) {
+				audioConverted = true;
+				if (onProgress) onProgress(stabiliseVolume ? "Converting audio and stabilising volume..." : "Converting audio...");
+			}
+			if (!msg.includes("[download]")) return;
+
+			const cleanMsg = msg.replace("[download]", "").trim();
+
+			if (cleanMsg && cleanMsg !== lastLine) {
+				lastLine = cleanMsg;
+				if (onProgress) onProgress(cleanMsg);
+			}
 		}
 
-		let stderrBuffer = "";
-		let lastLine = "";
-
-		const yt = spawn(getYtDlpPath(), ["--js-runtimes", "node", "-x", "--ignore-errors", "--audio-format", "mp3", "--ffmpeg-location", ffmpegPath, "-o", outputFilePath, videoUrl.split("&")[0]]);
-
 		yt.stdout.on("data", data => {
-			const chunks = data.toString().split("\r");
-
-			for (let msg of chunks) {
-				if (!msg.includes("[download]")) continue;
-
-				const cleanMsg = msg.replace("[download]", "").trim();
-
-				if (cleanMsg && cleanMsg !== lastLine) {
-					lastLine = cleanMsg;
-					if (onProgress) onProgress(cleanMsg);
-				}
-			}
+			stdoutBuffer += data.toString();
+			const lines = stdoutBuffer.split(/\r\n|\r|\n/);
+			stdoutBuffer = lines.pop();
+			for (const line of lines) processLine(line);
 		});
 
 		yt.stderr.on("data", data => {
 			stderrBuffer += data.toString();
+			if (!rateLimited && isYtdlpRateLimited(stderrBuffer)) {
+				rateLimited = true;
+				registerYtdlpRateLimit();
+				yt.kill();
+			}
 		});
 
 		yt.on("error", error => reject(error));
 
 		yt.on("close", code => {
+			if (stdoutBuffer) processLine(stdoutBuffer);
 			if (stderrBuffer.includes("confirm your age")) {
-				return resolve("AGE_RESTRICTED");
+				return reject(new Error("This song requires age confirmation."));
 			}
 
 			if (code == 0 && fs.existsSync(outputFilePath)) {
-				resolve();
+				resolve({ stabilised: stabiliseVolume && audioConverted });
+			} else if (rateLimited) {
+				if (rateLimitRetryCount < YTDLP_RATE_LIMIT_RETRIES) {
+					resolve(downloadAudio(videoUrl, outputFilePath, onProgress, stabiliseVolume, rateLimitRetryCount + 1, overwrite));
+				} else {
+					reject(new Error(formatYtdlpError(stderrBuffer)));
+				}
+			} else if (stabiliseVolume && audioConverted) {
+				resolve(downloadAudio(videoUrl, outputFilePath, onProgress, false, rateLimitRetryCount, true));
 			} else {
 				reject(new Error(formatYtdlpError(stderrBuffer || `yt-dlp exited with code ${code}`)));
 			}
@@ -1151,20 +1234,33 @@ async function commitStagedPlaylistAdds() {
 	if (getComputedStyle(document.getElementById("playlists-content")).display == "grid") getPlaylists(true);
 }
 
-function getVideoInfo(url, retryCount = 0, seenIds = new Set()) {
+async function getVideoInfo(url, retryCount = 0, seenIds = new Set(), rateLimitRetryCount = 0) {
+	await waitForYtdlp();
 	return new Promise((resolve, reject) => {
 		if (!isYtdlpInstalled()) {
 			requireYtdlp().catch(() => {});
 			return reject(new Error("yt-dlp is not installed."));
 		}
-		const args = ["-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5"];
+		const args = ["--js-runtimes", "node", "-J", "--skip-download", "--no-playlist", "--quiet", "--no-warnings", "--no-check-certificate", "--socket-timeout", "5", "--sleep-requests", "1", "--retry-sleep", "http:exp=1:20", "--retry-sleep", "extractor:exp=1:20"];
 		const yt = spawn(getYtDlpPath(), [...args, url]);
 		let data = "";
 		let err = "";
+		let rateLimited = false;
 		yt.stdout.on("data", chunk => (data += chunk));
-		yt.stderr.on("data", chunk => (err += chunk));
+		yt.stderr.on("data", chunk => {
+			err += chunk;
+			if (!rateLimited && isYtdlpRateLimited(err)) {
+				rateLimited = true;
+				registerYtdlpRateLimit();
+				yt.kill();
+			}
+		});
+		yt.on("error", reject);
 		yt.on("close", code => {
 			if (code != 0) {
+				if (rateLimited && rateLimitRetryCount < YTDLP_RATE_LIMIT_RETRIES) {
+					return resolve(getVideoInfo(url, retryCount, seenIds, rateLimitRetryCount + 1));
+				}
 				if (err.includes("This video is not available") && retryCount < 5) {
 					logChange("warn", `Video unavailable, trying next result (attempt ${retryCount + 1})...`);
 					const nextUrl = url.replace(/ytsearch\d*:/, `ytsearch${retryCount + 2}:`);
@@ -1234,7 +1330,12 @@ async function getSpotifySongName(link) {
 	const title = $("title").text();
 	const name = title.replace(" song and lyrics by", "").replace("| Spotify", "").trim();
 
-	const resolvedUrl = await searchInYoutube(name, 1);
+	const info = await searchInYoutube(name, true);
+	if (!info) {
+		document.getElementById("downloadFirstButton").disabled = false;
+		return;
+	}
+	const resolvedUrl = info.webpage_url || info.url;
 	const cachedIds = getCachedVideoIds();
 	const vid = extractYoutubeVideoId(resolvedUrl);
 	if (vid && cachedIds.has(vid)) {
@@ -1245,7 +1346,7 @@ async function getSpotifySongName(link) {
 			return;
 		}
 	}
-	processVideoLink(resolvedUrl);
+	processVideoLink(resolvedUrl, null, info);
 }
 
 async function getPlaylistSongsAndArtists(link, isAlbum = false) {
@@ -1286,10 +1387,10 @@ async function getPlaylistSongsAndArtists(link, isAlbum = false) {
 
 		try {
 			const query = `${video.title} ${video.artist}`;
-			const url = await searchInYoutube(query);
+			const info = await searchInYoutube(query, true);
+			const url = info?.webpage_url || info?.url;
 
 			if (url) {
-				const info = await getVideoInfo(url);
 				videoItems.push({
 					title: query,
 					url: url,
