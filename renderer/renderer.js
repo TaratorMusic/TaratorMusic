@@ -3735,6 +3735,7 @@ function tick() {
 					isPlaying: playing,
 					songProgress: pipProgress,
 					songTime: clamped,
+					songLength: songDuration,
 				});
 			} else {
 				const row = getStreamedSongData(playingSongsID);
@@ -3747,6 +3748,7 @@ function tick() {
 					isPlaying: playing,
 					songProgress: pipProgress,
 					songTime: clamped,
+					songLength: songDuration,
 				});
 			}
 
@@ -4179,6 +4181,20 @@ function bindUiEvents() {
 		pipTranslateCurrentOnly = !!data?.enabled;
 		callSqlite({ db: "settings", query: "UPDATE settings SET pipTranslateCurrentOnly = ?", args: [pipTranslateCurrentOnly ? 1 : 0], fetch: false });
 		refreshMiniPlayerLyrics();
+	});
+	ipcRenderer.on("pip-seek", (_, data) => {
+		if (data?.seeking !== undefined) isUserSeeking = !!data.seeking;
+
+		const seekPercent = Number(data?.percent);
+		if (!Number.isFinite(seekPercent) || songDuration <= 0) return;
+
+		const seekTime = (songDuration * seekPercent) / 100;
+		videoProgress.value = String(seekPercent);
+		videoLength.textContent = `${formatTime(seekTime)} / ${formatTime(songDuration)}`;
+		if (audioPlayer) audioPlayer.stdin.write(`seek ${seekTime}\n`);
+		lastAuthoritativePosition = seekTime;
+		lastSyncTimestamp = performance.now();
+		updateDiscordPresenceDebounced();
 	});
 	ipcRenderer.on("pip-action", (_, action) => {
 		if (action == "previous") playPreviousSong();

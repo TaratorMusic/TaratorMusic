@@ -440,6 +440,13 @@ app.whenReady().then(() => {
 			console.error("Error forwarding translate current only to main window:", err);
 		}
 	});
+	ipcMain.on("miniplayer-seek", (_, data) => {
+		try {
+			mainWindow.webContents.send("pip-seek", data);
+		} catch (err) {
+			console.error("Error forwarding seek to main window:", err);
+		}
+	});
 	ipcMain.on("open-miniplayer", (_, data) => {
 		try {
 			createMiniPlayer(data);

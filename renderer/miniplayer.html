@@ -15,7 +15,10 @@
 		<div id="previous-button" class="no-drag"></div>
 		<div id="pauseplay-button" class="no-drag"></div>
 		<div id="next-button" class="no-drag"></div>
-		<div id="song-progress"></div>
+		<div id="song-progress" class="no-drag">
+			<span id="song-progress-text">00:00 / 00:00</span>
+			<input type="range" id="pip-progress-slider" min="0" max="100" step="0.1" value="0" />
+		</div>
 		<div id="sound-wrap" class="no-drag">
 			<div id="sound-button"></div>
 			<div id="volume-container"><input type="range" id="volume-slider" min="0" max="100" value="100" /></div>
@@ -214,6 +217,22 @@
 		justify-content: center;
 	}
 
+	#pip-progress-slider {
+		display: none;
+		width: 46vw;
+		margin: 0 2vw;
+		accent-color: #7aa2f7;
+		cursor: pointer;
+	}
+
+	#song-progress.show-slider #pip-progress-slider {
+		display: block;
+	}
+
+	#song-progress.show-slider #song-progress-text {
+		display: none;
+	}
+
 	#sound-wrap {
 		width: 10vw;
 		height: 10vw;
@@ -347,6 +366,9 @@
 	let keybinds = null;
 	let currentSongName = "";
 	let currentSongId = "";
+	let currentSongLength = 0;
+	let currentSongTime = 0;
+	let isPipSeeking = false;
 	let settingsOpen = false;
 	let settingsRevealPending = false;
 	let settingsRevealTimer = null;
@@ -596,7 +618,10 @@
 				document.getElementById("song-name").innerText = data.songName;
 				if (songChanged) document.getElementById("lyrics-container").scrollTop = 0;
 			}
-			if (data.progress != undefined) document.getElementById("song-progress").innerText = data.progress;
+			if (data.progress != undefined) document.getElementById("song-progress-text").innerText = data.progress;
+			if (data.songLength != undefined) currentSongLength = data.songLength;
+			if (data.songTime != undefined) currentSongTime = data.songTime;
+			if (!isPipSeeking && currentSongLength > 0) progressSlider.value = String((currentSongTime / currentSongLength) * 100);
 			if (data.isPlaying != undefined && assetsFolder) {
 				const icon = data.isPlaying ? "pause.svg" : "play.svg";
 				loadImage("pauseplay-button", `url("file://${path.join(assetsFolder, icon).replace(/\\/g, "/")}")`);
@@ -707,5 +732,29 @@
 		translateCurrentOnly = event.target.checked;
 		updateTranslationVisibility();
 		ipcRenderer.send("miniplayer-translate-current-only", { enabled: translateCurrentOnly });
+	});
+
+	const songProgressElement = document.getElementById("song-progress");
+	const progressSlider = document.getElementById("pip-progress-slider");
+
+	songProgressElement.addEventListener("mouseenter", () => songProgressElement.classList.add("show-slider"));
+	songProgressElement.addEventListener("mouseleave", () => {
+		if (!isPipSeeking) songProgressElement.classList.remove("show-slider");
+	});
+
+	progressSlider.addEventListener("mousedown", () => {
+		isPipSeeking = true;
+		ipcRenderer.send("miniplayer-seek", { seeking: true });
+	});
+
+	progressSlider.addEventListener("input", () => {
+		if (!isPipSeeking) return;
+		ipcRenderer.send("miniplayer-seek", { percent: Number(progressSlider.value) });
+	});
+
+	window.addEventListener("mouseup", () => {
+		if (!isPipSeeking) return;
+		isPipSeeking = false;
+		ipcRenderer.send("miniplayer-seek", { seeking: false });
 	});
 </script>
