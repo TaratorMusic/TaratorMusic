@@ -195,12 +195,22 @@ static void stream_callback(ma_device* pDevice, void* pOutput, const void* pInpu
             if (!data->buffer) {
                 data->buffer = malloc(65536);
             }
+            if (!data->buffer) {
+                data->pipe_eof = 1;
+                break;
+            }
             data->buffer_filled = fread(data->buffer, 1, 65536, data->pipe);
+            if (data->buffer_filled > 65536) data->buffer_filled = 65536;
             data->buffer_pos = 0;
             if (data->buffer_filled == 0) {
                 data->pipe_eof = 1;
                 break;
             }
+        }
+
+        if (data->buffer_pos >= data->buffer_filled) {
+            data->buffer_filled = 0;
+            continue;
         }
 
         size_t toCopy = data->buffer_filled - data->buffer_pos;
