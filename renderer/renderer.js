@@ -793,7 +793,16 @@ async function searchYoutubeInMusics() {
 
 		(async () => {
 			streamedSongsHtmlMap = new Map();
-			const results = await getVideoInfo(`ytsearch${goal}:${searchedThing}`);
+			let results;
+			try {
+				results = await getVideoInfo(`ytsearch${goal}:${searchedThing}`);
+			} catch (error) {
+				const message = error?.message ?? String(error);
+				logChange("error", message);
+				container.innerHTML = "";
+				await alertModal(message);
+				return;
+			}
 			const items = results.entries || [];
 			const existingSongUrls = new Set(
 				Array.from(songNameCache.values())
@@ -802,6 +811,8 @@ async function searchYoutubeInMusics() {
 			);
 
 			container.innerHTML = "";
+
+			let errorShown = false;
 
 			for (let i = 0; i < items.length; i++) {
 				try {
@@ -866,8 +877,12 @@ async function searchYoutubeInMusics() {
 					}
 					setupLazyBackgrounds();
 				} catch (error) {
-					logChange("error", error?.message ?? String(error));
-					await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
+					const message = error?.message ?? String(error);
+					logChange("error", message);
+					if (!errorShown) {
+						errorShown = true;
+						await alertModal(message);
+					}
 				}
 			}
 		})();
@@ -1233,6 +1248,11 @@ function renderMusics(skipScrollSave = false) {
 }
 
 async function refreshRecommendations() {
+	if (!isYtdlpInstalled()) {
+		await requireYtdlp();
+		return;
+	}
+
 	await loadJSFile("download_music");
 	const container = document.getElementById("music-list-container");
 	const recommendedMusicMap = await getRecommendations();
@@ -1250,6 +1270,8 @@ async function refreshRecommendations() {
 	isLoadingRecommendations = true;
 	streamedSongsHtmlMap = new Map();
 	container.innerHTML = "Loading...";
+
+	let errorShown = false;
 
 	for (const [key, value] of recommendedMusicMap) {
 		if (!isLoadingRecommendations) return;
@@ -1319,8 +1341,13 @@ async function refreshRecommendations() {
 			localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
 			if (count >= goal) break;
 		} catch (error) {
-			logChange("error", error?.message ?? String(error));
-			await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
+			const message = error?.message ?? String(error);
+			logChange("error", message);
+			if (!errorShown) {
+				errorShown = true;
+				await alertModal(message);
+			}
+			if (message.includes("yt-dlp is not installed")) break;
 		}
 	}
 	isLoadingRecommendations = false;
@@ -2322,6 +2349,7 @@ async function opencustomiseModal(songsId) {
 		document.getElementById("stabiliseSongButton").disabled = stabilised == 1;
 		document.getElementById("fetchSongInfoButton").disabled = false;
 		document.getElementById("fetchSongInfoButton").textContent = "Fetch Song Info";
+		document.getElementById("recommendThisSong").disabled = false;
 		document.getElementById("removeSongButton").disabled = false;
 		document.getElementById("customiseSongLink").disabled = false;
 		document.getElementById("customiseThumbnail").disabled = false;
@@ -2345,6 +2373,7 @@ async function opencustomiseModal(songsId) {
 		document.getElementById("stabiliseSongButton").disabled = true;
 		document.getElementById("fetchSongInfoButton").disabled = true;
 		document.getElementById("removeSongButton").disabled = true;
+		document.getElementById("recommendThisSong").disabled = true;
 		document.getElementById("customiseSongLink").disabled = true;
 		document.getElementById("customiseThumbnail").disabled = true;
 	}
@@ -2363,6 +2392,7 @@ async function opencustomiseModal(songsId) {
 	document.getElementById("stabiliseSongButton").dataset.songId = songsId;
 	document.getElementById("notInterestedToggle").dataset.songId = songsId;
 	document.getElementById("downloadThisSong").dataset.songId = songsId;
+	document.getElementById("recommendThisSong").dataset.songId = songsId;
 	updateNotInterestedButton();
 
 	const bareId = songsId.replace("tarator-", "");
@@ -3909,6 +3939,13 @@ function bindUiEvents() {
 	document.getElementById("removeSongButton").addEventListener("click", e => removeSong(e.currentTarget.dataset.songId));
 	document.getElementById("stabiliseSongButton").addEventListener("click", e => stabiliseThisSong(e.currentTarget.dataset.songId));
 	document.getElementById("downloadThisSong").addEventListener("click", e => loadNewPage("downloadStreamedSong", e.currentTarget.dataset.songId));
+	document.getElementById("recommendThisSong").addEventListener("click", async e => {
+		const songId = e.currentTarget.dataset.songId;
+		if (!songId) return;
+		e.currentTarget.disabled = true;
+		await closeCustomiseModal();
+		await getRecommendationsForSong(songId);
+	});
 	document.getElementById("notInterestedToggle").addEventListener("click", e => {
 		const songId = e.currentTarget.dataset.songId;
 		if (notInterestedSongs.some(song => song.song_id === songId)) {

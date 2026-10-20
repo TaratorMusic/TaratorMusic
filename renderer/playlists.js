@@ -131,95 +131,12 @@ function displayPlaylists(playlists) {
 			playlistRecommendButton.dataset.tooltip = "Get Recommendations";
 
 			playlistRecommendButton.addEventListener("click", async () => {
-				await loadJSFile("download_music");
 				const taratorSongIds = playlist.songs.filter(id => songNameCache.has(id));
 				if (taratorSongIds.length == 0) {
 					return alertModal("No local songs found in this playlist to base recommendations on.");
 				}
 
-				const recMap = await getRecommendations(taratorSongIds);
-				if (!recMap || recMap.size == 0) {
-					return alertModal("No recommendations could be generated for this playlist's songs.");
-				}
-
-				isLoadingRecommendations = true;
-				streamedSongsHtmlMap = new Map();
-				musicMode = "stream";
-				localStorage.setItem("recommendationsCache", null);
-
-				document.getElementById("my-music").click();
-
-				const goalInput = document.getElementById("musicSearchInputAmount");
-				const goal = goalInput ? Number(goalInput.value) : 4;
-				let count = 0;
-
-				const existingSongUrls = new Set(
-					Array.from(songNameCache.values())
-						.map(song => (song.song_url ? extractYoutubeVideoId(song.song_url) : null))
-						.filter(Boolean),
-				);
-				const notInterestedIds = new Set(notInterestedSongs.map(row => row.song_id?.toLowerCase().trim()));
-
-				for (const [key, value] of recMap) {
-					if (!isLoadingRecommendations) return;
-					const ytQuery = `${key} by ${value[0]}`;
-					try {
-						const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
-						const info = result.entries ? result.entries[0] : result;
-						if (!info) continue;
-						const videoTitle = info.title;
-						const songID = info.id;
-						const songLength = info.duration;
-						const bestThumbnail = info.thumbnail?.url ?? info.thumbnail ?? null;
-
-						await callSqlite({
-							db: "musics",
-							query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
-							args: [songID, videoTitle, bestThumbnail, songLength, null, null, null],
-							fetch: false,
-						});
-
-						if (!streamedSongsCache.has(songID)) {
-							streamedSongsCache.set(songID, {
-								song_name: videoTitle,
-								thumbnail_url: bestThumbnail,
-								length: songLength,
-								artist: null,
-								genre: null,
-								language: null,
-							});
-						}
-
-						if (existingSongUrls.has(songID)) {
-							await callSqlite({
-								db: "musics",
-								query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
-								args: [songID, key],
-								fetch: false,
-							});
-							notInterestedSongs.push({ song_id: songID });
-							continue;
-						}
-
-						if (notInterestedIds.has(key.toLowerCase().trim())) continue;
-
-						const fullSong = {
-							id: songID,
-							name: videoTitle,
-							thumbnail: bestThumbnail,
-							length: songLength,
-						};
-						streamedSongsHtmlMap.set(songID, fullSong);
-						localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
-						if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
-						count++;
-						if (count >= goal) break;
-					} catch (error) {
-						logChange("error", error?.message ?? String(error));
-						await alertModal("YouTube API limit reached! Please wait a couple of seconds.");
-					}
-				}
-				isLoadingRecommendations = false;
+				await showRecommendationsForSongs(taratorSongIds, "No recommendations could be generated for this playlist's songs.");
 			});
 
 			const playlistCustomiseButton = document.createElement("div");

@@ -5,7 +5,6 @@
 -   Ability to queue downloads
 -   tooltip spawns wrongly then gets fixed afterwards
 
--   Staleness check on recommendations table rows
 -   add translations to the pip lyrics --> just the current lyric OR all lyrics
 -   Add translations to the PiP which will be toggleable
 -   We can toggle PiP lyrics and lyrics translations with a new upwards expanding PiP settings button
@@ -19,14 +18,8 @@
 -   Remodel customisation modal to fit better
 -   using previous song button to rewind to the start of the song doesnt update the song timer in rich presence
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
--   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
--   Stream seeking not working
--   recommendations just for a song
--   Fix streaming in windows --> Check logs
 -   Add song progress bar to PiP
--   Customise Dc Rich Presence box in the settings
 -   auto form playlist from artist-genre-language
--   Search code for TODO'S
 
 ### Big updates remaining:
 
@@ -35,9 +28,13 @@
 -   Intelligent shuffle: All the songs will get pointed depending on how long you listened to them (Percentages), songs with higher points will play more, there will be a toggle - For this setting, and a button to reset all the points.
 -   Customise bass, treble etc. in the customisation modal, or leave them as generic, or customise them whole in the settings page.
 -   Pause downloads, continue anytime: use localstorage --> It should notify the user when the app is restarted that a download is mid-way.
+-   Customise Dc Rich Presence box in the settings
 
 ### Planned Features
 
+-   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
+-   Stream seeking not working
+-   Staleness check on recommendations table rows
 -   Add sorting to the music tab. But each category will have a blob background with different color
 -   PiP bugs out when main process is minimised
 -   The "x" button in modals should close that modal, not the modal with the highest z-index

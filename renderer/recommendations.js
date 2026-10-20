@@ -18,7 +18,7 @@ function normalizeSongTitle(title) {
 		.trim();
 }
 
-async function getRecommendations(songIds) {
+async function getRecommendations(songIds, options = {}) {
 	const uniqueSongIds = songIds?.length ? songIds : [...songNameCache.keys()].map(id => String(id));
 	const artistListenTimes = {};
 
@@ -39,6 +39,12 @@ async function getRecommendations(songIds) {
 
 		const listenTime = songTimesMap.get(songId) || 0;
 		artistListenTimes[song.artist] = (artistListenTimes[song.artist] || 0) + listenTime;
+	}
+
+	if (options.seedUnplayed) {
+		for (const artist of Object.keys(artistListenTimes)) {
+			if (!artistListenTimes[artist]) artistListenTimes[artist] = 1;
+		}
 	}
 
 	const artistPreferenceScore = calculateArtistPreferenceFromMap(artistListenTimes);
@@ -405,4 +411,113 @@ async function fetchRecommendationsData(input) {
 	} else {
 		if (!input) alertModal(`Fetch of recommendations done, no new artists found.`);
 	}
+}
+
+async function showRecommendationsForSongs(songIds, emptyMessage, options = {}) {
+	if (isLoadingRecommendations) return alertModal("Recommendations are already loading.");
+	if (!isYtdlpInstalled()) {
+		await requireYtdlp();
+		return;
+	}
+
+	await loadJSFile("download_music");
+
+	const recMap = await getRecommendations(songIds, options);
+	if (!recMap || recMap.size == 0) {
+		return alertModal(emptyMessage);
+	}
+
+	isLoadingRecommendations = true;
+	streamedSongsHtmlMap = new Map();
+	musicMode = "stream";
+	localStorage.setItem("recommendationsCache", null);
+
+	document.getElementById("my-music").click();
+
+	const goalInput = document.getElementById("musicSearchInputAmount");
+	const goal = goalInput ? Number(goalInput.value) : 4;
+	let count = 0;
+
+	const existingSongUrls = new Set(
+		Array.from(songNameCache.values())
+			.map(song => (song.song_url ? extractYoutubeVideoId(song.song_url) : null))
+			.filter(Boolean),
+	);
+	const notInterestedIds = new Set(notInterestedSongs.map(row => row.song_id?.toLowerCase().trim()));
+
+	let errorShown = false;
+
+	for (const [key, value] of recMap) {
+		if (!isLoadingRecommendations) return;
+		const ytQuery = `${key} by ${value[0]}`;
+		try {
+			const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
+			const info = result.entries ? result.entries[0] : result;
+			if (!info) continue;
+			const videoTitle = info.title;
+			const songID = info.id;
+			const songLength = info.duration;
+			const bestThumbnail = info.thumbnail?.url ?? info.thumbnail ?? null;
+
+			await callSqlite({
+				db: "musics",
+				query: "INSERT OR IGNORE INTO streams (song_id, song_name, thumbnail_url, length, artist, genre, language) VALUES (?, ?, ?, ?, ?, ?, ?)",
+				args: [songID, videoTitle, bestThumbnail, songLength, null, null, null],
+				fetch: false,
+			});
+
+			if (!streamedSongsCache.has(songID)) {
+				streamedSongsCache.set(songID, {
+					song_name: videoTitle,
+					thumbnail_url: bestThumbnail,
+					length: songLength,
+					artist: null,
+					genre: null,
+					language: null,
+				});
+			}
+
+			if (existingSongUrls.has(songID)) {
+				await callSqlite({
+					db: "musics",
+					query: "INSERT INTO not_interested (song_id, song_name) VALUES (?, ?)",
+					args: [songID, key],
+					fetch: false,
+				});
+				notInterestedSongs.push({ song_id: songID });
+				continue;
+			}
+
+			if (notInterestedIds.has(key.toLowerCase().trim())) continue;
+
+			const fullSong = {
+				id: songID,
+				name: videoTitle,
+				thumbnail: bestThumbnail,
+				length: songLength,
+			};
+			streamedSongsHtmlMap.set(songID, fullSong);
+			localStorage.setItem("recommendationsCache", JSON.stringify([...streamedSongsHtmlMap]));
+			if (document.getElementById("my-music-content").style.display == "flex") renderMusics();
+			count++;
+			if (count >= goal) break;
+		} catch (error) {
+			const message = error?.message ?? String(error);
+			logChange("error", message);
+			if (!errorShown) {
+				errorShown = true;
+				await alertModal(message);
+			}
+			if (message.includes("yt-dlp is not installed")) break;
+		}
+	}
+	isLoadingRecommendations = false;
+}
+
+async function getRecommendationsForSong(songId) {
+	const song = songNameCache.get(songId);
+	if (!song) return alertModal("Song not found in your library.");
+	if (!song.artist) return alertModal("This song has no artist information. Add the artist in the customisation window first.");
+
+	await showRecommendationsForSongs([songId], "No recommendations could be generated for this song.", { seedUnplayed: true });
 }
