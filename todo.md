@@ -37,6 +37,7 @@
 
 ### Planned Features
 
+-   Parallel youtube search with spotify scraping
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
 -   Staleness check on recommendations table rows

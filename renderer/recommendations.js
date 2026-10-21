@@ -451,13 +451,14 @@ async function showRecommendationsForSongs(songIds, emptyMessage, options = {}) 
 		if (!isLoadingRecommendations) return;
 		const ytQuery = `${key} by ${value[0]}`;
 		try {
-			const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
-			const info = result.entries ? result.entries[0] : result;
+			const searchYouTube = require(path.join(appFilesFolder, "renderer", "ytsr"));
+			const results = await searchYouTube(ytQuery, 1);
+			const info = results[0];
 			if (!info) continue;
 			const videoTitle = info.title;
 			const songID = info.id;
 			const songLength = info.duration;
-			const bestThumbnail = info.thumbnail?.url ?? info.thumbnail ?? null;
+			const bestThumbnail = info.thumbnail ?? null;
 
 			await callSqlite({
 				db: "musics",
