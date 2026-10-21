@@ -4079,6 +4079,30 @@ function bindUiEvents() {
 		});
 	});
 
+	const myMusicContent = document.getElementById("my-music-content");
+	let songNameTooltipTimeoutId = null;
+
+	myMusicContent.addEventListener("mouseover", event => {
+		const nameElement = event.target.closest(".song-name");
+		if (!nameElement) return;
+		clearTimeout(songNameTooltipTimeoutId);
+		if (nameElement.scrollWidth <= nameElement.clientWidth) return;
+		trackPointerPosition(event);
+		songNameTooltipTimeoutId = setTimeout(() => showTooltip(nameElement, nameElement.innerText), 1000);
+	});
+
+	myMusicContent.addEventListener("mousemove", event => {
+		if (!event.target.closest(".song-name")) return;
+		trackPointerPosition(event);
+		positionTooltip();
+	});
+
+	myMusicContent.addEventListener("mouseout", event => {
+		if (!event.target.closest(".song-name")) return;
+		clearTimeout(songNameTooltipTimeoutId);
+		hideTooltip();
+	});
+
 	searchModalInput.addEventListener("input", () => {
 		const mode = document.getElementById("searchModal").dataset.mode;
 		const foundDiv = document.getElementById("searchModalFound");
