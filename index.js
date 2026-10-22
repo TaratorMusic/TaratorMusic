@@ -447,6 +447,15 @@ app.whenReady().then(() => {
 			console.error("Error forwarding seek to main window:", err);
 		}
 	});
+	ipcMain.on("miniplayer-drag", (_, data) => {
+		try {
+			if (!miniPlayer || miniPlayer.isDestroyed()) return;
+			const [x, y] = miniPlayer.getPosition();
+			miniPlayer.setPosition(Math.round(x + (Number(data?.dx) || 0)), Math.round(y + (Number(data?.dy) || 0)));
+		} catch (err) {
+			console.error("Error moving miniplayer:", err);
+		}
+	});
 	ipcMain.on("open-miniplayer", (_, data) => {
 		try {
 			createMiniPlayer(data);

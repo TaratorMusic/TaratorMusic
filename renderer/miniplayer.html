@@ -1,13 +1,14 @@
 <main>
 	<div class="drag-area" style="display: flex; flex-direction: row; height: 10vw">
 		<img id="taratorLogo" style="width: 10vw; height: 10vw" />
-		<div id="song-name">TaratorMusic</div>
+		<div id="song-name" class="no-drag">TaratorMusic</div>
+		<div id="header-drag-strip"></div>
 		<div id="minimise-button" class="no-drag">&#x2212;</div>
 		<div id="close-button" class="no-drag">&times;</div>
 	</div>
 
 	<div id="content-area">
-		<div id="thumbnail" class="drag-area"></div>
+		<div id="thumbnail" class="no-drag"></div>
 		<div id="lyrics-container"></div>
 	</div>
 
@@ -45,6 +46,7 @@
 			<span id="pip-translation-warning" title="This translation has a different number of lines than the lyrics, so it cannot be shown.">!</span>
 		</div>
 	</div>
+	<div id="pip-tooltip"></div>
 </main>
 
 <style>
@@ -58,6 +60,23 @@
 	html,
 	body {
 		background: transparent;
+	}
+
+	#pip-tooltip {
+		position: absolute;
+		display: none;
+		background: #333;
+		color: #fff;
+		padding: 1.5vw 2.4vw;
+		border-radius: 1.2vw;
+		border: 1px solid white;
+		font-size: 4.8vw;
+		line-height: 1.3;
+		white-space: normal;
+		word-break: break-word;
+		max-width: 88vw;
+		pointer-events: none;
+		z-index: 2000;
 	}
 
 	main {
@@ -81,7 +100,7 @@
 	}
 
 	#song-name {
-		width: 70vw;
+		width: 60vw;
 		height: 10vw;
 		overflow: hidden;
 		white-space: nowrap;
@@ -89,6 +108,17 @@
 		font-size: 5.6vw;
 		line-height: 10vw;
 		padding: 0 2vw;
+		cursor: grab;
+	}
+
+	#song-name.dragging,
+	#thumbnail.dragging {
+		cursor: grabbing;
+	}
+
+	#header-drag-strip {
+		width: 10vw;
+		flex: none;
 	}
 
 	#settings-button {
@@ -183,6 +213,7 @@
 		background-size: contain;
 		background-position: center;
 		background-repeat: no-repeat;
+		cursor: grab;
 	}
 
 	#thumbnail.hidden {
@@ -555,6 +586,31 @@
 		}, 130);
 	}
 
+	function positionPipTooltip(event) {
+		const tooltip = document.getElementById("pip-tooltip");
+		if (tooltip.style.display != "block") return;
+
+		const rect = tooltip.getBoundingClientRect();
+		const margin = 6;
+		let left = event.pageX + 8;
+		let top = event.pageY + 8;
+		if (left + rect.width > window.innerWidth - margin) left = Math.max(margin, window.innerWidth - rect.width - margin);
+		if (top + rect.height > window.innerHeight - margin) top = Math.max(margin, window.innerHeight - rect.height - margin);
+		tooltip.style.left = left + "px";
+		tooltip.style.top = top + "px";
+	}
+
+	function showPipTooltip(text, event) {
+		const tooltip = document.getElementById("pip-tooltip");
+		tooltip.textContent = text;
+		tooltip.style.display = "block";
+		positionPipTooltip(event);
+	}
+
+	function hidePipTooltip() {
+		document.getElementById("pip-tooltip").style.display = "none";
+	}
+
 	function updateTranslationOptions(languages, selected, mismatch) {
 		const select = document.getElementById("pip-translation-select");
 		select.innerHTML = "";
@@ -736,6 +792,55 @@
 
 	const songProgressElement = document.getElementById("song-progress");
 	const progressSlider = document.getElementById("pip-progress-slider");
+
+	const pipSongName = document.getElementById("song-name");
+	let songNameTooltipTimeoutId = null;
+	let pipPointerPosition = { pageX: 0, pageY: 0 };
+
+	pipSongName.addEventListener("mouseenter", event => {
+		clearTimeout(songNameTooltipTimeoutId);
+		pipPointerPosition = { pageX: event.pageX, pageY: event.pageY };
+		if (pipSongName.scrollWidth <= pipSongName.clientWidth) return;
+		songNameTooltipTimeoutId = setTimeout(() => showPipTooltip(pipSongName.innerText, pipPointerPosition), 1000);
+	});
+	pipSongName.addEventListener("mousemove", event => {
+		pipPointerPosition = { pageX: event.pageX, pageY: event.pageY };
+		if (pipSongName.scrollWidth <= pipSongName.clientWidth) return;
+		positionPipTooltip(pipPointerPosition);
+	});
+	pipSongName.addEventListener("mouseleave", () => {
+		clearTimeout(songNameTooltipTimeoutId);
+		hidePipTooltip();
+	});
+
+	let pipDragPoint = null;
+	let pipDragElement = null;
+
+	function beginPipDrag(element, event) {
+		if (event.button != 0) return;
+		pipDragPoint = { x: event.screenX, y: event.screenY };
+		pipDragElement = element;
+		element.classList.add("dragging");
+	}
+
+	pipSongName.addEventListener("mousedown", event => beginPipDrag(pipSongName, event));
+	document.getElementById("thumbnail").addEventListener("mousedown", event => beginPipDrag(document.getElementById("thumbnail"), event));
+
+	window.addEventListener("mousemove", event => {
+		if (!pipDragPoint) return;
+		const dx = event.screenX - pipDragPoint.x;
+		const dy = event.screenY - pipDragPoint.y;
+		if (dx == 0 && dy == 0) return;
+		pipDragPoint = { x: event.screenX, y: event.screenY };
+		ipcRenderer.send("miniplayer-drag", { dx: dx, dy: dy });
+	});
+
+	window.addEventListener("mouseup", () => {
+		if (!pipDragPoint) return;
+		pipDragPoint = null;
+		pipDragElement?.classList.remove("dragging");
+		pipDragElement = null;
+	});
 
 	songProgressElement.addEventListener("mouseenter", () => songProgressElement.classList.add("show-slider"));
 	songProgressElement.addEventListener("mouseleave", () => {

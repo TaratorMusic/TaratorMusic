@@ -837,9 +837,10 @@ async function searchYoutubeInMusics() {
 
 		(async () => {
 			streamedSongsHtmlMap = new Map();
-			let results;
+			let items;
 			try {
-				results = await getVideoInfo(`ytsearch${goal}:${searchedThing}`);
+				const searchYouTube = require(path.join(appFilesFolder, "renderer", "ytsr"));
+				items = await searchYouTube(searchedThing, goal);
 			} catch (error) {
 				const message = error?.message ?? String(error);
 				logChange("error", message);
@@ -847,7 +848,6 @@ async function searchYoutubeInMusics() {
 				await alertModal(message);
 				return;
 			}
-			const items = results.entries || [];
 			const existingSongUrls = new Set(
 				Array.from(songNameCache.values())
 					.map(song => (song.song_url ? extractYoutubeVideoId(song.song_url) : null))
@@ -863,14 +863,8 @@ async function searchYoutubeInMusics() {
 					const info = items[i];
 					const videoTitle = info.title;
 					const songID = info.id;
-					const thumbnails = info.thumbnails || [];
 					const songLength = info.duration;
-					const bestThumbnail = thumbnails.reduce((max, thumb) => {
-						const size = (thumb.width || 0) * (thumb.height || 0);
-						const maxSize = (max.width || 0) * (max.height || 0);
-						return size > maxSize ? thumb : max;
-					}, thumbnails[0] || {});
-					const thumbnailUrl = bestThumbnail?.url ?? bestThumbnail ?? null;
+					const thumbnailUrl = info.thumbnail ?? null;
 
 					await callSqlite({
 						db: "musics",
@@ -904,7 +898,7 @@ async function searchYoutubeInMusics() {
 					const fullSong = {
 						id: songID,
 						name: videoTitle,
-						thumbnail: bestThumbnail,
+						thumbnail: thumbnailUrl,
 						length: songLength,
 					};
 
@@ -1321,13 +1315,14 @@ async function refreshRecommendations() {
 		if (!isLoadingRecommendations) return;
 		const ytQuery = `${key} by ${value[0]}`;
 		try {
-			const result = await getVideoInfo(`ytsearch1:${ytQuery}`);
-			const info = result.entries ? result.entries[0] : result;
+			const searchYouTube = require(path.join(appFilesFolder, "renderer", "ytsr"));
+			const results = await searchYouTube(ytQuery, 1);
+			const info = results[0];
 			if (!info) continue;
 			const videoTitle = info.title;
 			const songID = info.id;
 			const songLength = info.duration;
-			const bestThumbnail = info.thumbnail?.url ?? info.thumbnail ?? null;
+			const bestThumbnail = info.thumbnail ?? null;
 
 			await callSqlite({
 				db: "musics",
@@ -4082,6 +4077,30 @@ function bindUiEvents() {
 			clearTimeout(tooltipTimeoutId);
 			hideTooltip();
 		});
+	});
+
+	const myMusicContent = document.getElementById("my-music-content");
+	let songNameTooltipTimeoutId = null;
+
+	myMusicContent.addEventListener("mouseover", event => {
+		const nameElement = event.target.closest(".song-name");
+		if (!nameElement) return;
+		clearTimeout(songNameTooltipTimeoutId);
+		if (nameElement.scrollWidth <= nameElement.clientWidth) return;
+		trackPointerPosition(event);
+		songNameTooltipTimeoutId = setTimeout(() => showTooltip(nameElement, nameElement.innerText), 1000);
+	});
+
+	myMusicContent.addEventListener("mousemove", event => {
+		if (!event.target.closest(".song-name")) return;
+		trackPointerPosition(event);
+		positionTooltip();
+	});
+
+	myMusicContent.addEventListener("mouseout", event => {
+		if (!event.target.closest(".song-name")) return;
+		clearTimeout(songNameTooltipTimeoutId);
+		hideTooltip();
 	});
 
 	searchModalInput.addEventListener("input", () => {

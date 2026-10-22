@@ -143,8 +143,9 @@ function getCachedVideoIds() {
 
 async function searchInYoutube(songName, returnInfo = false) {
 	try {
-		const result = await getVideoInfo(`ytsearch1:${songName}`);
-		const entry = result.entries ? result.entries[0] : result;
+		const searchYouTube = require(path.join(appFilesFolder, "renderer", "ytsr"));
+		const results = await searchYouTube(songName, 1);
+		const entry = results[0];
 		if (!entry) throw new Error("No results found");
 		searchedSongsUrl = entry.webpage_url || entry.url;
 		return returnInfo ? entry : searchedSongsUrl;

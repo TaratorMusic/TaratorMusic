@@ -177,10 +177,11 @@ function positionTooltip() {
 	element.style.top = top + "px";
 }
 
-function showTooltip(element) {
+function showTooltip(element, text = null) {
 	const tooltip = getTooltipElement();
-	if (!tooltip || !element?.dataset?.tooltip) return;
-	tooltip.textContent = element.dataset.tooltip;
+	const content = text ?? element?.dataset?.tooltip;
+	if (!tooltip || !content) return;
+	tooltip.textContent = content;
 	tooltip.style.display = "block";
 	positionTooltip();
 }

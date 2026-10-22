@@ -8,10 +8,7 @@
 -   Remodel customisation modal to fit better
 -   UI Revamp. Draw every window and prepare them for every future update. Playlists tab should get a revamp, along with every modal
 -   auto form playlist from artist-genre-language
--   A key + right click to do stuff with songs (add to favorites, delete, etc.)
--   Add approximate time remaining for volume stabilisation.
 -   Most Listened Playlist and other playlist data in Statistics
--   Hover songs for the full song name?
 -   Search bar in the settings
 
 -   What happens when you close the download modal by the X button while downloading?
@@ -37,6 +34,7 @@
 
 ### Planned Features
 
+-   Parallel youtube search with spotify scraping
 -   Work with mp3 metadatas, all kind, maybe implement in instead of just extraction
 -   Stream seeking not working
 -   Staleness check on recommendations table rows
@@ -46,6 +44,7 @@
 -   Add a window, where in the left side you can see your songs and you can filter them via a search bar and sort them, on the right side there will be the playlists, and the users will be able to drag and drop all the songs to the playlists they desire.
 -   Need to have full online & full offline modes
 -   the app assumes 3 boxes height for each device. Calculate the row amount based on #content height
+-   A key + right click to do stuff with songs (add to favorites, delete, etc.)
 
 -   Use our check_dupe_songs go file while downloading songs to avoid duplications
 -   Factory Reset (With options like: only settings, remove all songs/playlists etc.)

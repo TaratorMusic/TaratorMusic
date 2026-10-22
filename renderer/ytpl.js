@@ -1,5 +1,8 @@
-const { request } = require("undici");
+const https = require("node:https");
 
+// The requests go through node:https instead of undici because undici's fast
+// timers call .unref() on the timer they get back, and the renderer only has
+// the browser setTimeout, which returns a number.
 const BASE_PLIST_URL = "https://www.youtube.com/playlist?";
 const BASE_API_URL = "https://www.youtube.com/youtubei/v1/browse";
 const YT_HOSTS = ["www.youtube.com", "youtube.com", "music.youtube.com"];
@@ -61,8 +64,30 @@ function parseNumFromText(txt) {
 	return Number(parseText(txt).replace(/\D+/g, ""));
 }
 
+function request(url, options = {}) {
+	return new Promise((resolve, reject) => {
+		const target = new URL(url);
+		const clientRequest = https.request(
+			{
+				method: options.method || "GET",
+				hostname: target.hostname,
+				path: target.pathname + target.search,
+				headers: options.headers || {},
+			},
+			response => {
+				const chunks = [];
+				response.on("data", chunk => chunks.push(chunk));
+				response.on("end", () => resolve({ statusCode: response.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+			},
+		);
+		clientRequest.on("error", reject);
+		if (options.body) clientRequest.write(options.body);
+		clientRequest.end();
+	});
+}
+
 async function fetchBody(url, headers) {
-	return request(url, {
+	const response = await request(url, {
 		headers: {
 			"user-agent":
 				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -71,12 +96,13 @@ async function fetchBody(url, headers) {
 			...headers,
 		},
 		method: "GET",
-	}).then(res => res.body.text());
+	});
+	return response.body;
 }
 
 async function postBrowse(apiKey, payload) {
 	const url = `${BASE_API_URL}?key=${encodeURIComponent(apiKey)}&prettyPrint=false`;
-	return request(url, {
+	const response = await request(url, {
 		method: "POST",
 		headers: {
 			"user-agent":
@@ -85,7 +111,8 @@ async function postBrowse(apiKey, payload) {
 			"content-type": "application/json",
 		},
 		body: JSON.stringify(payload),
-	}).then(res => res.body.json());
+	});
+	return JSON.parse(response.body);
 }
 
 // Collect every `lockupViewModel` inside an arbitrary tree.
