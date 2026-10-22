@@ -7,6 +7,7 @@ const { spawn } = require("child_process");
 let taratorFolder, musicFolder, thumbnailFolder, appThumbnailFolder, databasesFolder, backendFolder;
 let processFolder, appFilesFolder;
 let recommendationsCache = localStorage.getItem("recommendationsCache") || null;
+let autoPlayonlaunch = localStorage.getItem("autoPlayonlaunch") == "1";
 
 const sqlitePending = {};
 let sqliteCounter = 0;
@@ -494,6 +495,7 @@ function applySettingsToUi(settingsRow) {
 	if (divideVolumeIndex >= 0) divideVolumeSelect.selectedIndex = divideVolumeIndex;
 
 	document.getElementById("toggleSwitchDiscord").checked = discordRPCstatus;
+	document.getElementById("autoPlayonlaunch").checked = autoPlayonlaunch;
 	document.getElementById("stabiliseVolumeToggle").checked = stabiliseVolumeToggle == 1;
 	document.getElementById("recommendationsToggle").checked = recommendationsAfterDownload == 1;
 	document.getElementById("pictureInPictureToggle").checked = pictureInPicture == 1;
@@ -1666,14 +1668,6 @@ function playMusic(songId, playlistId) {
 		const songNameEl = document.getElementById("song-name");
 		playingSongsID = songId;
 
-		if (!playlistId && currentPlaylist) {
-			const playlist = playlistsMap.get(currentPlaylist);
-			if (playlist && playlist.songs.includes(songId)) {
-				playlistId = currentPlaylist;
-				currentPlaylistElement = playlist.songs.indexOf(songId);
-			}
-		}
-
 		currentPlaylist = playlistId || null;
 
 		if (playlistId != "SEARCH_SHUFFLE") playlistsMap.delete("SEARCH_SHUFFLE");
@@ -1718,6 +1712,7 @@ function playMusic(songId, playlistId) {
 			audioPlayer.stdin.write(`${offlineMode ? "play" : "stream"} ${songPath}\n`);
 			audioPlayer.stdin.write(`volume ${volume}\n`);
 			audioPlayer.stdin.write(`speed ${rememberspeed}\n`);
+			localStorage.setItem("lastPlayedPlaylist", currentPlaylist && currentPlaylist != "SEARCH_SHUFFLE" ? currentPlaylist : "");
 		}
 
 		playButton.style.display = "none";
@@ -1808,6 +1803,19 @@ async function playPlaylist(playlistId, startingIndex = 0) {
 	await playMusic(playlist.songs[startingIndex], playlistId);
 }
 
+async function playOnLaunch() {
+	if (!autoPlayonlaunch) return;
+
+	const playlistId = localStorage.getItem("lastPlayedPlaylist");
+	const playlist = playlistsMap.get(playlistId);
+	const startingIndex = playlist?.songs?.findIndex(id => songNameCache.has(id) || (streamedSongsCache.has(id) && isYtdlpInstalled())) ?? -1;
+	if (startingIndex >= 0) return playPlaylist(playlistId, startingIndex);
+
+	if (songNameCache.size == 0) return;
+	if (!isShuffleActive) toggleShuffle();
+	await randomSongFunctionMainMenu();
+}
+
 async function playPreviousSong() {
 	if (!playingSongsID) return;
 	if (getInterpolatedPosition() > 5) {
@@ -1887,7 +1895,7 @@ async function playNextSong() {
 	}
 	updateQueueDisplay();
 	if (!playingSongsID) return;
-	if (isLooping) return playMusic(playingSongsID, null);
+	if (isLooping) return playMusic(playingSongsID, currentPlaylist);
 
 	const notInterestedIds = notInterestedSongs.map(song => song.song_id);
 	let nextSongId;
@@ -4329,6 +4337,7 @@ async function startApp() {
 	bindUiEvents();
 	document.getElementById("main-menu").click();
 	setupLazyBackgrounds();
+	await playOnLaunch();
 }
 
 async function runBackgroundStartup() {
