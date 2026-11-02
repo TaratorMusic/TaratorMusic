@@ -148,7 +148,9 @@ async function secondBrowserChecks() {
 	check(aborted && (await phoneDB.read("audio", song.id)).version == song.audioVersion && (await phoneDB.read("songs", song.id)).title == metadata.title, "Failed storage transaction lost the old copy");
 	await phoneRefreshLocal();
 	await navigator.serviceWorker.ready;
-	const keys = await (await caches.open("tarator-phone-v1")).keys();
+	const shellCaches = (await caches.keys()).filter(key => key.startsWith("tarator-phone-"));
+	check(shellCaches.length == 1, "App shell cache is missing or outdated caches were retained");
+	const keys = await (await caches.open(shellCaches[0])).keys();
 	check(keys.length >= 11, "App shell was not fully cached");
 	return { offsets, cachedFiles: keys.length };
 }
@@ -158,7 +160,7 @@ async function offlineBrowserChecks() {
 	let networkBlocked = false;
 	try { await fetch("./network-probe.txt"); } catch (_) { networkBlocked = true; }
 	check(networkBlocked, "Browser network requests are not blocked");
-	check(document.querySelector("h1").textContent == "Your music, offline.", "App shell did not reopen offline");
+	check(document.querySelector("#page-home h1").textContent == "Main Menu" && !document.getElementById("page-home").hidden, "App shell did not reopen offline");
 	await phoneRefreshLocal();
 	check(phoneState.saved.size == 2, "Offline library did not reopen");
 	await phonePlayer.play("song");
@@ -171,7 +173,7 @@ async function offlineBrowserChecks() {
 		document.getElementById("audio").addEventListener("pause", resolve, { once: true });
 		document.getElementById("audio").pause();
 	});
-	check(document.getElementById("togglePlayback").textContent == "Play", "Pause event did not update the control");
+	check(document.getElementById("togglePlayback").getAttribute("aria-label") == "Play", "Pause event did not update the control");
 	return { songs: phoneState.saved.size, playingFrom: document.getElementById("audio").src.split(":")[0] };
 }
 
@@ -193,8 +195,9 @@ async function main() {
 	await window.webContents.executeJavaScript(`window.makeBrowserFixtures = ${makeBrowserFixtures.toString()}; true`);
 	process.stdout.write("Resume, versions, integrity, cancel, atomic storage: " + JSON.stringify(await window.webContents.executeJavaScript(`(${secondBrowserChecks.toString()})()`)) + "\n");
 	if (process.env.TARATOR_PHONE_SCREENSHOT) {
+		await window.webContents.executeJavaScript("phoneSetPage('connection'); new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
 		fs.writeFileSync(path.join(process.env.TARATOR_PHONE_SCREENSHOT, "phone-sync-top.png"), (await window.webContents.capturePage()).toPNG());
-		await window.webContents.executeJavaScript("document.getElementById('savedSongs').scrollIntoView(); true");
+		await window.webContents.executeJavaScript("phoneSetPage('music'); new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
 		fs.writeFileSync(path.join(process.env.TARATOR_PHONE_SCREENSHOT, "phone-sync-library.png"), (await window.webContents.capturePage()).toPNG());
 	}
 	server.closeAllConnections();

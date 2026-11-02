@@ -22,8 +22,8 @@
 		</header>
 		<main id="app">
 			<div id="page-home" class="app-page" role="tabpanel" aria-labelledby="tab-home">
-				<div class="page-heading"><div><p class="eyebrow">YOUR MUSIC, YOUR WAY</p><h1>Home</h1></div><button id="homePlayAll" class="icon-button large-play" aria-label="Play all saved songs" title="Play all"><img src="./play.svg" alt="" /></button></div>
-				<div id="homeEmpty" class="empty-state home-empty"><img src="./icon-512.png" alt="TaratorMusic logo" /><h2>Bring your music along.</h2><p>Save your desktop songs and playlists, then listen anywhere.</p><button data-open-page="connection" class="primary-button">Connect your desktop</button></div>
+				<div class="page-heading"><h1>Main Menu</h1><button id="homePlayAll" class="icon-button large-play" aria-label="Play all saved songs" title="Play all"><img src="./play.svg" alt="" /></button></div>
+				<div id="homeEmpty" class="empty-state home-empty"><img src="./icon-512.png" alt="TaratorMusic logo" /><h2>TaratorMusic</h2><p>Save your desktop songs and playlists, then listen anywhere.</p><button data-open-page="connection" class="primary-button">Connect your desktop</button></div>
 				<div id="homeContent" hidden>
 					<section class="home-section"><div class="section-heading"><h2>Jump back in</h2><span>Recently played playlists</span></div><div id="recentPlaylists" class="recent-grid"></div></section>
 					<section class="home-section"><div class="section-heading"><h2>Your playlists</h2><button class="text-button" id="seePlaylists">See all</button></div><div id="homePlaylists" class="playlist-shelf"></div></section>
@@ -31,7 +31,7 @@
 				</div>
 			</div>
 			<div id="page-music" class="app-page" role="tabpanel" aria-labelledby="tab-music" hidden>
-				<div class="page-heading"><div><p class="eyebrow">ALWAYS WITH YOU</p><h1>My Music</h1></div><button id="libraryPlayAll" class="icon-button large-play" aria-label="Play these songs" title="Play these songs"><img src="./play.svg" alt="" /></button></div>
+				<div class="page-heading"><h1>My Music</h1><button id="libraryPlayAll" class="icon-button large-play" aria-label="Play these songs" title="Play these songs"><img src="./play.svg" alt="" /></button></div>
 				<div class="library-toolbar">
 					<label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="librarySearch" type="search" aria-label="Search your music" placeholder="Search songs, artists, playlists" /></label>
 					<div class="library-options"><div class="view-options" role="group" aria-label="Library view"><button data-library-view="songs" aria-pressed="true">Songs</button><button data-library-view="playlists" aria-pressed="false">Playlists</button></div><label id="librarySortLabel" class="sort-control">Sort by <select id="librarySort"><option value="name">Name</option><option value="artist">Artist</option><option value="playlist">Playlist</option></select></label></div>
@@ -40,7 +40,7 @@
 				<div id="libraryPlaylistsView" class="playlist-grid" hidden></div>
 			</div>
 			<div id="page-connection" class="app-page" role="tabpanel" aria-labelledby="tab-connection" hidden>
-				<div class="page-heading"><div><p class="eyebrow">HOME WI-FI SYNC</p><h1>Connection</h1></div><span id="connectionStatus" class="status-pill">Not paired</span></div>
+				<div class="page-heading"><h1>Connection</h1><span id="connectionStatus" class="status-pill">Not paired</span></div>
 			<section class="setting-card" aria-labelledby="pairTitle">
 				<h2 id="pairTitle">Connect your desktop</h2>
 				<p id="phoneInstructions"></p>
@@ -70,7 +70,7 @@
 			</section>
 			</div>
 			<div id="page-settings" class="app-page" role="tabpanel" aria-labelledby="tab-settings" hidden>
-				<div class="page-heading"><div><p class="eyebrow">MAKE IT YOURS</p><h1>Settings</h1></div></div>
+				<div class="page-heading"><h1>Settings</h1></div>
 				<section class="setting-card" aria-labelledby="appearanceTitle"><h2 id="appearanceTitle">Appearance</h2><p>The same background presets as the desktop app.</p>
 					<div class="theme-options" role="group" aria-label="Background preset"><button data-theme-choice="blue" aria-pressed="false"><span></span>Blue</button><button data-theme-choice="red" aria-pressed="false"><span></span>Red</button><button data-theme-choice="green" aria-pressed="true"><span></span>Green</button><button data-theme-choice="purple" aria-pressed="false"><span></span>Purple</button><button data-theme-choice="black" aria-pressed="false"><span></span>Black</button></div>
 					<label class="custom-theme" for="customTheme">Custom color<input id="customTheme" type="color" value="#004000" /></label>
@@ -86,7 +86,7 @@
 			<audio id="audio" preload="metadata" hidden></audio>
 		</footer>
 		<nav class="tab-nav" role="tablist" aria-label="Main navigation">
-			<button id="tab-home" role="tab" aria-controls="page-home" aria-selected="true" data-page="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H15v-7H9v7H3z"/></svg><span>Home</span></button>
+			<button id="tab-home" role="tab" aria-controls="page-home" aria-selected="true" data-page="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H15v-7H9v7H3z"/></svg><span>Main Menu</span></button>
 			<button id="tab-music" role="tab" aria-controls="page-music" aria-selected="false" tabindex="-1" data-page="music"><img src="./queue.svg" alt="" /><span>My Music</span></button>
 			<button id="tab-connection" role="tab" aria-controls="page-connection" aria-selected="false" tabindex="-1" data-page="connection"><img src="./refresh.svg" alt="" /><span>Connection</span></button>
 			<button id="tab-settings" role="tab" aria-controls="page-settings" aria-selected="false" tabindex="-1" data-page="settings"><img src="./settings.svg" alt="" /><span>Settings</span></button>
