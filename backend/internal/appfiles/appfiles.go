@@ -54,6 +54,10 @@ func execSuffix() string {
 	return ""
 }
 
+func OfflineSyncBinary() string {
+	return "offline_sync" + execSuffix()
+}
+
 // PlatformSupported reports whether the app ships on this OS.
 func PlatformSupported() bool {
 	return runtime.GOOS == "linux" || runtime.GOOS == "darwin" || runtime.GOOS == "windows"
@@ -93,7 +97,7 @@ func CoreBinaries() []string {
 	for _, n := range names {
 		out = append(out, n+execSuffix())
 	}
-	return append(out, "binary_check"+execSuffix())
+	return append(out, "binary_check"+execSuffix(), OfflineSyncBinary())
 }
 
 // YtdlpName is the yt-dlp filename for this platform. It is both the upstream

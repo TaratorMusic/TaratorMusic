@@ -4332,6 +4332,7 @@ async function startApp() {
 	const settingsRow = await initialiseDatabases().catch(failWith("Database initialization failed"));
 	startAudioPlayer();
 	applySettingsToUi(settingsRow);
+	initializeOfflineSync(settingsRow).catch(error => logChange("error", error.message));
 	await loadCaches().catch(failWith("Database initialization failed"));
 
 	bindUiEvents();

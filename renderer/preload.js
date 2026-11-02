@@ -2,6 +2,15 @@
 
 const { ipcRenderer } = require("electron");
 
+window.desktopSync = {
+	set: options => ipcRenderer.invoke("phone-sync-set", options),
+	command: command => ipcRenderer.invoke("phone-sync-command", command),
+};
+
+ipcRenderer.on("phone-sync-status", (_, status) => {
+	window.dispatchEvent(new CustomEvent("phone-sync-status", { detail: status }));
+});
+
 window.addEventListener("DOMContentLoaded", () => {
 	const replaceText = (selector, text) => {
 		const element = document.getElementById(selector);

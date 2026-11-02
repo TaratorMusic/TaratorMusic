@@ -258,6 +258,7 @@
 					<button class="settings-tab-btn" data-settings-tab="discord" onclick="switchSettingsTab('discord')">Discord</button>
 					<button class="settings-tab-btn" data-settings-tab="songinfo" onclick="switchSettingsTab('songinfo')">Song Info</button>
 					<button class="settings-tab-btn" data-settings-tab="library" onclick="switchSettingsTab('library')">Library</button>
+					<button class="settings-tab-btn" data-settings-tab="phonesync" onclick="switchSettingsTab('phonesync')">Phone sync</button>
 					<button class="settings-tab-btn" data-settings-tab="recommendations" onclick="switchSettingsTab('recommendations')">Recommendations</button>
 					<button class="settings-tab-btn" data-settings-tab="pip" onclick="switchSettingsTab('pip')">PiP</button>
 					<button class="settings-tab-btn" data-settings-tab="packages" onclick="switchSettingsTab('packages')">Packages</button>
@@ -422,6 +423,23 @@
 						<button onclick="redownloadAllSongs()">Redownload</button>
 					</div>
 					<h5>You can use your old database to redownload all the songs back.</h5>
+					</div>
+				</div>
+				<div id="settings-tab-phonesync" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Offline phone sync</h1>
+					<div class="setting-card">
+						<div class="settingsflexrow">
+							<h2>Share library on home Wi-Fi</h2>
+							<label class="switch"><input type="checkbox" id="offlineSyncToggle" onchange="toggleOfflineSync()" /><span class="slider round"></span></label>
+						</div>
+						<h5>Paired phones can read your music. Keep TaratorMusic open while syncing.</h5>
+						<label for="offlineSyncPage">Phone app GitHub Pages URL</label>
+						<input id="offlineSyncPage" type="url" style="width:95%" />
+						<h5>Turn sharing off and on after changing this URL. Only this site's origin is allowed.</h5>
+						<button onclick="refreshOfflineSync('status')">Refresh addresses</button>
+						<button onclick="refreshOfflineSync('new-code')">New pairing code</button>
+						<button onclick="refreshOfflineSync('revoke')">Forget paired devices</button>
+						<pre id="offlineSyncInfo" style="white-space:pre-wrap;overflow-wrap:anywhere">Off</pre>
 					</div>
 				</div>
 				<div id="settings-tab-recommendations" class="settings-tab-panel hidden">
@@ -637,6 +655,7 @@
 		<script src="lyrics_fetch.js"></script>
 		<script src="renderer.js"></script>
 		<script src="settings.js"></script>
+		<script src="offline_sync.js"></script>
 		<script src="scan_songs.js"></script>
 		<script src="recommendations.js"></script>
 		<script src="timestamps_generate.js"></script>
