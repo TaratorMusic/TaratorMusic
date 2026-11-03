@@ -13,6 +13,10 @@ const phonePlayer = (() => {
 	let shuffleRemaining = [];
 	let shuffleHistory = [];
 	let shufflePosition = -1;
+	let shuffleNextId = null;
+	let preparedNext = null;
+	let preparingNext = 0;
+	let interrupted = false;
 	try { shuffle = localStorage.getItem("taratorShuffle") == "1"; } catch (_) {}
 	const progress = document.getElementById("playbackProgress");
 
@@ -56,6 +60,9 @@ const phonePlayer = (() => {
 	}
 
 	function resetShuffle() {
+		shuffleNextId = null;
+		preparedNext = null;
+		preparingNext++;
 		shuffleRemaining = library.filter(supported).map(song => song.id).filter(id => id != currentId);
 		shuffleHistory = currentId ? [currentId] : [];
 		shufflePosition = shuffleHistory.length - 1;
@@ -65,9 +72,14 @@ const phonePlayer = (() => {
 		const song = library.find(item => item.id == id);
 		if (!song) return;
 		if (!supported(song)) throw new Error("This song is not supported on this phone.");
+		interrupted = false;
 		const sequence = ++loading;
-		const stored = await phoneDB.read("audio", id);
-		const artwork = await phoneDB.read("artwork", id);
+		const prepared = preparedNext?.id == id && preparedNext.audioVersion == song.audioVersion && preparedNext.artworkVersion == song.artworkVersion ? preparedNext : null;
+		preparedNext = null;
+		preparingNext++;
+		let stored, artwork;
+		if (prepared) ({ stored, artwork } = prepared);
+		else [stored, artwork] = await Promise.all([phoneDB.read("audio", id), phoneDB.read("artwork", id)]);
 		if (sequence != loading) return;
 		if (!stored?.blob || stored.version != song.audioVersion) throw new Error("No verified offline copy. Sync this song first.");
 		if (shuffle) {
@@ -84,6 +96,8 @@ const phonePlayer = (() => {
 		audioURL = URL.createObjectURL(stored.blob);
 		artworkURL = artwork?.blob ? URL.createObjectURL(artwork.blob) : null;
 		currentId = id;
+		shuffleNextId = null;
+		try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}
 		audio.src = audioURL;
 		document.getElementById("nowPlaying").textContent = song.title;
 		document.getElementById("nowArtist").textContent = song.artist || "Unknown artist";
@@ -92,29 +106,49 @@ const phonePlayer = (() => {
 		if (navigator.mediaSession && window.MediaMetadata) {
 			navigator.mediaSession.metadata = new MediaMetadata({ title: song.title, artist: song.artist, album: song.album, artwork: [{ src: artworkURL || new URL("./icon-512.png", location.href).href, type: artworkURL ? artwork.blob.type : "image/png" }] });
 		}
-		await audio.play();
-		updatePosition();
+		try { await audio.play(); } catch (error) { if (sequence == loading) throw error; }
+		if (sequence == loading) updatePosition();
 	}
 
-	async function skip(direction) {
+	function queuedTrack(direction) {
 		const playable = library.filter(supported);
-		if (!playable.length) return;
+		if (!playable.length) return null;
 		if (shuffle) {
 			if (direction < 0 && shufflePosition >= 0) {
 				const position = Math.max(0, shufflePosition - 1);
-				await play(shuffleHistory[position], position);
+				return { id: shuffleHistory[position], position };
 			} else if (direction > 0 && shufflePosition + 1 < shuffleHistory.length) {
 				const position = shufflePosition + 1;
-				await play(shuffleHistory[position], position);
+				return { id: shuffleHistory[position], position };
 			} else {
-				if (!shuffleRemaining.length) shuffleRemaining = playable.map(song => song.id).filter(id => id != currentId);
-				await play(shuffleRemaining.length ? shuffleRemaining[Math.floor(Math.random() * shuffleRemaining.length)] : playable[0].id);
+				const remaining = shuffleRemaining.length ? shuffleRemaining : playable.map(song => song.id).filter(id => id != currentId);
+				if (!remaining.includes(shuffleNextId)) shuffleNextId = remaining.length ? remaining[Math.floor(Math.random() * remaining.length)] : playable[0].id;
+				return { id: shuffleNextId, position: null, newCycle: !shuffleRemaining.length };
 			}
-			return;
 		}
 		const index = playable.findIndex(song => song.id == currentId);
 		const next = (index + direction + playable.length) % playable.length;
-		await play(playable[next].id);
+		return { id: playable[next].id, position: null };
+	}
+
+	async function skip(direction) {
+		const next = queuedTrack(direction);
+		if (!next) return;
+		if (next.newCycle) shuffleRemaining = library.filter(supported).map(song => song.id).filter(id => id != currentId);
+		await play(next.id, next.position);
+	}
+
+	async function prepareNext() {
+		if (!currentId) return;
+		const next = queuedTrack(1);
+		const song = library.find(item => item.id == next?.id);
+		if (!song) return;
+		if (preparedNext?.id == song.id && preparedNext.audioVersion == song.audioVersion && preparedNext.artworkVersion == song.artworkVersion) return;
+		const sequence = ++preparingNext;
+		try {
+			const [stored, artwork] = await Promise.all([phoneDB.read("audio", song.id), phoneDB.read("artwork", song.id)]);
+			if (sequence == preparingNext && stored?.blob && stored.version == song.audioVersion) preparedNext = { id: song.id, audioVersion: song.audioVersion, artworkVersion: song.artworkVersion, stored, artwork };
+		} catch (_) {}
 	}
 
 	async function playFirst() {
@@ -129,6 +163,7 @@ const phonePlayer = (() => {
 
 	async function toggle() {
 		if (audio.paused) {
+			interrupted = false;
 			if (audio.src) await audio.play();
 			else await playFirst();
 		} else audio.pause();
@@ -139,6 +174,18 @@ const phonePlayer = (() => {
 		document.getElementById("message").hidden = false;
 	}
 
+	if (navigator.audioSession) {
+		navigator.audioSession.addEventListener("statechange", () => {
+			if (navigator.audioSession.state != "interrupted") return;
+			interrupted = true;
+			loading++;
+			audio.pause();
+			updatePosition();
+			window.dispatchEvent(new Event("phone-playback-change"));
+		});
+	}
+	audio.addEventListener("play", () => { if (interrupted) audio.pause(); });
+
 	for (const event of ["play", "pause", "ended", "loadedmetadata", "timeupdate", "seeked", "ratechange"]) {
 		audio.addEventListener(event, () => {
 			updatePosition();
@@ -146,6 +193,9 @@ const phonePlayer = (() => {
 		});
 	}
 	audio.addEventListener("playing", () => {
+		prepareNext();
+		updateMediaControls();
+		updatePosition();
 		if (currentId) window.dispatchEvent(new CustomEvent("phone-track-play", { detail: { id: currentId, playlistId } }));
 	});
 	progress.addEventListener("input", () => { seeking = true; updateControls(); });
@@ -154,7 +204,7 @@ const phonePlayer = (() => {
 		seeking = false;
 		updatePosition();
 	});
-	audio.addEventListener("ended", () => { skip(1).catch(playbackError); });
+	audio.addEventListener("ended", () => { if (!interrupted) skip(1).catch(playbackError); });
 	audio.addEventListener("error", () => playbackError(new Error("Playback failed. This file's codec may not be supported on this phone.")));
 	document.getElementById("togglePlayback").addEventListener("click", () => { toggle().catch(playbackError); });
 	document.getElementById("previousTrack").addEventListener("click", () => { skip(-1).catch(playbackError); });
@@ -164,19 +214,35 @@ const phonePlayer = (() => {
 		resetShuffle();
 		try { localStorage.setItem("taratorShuffle", shuffle ? "1" : "0"); } catch (_) {}
 		updateControls();
+		if (!audio.paused) prepareNext();
 	});
-	if (navigator.mediaSession) {
+	function updateMediaControls() {
+		if (!navigator.mediaSession) return;
 		const handlers = {
-			play: () => { togglePlay().catch(playbackError); },
+			play: () => togglePlay().catch(playbackError),
 			pause: () => audio.pause(),
-			nexttrack: () => { skip(1).catch(playbackError); },
-			previoustrack: () => { skip(-1).catch(playbackError); },
+			nexttrack: () => skip(1).catch(playbackError),
+			previoustrack: () => skip(-1).catch(playbackError),
 			seekto: details => { if (Number.isFinite(details.seekTime) && Number.isFinite(audio.duration)) audio.currentTime = Math.max(0, Math.min(audio.duration, details.seekTime)); },
 		};
 		for (const [name, handler] of Object.entries(handlers)) {
 			try { navigator.mediaSession.setActionHandler(name, handler); } catch (_) {}
 		}
 	}
+	updateMediaControls();
+	audio.addEventListener("loadedmetadata", updateMediaControls);
+	document.addEventListener("visibilitychange", () => {
+		if (currentId) {
+			updateMediaControls();
+			updatePosition();
+		}
+	});
+	window.addEventListener("pageshow", () => {
+		if (currentId) {
+			updateMediaControls();
+			updatePosition();
+		}
+	});
 
 	async function togglePlay() {
 		if (audio.paused) await toggle();
@@ -200,6 +266,7 @@ const phonePlayer = (() => {
 		}
 		if (changed) resetShuffle();
 		updateControls();
+		if (currentId && !audio.paused) prepareNext();
 	}
 
 	function refreshLibrary(songs) {

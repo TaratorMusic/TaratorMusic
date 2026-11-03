@@ -246,12 +246,68 @@ async function offlineBrowserChecks() {
 	check(!audio.paused && audio.readyState >= 3 && audio.duration > 0, "Offline Blob could not decode and start: " + JSON.stringify({ paused: audio.paused, position: audio.currentTime, duration: audio.duration, ready: audio.readyState, error: audio.error?.message }));
 	check(document.querySelectorAll("audio").length == 1, "Playback created more than one audio element");
 	check(navigator.mediaSession.metadata.title == "Renamed without audio", "Media Session metadata was not updated");
+	const originalPlay = audio.play;
+	const originalRead = phoneDB.read;
+	let startedImmediately = false;
+	let readsBeforeStart = 0;
+	phoneDB.read = async (...args) => {
+		if (!startedImmediately) readsBeforeStart++;
+		return await originalRead(...args);
+	};
+	audio.play = function() { startedImmediately = true; return originalPlay.call(this); };
+	try {
+		const advancing = new Promise((resolve, reject) => {
+			const changed = () => {
+				if (phonePlayer.currentId != "done" || audio.currentTime <= 0 || audio.paused) return;
+				clearTimeout(timer);
+				audio.removeEventListener("timeupdate", changed);
+				resolve();
+			};
+			const timer = setTimeout(() => { audio.removeEventListener("timeupdate", changed); reject(new Error("Next track title changed but audio did not advance")); }, 4000);
+			audio.addEventListener("timeupdate", changed);
+		});
+		audio.dispatchEvent(new Event("ended"));
+		const synchronous = startedImmediately && !readsBeforeStart;
+		await advancing;
+		check(synchronous, "Next-track playback waited for storage after the ended event");
+	} finally {
+		audio.play = originalPlay;
+		phoneDB.read = originalRead;
+	}
+	await phonePlayer.play("song");
+	const actions = new Map();
+	const session = navigator.mediaSession;
+	const originalHandler = session.setActionHandler;
+	session.setActionHandler = function(name, handler) { actions.set(name, handler); return originalHandler.call(this, name, handler); };
+	try {
+		for (const event of ["visibilitychange", "pageshow"]) {
+			actions.clear();
+			(event == "visibilitychange" ? document : window).dispatchEvent(new Event(event));
+			check(typeof actions.get("nexttrack") == "function" && typeof actions.get("previoustrack") == "function", "Track controls were not restored on " + event);
+		}
+		await actions.get("nexttrack")();
+		check(phonePlayer.currentId == "done" && !audio.paused && session.metadata.title == "Finished song", "System Next did not play the next saved song");
+		await actions.get("previoustrack")();
+		check(phonePlayer.currentId == "song" && !audio.paused && session.playbackState == "playing", "System Previous did not restore the previous song");
+	} finally { session.setActionHandler = originalHandler; }
+	const audioSession = navigator.audioSession;
+	audioSession.state = "interrupted";
+	audioSession.dispatchEvent(new Event("statechange"));
+	check(audio.paused && session.playbackState == "paused" && document.getElementById("togglePlayback").getAttribute("aria-label") == "Play", "Audio interruption did not pause playback and controls");
+	const interruptedId = phonePlayer.currentId;
+	audio.dispatchEvent(new Event("ended"));
+	check(phonePlayer.currentId == interruptedId && audio.paused, "An interruption advanced the queue");
+	audioSession.state = "active";
+	audioSession.dispatchEvent(new Event("statechange"));
+	check(audio.paused, "Playback resumed automatically after another app took audio");
+	await phonePlayer.play(interruptedId);
+	check(!audio.paused && audioSession.type == "playback", "Playback could not be resumed after an interruption");
 	await new Promise(resolve => {
 		document.getElementById("audio").addEventListener("pause", resolve, { once: true });
 		document.getElementById("audio").pause();
 	});
 	check(document.getElementById("togglePlayback").getAttribute("aria-label") == "Play", "Pause event did not update the control");
-	return { songs: phoneState.saved.size, playingFrom: document.getElementById("audio").src.split(":")[0] };
+	return { songs: phoneState.saved.size, playingFrom: document.getElementById("audio").src.split(":")[0], preparedNextAdvances: true, interruptionPauses: true };
 }
 
 async function shuffleBrowserChecks() {
@@ -371,7 +427,11 @@ async function main() {
 		const file = path.join(__dirname, new URL(request.url, "http://localhost").pathname.replace(/^\//, "") || "index.html");
 		if (path.dirname(file) != __dirname) { response.writeHead(404).end(); return; }
 		const type = { ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" }[path.extname(file)] || "text/plain";
-		fs.readFile(file, (error, data) => { response.writeHead(error ? 404 : 200, { "Content-Type": type }); response.end(error ? "Not found" : data); });
+		fs.readFile(file, (error, data) => {
+			response.writeHead(error ? 404 : 200, { "Content-Type": type });
+			if (!error && path.extname(file) == ".html") data = data.toString().replace("<head>", '<head><script>const testAudioSession = new EventTarget(); testAudioSession.state = "inactive"; Object.defineProperty(navigator, "audioSession", { value: testAudioSession });</script>');
+			response.end(error ? "Not found" : data);
+		});
 	});
 	await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 	const window = new BrowserWindow({ show: false, width: 420, height: 900, webPreferences: { nodeIntegration: false, contextIsolation: true, backgroundThrottling: false } });
