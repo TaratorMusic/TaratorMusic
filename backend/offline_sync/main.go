@@ -39,18 +39,28 @@ type syncServer struct {
 	cert                  *tls.Certificate
 	certAddresses         string
 	httpsPort, setupPort  string
+	development           bool
 }
 
 func main() {
 	data := flag.String("data", "", "TaratorMusic writable data directory")
 	page := flag.String("page", "", "HTTPS phone app URL")
+	devWeb := flag.String("dev-web", "", "Serve the local webapp and API over loopback HTTP for development")
 	flag.Parse()
 	parsed, err := url.Parse(*page)
-	if *data == "" || err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+	if *data == "" || err != nil || (parsed.Scheme != "https" && !(*devWeb != "" && parsed.Scheme == "http")) || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
 		fmt.Fprintln(os.Stderr, "usage: offline_sync --data <data directory> --page <HTTPS phone app URL>")
 		os.Exit(1)
 	}
-	s := &syncServer{data: *data, origin: parsed.Scheme + "://" + parsed.Host, pageURL: parsed.String(), httpsPort: "8443", setupPort: "8444"}
+	s := &syncServer{data: *data, origin: parsed.Scheme + "://" + parsed.Host, pageURL: parsed.String(), httpsPort: "8443", setupPort: "8444", development: *devWeb != ""}
+	handler := s.apiHandler()
+	if s.development {
+		handler, err = s.developmentHandler(*devWeb)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
 	if err := s.loadState(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -59,26 +69,40 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if _, err := s.certificate(lanIPs()); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	api := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: time.Minute, ErrorLog: log.New(io.Discard, "", 0)}
+	var bootstrap *http.Server
+	if s.development {
+		port := parsed.Port()
+		if port == "" {
+			port = "80"
+		}
+		local, err := net.Listen("tcp4", net.JoinHostPort("127.0.0.1", port))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		go func() { reportServeError(api.Serve(local)) }()
+	} else {
+		if _, err := s.certificate(lanIPs()); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		secure, err := net.Listen("tcp4", ":"+s.httpsPort)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		setup, err := net.Listen("tcp4", ":"+s.setupPort)
+		if err != nil {
+			secure.Close()
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12, GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) { return s.certificate(lanIPs()) }}
+		bootstrap = &http.Server{Handler: s.setupHandler(), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: time.Minute}
+		go func() { reportServeError(api.Serve(tls.NewListener(secure, tlsConfig))) }()
+		go func() { reportServeError(bootstrap.Serve(setup)) }()
 	}
-	secure, err := net.Listen("tcp4", ":"+s.httpsPort)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	setup, err := net.Listen("tcp4", ":"+s.setupPort)
-	if err != nil {
-		secure.Close()
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12, GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) { return s.certificate(lanIPs()) }}
-	api := &http.Server{Handler: s.apiHandler(), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: time.Minute, ErrorLog: log.New(io.Discard, "", 0)}
-	bootstrap := &http.Server{Handler: s.setupHandler(), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: time.Minute}
-	go func() { reportServeError(api.Serve(tls.NewListener(secure, tlsConfig))) }()
-	go func() { reportServeError(bootstrap.Serve(setup)) }()
 	s.status()
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -101,7 +125,9 @@ func main() {
 		s.status()
 	}
 	api.Close()
-	bootstrap.Close()
+	if bootstrap != nil {
+		bootstrap.Close()
+	}
 }
 
 func reportServeError(err error) {
@@ -150,17 +176,21 @@ func (s *syncServer) status() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	addresses := []map[string]string{}
-	for _, ip := range lanIPs() {
-		if ip == "127.0.0.1" {
-			continue
+	if s.development {
+		addresses = append(addresses, map[string]string{"server": s.origin})
+	} else {
+		for _, ip := range lanIPs() {
+			if ip == "127.0.0.1" {
+				continue
+			}
+			addresses = append(addresses, map[string]string{"server": "https://" + net.JoinHostPort(ip, s.httpsPort), "setup": "http://" + net.JoinHostPort(ip, s.setupPort)})
 		}
-		addresses = append(addresses, map[string]string{"server": "https://" + net.JoinHostPort(ip, s.httpsPort), "setup": "http://" + net.JoinHostPort(ip, s.setupPort)})
 	}
 	s.outputMu.Lock()
 	defer s.outputMu.Unlock()
 	json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
 		"enabled": true, "addresses": addresses, "code": s.code, "expires": s.codeExpires,
-		"paired": len(s.state.Tokens), "fingerprint": s.fingerprint(), "page": s.pageURL,
+		"paired": len(s.state.Tokens), "fingerprint": s.fingerprint(), "page": s.pageURL, "local": s.development,
 	})
 }
 

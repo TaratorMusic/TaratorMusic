@@ -45,10 +45,14 @@ async function setPhoneSync(options) {
 	phoneSyncStatus = { enabled: false };
 	if (!options.enabled) return phoneSyncStatus;
 	const page = new URL(options.page);
-	if (page.protocol != "https:" || page.username || page.password || page.search || page.hash) throw new Error("Enter the HTTPS GitHub Pages URL of your phone app.");
+	const localWeb = isDev && page.protocol == "http:" && page.hostname == "127.0.0.1" && page.pathname == "/" && page.port != "0";
+	if ((!localWeb && page.protocol != "https:") || page.username || page.password || page.search || page.hash) throw new Error("Enter an HTTPS phone app URL. In development, http://127.0.0.1:8080/ also supports local pairing and transfers.");
 	const binary = path.resolve(options.binary);
 	if (path.dirname(binary) != path.resolve(processDir, "bin") || !fs.statSync(binary).isFile() || fs.statSync(binary).size == 0) throw new Error("Phone sync binary is unavailable. Run npm run gobuild.");
-	const child = spawnSyncServer(binary, ["--data", appDir, "--page", page.href], { windowsHide: true, stdio: ["pipe", "pipe", "pipe"], cwd: appDir });
+	const dataFolder = fs.realpathSync(appDir);
+	const args = ["--data", dataFolder, "--page", page.href];
+	if (localWeb) args.push("--dev-web", path.join(processDir, "web"));
+	const child = spawnSyncServer(binary, args, { windowsHide: true, stdio: ["pipe", "pipe", "pipe"], cwd: dataFolder });
 	phoneSyncProcess = child;
 	return await new Promise((resolve, reject) => {
 		const timeout = setTimeout(() => {

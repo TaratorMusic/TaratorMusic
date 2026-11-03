@@ -1,6 +1,6 @@
 "use strict";
 
-const PHONE_CACHE = "tarator-phone-v3";
+const PHONE_CACHE = "tarator-phone-v10";
 const PHONE_SHELL = ["./", "./index.html", "./style.css", "./storage.js", "./transfer.js", "./player.js", "./app.js", "./manifest.webmanifest", "./favicon.png", "./icon-192.png", "./icon-512.png", "./play.svg", "./pause.svg", "./previous.svg", "./next.svg", "./queue.svg", "./settings.svg", "./refresh.svg"];
 
 self.addEventListener("install", event => {

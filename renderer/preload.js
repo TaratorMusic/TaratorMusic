@@ -5,6 +5,7 @@ const { ipcRenderer } = require("electron");
 window.desktopSync = {
 	set: options => ipcRenderer.invoke("phone-sync-set", options),
 	command: command => ipcRenderer.invoke("phone-sync-command", command),
+	copy: text => ipcRenderer.invoke("write-clipboard", text),
 };
 
 ipcRenderer.on("phone-sync-status", (_, status) => {

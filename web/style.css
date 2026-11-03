@@ -128,6 +128,29 @@ main { max-width: 1020px; margin: auto; padding: calc(var(--nav-height) + 18px) 
 .setting-card .song-row small { display: block; font-size: 10px; }
 .setting-card summary { cursor: pointer; font-weight: 700; font-size: 13px; }
 .details-content { padding-top: 18px; }
+.review-more summary { min-height: 44px; padding: 10px 0; color: var(--accent); }
+.setup-step { display: flex; align-items: flex-start; gap: 12px; padding: 20px 0; border-top: 1px solid #ffffff24; }
+.setup-number { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border: 1px solid var(--highlight); border-radius: 50%; color: var(--highlight); font-size: 12px; font-weight: bold; }
+.setup-step-content { flex: 1; min-width: 0; }
+.setup-step h3 { margin: 3px 0 10px; font-size: 14px; }
+.setup-step p { margin: 8px 0; }
+.setup-address { padding: 10px 12px; border: 1px solid #ffffff30; border-radius: 8px; background: #0006; }
+.setup-address code { display: block; overflow-wrap: anywhere; color: white; font-size: 12px; }
+.setup-address button { margin-top: 8px; }
+#pairCode { max-width: 220px; font-size: 22px; letter-spacing: .15em; font-variant-numeric: tabular-nums; }
+#certificateSetup { margin: 16px 0; padding: 12px; border: 1px solid #ffffff24; border-radius: 8px; background: #0003; }
+#certificateSetup label { margin-top: 0; }
+#certificateSetup a { display: inline-block; margin: 6px 12px 0 0; }
+#certificateSetup #setupLink { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid #555; border-radius: 6px; background: #0008; color: white; text-decoration: none; }
+.setup-feedback { padding: 16px; border: 1px solid #ffffff50; border-radius: 8px; background: #0008; scroll-margin-block: calc(var(--header-height) + var(--nav-height) + 16px) calc(var(--player-height) + 16px); }
+.setup-feedback[data-state=success] { border-color: var(--accent); }
+.setup-feedback[data-state=error] { border-color: #ffb2a2; }
+.setup-feedback strong { font-size: 14px; }
+.setup-feedback p { margin: 8px 0 0; }
+.setup-feedback details { margin-top: 12px; }
+.setup-feedback ul { padding-left: 20px; margin-bottom: 0; }
+.setup-feedback li { color: #ddd; margin-top: 8px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+input[aria-invalid=true] { border-color: #ffb2a2; }
 .theme-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .theme-options > button { margin: 0; padding: 7px 5px; font-size: 11px; background: #0008; }
 .theme-options > button[aria-pressed=true] { border-color: var(--highlight); color: var(--highlight); box-shadow: 0 0 0 1px var(--highlight); }
@@ -153,6 +176,9 @@ progress { width: 100%; accent-color: var(--accent); }
 .player-controls { display: flex; align-items: center; gap: 4px; }
 .player-controls .icon-button { width: 40px; height: 44px; min-height: 44px; background: #333; }
 .player-controls .main-play { width: 44px; border: 1px solid #555; }
+#shufflePlayback { color: var(--muted); }
+#shufflePlayback svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+#shufflePlayback[aria-pressed=true] { color: var(--accent); background: #0006; box-shadow: inset 0 0 0 1px var(--accent); }
 .player-seek { display: flex; align-items: center; gap: 8px; max-width: 980px; margin: 9px auto 0; }
 .player-seek span { width: 28px; text-align: center; font-size: 10px; color: #ddd; font-variant-numeric: tabular-nums; }
 .player-seek input { flex: 1; min-width: 0; height: 20px; }
@@ -184,7 +210,7 @@ progress { width: 100%; accent-color: var(--accent); }
 	#page-connection, #page-settings { max-width: 920px; }
 	.home-empty { padding-top: 40px; }
 	.home-empty p { max-width: 420px; }
-	#player { display: grid; grid-template-columns: 160px minmax(0, 1fr); grid-template-rows: 1fr 1fr; column-gap: 20px; padding-inline: 20px; }
+	#player { display: grid; grid-template-columns: 210px minmax(0, 1fr); grid-template-rows: 1fr 1fr; column-gap: 20px; padding-inline: 20px; }
 	.player-track { display: contents; }
 	#nowArtwork { position: fixed; bottom: calc(var(--player-height) + 12px); left: 20px; width: var(--sidebar-width); height: calc(var(--sidebar-width) * .5625); padding: 6px; border: 1px solid black; border-radius: 0; background: #333; object-fit: contain; }
 	.player-controls { grid-column: 1; grid-row: 1 / 3; justify-content: center; gap: 8px; }

@@ -429,17 +429,23 @@
 					<h1 class="settings-title">Offline phone sync</h1>
 					<div class="setting-card">
 						<div class="settingsflexrow">
-							<h2>Share library on home Wi-Fi</h2>
+							<h2 id="offlineSyncSharingTitle">Share library on home Wi-Fi</h2>
 							<label class="switch"><input type="checkbox" id="offlineSyncToggle" onchange="toggleOfflineSync()" /><span class="slider round"></span></label>
 						</div>
 						<h5>Paired phones can read your music. Keep TaratorMusic open while syncing.</h5>
-						<label for="offlineSyncPage">Phone app GitHub Pages URL</label>
-						<input id="offlineSyncPage" type="url" style="width:95%" />
-						<h5>Turn sharing off and on after changing this URL. Only this site's origin is allowed.</h5>
-						<button onclick="refreshOfflineSync('status')">Refresh addresses</button>
-						<button onclick="refreshOfflineSync('new-code')">New pairing code</button>
-						<button onclick="refreshOfflineSync('revoke')">Forget paired devices</button>
-						<pre id="offlineSyncInfo" style="white-space:pre-wrap;overflow-wrap:anywhere">Off</pre>
+						<label for="offlineSyncPage">Webapp address</label>
+						<div class="offline-sync-copy-row"><input id="offlineSyncPage" type="url" placeholder="Paste the address of the webapp you open in your browser" /><button onclick="copyOfflineSyncValue('offlineSyncPage', this)">Copy</button></div>
+						<h5>Copy this from the browser's address bar. On the webapp, this is shown in setup step 1. Turn sharing off before changing it.</h5>
+						<details><summary>Testing on this PC?</summary><button id="offlineSyncLocalPreset" onclick="useLocalOfflineSync()">Use local PC testing</button><h5>Local PC testing uses http://127.0.0.1:8080/ with npm start. Enable sharing, then open that address in your browser. No certificate setup is needed for this mode.</h5></details>
+						<p id="offlineSyncInfo" class="offline-sync-state" role="status" aria-live="polite">Sharing is off. Enter your webapp address, then enable sharing above.</p>
+						<div id="offlineSyncDetails" hidden>
+							<div class="offline-sync-code-card"><label for="offlineSyncCode">Pairing code</label><div class="offline-sync-copy-row"><input id="offlineSyncCode" readonly placeholder="Request a new code" /><button id="offlineSyncCopyCode" onclick="copyOfflineSyncValue('offlineSyncCode', this)">Copy code</button><button onclick="refreshOfflineSync('new-code')">New pairing code</button></div><h5 id="offlineSyncCodeExpiry"></h5></div>
+							<label for="offlineSyncNetwork">Desktop address</label><div class="offline-sync-copy-row"><select id="offlineSyncNetwork" onchange="updateOfflineSyncAddress()"></select><button id="offlineSyncCopyAddress" onclick="copyOfflineSyncValue('offlineSyncNetwork', this)">Copy address</button></div>
+							<h5>Paste this into step 2 of the webapp. If several addresses appear, choose the one for your home Wi-Fi.</h5>
+							<div id="offlineSyncCertificate"><label for="offlineSyncSetup">Certificate setup address</label><div class="offline-sync-copy-row"><input id="offlineSyncSetup" readonly /><button onclick="copyOfflineSyncValue('offlineSyncSetup', this)">Copy setup link</button></div><h5>Open this on the device you want to pair. Install and trust the certificate there, then return to the webapp.</h5><details><summary>Certificate fingerprint to compare</summary><input id="offlineSyncFingerprint" readonly aria-label="Certificate SHA-256 fingerprint" /></details></div>
+							<button onclick="refreshOfflineSync('status')">Refresh addresses</button>
+							<button onclick="refreshOfflineSync('revoke')">Forget paired devices</button>
+						</div>
 					</div>
 				</div>
 				<div id="settings-tab-recommendations" class="settings-tab-panel hidden">

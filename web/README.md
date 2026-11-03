@@ -10,7 +10,20 @@ Copy selected songs and playlists over home Wi-Fi, then play from phone storage.
 4. Enable sharing there. It is off by default and remembers your choice. Keep TaratorMusic open while syncing.
 5. Connect both devices to the same private Wi-Fi. Allow the desktop firewall's private-network prompt. TCP 8443 is HTTPS; TCP 8444 supplies certificate setup only. Do not forward these ports on the router. Guest Wi-Fi with client isolation will not work.
 
-Paths are relative for repository Pages hosting. For development, serve `web/` on localhost with an HTTP server. Opening `index.html` as a file does not support service workers. Use the deployed HTTPS Pages app for phone pairing. Retain the Pages origin and repository path to retain phone storage.
+Paths are relative for repository Pages hosting. Opening `index.html` as a file does not support service workers. Retain the app origin and repository path to retain browser storage.
+
+Connection now guides setup in three steps. Copy the webapp address from step 1 into the desktop's Webapp address field. Copy the desktop's Desktop address into step 2. Select your device for certificate instructions, then press Check connection. A successful check confirms the browser can reach the sync server without spending a pairing attempt. Step 3 accepts a six-digit code with or without spaces and shows separate guidance for expired codes, rate limits, and device limits. Network failures list certificate, Wi-Fi, and webapp-address checks because browsers do not expose their exact cause to the page.
+
+## Manual pairing and transfers on this PC
+
+1. Run `npm run gobuild`, then `npm start` from the project folder.
+2. In Settings > Phone sync, turn sharing off if it is already enabled. Press Use local PC testing to fill Webapp address with `http://127.0.0.1:8080/`, then enable sharing.
+3. Open `http://127.0.0.1:8080/` in a browser on the same PC. The desktop serves both the webapp and its API; no Python server or Pages deployment is needed. If port 8080 is occupied, choose another port in the app URL.
+4. Open Connection. Leave the desktop address prefilled with `http://`, press Check connection, then enter the code shown by the desktop and press Pair phone.
+5. Transfer the test file, then Connect and compare. Select songs or playlists, review changes, and press Copy additions and updates.
+6. Open My Music and play a saved song. To check offline playback, turn sharing off in the desktop app and reload the browser after the app shell is cached.
+
+Local mode is available through `npm start` only. It binds HTTP to `127.0.0.1`, accepts only its own origin, and keeps pairing/token checks. It does not open the LAN HTTPS or certificate-setup ports and needs no certificate installation. Phones still use the HTTPS setup described below. To return to phone syncing, turn sharing off, restore the HTTPS app URL, then enable sharing again.
 
 ## HTTPS and addresses
 
@@ -59,7 +72,7 @@ Chrome Local Network Access replaces the earlier Private Network Access prefligh
 
 Playlist and individual selections are remembered on the phone. Selecting a playlist includes all of its local songs. To exclude one, deselect the playlist and select individual songs. Stream-only entries have no local file to copy and are omitted.
 
-Connect and compare retrieves a fresh catalog. Review additions, updates, and possible removals. Deselected or desktop-deleted songs remain playable until checked in Possible removals, removed with Remove checked, and confirmed. Cancel transfer keeps saved files and complete 1 MB chunks. Resume / retry continues after those chunks; the last incomplete chunk downloads again. Discard unfinished downloads deletes queued work and chunks while retaining working copies.
+Connect and compare retrieves a fresh catalog and reviews additions and updates only. Deselected or desktop-deleted songs stay saved and playable on the phone. To delete saved copies, open My Music > Songs > Remove saved songs, check the songs, press Remove checked from phone, and confirm. The removal list follows the current search and playlist filter and works offline. Desktop originals and unchecked songs stay untouched. Cancel transfer keeps saved files and complete 1 MB chunks. Resume / retry continues after those chunks; the last incomplete chunk downloads again. Discard unfinished downloads deletes queued work and chunks while retaining working copies.
 
 The queue runs one song at a time while open. It verifies Range/ETag responses, then finished byte count and SHA-256. Metadata, artwork, and the replacement audio Blob commit in one IndexedDB transaction. Interrupted updates, checksum failures, and failed final writes leave old working copies. A bad checksum resets corrupt partial chunks. If desktop audio changes mid-transfer, compare again to replace the queued version. Progress counts audio bytes, including retained chunks; small artwork downloads are additional.
 
@@ -76,6 +89,8 @@ The service worker caches HTML, scripts, CSS, manifest, and icons, never authent
 The app requests `navigator.storage.persist()` and shows usage/quota from `navigator.storage.estimate()`. Persistence can be refused, and browsers can evict data under storage pressure. Install the app, keep free space, avoid private browsing, and retain desktop originals. After a full-storage error, free space or explicitly remove saved songs, then retry. Music is never silently removed to make room.
 
 First playback starts from a tap. One `<audio>` element uses stored Blob object URLs and revokes old URLs. If a browser blocks the asynchronous first play, tap Play in the bottom player after the file loads. Media Session provides title, artist, album, artwork, play/pause, next/previous, seek, and position when supported. Pause events update the on-screen control, including Bluetooth-triggered pauses.
+
+The player includes a Shuffle toggle that remembers its setting. It shuffles within the current playlist or library, plays each song before starting another cycle, and avoids immediately repeating the current song. Previous follows playback history. Play all also uses shuffle when it is enabled.
 
 A PWA has no CarPlay home-screen icon or library browser. Start music on the phone, then test CarPlay Now Playing. Android Auto may not show a PWA at all; no native Auto integration is promised. Phone media notifications, Bluetooth controls, and screen-locked playback need physical testing. No phone or car results are claimed here.
 
@@ -105,7 +120,7 @@ Record desktop OS, phone model, OS/browser versions, and actual results. Repeat 
 - [ ] Replace audio for the same ID. Interrupt before completion; old saved title/audio still play. Retry validates and swaps the replacement.
 - [ ] Sync multiple songs; interrupt Wi-Fi after one finishes, close/reopen, and resume. Finished songs stay; remaining work resumes after stored chunks. Test Cancel and retry too.
 - [ ] Corrupt a partial/checksum or use the browser check: mark failed, keep old audio, and retry cleanly. Fill storage or abort a final write; old copies survive.
-- [ ] Deselect/delete a desktop song: removal is unchecked and it still plays until checked, removed, and confirmed.
+- [ ] Deselect/delete a desktop song: Connection offers additions and updates only, and the saved song still plays. In My Music, expand Remove saved songs, check a song, cancel once, then confirm removal. Unchecked songs and desktop originals stay unchanged.
 - [ ] Test an unsupported MIME type and a decoder failure inside a recognized container; both report visibly.
 - [ ] Wait for App shell cached. Enable airplane mode, close/reopen the installed app, and confirm library/artwork and **audible playback** of multiple songs and playlists.
 - [ ] Lock the phone for several minutes during playback. Verify continued audio and next-track playback. Record actual results per phone.

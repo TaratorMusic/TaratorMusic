@@ -9,6 +9,11 @@ const phonePlayer = (() => {
 	let loading = 0;
 	let playlistId = null;
 	let seeking = false;
+	let shuffle = false;
+	let shuffleRemaining = [];
+	let shuffleHistory = [];
+	let shufflePosition = -1;
+	try { shuffle = localStorage.getItem("taratorShuffle") == "1"; } catch (_) {}
 	const progress = document.getElementById("playbackProgress");
 
 	function formatTime(value) {
@@ -26,6 +31,10 @@ const phonePlayer = (() => {
 		button.disabled = !playable;
 		document.getElementById("previousTrack").disabled = playable < 2;
 		document.getElementById("nextTrack").disabled = playable < 2;
+		const shuffleButton = document.getElementById("shufflePlayback");
+		shuffleButton.disabled = playable < 2;
+		shuffleButton.setAttribute("aria-pressed", String(shuffle));
+		shuffleButton.title = shuffle ? "Disable shuffle" : "Enable shuffle";
 		progress.disabled = !Number.isFinite(audio.duration) || audio.duration <= 0;
 		progress.max = progress.disabled ? 1 : audio.duration;
 		if (!seeking) progress.value = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
@@ -46,7 +55,13 @@ const phonePlayer = (() => {
 		}
 	}
 
-	async function play(id) {
+	function resetShuffle() {
+		shuffleRemaining = library.filter(supported).map(song => song.id).filter(id => id != currentId);
+		shuffleHistory = currentId ? [currentId] : [];
+		shufflePosition = shuffleHistory.length - 1;
+	}
+
+	async function play(id, historyPosition = null) {
 		const song = library.find(item => item.id == id);
 		if (!song) return;
 		if (!supported(song)) throw new Error("This song is not supported on this phone.");
@@ -55,6 +70,15 @@ const phonePlayer = (() => {
 		const artwork = await phoneDB.read("artwork", id);
 		if (sequence != loading) return;
 		if (!stored?.blob || stored.version != song.audioVersion) throw new Error("No verified offline copy. Sync this song first.");
+		if (shuffle) {
+			if (historyPosition != null) shufflePosition = historyPosition;
+			else {
+				shuffleHistory = shuffleHistory.slice(0, shufflePosition + 1);
+				if (shuffleHistory[shuffleHistory.length - 1] != id) shuffleHistory.push(id);
+				shufflePosition = shuffleHistory.length - 1;
+			}
+			shuffleRemaining = shuffleRemaining.filter(songId => songId != id);
+		}
 		if (audioURL) URL.revokeObjectURL(audioURL);
 		if (artworkURL) URL.revokeObjectURL(artworkURL);
 		audioURL = URL.createObjectURL(stored.blob);
@@ -75,18 +99,38 @@ const phonePlayer = (() => {
 	async function skip(direction) {
 		const playable = library.filter(supported);
 		if (!playable.length) return;
+		if (shuffle) {
+			if (direction < 0 && shufflePosition >= 0) {
+				const position = Math.max(0, shufflePosition - 1);
+				await play(shuffleHistory[position], position);
+			} else if (direction > 0 && shufflePosition + 1 < shuffleHistory.length) {
+				const position = shufflePosition + 1;
+				await play(shuffleHistory[position], position);
+			} else {
+				if (!shuffleRemaining.length) shuffleRemaining = playable.map(song => song.id).filter(id => id != currentId);
+				await play(shuffleRemaining.length ? shuffleRemaining[Math.floor(Math.random() * shuffleRemaining.length)] : playable[0].id);
+			}
+			return;
+		}
 		const index = playable.findIndex(song => song.id == currentId);
 		const next = (index + direction + playable.length) % playable.length;
 		await play(playable[next].id);
 	}
 
+	async function playFirst() {
+		let playable = library.filter(supported);
+		if (!playable.length) return;
+		if (shuffle) {
+			const otherSongs = playable.filter(song => song.id != currentId);
+			if (otherSongs.length) playable = otherSongs;
+		}
+		await play(playable[shuffle ? Math.floor(Math.random() * playable.length) : 0].id);
+	}
+
 	async function toggle() {
 		if (audio.paused) {
 			if (audio.src) await audio.play();
-			else {
-				const first = library.find(supported);
-				if (first) await play(first.id);
-			}
+			else await playFirst();
 		} else audio.pause();
 	}
 
@@ -115,6 +159,12 @@ const phonePlayer = (() => {
 	document.getElementById("togglePlayback").addEventListener("click", () => { toggle().catch(playbackError); });
 	document.getElementById("previousTrack").addEventListener("click", () => { skip(-1).catch(playbackError); });
 	document.getElementById("nextTrack").addEventListener("click", () => { skip(1).catch(playbackError); });
+	document.getElementById("shufflePlayback").addEventListener("click", () => {
+		shuffle = !shuffle;
+		resetShuffle();
+		try { localStorage.setItem("taratorShuffle", shuffle ? "1" : "0"); } catch (_) {}
+		updateControls();
+	});
 	if (navigator.mediaSession) {
 		const handlers = {
 			play: () => { togglePlay().catch(playbackError); },
@@ -133,6 +183,7 @@ const phonePlayer = (() => {
 	}
 
 	function setLibrary(songs, context = null) {
+		const changed = context != playlistId || songs.length != library.length || songs.some((song, index) => song.id != library[index].id);
 		library = songs;
 		playlistId = context;
 		if (currentId && !songs.some(song => song.id == currentId)) {
@@ -147,6 +198,7 @@ const phonePlayer = (() => {
 			document.getElementById("nowArtwork").src = "./icon-512.png";
 			if (navigator.mediaSession) navigator.mediaSession.metadata = null;
 		}
+		if (changed) resetShuffle();
 		updateControls();
 	}
 
@@ -156,5 +208,5 @@ const phonePlayer = (() => {
 		setLibrary(queue, currentId ? playlistId : null);
 	}
 
-	return { supported, play, setLibrary, refreshLibrary, formatTime, get currentId() { return currentId; }, get playing() { return !audio.paused; } };
+	return { supported, play, playFirst, setLibrary, refreshLibrary, formatTime, get currentId() { return currentId; }, get playing() { return !audio.paused; } };
 })();

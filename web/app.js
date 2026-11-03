@@ -1,5 +1,8 @@
 "use strict";
 
+const phoneLocalDev = location.protocol == "http:" && location.hostname == "127.0.0.1";
+const phoneAppURL = new URL("./", location.href).href;
+let phoneSetupPending = false;
 const phoneState = { connection: null, catalog: { songs: [], playlists: [] }, selection: { songs: [], playlists: [] }, saved: new Map(), jobs: new Map(), compared: false, transferTotal: 0, recentPlaylists: [], recentSongs: [], songPlaylists: new Map(), library: { sort: "name", view: "songs", playlist: "" }, theme: "green" };
 try { phoneState.connection = JSON.parse(localStorage.getItem("taratorConnection") || "null"); } catch (_) {}
 const phoneElement = id => document.getElementById(id);
@@ -22,12 +25,78 @@ function phoneSetPage(page) {
 }
 
 function phoneAddress() {
-	const url = new URL(phoneElement("server").value.trim());
+	let url;
+	try { url = new URL(phoneElement("server").value.trim()); } catch (_) { throw new Error("Paste the Desktop address from TaratorMusic Settings > Phone sync, including http:// or https://."); }
 	const parts = url.hostname.split(".").map(Number);
 	const privateIP = parts.length == 4 && parts.every(part => Number.isInteger(part) && part >= 0 && part <= 255) &&
 		(parts[0] == 10 || (parts[0] == 192 && parts[1] == 168) || (parts[0] == 172 && parts[1] >= 16 && parts[1] <= 31) || parts[0] == 127);
-	if (url.protocol != "https:" || !privateIP || url.username || url.password || url.search || url.hash || url.pathname != "/") throw new Error("Use the desktop's private IPv4 HTTPS address, including :8443.");
+	const localServer = phoneLocalDev && url.origin == location.origin;
+	if (phoneLocalDev && url.protocol == "https:" && url.hostname == location.hostname && url.port == location.port) throw new Error("Local PC testing uses " + location.origin + ". Keep http:// for this address.");
+	if (!privateIP) throw new Error("This is not a desktop connection address. Copy Desktop address from Settings > Phone sync. The webapp address belongs in the desktop's Webapp address field.");
+	if ((url.protocol != "https:" && !localServer) || !privateIP || url.username || url.password || url.search || url.hash || url.pathname != "/") throw new Error(phoneLocalDev ? "For local testing, use " + location.origin + ". For home Wi-Fi, use the desktop's HTTPS address." : "Use the desktop's private IPv4 HTTPS address, including :8443.");
 	return url.origin;
+}
+
+function phoneSetupFeedback(state, title, message, fixes = []) {
+	phoneElement("setupFeedback").hidden = false;
+	phoneElement("setupFeedback").dataset.state = state;
+	phoneElement("setupFeedbackTitle").textContent = title;
+	phoneElement("setupFeedbackText").textContent = message;
+	phoneElement("setupFixes").replaceChildren();
+	for (const fix of fixes) {
+		const item = document.createElement("li");
+		item.textContent = fix;
+		phoneElement("setupFixes").append(item);
+	}
+	phoneElement("setupHelp").hidden = !fixes.length;
+	phoneElement("setupHelp").open = !!fixes.length;
+	if (state != "checking") phoneElement("setupFeedback").scrollIntoView({ block: "nearest" });
+}
+
+function phoneSetupBusy(busy) {
+	phoneSetupPending = busy;
+	for (const id of ["checkDesktop", "pairSubmit", "testConnection"]) phoneElement(id).disabled = busy;
+	phoneElement("testConnection").disabled = busy || !phoneState.connection;
+	phoneElement("server").readOnly = busy;
+	phoneElement("pairCode").readOnly = busy;
+}
+
+function phoneSetupFailure(error) {
+	if (error.name == "AbortError" || error instanceof TypeError) {
+		const fixes = phoneLocalDev
+			? ["Keep the desktop app open with sharing enabled.", "Set Webapp address on the desktop to " + phoneAppURL + ". Stop any Python preview server using the same port.", "Restart the desktop app after updating it."]
+			: ["Open certificate setup above. Install and trust your desktop's certificate on this device, then restart the browser.", "Keep both devices on the same home Wi-Fi and allow local network access when the browser asks.", "Set Webapp address on the desktop to " + phoneAppURL + ", then turn sharing off and on.", "Refresh addresses on the desktop and copy its current Desktop address here, including :8443."];
+		phoneSetupFeedback("error", error.name == "AbortError" ? "The desktop did not respond in time" : "The browser could not complete the connection", phoneLocalDev ? "Check the local desktop setup below, then try Check connection again." : "The browser cannot tell us whether certificate trust, network access, or the webapp address blocked the request. Check these items, then try Check connection again.", fixes);
+	} else phoneSetupFeedback("error", "Setup needs attention", error.message);
+}
+
+async function phoneSetupFetch(server, path, options = {}) {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), 10000);
+	try {
+		return await fetch(server + path, { ...options, mode: "cors", credentials: "omit", cache: "no-store", redirect: "error", signal: controller.signal });
+	} finally { clearTimeout(timer); }
+}
+
+async function phoneCheckConnection() {
+	if (phoneSetupPending) return false;
+	phoneSetupBusy(true);
+	try {
+		const server = phoneAddress();
+		phoneElement("server").removeAttribute("aria-invalid");
+		phoneSetupFeedback("checking", "Checking the desktop connection...", "Allow local network access if your browser asks. This check does not use your pairing code.");
+		const response = await phoneSetupFetch(server, "/api/pair", { method: "OPTIONS" });
+		if (response.status != 204) {
+			phoneSetupFeedback("error", "This address is not responding as the sync server", "Copy Desktop address from the desktop's Phone sync settings. The certificate setup address (:8444) and a Python preview server cannot pair devices.");
+			return false;
+		}
+		phoneSetupFeedback("success", "Desktop connection is ready", "This browser can reach the sync server. Enter the current six-digit code below to pair.");
+		return true;
+	} catch (error) {
+		if (!(error instanceof TypeError) && error.name != "AbortError") phoneElement("server").setAttribute("aria-invalid", "true");
+		phoneSetupFailure(error);
+		return false;
+	} finally { phoneSetupBusy(false); }
 }
 
 async function phoneRequest(path, options = {}) {
@@ -47,13 +116,36 @@ async function phoneDigest(blob) {
 
 async function phonePair(event) {
 	event.preventDefault();
+	if (phoneSetupPending) return;
+	const code = phoneElement("pairCode").value.replace(/\s/g, "");
+	if (!/^\d{6}$/.test(code)) {
+		phoneElement("pairCode").setAttribute("aria-invalid", "true");
+		phoneSetupFeedback("error", "Enter all six digits", "Use the pairing code shown in the desktop app. Spaces are fine when pasting.");
+		phoneElement("pairCode").focus();
+		return;
+	}
+	phoneElement("pairCode").removeAttribute("aria-invalid");
+	if (!await phoneCheckConnection()) return;
+	phoneSetupBusy(true);
 	try {
 		const server = phoneAddress();
-		phoneMessage("Connecting. Allow local network access if asked.");
-		const response = await fetch(server + "/api/pair", {
-			method: "POST", mode: "cors", credentials: "omit", cache: "no-store", redirect: "error",
-			headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: phoneElement("pairCode").value.trim() }),
+		phoneSetupFeedback("checking", "Pairing with your desktop...", "Keep the desktop app open.");
+		const response = await phoneSetupFetch(server, "/api/pair", {
+			method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }),
 		});
+		if (response.status == 401) {
+			phoneElement("pairCode").setAttribute("aria-invalid", "true");
+			phoneSetupFeedback("error", "Get a new pairing code", "The desktop is reachable, but this code was incorrect, expired, or already used. Press New pairing code on the desktop, then enter the new six digits here.");
+			return;
+		}
+		if (response.status == 429) {
+			phoneSetupFeedback("error", "Wait one minute before trying again", "The desktop has received too many pairing attempts. Wait a full minute, request a new code on the desktop, then try again.");
+			return;
+		}
+		if (response.status == 409) {
+			phoneSetupFeedback("error", "The desktop's device list is full", "In desktop Settings > Phone sync, choose Forget paired devices, then generate a new pairing code. Existing saved music stays on each device.");
+			return;
+		}
 		if (!response.ok) throw new Error(await response.text());
 		const paired = await response.json();
 		const bound = await phoneDB.read("settings", "desktopId");
@@ -63,25 +155,55 @@ async function phonePair(event) {
 		phoneElement("connectionStatus").textContent = "Desktop paired";
 		localStorage.setItem("taratorConnection", JSON.stringify(phoneState.connection));
 		phoneElement("pairCode").value = "";
-		phoneMessage("Paired. Transfer the test file next.");
+		phoneSetupFeedback("success", "Paired with your desktop", "Press Transfer test file to verify the connection before copying your music.");
 	} catch (error) {
-		phoneMessage(error.message + " Check the certificate, Wi-Fi, desktop sharing, and browser local network permission.");
-	}
+		phoneSetupFailure(error);
+	} finally { phoneSetupBusy(false); }
 }
 
 async function phoneTest() {
+	if (phoneSetupPending) return;
+	phoneSetupBusy(true);
 	try {
 		phoneReconnect();
-		const response = await phoneRequest("/api/test");
+		phoneSetupFeedback("checking", "Transferring a test file...", "Checking that the complete file arrives correctly.");
+		const response = await phoneSetupFetch(phoneState.connection.server, "/api/test", { headers: { Authorization: "Bearer " + phoneState.connection.token } });
+		if (!response.ok) throw new Error(response.status == 401 ? "This pairing is no longer valid. Request a new pairing code on the desktop and pair again." : await response.text());
 		const blob = await response.blob();
 		if (blob.size != Number(response.headers.get("Content-Length")) || await phoneDigest(blob) != response.headers.get("X-Checksum-SHA256")) throw new Error("Test file verification failed.");
-		phoneMessage("Test file received and SHA-256 verified. Phone and desktop can talk over HTTPS.");
+		phoneSetupFeedback("success", "Connection verified. You're ready to copy music.", "The test file arrived and passed its checksum check. Choose Connect and compare below, select songs or playlists, then copy your additions.");
 	} catch (error) {
-		phoneMessage(error.message + " Open certificate setup and check local network permissions.");
+		phoneSetupFailure(error);
+	} finally { phoneSetupBusy(false); }
+}
+
+function phoneSetupDevice() {
+	const device = phoneElement("setupDevice").value;
+	let instructions = "Open certificate setup, download your desktop's certificate, and trust it in your device or browser's certificate settings. Restart the browser afterward.";
+	let help = "";
+	if (device == "iphone") {
+		instructions = "Open certificate setup in Safari and install the downloaded profile in Settings > General > VPN & Device Management. Then enable Full Trust in Settings > General > About > Certificate Trust Settings.";
+		help = "https://support.apple.com/en-us/102390";
+	} else if (device == "android") {
+		instructions = "Open certificate setup and download the .crt file. In Android Settings > Security > Encryption & credentials, install it as a CA certificate. Set a screen lock if asked, then restart Chrome.";
+		help = "https://support.google.com/pixelphone/answer/2844832";
+	} else if (device == "windows") {
+		instructions = "Download the .crt file from certificate setup. In Windows Certificate Manager (certmgr.msc), import it into Current User > Trusted Root Certification Authorities > Certificates. Restart your browser afterward.";
+		help = "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/inspect-certificates-manage-certificate-stores";
+	} else if (device == "mac") {
+		instructions = "Download your desktop's certificate from certificate setup and import it in Keychain Access. Open its Trust settings and trust it for SSL, then restart your browser.";
+		help = "https://support.apple.com/guide/keychain-access/kyca11871/mac";
 	}
+	phoneElement("phoneInstructions").textContent = instructions;
+	phoneElement("deviceHelpLink").hidden = !help;
+	if (help) phoneElement("deviceHelpLink").href = help;
 }
 
 function phoneSetupLink() {
+	if (phoneLocalDev) {
+		phoneElement("setupLink").hidden = true;
+		return;
+	}
 	try {
 		const setup = new URL(phoneAddress());
 		setup.protocol = "http:";
@@ -94,14 +216,38 @@ function phoneSetupLink() {
 }
 
 phoneElement("pairForm").addEventListener("submit", phonePair);
+phoneElement("checkDesktop").addEventListener("click", phoneCheckConnection);
 phoneElement("testConnection").addEventListener("click", phoneTest);
-phoneElement("server").addEventListener("input", phoneSetupLink);
+phoneElement("setupDevice").addEventListener("change", phoneSetupDevice);
+phoneElement("server").addEventListener("input", () => {
+	phoneSetupLink();
+	phoneElement("server").removeAttribute("aria-invalid");
+	phoneElement("setupFeedback").hidden = true;
+});
+phoneElement("pairCode").addEventListener("input", () => phoneElement("pairCode").removeAttribute("aria-invalid"));
+phoneElement("setupAppUrl").textContent = phoneAppURL;
+phoneElement("setupMode").textContent = phoneLocalDev ? "Local PC testing. Pair this browser with the desktop app on this computer." : "Follow these three steps. Check the connection before using your pairing code.";
+phoneElement("setupDesktopHint").textContent = phoneLocalDev ? "Start the desktop with npm start for local testing. No certificate installation is needed for this address." : "Keep the desktop open and connect both devices to the same home Wi-Fi. The desktop address in step 2 is different from the webapp address above.";
+phoneElement("copyAppAddress").addEventListener("click", async () => {
+	try {
+		await navigator.clipboard.writeText(phoneAppURL);
+		phoneElement("copyAppAddress").textContent = "Copied";
+		setTimeout(() => { phoneElement("copyAppAddress").textContent = "Copy webapp address"; }, 2000);
+	} catch (_) { phoneSetupFeedback("error", "Copy the webapp address manually", "Select and copy the address in step 1, then paste it into Webapp address on the desktop."); }
+});
 if (phoneState.connection) phoneElement("server").value = phoneState.connection.server;
+if (phoneLocalDev) {
+	phoneElement("server").value = location.origin;
+	phoneElement("server").placeholder = location.origin;
+	phoneElement("serverLabel").textContent = "Desktop address on this PC";
+	phoneElement("serverHelp").textContent = "Keep " + location.origin + " here. Local PC testing uses http://, so changing it to https:// will prevent pairing.";
+	phoneElement("certificateSetup").hidden = true;
+}
 phoneSetupLink();
 const isApplePhone = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform == "MacIntel" && navigator.maxTouchPoints > 1);
-phoneElement("phoneInstructions").textContent = isApplePhone
-	? "In Safari, install the desktop .mobileconfig profile, then enable Full Trust in Settings > General > About > Certificate Trust Settings."
-	: "On Android, set a screen lock. Install the desktop .crt file as a CA certificate in Security > Encryption & credentials, then restart Chrome.";
+phoneElement("setupDevice").value = isApplePhone ? "iphone" : /Android/.test(navigator.userAgent) ? "android" : /Win/.test(navigator.platform) ? "windows" : /Mac/.test(navigator.platform) ? "mac" : "other";
+phoneSetupDevice();
+phoneSetupBusy(false);
 
 function phoneSize(bytes) {
 	return (bytes / (1024 * 1024)).toFixed(1) + " MB";
@@ -136,9 +282,7 @@ function phonePlan() {
 		if (!saved) additions.push(song);
 		else if (saved.audioVersion != song.audioVersion || saved.metaVersion != song.metaVersion) updates.push(song);
 	}
-	const available = new Set(phoneState.catalog.songs.map(song => song.id));
-	const removals = [...phoneState.saved.values()].filter(song => !wanted.has(song.id) || !available.has(song.id));
-	return { additions, updates, removals, wanted };
+	return { additions, updates, wanted };
 }
 
 function phoneSongStatus(song) {
@@ -157,6 +301,26 @@ async function phoneSaveSelection(kind, id, checked) {
 	else values.delete(id);
 	phoneState.selection[kind] = [...values];
 	await phoneDB.put("settings", { key: "selection", value: phoneState.selection });
+	phoneRenderAllSelection();
+	phoneRenderPlan();
+}
+
+function phoneRenderAllSelection() {
+	const songs = phoneState.catalog.songs.filter(phonePlayer.supported);
+	const wanted = phoneWanted();
+	const selected = songs.filter(song => wanted.has(song.id)).length;
+	const checkbox = phoneElement("selectAllSongs");
+	checkbox.checked = songs.length > 0 && selected == songs.length;
+	checkbox.indeterminate = selected > 0 && selected < songs.length;
+	checkbox.disabled = !songs.length || phoneTransfer.running;
+	phoneElement("selectAllStatus").textContent = selected + " of " + songs.length + " songs selected";
+}
+
+async function phoneSelectAllSongs(checked) {
+	if (phoneTransfer.running) return;
+	phoneState.selection = { songs: checked ? phoneState.catalog.songs.filter(phonePlayer.supported).map(song => song.id) : [], playlists: checked ? phoneState.selection.playlists : [] };
+	await phoneDB.put("settings", { key: "selection", value: phoneState.selection });
+	phoneRenderChoices();
 	phoneRenderPlan();
 }
 
@@ -184,6 +348,7 @@ function phoneRenderChoices() {
 }
 
 function phoneRenderSongChoices() {
+	phoneRenderAllSelection();
 	const songs = phoneElement("songChoices");
 	songs.replaceChildren();
 	const search = phoneElement("catalogSearch").value.toLowerCase();
@@ -202,24 +367,23 @@ function phoneRenderPlan() {
 	const plan = phonePlan();
 	const transfers = [...plan.additions, ...plan.updates];
 	const audioBytes = transfers.reduce((total, song) => total + (phoneState.saved.get(song.id)?.audioVersion == song.audioVersion ? 0 : song.size), 0);
-	phoneElement("comparisonInfo").textContent = `${plan.additions.length} additions · ${plan.updates.length} updates · ${plan.removals.length} possible removals. Audio: ${phoneSize(audioBytes)}, plus small artwork files.`;
+	phoneElement("comparisonInfo").textContent = `${plan.additions.length} additions · ${plan.updates.length} updates. Audio: ${phoneSize(audioBytes)}, plus small artwork files.`;
 	const items = phoneElement("comparisonItems");
+	const more = phoneElement("comparisonMore");
+	const moreItems = phoneElement("comparisonMoreItems");
 	items.replaceChildren();
-	for (const song of transfers) {
+	moreItems.replaceChildren();
+	for (const [index, song] of transfers.entries()) {
 		const item = document.createElement("p");
 		const saved = phoneState.saved.get(song.id);
 		item.textContent = `${saved ? "Update" : "Add"}: ${song.title} (${saved?.audioVersion == song.audioVersion ? "metadata / artwork only" : phoneSize(song.size) + " audio"})`;
-		items.append(item);
+		if (index < 3) items.append(item);
+		else moreItems.append(item);
 	}
-	const removals = phoneElement("removalChoices");
-	removals.replaceChildren();
-	for (const song of plan.removals) {
-		const row = phoneChoice(song.title, false, () => {});
-		row.querySelector("input").dataset.songId = song.id;
-		removals.append(row);
-	}
+	more.hidden = !moreItems.children.length;
+	if (more.hidden) more.open = false;
+	phoneElement("comparisonMoreSummary").textContent = more.open ? "Show less" : "... Show " + moreItems.children.length + " more";
 	phoneElement("startSync").disabled = !transfers.length || phoneTransfer.running;
-	phoneElement("removeSongs").disabled = !plan.removals.length || phoneTransfer.running;
 }
 
 async function phoneCompare() {
@@ -283,7 +447,7 @@ async function phoneQueueProgress(activeJob) {
 async function phoneRunQueue(prepare) {
 	if (phoneTransfer.running) return;
 	phoneReconnect();
-	for (const id of ["startSync", "resumeSync", "discardQueue", "compareDesktop", "removeSongs", "erasePhone"]) phoneElement(id).disabled = true;
+	for (const id of ["startSync", "resumeSync", "discardQueue", "compareDesktop", "removeSongs", "erasePhone", "selectAllSongs"]) phoneElement(id).disabled = true;
 	phoneElement("cancelSync").disabled = false;
 	try {
 		phoneMessage("Syncing. Keep this app open. Cancel keeps verified files and completed chunks.");
@@ -419,7 +583,8 @@ async function phonePlayPlaylist(id, resumeId) {
 	const songs = phonePlaylistSongs(playlist).filter(phonePlayer.supported);
 	if (!songs.length) return;
 	phonePlayer.setLibrary(songs, id);
-	await phonePlayer.play(songs.some(song => song.id == resumeId) ? resumeId : songs[0].id);
+	if (songs.some(song => song.id == resumeId)) await phonePlayer.play(resumeId);
+	else await phonePlayer.playFirst();
 }
 
 function phoneSongRow(song, action) {
@@ -489,6 +654,16 @@ function phoneRenderLibrary() {
 	const songs = phoneLibrarySongs();
 	phoneElement("libraryResults").textContent = songs.length + (songs.length == 1 ? " song" : " songs") + " · Saved on this phone";
 	phoneElement("libraryPlayAll").disabled = !songs.some(phonePlayer.supported);
+	phoneElement("libraryRemoval").hidden = !phoneState.saved.size;
+	const removals = phoneElement("removalChoices");
+	removals.replaceChildren();
+	for (const song of songs) {
+		const row = phoneChoice(song.title + " · " + (song.artist || "Unknown artist"), false, () => {});
+		row.querySelector("input").dataset.songId = song.id;
+		row.querySelector("input").disabled = phoneTransfer.running;
+		removals.append(row);
+	}
+	phoneElement("removeSongs").disabled = !songs.length || phoneTransfer.running;
 	const container = phoneElement("savedSongs");
 	container.replaceChildren();
 	if (!songs.length) container.append(phoneEmpty(phoneState.saved.size ? "No songs match your search or playlist." : "No saved songs yet. Connect your desktop to add music."));
@@ -640,6 +815,10 @@ async function phoneInitialize() {
 }
 
 phoneElement("compareDesktop").addEventListener("click", phoneAction(phoneCompare));
+phoneElement("selectAllSongs").addEventListener("change", phoneAction(() => phoneSelectAllSongs(phoneElement("selectAllSongs").checked)));
+phoneElement("comparisonMore").addEventListener("toggle", () => {
+	phoneElement("comparisonMoreSummary").textContent = phoneElement("comparisonMore").open ? "Show less" : "... Show " + phoneElement("comparisonMoreItems").children.length + " more";
+});
 phoneElement("startSync").addEventListener("click", phoneAction(phoneStartSync));
 phoneElement("resumeSync").addEventListener("click", phoneAction(phoneRunQueue));
 phoneElement("cancelSync").addEventListener("click", () => phoneTransfer.cancel());
@@ -685,13 +864,13 @@ phoneElement("homePlayAll").addEventListener("click", phoneAction(async () => {
 	const songs = [...phoneState.saved.values()].filter(phonePlayer.supported).sort((a, b) => a.title.localeCompare(b.title));
 	if (!songs.length) return;
 	phonePlayer.setLibrary(songs);
-	await phonePlayer.play(songs[0].id);
+	await phonePlayer.playFirst();
 }));
 phoneElement("libraryPlayAll").addEventListener("click", phoneAction(async () => {
 	const songs = phoneLibrarySongs().filter(phonePlayer.supported);
 	if (!songs.length) return;
 	phonePlayer.setLibrary(songs, phoneState.library.playlist || null);
-	await phonePlayer.play(songs[0].id);
+	await phonePlayer.playFirst();
 }));
 phoneElement("seePlaylists").addEventListener("click", phoneAction(async () => {
 	phoneState.library.view = "playlists";
