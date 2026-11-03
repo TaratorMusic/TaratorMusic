@@ -3,6 +3,7 @@
 const { ipcRenderer } = require("electron");
 
 window.desktopSync = {
+	development: process.argv.includes("--tarator-development"),
 	set: options => ipcRenderer.invoke("phone-sync-set", options),
 	command: command => ipcRenderer.invoke("phone-sync-command", command),
 	copy: text => ipcRenderer.invoke("write-clipboard", text),

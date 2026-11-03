@@ -436,7 +436,7 @@
 						<label for="offlineSyncPage">Webapp address</label>
 						<div class="offline-sync-copy-row"><input id="offlineSyncPage" type="url" placeholder="Paste the address of the webapp you open in your browser" /><button onclick="copyOfflineSyncValue('offlineSyncPage', this)">Copy</button></div>
 						<h5>Copy this from the browser's address bar. On the webapp, this is shown in setup step 1. Turn sharing off before changing it.</h5>
-						<details><summary>Testing on this PC?</summary><button id="offlineSyncLocalPreset" onclick="useLocalOfflineSync()">Use local PC testing</button><h5>Local PC testing uses http://127.0.0.1:8080/ with npm start. Enable sharing, then open that address in your browser. No certificate setup is needed for this mode.</h5></details>
+						<details id="offlineSyncLocalTesting" hidden><summary>Testing on this PC?</summary><button id="offlineSyncLocalPreset" onclick="useLocalOfflineSync()">Use local PC testing</button><h5>Local PC testing uses http://127.0.0.1:8080/ with npm start. Enable sharing, then open that address in your browser. No certificate setup is needed for this mode.</h5></details>
 						<p id="offlineSyncInfo" class="offline-sync-state" role="status" aria-live="polite">Sharing is off. Enter your webapp address, then enable sharing above.</p>
 						<div id="offlineSyncDetails" hidden>
 							<div class="offline-sync-code-card"><label for="offlineSyncCode">Pairing code</label><div class="offline-sync-copy-row"><input id="offlineSyncCode" readonly placeholder="Request a new code" /><button id="offlineSyncCopyCode" onclick="copyOfflineSyncValue('offlineSyncCode', this)">Copy code</button><button onclick="refreshOfflineSync('new-code')">New pairing code</button></div><h5 id="offlineSyncCodeExpiry"></h5></div>

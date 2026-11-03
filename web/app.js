@@ -179,22 +179,26 @@ async function phoneTest() {
 
 function phoneSetupDevice() {
 	const device = phoneElement("setupDevice").value;
-	let instructions = "Open certificate setup, download your desktop's certificate, and trust it in your device or browser's certificate settings. Restart the browser afterward.";
+	let instructions = ["Open your computer's certificate page using the button above.", "Download the certificate after checking the fingerprint.", "Import it in this device or browser's certificate settings and mark it as trusted.", "Restart the browser, return to this app, and press Check connection."];
 	let help = "";
 	if (device == "iphone") {
-		instructions = "Open certificate setup in Safari and install the downloaded profile in Settings > General > VPN & Device Management. Then enable Full Trust in Settings > General > About > Certificate Trust Settings.";
+		instructions = ["Open the certificate page above in Safari. Tap Download phone certificate after checking the fingerprint.", "Open iPhone Settings > General > VPN & Device Management. Select the downloaded TaratorMusic profile and tap Install.", "Go to Settings > General > About > Certificate Trust Settings. Turn on Full Trust for TaratorMusic Phone Sync.", "Close and reopen this app, then press Check connection below."];
 		help = "https://support.apple.com/en-us/102390";
 	} else if (device == "android") {
-		instructions = "Open certificate setup and download the .crt file. In Android Settings > Security > Encryption & credentials, install it as a CA certificate. Set a screen lock if asked, then restart Chrome.";
+		instructions = ["Open the certificate page above. Download TaratorMusic.crt after checking the fingerprint.", "Open Android Settings and search for Install a certificate. It is usually under Security > Encryption & credentials; names vary by phone.", "Choose CA certificate and select the downloaded file. Set a screen lock if Android asks.", "Restart Chrome, return to this app, and press Check connection below."];
 		help = "https://support.google.com/pixelphone/answer/2844832";
 	} else if (device == "windows") {
-		instructions = "Download the .crt file from certificate setup. In Windows Certificate Manager (certmgr.msc), import it into Current User > Trusted Root Certification Authorities > Certificates. Restart your browser afterward.";
+		instructions = ["Open the certificate page above. Download TaratorMusic.crt after checking the fingerprint.", "Press Windows + R, type certmgr.msc, and press Enter. This opens the Current User certificate manager.", "Open Trusted Root Certification Authorities > Certificates. Right-click Certificates, choose All Tasks > Import, and select the downloaded file. Finish the import in that store.", "Restart your browser, return to this app, and press Check connection below."];
 		help = "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/inspect-certificates-manage-certificate-stores";
 	} else if (device == "mac") {
-		instructions = "Download your desktop's certificate from certificate setup and import it in Keychain Access. Open its Trust settings and trust it for SSL, then restart your browser.";
+		instructions = ["Open the certificate page above. Download your computer's certificate after checking the fingerprint.", "Open Keychain Access and import the downloaded certificate.", "Open that certificate, expand Trust, and set Secure Sockets Layer (SSL) to Always Trust. Confirm the change if macOS asks.", "Restart your browser, return to this app, and press Check connection below."];
 		help = "https://support.apple.com/guide/keychain-access/kyca11871/mac";
 	}
-	phoneElement("phoneInstructions").textContent = instructions;
+	phoneElement("phoneInstructions").replaceChildren(...instructions.map(text => {
+		const step = document.createElement("li");
+		step.textContent = text;
+		return step;
+	}));
 	phoneElement("deviceHelpLink").hidden = !help;
 	if (help) phoneElement("deviceHelpLink").href = help;
 }
@@ -226,7 +230,7 @@ phoneElement("server").addEventListener("input", () => {
 });
 phoneElement("pairCode").addEventListener("input", () => phoneElement("pairCode").removeAttribute("aria-invalid"));
 phoneElement("setupAppUrl").textContent = phoneAppURL;
-phoneElement("setupMode").textContent = phoneLocalDev ? "Local PC testing. Pair this browser with the desktop app on this computer." : "Follow these three steps. Check the connection before using your pairing code.";
+phoneElement("setupMode").textContent = phoneLocalDev ? "You are testing on the same PC as the desktop app. Follow steps 1 to 3; no certificate installation is needed." : "Keep your computer and this device on the same home Wi-Fi. Follow steps 1 to 3 in order. Install this app before pairing so your downloads are saved in the app you will use.";
 phoneElement("setupDesktopHint").textContent = phoneLocalDev ? "Start the desktop with npm start for local testing. No certificate installation is needed for this address." : "Keep the desktop open and connect both devices to the same home Wi-Fi. The desktop address in step 2 is different from the webapp address above.";
 phoneElement("copyAppAddress").addEventListener("click", async () => {
 	try {

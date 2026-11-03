@@ -52,7 +52,7 @@
 	};
 
 	window.useLocalOfflineSync = () => {
-		if (currentStatus.enabled) return;
+		if (!window.desktopSync.development || currentStatus.enabled) return;
 		document.getElementById("offlineSyncPage").value = "http://127.0.0.1:8080/";
 		document.getElementById("offlineSyncSharingTitle").textContent = "Allow connections from this PC";
 		document.getElementById("offlineSyncInfo").textContent = "Local address selected. Enable sharing above, then open http://127.0.0.1:8080/ in your browser on this PC.";
@@ -73,6 +73,7 @@
 	};
 
 	window.initializeOfflineSync = async settings => {
+		document.getElementById("offlineSyncLocalTesting").hidden = !window.desktopSync.development;
 		document.getElementById("offlineSyncPage").value = settings.offlineSyncPage;
 		showStatus({ enabled: false });
 		if (settings.offlineSyncEnabled == 1) {

@@ -134,6 +134,8 @@ main { max-width: 1020px; margin: auto; padding: calc(var(--nav-height) + 18px) 
 .setup-step-content { flex: 1; min-width: 0; }
 .setup-step h3 { margin: 3px 0 10px; font-size: 14px; }
 .setup-step p { margin: 8px 0; }
+.setup-step ol { padding-left: 22px; margin: 10px 0; font-size: 12px; line-height: 1.7; color: #ddd; }
+.setup-step li + li { margin-top: 10px; }
 .setup-address { padding: 10px 12px; border: 1px solid #ffffff30; border-radius: 8px; background: #0006; }
 .setup-address code { display: block; overflow-wrap: anywhere; color: white; font-size: 12px; }
 .setup-address button { margin-top: 8px; }

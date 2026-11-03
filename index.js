@@ -131,7 +131,7 @@ function createWindow() {
 		webPreferences: {
 			contextIsolation: false,
 			nodeIntegration: true,
-			additionalArguments: ["Content-Security-Policy", "script-src 'self'"],
+			additionalArguments: ["Content-Security-Policy", "script-src 'self'", ...(isDev ? ["--tarator-development"] : [])],
 		},
 	});
 

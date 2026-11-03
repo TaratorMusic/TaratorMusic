@@ -125,7 +125,12 @@
 							<span class="setup-number" aria-hidden="true">1</span>
 							<div class="setup-step-content">
 								<h3>Start sharing on your desktop</h3>
-								<p>Open TaratorMusic <strong>Settings &gt; Phone sync</strong>. Set <strong>Webapp address</strong> to this address, then enable sharing.</p>
+								<ol>
+									<li>On your computer, open TaratorMusic and go to <strong>Settings &gt; Phone sync</strong>.</li>
+									<li>Turn sharing off if it is already on.</li>
+									<li>Copy the webapp address below into the desktop's <strong>Webapp address</strong> box.</li>
+									<li>Turn sharing on. Keep the desktop app open.</li>
+								</ol>
 								<div class="setup-address">
 									<code id="setupAppUrl"></code>
 									<button id="copyAppAddress" type="button">Copy webapp address</button>
@@ -136,12 +141,14 @@
 						<div class="setup-step">
 							<span class="setup-number" aria-hidden="true">2</span>
 							<div class="setup-step-content">
-								<h3>Check the desktop connection</h3>
+								<h3>On this device: connect to your computer</h3>
 								<label id="serverLabel" for="server">Desktop HTTPS address</label>
 								<input id="server" type="url" placeholder="https://192.168.1.20:8443" aria-describedby="serverHelp" required />
-								<p id="serverHelp">Copy the <strong>Desktop address</strong> shown in desktop Settings &gt; Phone sync. It usually ends in <strong>:8443</strong>.</p>
+								<p id="serverHelp">On the computer, copy <strong>Desktop address</strong> from Phone sync. Paste the whole address here, including <strong>https://</strong> and <strong>:8443</strong>. The faded example above is only a sample.</p>
 								<div id="certificateSetup">
-									<label for="setupDevice">Set up this device</label>
+									<h3>First time only: trust your computer</h3>
+									<p>Your computer uses a certificate to keep song transfers private. Install it on the device you are using right now. You usually only need to do this once.</p>
+									<label for="setupDevice">Which device are you using right now?</label>
 									<select id="setupDevice">
 										<option value="windows">Windows PC</option>
 										<option value="mac">Mac</option>
@@ -149,21 +156,26 @@
 										<option value="android">Android</option>
 										<option value="other">Other device</option>
 									</select>
-									<p id="phoneInstructions"></p>
-									<p><span id="certificateInstructions">Use the certificate from your own desktop and compare its fingerprint with desktop Settings &gt; Phone sync.</span> <a id="setupLink" hidden target="_blank" rel="noopener noreferrer">Open certificate setup</a> <a id="deviceHelpLink" hidden target="_blank" rel="noopener noreferrer">Device instructions</a></p>
+									<p><a id="setupLink" hidden target="_blank" rel="noopener noreferrer">Open your computer's certificate page</a></p>
+									<p id="certificateInstructions">Before downloading, compare the fingerprint (the long code) on that page with the one in desktop Phone sync. They must match.</p>
+									<ol id="phoneInstructions"></ol>
+									<p>Already installed and trusted this computer's certificate? Go straight to <strong>Check connection</strong>.</p>
+									<p><a id="deviceHelpLink" hidden target="_blank" rel="noopener noreferrer">More help for this device</a></p>
 								</div>
 								<button id="checkDesktop" type="button">Check connection</button>
+								<p>When you see <strong>Desktop connection is ready</strong>, continue to step 3.</p>
 							</div>
 						</div>
 						<div class="setup-step">
 							<span class="setup-number" aria-hidden="true">3</span>
 							<div class="setup-step-content">
-								<h3>Pair with the six-digit code</h3>
+								<h3>On this device: enter the pairing code</h3>
 								<label for="pairCode">Pairing code</label>
 								<input id="pairCode" inputmode="numeric" pattern="[0-9 ]{6,12}" maxlength="12" autocomplete="off" placeholder="123 456" aria-describedby="pairCodeHelp" required />
-								<p id="pairCodeHelp">Copy the current code from the desktop. If it was used or expired, press <strong>New pairing code</strong> there.</p>
+								<p id="pairCodeHelp">Find the six-digit code in desktop <strong>Settings &gt; Phone sync</strong>. Enter it here and press <strong>Pair phone</strong>. If it expired, press <strong>New pairing code</strong> on the desktop.</p>
 								<button id="pairSubmit" type="submit" class="primary-button">Pair phone</button>
 								<button id="testConnection" type="button">Transfer test file</button>
+								<p>After pairing, press <strong>Transfer test file</strong>. When the test succeeds, press <strong>Connect and compare</strong> below, select music, then press <strong>Copy additions and updates</strong>. Find your downloaded songs in <strong>My Music</strong>.</p>
 							</div>
 						</div>
 					</form>
