@@ -6,6 +6,7 @@ on:
             - main
         paths:
             - "web/**"
+            - "assets/*.svg"
             - ".github/workflows/pages.yml"
     workflow_dispatch:
 
@@ -29,10 +30,21 @@ jobs:
               uses: actions/checkout@v4
             - name: Setup Pages
               uses: actions/configure-pages@v5
+            - name: Prepare web workspace
+              run: |
+                  node <<'NODE'
+                  const fs = require("fs");
+                  const path = require("path");
+                  const output = path.join(process.env.RUNNER_TEMP, "tarator-web");
+                  fs.cpSync("web", output, { recursive: true });
+                  for (const name of fs.readdirSync("assets")) {
+                      if (name.endsWith(".svg")) fs.copyFileSync(path.join("assets", name), path.join(output, name));
+                  }
+                  NODE
             - name: Upload web workspace
               uses: actions/upload-pages-artifact@v3
               with:
-                  path: web
+                  path: ${{ runner.temp }}/tarator-web
             - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@v5

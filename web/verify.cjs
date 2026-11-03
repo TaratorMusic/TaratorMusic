@@ -424,8 +424,9 @@ async function libraryRemovalBrowserChecks() {
 async function main() {
 	await app.whenReady();
 	const server = http.createServer((request, response) => {
-		const file = path.join(__dirname, new URL(request.url, "http://localhost").pathname.replace(/^\//, "") || "index.html");
+		let file = path.join(__dirname, new URL(request.url, "http://localhost").pathname.replace(/^\//, "") || "index.html");
 		if (path.dirname(file) != __dirname) { response.writeHead(404).end(); return; }
+		if (path.extname(file) == ".svg") file = path.join(__dirname, "..", "assets", path.basename(file));
 		const type = { ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json" }[path.extname(file)] || "text/plain";
 		fs.readFile(file, (error, data) => {
 			response.writeHead(error ? 404 : 200, { "Content-Type": type });

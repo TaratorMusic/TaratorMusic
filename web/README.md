@@ -5,12 +5,14 @@ Copy selected songs and playlists over home Wi-Fi, then play from phone storage.
 ## Run it
 
 1. Build the desktop with `npm run gobuild`, then run `npm start`. Release builds include the Go server automatically through `compiler.js` and the existing `bin/` extraResources rule. No C player change is needed.
-2. Publish this `web/` folder with GitHub Pages. No phone build step or npm dependency is needed. In GitHub, select Settings > Pages > Source > GitHub Actions, then run the existing Pages workflow or push the web files to `main`.
+2. Publish with the included GitHub Pages workflow. It stages `web/` and copies the shared SVG icons from `assets/` into the deployment. No npm dependency is needed. In GitHub, select Settings > Pages > Source > GitHub Actions, then run the existing Pages workflow or push web or SVG changes to `main`.
 3. Open the Pages HTTPS URL on the phone. This checkout defaults to `https://ryryguy2.github.io/TaratorMusic/`. In desktop Settings > Phone sync, enter your actual Pages URL if different.
 4. Enable sharing there. It is off by default and remembers your choice. Keep TaratorMusic open while syncing.
 5. Connect both devices to the same private Wi-Fi. Allow the desktop firewall's private-network prompt. TCP 8443 is HTTPS; TCP 8444 supplies certificate setup only. Do not forward these ports on the router. Guest Wi-Fi with client isolation will not work.
 
 Paths are relative for repository Pages hosting. Opening `index.html` as a file does not support service workers. Retain the app origin and repository path to retain browser storage.
+
+SVG icons have one source in `assets/`, shared with the desktop. The local desktop server serves them at the webapp's root URLs. For another static host, deploy the staged Pages artifact or copy the SVG files from `assets/` beside `web/index.html` in your deployment directory.
 
 Connection now guides setup in three steps. Copy the webapp address from step 1 into the desktop's Webapp address field. Copy the desktop's Desktop address into step 2. Select your device for certificate instructions, then press Check connection. A successful check confirms the browser can reach the sync server without spending a pairing attempt. Step 3 accepts a six-digit code with or without spaces and shows separate guidance for expired codes, rate limits, and device limits. Network failures list certificate, Wi-Fi, and webapp-address checks because browsers do not expose their exact cause to the page.
 

@@ -42,6 +42,10 @@ func (s *syncServer) developmentHandler(folder string) (http.Handler, error) {
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		if r.URL.Path == "/"+filepath.Base(r.URL.Path) && filepath.Ext(r.URL.Path) == ".svg" {
+			http.ServeFile(w, r, filepath.Join(filepath.Dir(root), "assets", filepath.Base(r.URL.Path)))
+			return
+		}
 		files.ServeHTTP(w, r)
 	}), nil
 }

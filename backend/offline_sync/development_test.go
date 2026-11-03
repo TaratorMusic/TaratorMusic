@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -53,6 +54,15 @@ func TestDevelopmentPairingAndTransfers(t *testing.T) {
 	if status, headers, _ := fetch("GET", "/app.js", "", "", nil); status != 200 || !strings.Contains(headers.Get("Content-Type"), "javascript") {
 		t.Fatal("local webapp script did not load", status)
 	}
+	for _, name := range []string{"play.svg", "pause.svg", "next.svg", "previous.svg", "settings.svg", "queue.svg", "refresh.svg"} {
+		original, err := os.ReadFile(filepath.Join("..", "..", "assets", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if status, headers, body := fetch("GET", "/"+name, "", "", nil); status != 200 || string(body) != string(original) || !strings.Contains(headers.Get("Content-Type"), "image/svg+xml") {
+			t.Fatal("shared icon did not load", name, status)
+		}
+	}
 	if status, _, _ := fetch("GET", "/api/catalog", "", "", nil); status != 401 {
 		t.Fatal("local catalog did not require pairing", status)
 	}
@@ -95,6 +105,8 @@ func TestDevelopmentBoundaries(t *testing.T) {
 		{"127.0.0.1:8080", "127.0.0.1:1234", "https://evil.example", "POST", "/api/pair", 403},
 		{"127.0.0.1:8080", "127.0.0.1:1234", s.origin, "POST", "/index.html", 405},
 		{"127.0.0.1:8080", "127.0.0.1:1234", s.origin, "GET", "/../config/offline-sync/state.json", 404},
+		{"127.0.0.1:8080", "127.0.0.1:1234", s.origin, "GET", "/../assets/play.svg", 404},
+		{"127.0.0.1:8080", "127.0.0.1:1234", s.origin, "GET", "/tarator_icon.png", 404},
 	} {
 		r := httptest.NewRequest(test.method, s.origin+test.path, nil)
 		r.Host = test.host
