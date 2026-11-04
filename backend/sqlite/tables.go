@@ -9,6 +9,8 @@ type Column struct {
 // settings.db tables
 
 var settingsColumns = []Column{
+	{Name: "offlineSyncEnabled", Type: "INTEGER", Default: "0"},
+	{Name: "offlineSyncPage", Type: "TEXT", Default: "'https://ryryguy2.github.io/TaratorMusic/'"},
 	{Name: "volume", Type: "INTEGER", Default: "50"},
 	{Name: "rememberautoplay", Type: "INTEGER", Default: "1"},
 	{Name: "remembershuffle", Type: "INTEGER", Default: "1"},

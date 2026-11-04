@@ -1,0 +1,50 @@
+name: Deploy Web to GitHub Pages
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - "web/**"
+            - "assets/*.svg"
+            - ".github/workflows/pages.yml"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+concurrency:
+    group: pages
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Setup Pages
+              uses: actions/configure-pages@v5
+            - name: Prepare web workspace
+              run: |
+                  node <<'NODE'
+                  const fs = require("fs");
+                  const path = require("path");
+                  const output = path.join(process.env.RUNNER_TEMP, "tarator-web");
+                  fs.cpSync("web", output, { recursive: true });
+                  for (const name of fs.readdirSync("assets")) {
+                      if (name.endsWith(".svg")) fs.copyFileSync(path.join("assets", name), path.join(output, name));
+                  }
+                  NODE
+            - name: Upload web workspace
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: ${{ runner.temp }}/tarator-web
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v5

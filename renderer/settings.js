@@ -208,6 +208,11 @@ async function stabiliseVolumeToggleTogglerFunction() {
 	await callSqlite({ db: "settings", query: "UPDATE settings SET stabiliseVolumeToggle = ?", args: [stabiliseVolumeToggle] });
 }
 
+function autoPlayonlaunchTogglerFunction() {
+	autoPlayonlaunch = document.getElementById("autoPlayonlaunch").checked;
+	localStorage.setItem("autoPlayonlaunch", autoPlayonlaunch ? "1" : "0");
+}
+
 async function recommendationsToggleTogglerFunction() {
 	recommendationsAfterDownload = recommendationsAfterDownload == 1 ? 0 : 1;
 	await callSqlite({ db: "settings", query: "UPDATE settings SET recommendationsAfterDownload = ?", args: [recommendationsAfterDownload] });

@@ -2,6 +2,8 @@ const { app, BrowserWindow, Menu, ipcMain, clipboard } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
+const { spawn: spawnSyncServer } = require("child_process");
+const { createInterface: readSyncLines } = require("readline");
 
 const isDev = !app.isPackaged;
 const appDir = isDev ? app.getAppPath() : app.getPath("userData");
@@ -21,6 +23,74 @@ autoUpdater.autoInstallOnAppQuit = false;
 let mainWindow;
 let miniPlayer;
 let pipSettingsState = { pipShowThumbnail: 1, pipShowLyrics: 0 };
+let phoneSyncProcess = null;
+let phoneSyncStatus = { enabled: false };
+let phoneSyncOperation = Promise.resolve();
+
+async function stopPhoneSync() {
+	const child = phoneSyncProcess;
+	if (!child) return;
+	await new Promise(resolve => {
+		const timer = setTimeout(() => child.kill(), 2000);
+		child.once("close", () => {
+			clearTimeout(timer);
+			resolve();
+		});
+		child.stdin.end();
+	});
+}
+
+async function setPhoneSync(options) {
+	await stopPhoneSync();
+	phoneSyncStatus = { enabled: false };
+	if (!options.enabled) return phoneSyncStatus;
+	const page = new URL(options.page);
+	const localWeb = isDev && page.protocol == "http:" && page.hostname == "127.0.0.1" && page.pathname == "/" && page.port != "0";
+	if ((!localWeb && page.protocol != "https:") || page.username || page.password || page.search || page.hash) throw new Error("Enter an HTTPS phone app URL. In development, http://127.0.0.1:8080/ also supports local pairing and transfers.");
+	const binary = path.resolve(options.binary);
+	if (path.dirname(binary) != path.resolve(processDir, "bin") || !fs.statSync(binary).isFile() || fs.statSync(binary).size == 0) throw new Error("Phone sync binary is unavailable. Run npm run gobuild.");
+	const dataFolder = fs.realpathSync(appDir);
+	const args = ["--data", dataFolder, "--page", page.href];
+	if (localWeb) args.push("--dev-web", path.join(processDir, "web"));
+	const child = spawnSyncServer(binary, args, { windowsHide: true, stdio: ["pipe", "pipe", "pipe"], cwd: dataFolder });
+	phoneSyncProcess = child;
+	return await new Promise((resolve, reject) => {
+		const timeout = setTimeout(() => {
+			child.kill();
+			reject(new Error("Phone sync did not start within 15 seconds."));
+		}, 15000);
+		let errors = "";
+		child.stdin.on("error", () => {});
+		child.stderr.on("data", data => {
+			errors = (errors + data.toString()).slice(-4000);
+			phoneSyncStatus.error = errors;
+		});
+		readSyncLines({ input: child.stdout }).on("line", line => {
+			try {
+				phoneSyncStatus = JSON.parse(line);
+				if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("phone-sync-status", phoneSyncStatus);
+				clearTimeout(timeout);
+				resolve(phoneSyncStatus);
+			} catch (_) {}
+		});
+		child.once("error", error => {
+			clearTimeout(timeout);
+			reject(error);
+		});
+		child.once("close", () => {
+			clearTimeout(timeout);
+			if (phoneSyncProcess == child) {
+				phoneSyncProcess = null;
+				phoneSyncStatus = { enabled: false, error: errors.trim() };
+			}
+			reject(new Error(errors.trim() || "Phone sync stopped."));
+		});
+	});
+}
+
+app.on("before-quit", () => {
+	if (phoneSyncProcess) phoneSyncProcess.kill();
+});
 
 function getPipHeight(showThumbnail, showLyrics) {
 	if (showLyrics) return showThumbnail ? 732 : 375;
@@ -61,7 +131,7 @@ function createWindow() {
 		webPreferences: {
 			contextIsolation: false,
 			nodeIntegration: true,
-			additionalArguments: ["Content-Security-Policy", "script-src 'self'"],
+			additionalArguments: ["Content-Security-Policy", "script-src 'self'", ...(isDev ? ["--tarator-development"] : [])],
 		},
 	});
 
@@ -163,6 +233,17 @@ app.whenReady().then(() => {
 	});
 
 	ipcMain.handle("get-app-version", () => app.getVersion());
+	ipcMain.handle("phone-sync-set", (event, options) => {
+		if (event.sender != mainWindow.webContents) throw new Error("Main window only");
+		phoneSyncOperation = phoneSyncOperation.catch(() => {}).then(() => setPhoneSync(options));
+		return phoneSyncOperation;
+	});
+	ipcMain.handle("phone-sync-command", (event, command) => {
+		if (event.sender != mainWindow.webContents) throw new Error("Main window only");
+		if (!["status", "new-code", "revoke"].includes(command)) throw new Error("Unknown phone sync command");
+		if (phoneSyncProcess && !phoneSyncProcess.stdin.destroyed) phoneSyncProcess.stdin.write(command + "\n");
+		return phoneSyncStatus;
+	});
 
 	ipcMain.handle("get-app-base-path", () => {
 		return appDir;

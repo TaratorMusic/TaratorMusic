@@ -258,6 +258,7 @@
 					<button class="settings-tab-btn" data-settings-tab="discord" onclick="switchSettingsTab('discord')">Discord</button>
 					<button class="settings-tab-btn" data-settings-tab="songinfo" onclick="switchSettingsTab('songinfo')">Song Info</button>
 					<button class="settings-tab-btn" data-settings-tab="library" onclick="switchSettingsTab('library')">Library</button>
+					<button class="settings-tab-btn" data-settings-tab="phonesync" onclick="switchSettingsTab('phonesync')">Phone sync</button>
 					<button class="settings-tab-btn" data-settings-tab="recommendations" onclick="switchSettingsTab('recommendations')">Recommendations</button>
 					<button class="settings-tab-btn" data-settings-tab="pip" onclick="switchSettingsTab('pip')">PiP</button>
 					<button class="settings-tab-btn" data-settings-tab="packages" onclick="switchSettingsTab('packages')">Packages</button>
@@ -424,6 +425,29 @@
 					<h5>You can use your old database to redownload all the songs back.</h5>
 					</div>
 				</div>
+				<div id="settings-tab-phonesync" class="settings-tab-panel hidden">
+					<h1 class="settings-title">Offline phone sync</h1>
+					<div class="setting-card">
+						<div class="settingsflexrow">
+							<h2 id="offlineSyncSharingTitle">Share library on home Wi-Fi</h2>
+							<label class="switch"><input type="checkbox" id="offlineSyncToggle" onchange="toggleOfflineSync()" /><span class="slider round"></span></label>
+						</div>
+						<h5>Paired phones can read your music. Keep TaratorMusic open while syncing.</h5>
+						<label for="offlineSyncPage">Webapp address</label>
+						<div class="offline-sync-copy-row"><input id="offlineSyncPage" type="url" placeholder="Paste the address of the webapp you open in your browser" /><button onclick="copyOfflineSyncValue('offlineSyncPage', this)">Copy</button></div>
+						<h5>Copy this from the browser's address bar. On the webapp, this is shown in setup step 1. Turn sharing off before changing it.</h5>
+						<details id="offlineSyncLocalTesting" hidden><summary>Testing on this PC?</summary><button id="offlineSyncLocalPreset" onclick="useLocalOfflineSync()">Use local PC testing</button><h5>Local PC testing uses http://127.0.0.1:8080/ with npm start. Enable sharing, then open that address in your browser. No certificate setup is needed for this mode.</h5></details>
+						<p id="offlineSyncInfo" class="offline-sync-state" role="status" aria-live="polite">Sharing is off. Enter your webapp address, then enable sharing above.</p>
+						<div id="offlineSyncDetails" hidden>
+							<div class="offline-sync-code-card"><label for="offlineSyncCode">Pairing code</label><div class="offline-sync-copy-row"><input id="offlineSyncCode" readonly placeholder="Request a new code" /><button id="offlineSyncCopyCode" onclick="copyOfflineSyncValue('offlineSyncCode', this)">Copy code</button><button onclick="refreshOfflineSync('new-code')">New pairing code</button></div><h5 id="offlineSyncCodeExpiry"></h5></div>
+							<label for="offlineSyncNetwork">Desktop address</label><div class="offline-sync-copy-row"><select id="offlineSyncNetwork" onchange="updateOfflineSyncAddress()"></select><button id="offlineSyncCopyAddress" onclick="copyOfflineSyncValue('offlineSyncNetwork', this)">Copy address</button></div>
+							<h5>Paste this into step 2 of the webapp. If several addresses appear, choose the one for your home Wi-Fi.</h5>
+							<div id="offlineSyncCertificate"><label for="offlineSyncSetup">Certificate setup address</label><div class="offline-sync-copy-row"><input id="offlineSyncSetup" readonly /><button onclick="copyOfflineSyncValue('offlineSyncSetup', this)">Copy setup link</button></div><h5>Open this on the device you want to pair. Install and trust the certificate there, then return to the webapp.</h5><details><summary>Certificate fingerprint to compare</summary><input id="offlineSyncFingerprint" readonly aria-label="Certificate SHA-256 fingerprint" /></details></div>
+							<button onclick="refreshOfflineSync('status')">Refresh addresses</button>
+							<button onclick="refreshOfflineSync('revoke')">Forget paired devices</button>
+						</div>
+					</div>
+				</div>
 				<div id="settings-tab-recommendations" class="settings-tab-panel hidden">
 					<h1 class="settings-title">Recommendations</h1>
 					<div class="setting-card">
@@ -510,6 +534,16 @@
 				</div>
 				<div id="settings-tab-system" class="settings-tab-panel hidden">
 					<h1 class="settings-title">System</h1>
+					<div class="setting-card">
+					<div class="settingsflexrow">
+						<h2>Auto Play on Launch</h2>
+						<label class="switch">
+							<input type="checkbox" id="autoPlayonlaunch" onclick="autoPlayonlaunchTogglerFunction()" />
+							<span class="slider round"></span>
+						</label>
+					</div>
+					<h5>Play your last played playlist when the app launches, or shuffle My Music if you last played outside a playlist.</h5>
+					</div>
 					<div class="setting-card">
 					<div class="settingsflexrow">
 						<h2>Debug Mode</h2>
@@ -627,6 +661,7 @@
 		<script src="lyrics_fetch.js"></script>
 		<script src="renderer.js"></script>
 		<script src="settings.js"></script>
+		<script src="offline_sync.js"></script>
 		<script src="scan_songs.js"></script>
 		<script src="recommendations.js"></script>
 		<script src="timestamps_generate.js"></script>

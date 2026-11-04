@@ -1491,6 +1491,27 @@ input:checked + .slider:before {
 	min-height: 0;
 }
 
+#settings-tab-phonesync [hidden] { display: none !important; }
+#settings-tab-phonesync div { height: auto; }
+#settings-tab-phonesync label[for] { display: block; margin: 16px 0 8px; font-size: 13px; }
+#settings-tab-phonesync input[type="url"],
+#settings-tab-phonesync input[readonly],
+#settings-tab-phonesync select { min-width: 0; width: 100%; height: auto; padding: 10px 12px; background: rgba(0, 0, 0, 0.6); border: 1px solid #555; border-radius: 6px; color: white !important; font-size: 13px; }
+#settings-tab-phonesync input[readonly] { user-select: text; }
+#settings-tab-phonesync .offline-sync-copy-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; height: auto; }
+#settings-tab-phonesync .offline-sync-copy-row > input,
+#settings-tab-phonesync .offline-sync-copy-row > select { flex: 1 1 220px; }
+#settings-tab-phonesync .offline-sync-copy-row > button { flex-shrink: 0; min-height: 36px; }
+#settings-tab-phonesync .offline-sync-state { padding: 12px 14px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; margin: 16px 0 0; font-size: 13px; line-height: 1.6; }
+#settings-tab-phonesync .offline-sync-state[data-state="error"] { border-color: #ffb2a2; }
+#settings-tab-phonesync .offline-sync-state[data-state="ready"] { border-color: turquoise; }
+#settings-tab-phonesync .offline-sync-code-card { padding: 0 16px 16px; margin-top: 16px; border: 1px solid rgba(255, 204, 0, 0.4); border-radius: 10px; background: rgba(0, 0, 0, 0.3); }
+#settings-tab-phonesync #offlineSyncCode { font-family: monospace; font-size: 30px; letter-spacing: 0.15em; color: #ffcc00 !important; }
+#settings-tab-phonesync details { margin: 16px 0; }
+#settings-tab-phonesync summary { cursor: pointer; font-size: 12px; color: #ccc; }
+#settings-tab-phonesync button:disabled { opacity: 0.45; cursor: default; }
+#settings-tab-phonesync #offlineSyncFingerprint { margin-top: 10px; font-family: monospace; }
+
 .packages-sidebar {
 	position: sticky;
 	top: 12px;

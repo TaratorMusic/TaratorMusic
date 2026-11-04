@@ -39,6 +39,12 @@ Discord Rich Presence to momentarily share listened songs in Discord
 
 Github Actions to protect code quality and automatically roll out builds
 
+## Offline phone sync
+
+Enable **Settings > Phone sync** to pair the phone app in [web/](web/README.md). It copies selected music over home Wi-Fi and keeps verified copies for offline playback. Sharing is off by default.
+
+The [phone sync guide and test checklist](web/README.md) cover GitHub Pages, iPhone and Android certificate installation, repeat syncing, and car controls. Physical phones, macOS/Linux desktop runtime, Bluetooth, CarPlay, and Android Auto still need the manual checks listed there.
+
 ## How to develop:
 
 -   Firstly, you need NPM, Node.js, gcc and Go installed on your computer. 

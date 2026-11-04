@@ -2,6 +2,17 @@
 
 const { ipcRenderer } = require("electron");
 
+window.desktopSync = {
+	development: process.argv.includes("--tarator-development"),
+	set: options => ipcRenderer.invoke("phone-sync-set", options),
+	command: command => ipcRenderer.invoke("phone-sync-command", command),
+	copy: text => ipcRenderer.invoke("write-clipboard", text),
+};
+
+ipcRenderer.on("phone-sync-status", (_, status) => {
+	window.dispatchEvent(new CustomEvent("phone-sync-status", { detail: status }));
+});
+
 window.addEventListener("DOMContentLoaded", () => {
 	const replaceText = (selector, text) => {
 		const element = document.getElementById(selector);

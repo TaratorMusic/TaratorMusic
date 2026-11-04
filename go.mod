@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/Victiniiiii/musicbrainz-wrapper v0.0.0-20250914093323-2afba3d794c1
 	github.com/Victiniiiii/rp v0.3.2-0.20250914133821-55b2dc47ebae
+	golang.org/x/image v0.28.0
 )
 
 require (

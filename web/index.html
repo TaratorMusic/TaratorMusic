@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+		<meta name="theme-color" content="#00001a" />
+		<title>TaratorMusic Mobile</title>
+		<link rel="stylesheet" href="./style.css" />
+		<link rel="manifest" href="./manifest.webmanifest" />
+		<link rel="apple-touch-icon" href="./icon-192.png" />
+		<link rel="icon" href="./favicon.png" type="image/png" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<script src="./storage.js" defer></script>
+		<script src="./transfer.js" defer></script>
+		<script src="./player.js" defer></script>
+		<script src="./app.js" defer></script>
+	</head>
+	<body>
+		<header class="app-header">
+			<a class="brand" href="#home" aria-label="TaratorMusic home">
+				<img src="./icon-512.png" alt="" width="38" height="38" />
+				<span>
+					TaratorMusic
+					<small>OFFLINE PLAYER</small>
+				</span>
+			</a>
+			<span id="libraryCount" class="library-count">0 songs saved</span>
+		</header>
+		<main id="app">
+			<div id="page-home" class="app-page" role="tabpanel" aria-labelledby="tab-home">
+				<div class="page-heading">
+					<h1>Main Menu</h1>
+					<button id="homePlayAll" class="icon-button large-play" aria-label="Play all saved songs" title="Play all">
+						<img src="./play.svg" alt="" />
+					</button>
+				</div>
+				<div id="homeEmpty" class="empty-state home-empty">
+					<img src="./icon-512.png" alt="TaratorMusic logo" />
+					<h2>TaratorMusic</h2>
+					<p>Save your desktop songs and playlists, then listen anywhere.</p>
+					<button data-open-page="connection" class="primary-button">Connect your desktop</button>
+				</div>
+				<div id="homeContent" hidden>
+					<section class="home-section">
+						<div class="section-heading">
+							<h2>Jump back in</h2>
+							<span>Recently played playlists</span>
+						</div>
+						<div id="recentPlaylists" class="recent-grid"></div>
+					</section>
+					<section class="home-section">
+						<div class="section-heading">
+							<h2>Your playlists</h2>
+							<button class="text-button" id="seePlaylists">See all</button>
+						</div>
+						<div id="homePlaylists" class="playlist-shelf"></div>
+					</section>
+					<section class="home-section">
+						<div class="section-heading">
+							<h2>Recently played</h2>
+							<button class="text-button" data-open-page="music">My Music</button>
+						</div>
+						<div id="recentSongs"></div>
+					</section>
+				</div>
+			</div>
+			<div id="page-music" class="app-page" role="tabpanel" aria-labelledby="tab-music" hidden>
+				<div class="page-heading">
+					<h1>My Music</h1>
+					<button id="libraryPlayAll" class="icon-button large-play" aria-label="Play these songs" title="Play these songs">
+						<img src="./play.svg" alt="" />
+					</button>
+				</div>
+				<div class="library-toolbar">
+					<label class="search-field">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<circle cx="10.5" cy="10.5" r="6.5"/>
+							<path d="m16 16 4.5 4.5"/>
+						</svg>
+						<input id="librarySearch" type="search" aria-label="Search your music" placeholder="Search songs, artists, playlists" />
+					</label>
+					<div class="library-options">
+						<div class="view-options" role="group" aria-label="Library view">
+							<button data-library-view="songs" aria-pressed="true">Songs</button>
+							<button data-library-view="playlists" aria-pressed="false">Playlists</button>
+						</div>
+						<label id="librarySortLabel" class="sort-control">
+							Sort by
+							<select id="librarySort">
+								<option value="name">Name</option>
+								<option value="artist">Artist</option>
+								<option value="playlist">Playlist</option>
+							</select>
+						</label>
+					</div>
+				</div>
+				<div id="librarySongsView">
+					<label class="playlist-filter" for="offlinePlaylist">
+						Playlist
+						<select id="offlinePlaylist">
+							<option value="">All saved songs</option>
+						</select>
+					</label>
+					<p id="libraryResults" class="muted"></p>
+					<details id="libraryRemoval" class="setting-card" hidden>
+						<summary>Remove saved songs</summary>
+						<p>Choose from the songs matching your current search and playlist. This removes copies saved on this phone; desktop originals stay on your desktop.</p>
+						<div id="removalChoices" class="song-list"></div>
+						<button id="removeSongs" class="danger-button" disabled>Remove checked from phone</button>
+					</details>
+					<div id="savedSongs"></div>
+				</div>
+				<div id="libraryPlaylistsView" class="playlist-grid" hidden></div>
+			</div>
+			<div id="page-connection" class="app-page" role="tabpanel" aria-labelledby="tab-connection" hidden>
+				<div class="page-heading">
+					<h1>Connection</h1>
+					<span id="connectionStatus" class="status-pill">Not paired</span>
+				</div>
+				<section class="setting-card" aria-labelledby="installFirstTitle">
+					<h2 id="installFirstTitle">Before you download: install the app</h2>
+					<p>Do this before pairing or downloading music on your phone.</p>
+					<ol>
+						<li><strong>Install:</strong> On iPhone, open this page in Safari, tap <strong>Share &gt; Add to Home Screen</strong>, then <strong>Add</strong>. Keep <strong>Open as Web App</strong> on if shown. On Android, open Chrome's menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+						<li><strong>Open the installed app:</strong> Go to your phone's Home Screen and tap the TaratorMusic icon.</li>
+						<li><strong>Continue here:</strong> Open Connection inside that app, then follow the desktop setup below. Pair and download your music there.</li>
+					</ol>
+					<p><strong>On iPhone, Safari and the installed app have separate storage.</strong> Songs and background changes made in Safari will not carry over. Always use the same Home Screen icon for downloading and listening.</p>
+					<p>After your songs show as saved, try airplane mode, fully close the app, and reopen it from that icon to check offline playback.</p>
+				</section>
+				<section class="setting-card" aria-labelledby="pairTitle">
+					<h2 id="pairTitle">Connect your desktop</h2>
+					<p id="setupMode"></p>
+					<form id="pairForm" novalidate>
+						<div class="setup-step">
+							<span class="setup-number" aria-hidden="true">1</span>
+							<div class="setup-step-content">
+								<h3>Start sharing on your desktop</h3>
+								<ol>
+									<li>On your computer, open TaratorMusic and go to <strong>Settings &gt; Phone sync</strong>.</li>
+									<li>Turn sharing off if it is already on.</li>
+									<li>Copy the webapp address below into the desktop's <strong>Webapp address</strong> box.</li>
+									<li>Turn sharing on. Keep the desktop app open.</li>
+								</ol>
+								<div class="setup-address">
+									<code id="setupAppUrl"></code>
+									<button id="copyAppAddress" type="button">Copy webapp address</button>
+								</div>
+								<p id="setupDesktopHint"></p>
+							</div>
+						</div>
+						<div class="setup-step">
+							<span class="setup-number" aria-hidden="true">2</span>
+							<div class="setup-step-content">
+								<h3>On this device: connect to your computer</h3>
+								<label id="serverLabel" for="server">Desktop HTTPS address</label>
+								<input id="server" type="url" placeholder="https://192.168.1.20:8443" aria-describedby="serverHelp" required />
+								<p id="serverHelp">On the computer, copy <strong>Desktop address</strong> from Phone sync. Paste the whole address here, including <strong>https://</strong> and <strong>:8443</strong>. The faded example above is only a sample.</p>
+								<div id="certificateSetup">
+									<h3>First time only: trust your computer</h3>
+									<p>Your computer uses a certificate to keep song transfers private. Install it on the device you are using right now. You usually only need to do this once.</p>
+									<label for="setupDevice">Which device are you using right now?</label>
+									<select id="setupDevice">
+										<option value="windows">Windows PC</option>
+										<option value="mac">Mac</option>
+										<option value="iphone">iPhone / iPad</option>
+										<option value="android">Android</option>
+										<option value="other">Other device</option>
+									</select>
+									<p><a id="setupLink" hidden target="_blank" rel="noopener noreferrer">Open your computer's certificate page</a></p>
+									<p id="certificateInstructions">Before downloading, compare the fingerprint (the long code) on that page with the one in desktop Phone sync. They must match.</p>
+									<ol id="phoneInstructions"></ol>
+									<p>Already installed and trusted this computer's certificate? Go straight to <strong>Check connection</strong>.</p>
+									<p><a id="deviceHelpLink" hidden target="_blank" rel="noopener noreferrer">More help for this device</a></p>
+								</div>
+								<button id="checkDesktop" type="button">Check connection</button>
+								<p>When you see <strong>Desktop connection is ready</strong>, continue to step 3.</p>
+							</div>
+						</div>
+						<div class="setup-step">
+							<span class="setup-number" aria-hidden="true">3</span>
+							<div class="setup-step-content">
+								<h3>On this device: enter the pairing code</h3>
+								<label for="pairCode">Pairing code</label>
+								<input id="pairCode" inputmode="numeric" pattern="[0-9 ]{6,12}" maxlength="12" autocomplete="off" placeholder="123 456" aria-describedby="pairCodeHelp" required />
+								<p id="pairCodeHelp">Find the six-digit code in desktop <strong>Settings &gt; Phone sync</strong>. Enter it here and press <strong>Pair phone</strong>. If it expired, press <strong>New pairing code</strong> on the desktop.</p>
+								<button id="pairSubmit" type="submit" class="primary-button">Pair phone</button>
+								<button id="testConnection" type="button">Transfer test file</button>
+								<p>After pairing, press <strong>Transfer test file</strong>. When the test succeeds, press <strong>Connect and compare</strong> below, select music, then press <strong>Copy additions and updates</strong>. Find your downloaded songs in <strong>My Music</strong>.</p>
+							</div>
+						</div>
+					</form>
+					<div id="setupFeedback" class="setup-feedback" role="status" aria-live="polite" hidden>
+						<strong id="setupFeedbackTitle"></strong>
+						<p id="setupFeedbackText"></p>
+						<details id="setupHelp" hidden>
+							<summary>What to check</summary>
+							<ul id="setupFixes"></ul>
+						</details>
+					</div>
+				</section>
+				<section class="setting-card" aria-labelledby="selectTitle">
+					<h2 id="selectTitle">Choose music to download</h2>
+					<button id="compareDesktop" class="primary-button">
+						<img src="./refresh.svg" alt="" />
+						Connect and compare
+					</button>
+					<p>Use the desktop address above. Selections stay on this phone.</p>
+					<label class="song-row">
+						<input id="selectAllSongs" type="checkbox" aria-describedby="selectAllHelp" disabled />
+						<span>
+							Select all songs
+							<small id="selectAllStatus">Connect to load your desktop songs.</small>
+						</span>
+					</label>
+					<p id="selectAllHelp">Selects every supported desktop song, including songs outside the current search.</p>
+					<div id="playlistChoices"></div>
+					<label for="catalogSearch">Find a desktop song</label>
+					<input id="catalogSearch" type="search" placeholder="Title or artist" />
+					<div id="songChoices" class="song-list"></div>
+				</section>
+				<section id="comparison" class="setting-card" hidden aria-labelledby="compareTitle">
+					<h2 id="compareTitle">Review changes</h2>
+					<p id="comparisonInfo"></p>
+					<div id="comparisonItems"></div>
+					<details id="comparisonMore" class="review-more" hidden>
+						<summary id="comparisonMoreSummary">... Show more</summary>
+						<div id="comparisonMoreItems"></div>
+					</details>
+					<button id="startSync" class="primary-button">Copy additions and updates</button>
+					<p>Saved songs stay on this phone when you change selections or delete desktop originals. Remove saved copies from My Music.</p>
+				</section>
+				<section class="setting-card" aria-labelledby="queueTitle">
+					<h2 id="queueTitle">Transfer queue</h2>
+					<progress id="transferProgress" max="1" value="0"></progress>
+					<p id="queueInfo">No pending transfers.</p>
+					<button id="resumeSync">Resume / retry</button>
+					<button id="cancelSync" disabled>Cancel transfer</button>
+					<button id="discardQueue">Discard unfinished downloads</button>
+				</section>
+			</div>
+			<div id="page-settings" class="app-page" role="tabpanel" aria-labelledby="tab-settings" hidden>
+				<div class="page-heading">
+					<h1>Settings</h1>
+				</div>
+				<section class="setting-card" aria-labelledby="appearanceTitle">
+					<h2 id="appearanceTitle">Appearance</h2>
+					<p>The same background presets as the desktop app.</p>
+					<div class="theme-options" role="group" aria-label="Background preset">
+						<button data-theme-choice="blue" aria-pressed="false">
+							<span></span>
+							Blue
+						</button>
+						<button data-theme-choice="red" aria-pressed="false">
+							<span></span>
+							Red
+						</button>
+						<button data-theme-choice="green" aria-pressed="true">
+							<span></span>
+							Green
+						</button>
+						<button data-theme-choice="purple" aria-pressed="false">
+							<span></span>
+							Purple
+						</button>
+						<button data-theme-choice="black" aria-pressed="false">
+							<span></span>
+							Black
+						</button>
+					</div>
+					<label class="custom-theme" for="customTheme">
+						Custom color
+						<input id="customTheme" type="color" value="#004000" />
+					</label>
+				</section>
+				<section class="setting-card" aria-labelledby="storageTitle">
+					<h2 id="storageTitle">Install app &amp; storage</h2>
+					<p id="installInstructions"></p>
+					<button id="installApp" hidden>Install app</button>
+					<button id="persistStorage">Keep offline storage</button>
+					<p id="storageInfo">Checking storage...</p>
+					<p id="shellStatus">Preparing offline app...</p>
+				</section>
+				<details class="setting-card">
+					<summary>Phone data</summary>
+					<div class="details-content">
+						<p>Browser storage can be evicted. Keep your desktop originals.</p>
+						<button id="erasePhone" class="danger-button">Erase this phone's library and pairing</button>
+					</div>
+				</details>
+			</div>
+			<p id="message" role="status" aria-live="polite" hidden></p>
+		</main>
+		<footer id="player" aria-label="Music player">
+			<div class="player-track">
+				<img id="nowArtwork" src="./icon-512.png" alt="Current artwork" width="44" height="44" />
+				<div class="player-track-text">
+					<p id="nowPlaying">Choose a saved song</p>
+					<p id="nowArtist">TaratorMusic</p>
+				</div>
+				<div class="player-controls">
+					<button id="shufflePlayback" class="icon-button" aria-label="Shuffle" aria-pressed="false" title="Enable shuffle">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="m18 4 3 3-3 3m0 10 3-3-3-3M3 7h3a5 5 0 0 1 5 5 5 5 0 0 0 5 5h5M3 17h3a5 5 0 0 0 5-5 5 5 0 0 1 5-5h5" />
+						</svg>
+					</button>
+					<button id="previousTrack" class="icon-button" aria-label="Previous track" title="Previous track">
+						<img src="./previous.svg" alt="" />
+					</button>
+					<button id="togglePlayback" class="icon-button main-play" aria-label="Play" title="Play">
+						<img id="playbackIcon" src="./play.svg" alt="" />
+					</button>
+					<button id="nextTrack" class="icon-button" aria-label="Next track" title="Next track">
+						<img src="./next.svg" alt="" />
+					</button>
+				</div>
+			</div>
+			<div class="player-seek">
+				<span id="elapsedTime">0:00</span>
+				<input id="playbackProgress" type="range" min="0" max="1" value="0" step="0.1" aria-label="Seek in current song" disabled />
+				<span id="durationTime">0:00</span>
+			</div>
+			<audio id="audio" preload="metadata" hidden></audio>
+		</footer>
+		<nav class="tab-nav" role="tablist" aria-label="Main navigation">
+			<button id="tab-home" role="tab" aria-controls="page-home" aria-selected="true" data-page="home">
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path d="m3 10 9-7 9 7v10H15v-7H9v7H3z"/>
+				</svg>
+				<span>Main Menu</span>
+			</button>
+			<button id="tab-music" role="tab" aria-controls="page-music" aria-selected="false" tabindex="-1" data-page="music">
+				<img src="./queue.svg" alt="" />
+				<span>My Music</span>
+			</button>
+			<button id="tab-connection" role="tab" aria-controls="page-connection" aria-selected="false" tabindex="-1" data-page="connection">
+				<img src="./refresh.svg" alt="" />
+				<span>Connection</span>
+			</button>
+			<button id="tab-settings" role="tab" aria-controls="page-settings" aria-selected="false" tabindex="-1" data-page="settings">
+				<img src="./settings.svg" alt="" />
+				<span>Settings</span>
+			</button>
+		</nav>
+	</body>
+</html>

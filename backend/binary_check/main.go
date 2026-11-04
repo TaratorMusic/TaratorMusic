@@ -80,7 +80,11 @@ func main() {
 
 	// Core tools
 	for _, name := range appfiles.CoreBinaries() {
-		comps = append(comps, resolve(appfiles.NewComponent(name, "core", name, map[string]string{
+		id, label := name, name
+		if name == appfiles.OfflineSyncBinary() {
+			id, label = "offline-sync", "Offline phone sync"
+		}
+		comps = append(comps, resolve(appfiles.NewComponent(id, "core", label, map[string]string{
 			"binary": filepath.Join(appBin, name),
 		})))
 	}
